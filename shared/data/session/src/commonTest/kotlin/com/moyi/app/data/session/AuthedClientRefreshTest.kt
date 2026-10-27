@@ -113,6 +113,40 @@ class AuthedClientRefreshTest {
     }
 
     @Test
+    fun aLate401FromThePreviousAccountIsNotRetriedWithTheNewAccountsToken() = runTest {
+        // A request goes out as account A (a1) and is held at the server. A
+        // signs out and B signs in (b1). Then A's 401 arrives. a1 was never
+        // issued in B's session, so it must not be retried as B, and no
+        // refresh may be spent on it.
+        val aRefusedLate = CompletableDeferred<Unit>()
+        val aArrived = CompletableDeferred<Unit>()
+        val server = TestServer(initial = null) { request ->
+            when {
+                request.isRefresh -> fail("no refresh expected")
+                request.isMe && request.bearer == "a1" -> {
+                    aArrived.complete(Unit)
+                    aRefusedLate.await()
+                    respondProblem(HttpStatusCode.Unauthorized, "UNAUTHENTICATED", bearerChallenge = true)
+                }
+                request.isMe -> respondJson(userJson())
+                else -> fail("unexpected ${request.url}")
+            }
+        }
+        server.sessionManager.startSession(grant("a1", "ra"))
+
+        val aRequest = async { safeApiCall { server.me.me() } }
+        aArrived.await()
+        server.sessionManager.endSession(SessionEndReason.SignedOut)
+        server.sessionManager.startSession(grant("b1", "rb"))
+        aRefusedLate.complete(Unit)
+
+        assertEquals(Result.Failure(unauthenticated), aRequest.await())
+        assertEquals(0, server.refreshCalls.load())
+        assertTrue("GET /api/v1/me Bearer b1" !in server.log.snapshot(), server.log.snapshot().joinToString("\n"))
+        assertEquals("b1", server.sessionManager.currentAccessToken())
+    }
+
+    @Test
     fun aRequestRefusedWhileColdStartIsRefreshingWaitsForThatRefresh() = runTest {
         val refreshStarted = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()

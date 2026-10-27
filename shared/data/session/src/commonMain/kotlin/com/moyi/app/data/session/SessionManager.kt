@@ -49,6 +49,16 @@ class SessionManager(
 ) : BearerTokenSource {
     private val mutex = Mutex()
     private val accessToken = MutableStateFlow<String?>(null)
+
+    /**
+     * Every access token issued in the current session (login, then each
+     * refresh). A 401 for a token NOT in here belongs to an earlier session,
+     * say the account that signed out a moment ago, and must not be retried
+     * with this session's token. Reset at login and when the session ends;
+     * guarded by [mutex]. One entry per refresh, so it grows by one every 15
+     * minutes of use: small enough not to bound.
+     */
+    private val issued = mutableSetOf<String>()
     private val state = MutableStateFlow<SessionState>(SessionState.Unknown)
     private val eventChannel = Channel<SessionEvent>(Channel.BUFFERED)
     private val log = Logger.withTag("Session")
@@ -63,7 +73,10 @@ class SessionManager(
      *
      * Single-flight: callers queue on a [Mutex]. Once inside, if the current
      * token is no longer [staleAccess], someone ahead in the queue already
-     * refreshed, and that token is returned without a network call.
+     * refreshed, and that token is returned without a network call. That
+     * holds only for a [staleAccess] issued in THIS session: a late 401 for a
+     * token from an earlier session (A signed out, B signed in, then A's
+     * request is refused) gets null, so it is never retried as B.
      * Otherwise one `POST /auth/refresh` is made with the stored refresh
      * token, and on success the new refresh token is **written to the store
      * before** the new access token is published, so nothing can use the new
@@ -95,6 +108,8 @@ class SessionManager(
         mutex.withLock {
             withContext(NonCancellable) {
                 store.write(grant.toStoredSession())
+                issued.clear()
+                issued += grant.accessToken
                 accessToken.value = grant.accessToken
                 state.value = SessionState.SignedIn(grant.user)
             }
@@ -129,6 +144,10 @@ class SessionManager(
     }
 
     private suspend fun refreshOutcome(staleAccess: String?): RefreshOutcome = mutex.withLock {
+        // A token this session never issued is a previous session's request
+        // arriving late: no retry as the current account, no refresh spent.
+        if (staleAccess != null && staleAccess !in issued) return@withLock RefreshOutcome.NoSession
+
         val current = accessToken.value
         if (current != null && current != staleAccess) return@withLock RefreshOutcome.Refreshed(current)
 
@@ -164,6 +183,7 @@ class SessionManager(
             endLocked(SessionEndReason.Invalid)
             return RefreshOutcome.Ended(SessionEndReason.Invalid)
         }
+        issued += grant.accessToken
         accessToken.value = grant.accessToken
         state.value = SessionState.SignedIn(grant.user)
         return RefreshOutcome.Refreshed(grant.accessToken)
@@ -193,6 +213,7 @@ class SessionManager(
             log.w { "Stored session could not be cleared" }
         }
         accessToken.value = null
+        issued.clear()
         state.value = SessionState.SignedOut
         log.i { "Session ended: $reason" }
         eventChannel.trySend(SessionEvent.Ended(reason))
