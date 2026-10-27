@@ -125,3 +125,21 @@ The real fix needs the backend (docs/backend-contract-gaps.md, row 11): an idemp
 refresh (an `Idempotency-Key` that replays the same R2 for a retried R1 for a few
 seconds), a same-device grace window, or an explicit decision to accept the risk. It needs
 an owner ruling and an amendment to ADR-0021.
+
+## Running on the iOS simulator needs a signed build
+
+The Keychain refuses an app with no code signature: `SecItemAdd` returns `-34018`
+(errSecMissingEntitlement). An `xcodebuild … CODE_SIGNING_ALLOWED=NO` build therefore
+launches and registers, but **sign in fails after the server has accepted it**. The session
+cannot be stored, `login` returns `DataError.Local.UNKNOWN`, and the screen shows the
+generic error. That is correct behaviour for a store that cannot write, and it is what the
+PR #6 end-to-end run first hit.
+
+Sign the simulator build to run locally (what Xcode's Run does by default), for example:
+
+```
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator \
+  -destination 'id=<simulator-udid>' CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build
+```
+
+`CODE_SIGNING_ALLOWED=NO` stays right for the compile check that each PR records.
