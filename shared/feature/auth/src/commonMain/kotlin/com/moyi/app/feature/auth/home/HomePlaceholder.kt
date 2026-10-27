@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -57,12 +59,18 @@ class HomePlaceholderViewModel(
 ) : ViewModel() {
     private val signingOut = MutableStateFlow(false)
 
+    /**
+     * The last name a signed-in session carried. Sign out flips the session to
+     * SignedOut a frame before the shell routes away; holding the last name
+     * keeps "Hello, Amara" from flashing to "Hello, " on the way out.
+     */
+    private val displayName = authRepository.session
+        .map { (it as? SessionState.SignedIn)?.user?.displayName.orEmpty() }
+        .runningFold("") { last, name -> name.ifEmpty { last } }
+
     val state: StateFlow<HomePlaceholderState> =
-        combine(authRepository.session, signingOut) { session, out ->
-            HomePlaceholderState(
-                displayName = (session as? SessionState.SignedIn)?.user?.displayName.orEmpty(),
-                signingOut = out,
-            )
+        combine(displayName, signingOut) { name, out ->
+            HomePlaceholderState(displayName = name, signingOut = out)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomePlaceholderState())
 
     fun onAction(action: HomePlaceholderAction) {
