@@ -114,8 +114,8 @@ Where the classification is uncertain:
   says otherwise.
 - **Android**: OkHttp retries some failed requests on its own (`retryOnConnectionFailure`,
   on by default), and a POST whose body was already written can be resent on a fresh
-  connection. That is a second presentation of R1 the client never sees. Turning it off
-  for the public client is a follow-up worth measuring.
+  connection: a second presentation of R1 the client never sees. It is **turned off** on
+  the shared engine (`platformEngine()` on Android); the app retries on its own terms.
 
 The real fix needs the backend (docs/backend-contract-gaps.md, row 11): an idempotent
 refresh (an `Idempotency-Key` that replays the same R2 for a retried R1 for a few
