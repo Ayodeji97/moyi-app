@@ -33,16 +33,19 @@ Recorded in PR #5 (design system), 2026-10-27.
 - **The open question:** whether any action is long enough, or blocking enough, to need more than
   the label. If one is, it needs a state in `states.md` before it gets a component.
 
-### 3. `PrimaryAction` `Sending` fails contrast
+### 3. `PrimaryAction` `Sending` fails contrast in light only
 
 - **Today:** Figma draws Sending as the whole button at 60 % opacity
   (`docs/figma/auth-placement-spec.md` §4.1). `tokens.md` gives no Sending look.
-- **Measured:** the label, blended over `surface`, is **3.13:1 dark and 2.57:1 light**, against
-  4.5. WCAG 1.4.3 exempts inactive controls, but in this product the Sending label is the only
-  feedback that something is happening (`states.md` §1c), so it should be readable.
-- **Here:** built as Figma draws it. `TokenContrastTest.sendingLabelContrastIsAKnownFinding` pins
-  the two numbers so a fix shows up. Options for the owner: a higher opacity, or keep full opacity
-  and let the label change carry the state.
+- **Measured:** the opacity applies to the button as one flattened layer, so the label (`surface`)
+  and the fill (`ink`) are each blended at 60 % over the page (`surface`). The label stays
+  `surface`; the fill lightens or darkens towards it. **Light: 4.19:1, below 4.5.** Dark: 6.41:1,
+  which passes (a device pixel check read #171313 on #9E9793). WCAG 1.4.3 exempts inactive
+  controls, but in this product the Sending label is the only feedback that something is
+  happening (`states.md` §1c), so it should be readable in both themes.
+- **Here:** built as Figma draws it. `TokenContrastTest.sendingLabelContrastIsPinned` pins both
+  numbers, so a fix or a regression shows up. Options for the owner, for light: a higher opacity,
+  or keep full opacity and let the label change carry the state.
 
 ### 3a. `PrimaryAction` `QueuedOffline`
 

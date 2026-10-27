@@ -2,7 +2,11 @@ package com.moyi.app.designsystem
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import com.moyi.app.designsystem.component.FieldState
 import com.moyi.app.designsystem.component.PrimaryActionState
+import com.moyi.app.designsystem.component.fieldFill
+import com.moyi.app.designsystem.component.fieldStroke
+import com.moyi.app.designsystem.component.fieldText
 import com.moyi.app.designsystem.component.primaryActionLook
 import com.moyi.app.designsystem.theme.MoyiColors
 import com.moyi.app.designsystem.theme.RosewoodDark
@@ -19,6 +23,9 @@ import kotlin.test.assertTrue
  * NFR-102). This makes the measured table in `tokens.md` §1 executable: a
  * token edit that breaks a pairing the product uses fails the build.
  *
+ * Component pairs are read from the components' own look functions, so a
+ * colour change in a component is caught here, not only a token change.
+ *
  * Thresholds: 4.5 for text, 3.0 for UI component boundaries (WCAG 1.4.11).
  * If a pair fails, the token is not changed here: the failure is a design
  * finding for the owner.
@@ -27,21 +34,58 @@ class TokenContrastTest {
 
     private data class Pair(val name: String, val fg: (MoyiColors) -> Color, val bg: (MoyiColors) -> Color, val needs: Double)
 
-    private val pairs = listOf(
+    /** Token pairings with no component function behind them yet: body text, error text, the destructive fill. */
+    private val tokenPairs = listOf(
         Pair("ink on surface (body and entry text)", { it.ink }, { it.surface }, TEXT),
         Pair("ink on surfaceRaised (entry card)", { it.ink }, { it.surfaceRaised }, TEXT),
         Pair("inkMuted on surface (labels, helper)", { it.inkMuted }, { it.surface }, TEXT),
         Pair("inkMuted on surfaceRaised", { it.inkMuted }, { it.surfaceRaised }, TEXT),
-        Pair("surface on ink (PrimaryAction Idle label)", { it.surface }, { it.ink }, TEXT),
-        Pair("ink on surfaceRaised (PrimaryAction Queued label, Field value)", { it.ink }, { it.surfaceRaised }, TEXT),
-        Pair("inkMuted on surface (PrimaryAction Disabled label)", { it.inkMuted }, { it.surface }, TEXT),
         Pair("surface on danger (destructive fill)", { it.surface }, { it.danger }, TEXT),
         Pair("danger on surface (error text)", { it.danger }, { it.surface }, TEXT),
         Pair("danger on surfaceRaised", { it.danger }, { it.surfaceRaised }, TEXT),
-        Pair("outlineStrong on surface (Field border)", { it.outlineStrong }, { it.surface }, UI),
-        Pair("outlineStrong on surfaceRaised", { it.outlineStrong }, { it.surfaceRaised }, UI),
-        Pair("ink on surface (Field focus stroke)", { it.ink }, { it.surface }, UI),
     )
+
+    /**
+     * Read from [primaryActionLook], so a change to a state's colours is
+     * tested as built. Sending is pinned on its own below; QueuedOffline's
+     * stroke is its edge against the page. Disabled's `outline` hairline is
+     * exempt (WCAG 1.4.11, inactive) and is not checked.
+     */
+    private val primaryActionPairs = listOf(
+        PrimaryActionState.Idle,
+        PrimaryActionState.QueuedOffline("x"),
+        PrimaryActionState.Disabled,
+    ).flatMap { state ->
+        val name = state::class.simpleName
+        listOfNotNull(
+            Pair("PrimaryAction $name label on fill", { it.primaryActionComposite(state).label }, { it.primaryActionComposite(state).fill }, TEXT),
+            if (state is PrimaryActionState.QueuedOffline) {
+                Pair("PrimaryAction $name stroke on surface", { it.primaryActionLook(state).stroke }, { it.surface }, UI)
+            } else {
+                null
+            },
+        )
+    }
+
+    /**
+     * Read from [fieldStroke], [fieldFill] and [fieldText]. A stroke is a
+     * boundary on both sides: against the box's own fill and against the
+     * page. Disabled's stroke is exempt (WCAG 1.4.11) and not checked; its
+     * value text is.
+     */
+    private val fieldPairs = FieldState.entries.flatMap { state ->
+        val strokes = if (state == FieldState.Disabled) {
+            emptyList()
+        } else {
+            listOf(
+                Pair("Field $state stroke on its fill", { it.fieldStroke(state).color }, { it.fieldFill(state) }, UI),
+                Pair("Field $state stroke on surface", { it.fieldStroke(state).color }, { it.surface }, UI),
+            )
+        }
+        strokes + Pair("Field $state value on its fill", { it.fieldText(state) }, { it.fieldFill(state) }, TEXT)
+    }
+
+    private val pairs = tokenPairs + primaryActionPairs + fieldPairs
 
     @Test
     fun darkPairsMeetWcagAa() = assertAll(RosewoodDark, "dark")
@@ -63,29 +107,53 @@ class TokenContrastTest {
     }
 
     /**
-     * **Known finding, not a pass.** Figma draws Sending as the whole button at
-     * 60 % opacity (`docs/figma/auth-placement-spec.md` §4.1). Blended over
-     * `surface`, the label measures 3.13:1 dark and 2.57:1 light, below 4.5.
-     * WCAG 1.4.3 exempts inactive controls, and Sending is not tappable, but
-     * here the label is the only feedback that something is happening
-     * (`states.md` §1c), so it should be readable. Raised with the owner; the
-     * value is not changed here. This test pins the measurement, so a fix
-     * (or a regression) shows up as a failure that has to be looked at.
+     * **Known finding in light, a pass in dark.** Figma draws Sending as the
+     * whole button at 60 % opacity (`docs/figma/auth-placement-spec.md` §4.1),
+     * and `Modifier.alpha` does the same: the button is drawn opaque into one
+     * layer, then that layer is blended over `surface`. So the label
+     * (`surface`) and the fill (`ink`) are each composited at 60 % over the
+     * page, and the label comes back as `surface` itself.
+     *
+     * Dark measures **6.41:1** and passes. A device pixel check read #171313
+     * on #9E9793, which is that figure. Light measures **4.19:1**, below 4.5:
+     * WCAG 1.4.3 exempts inactive controls, but the label is the only
+     * feedback that something is happening (`states.md` §1c), so it is raised
+     * with the owner (`docs/missing-components.md` §3) and not changed here.
+     * Both numbers are pinned, so a fix or a regression fails this test and
+     * gets looked at.
      */
     @Test
-    fun sendingLabelContrastIsAKnownFinding() {
-        val dark = round2(RosewoodDark.primaryActionComposite(PrimaryActionState.Sending("x")).let { contrast(it.second, it.first) })
-        val light = round2(RosewoodLight.primaryActionComposite(PrimaryActionState.Sending("x")).let { contrast(it.second, it.first) })
-        println("KNOWN FINDING  PrimaryAction Sending label at 60 %: dark $dark, light $light (needs $TEXT)")
-        assertEquals(3.13, dark)
-        assertEquals(2.57, light)
+    fun sendingLabelContrastIsPinned() {
+        val sending = PrimaryActionState.Sending("x")
+        val dark = RosewoodDark.primaryActionComposite(sending).let { round2(contrast(it.label, it.fill)) }
+        val light = RosewoodLight.primaryActionComposite(sending).let { round2(contrast(it.label, it.fill)) }
+        println("PrimaryAction Sending label at 60 %: dark $dark, light $light (needs $TEXT)")
+        assertEquals(6.41, dark)
+        assertTrue(dark >= TEXT, "Sending passes in dark")
+        assertEquals(4.19, light)
+        assertTrue(light < TEXT, "Light Sending is a known owner finding; if it now passes, update docs/missing-components.md §3")
     }
 
-    /** The button's fill and label as they reach the eye: each blended over `surface` at the state's alpha. */
-    private fun MoyiColors.primaryActionComposite(state: PrimaryActionState): kotlin.Pair<Color, Color> {
+    @Test
+    fun sendingLabelCompositesToSurface() {
+        for (colors in listOf(RosewoodDark, RosewoodLight)) {
+            assertEquals(colors.surface, colors.primaryActionComposite(PrimaryActionState.Sending("x")).label)
+        }
+    }
+
+    private data class Composite(val fill: Color, val label: Color)
+
+    /**
+     * The button as it reaches the eye. The look's alpha applies to the whole
+     * button as one flattened layer, so each colour is blended at that alpha
+     * over the page (`surface`), never the label over the blended fill.
+     */
+    private fun MoyiColors.primaryActionComposite(state: PrimaryActionState): Composite {
         val look = primaryActionLook(state)
-        return look.fill.copy(alpha = look.alpha).compositeOver(surface) to
-            look.label.copy(alpha = look.alpha).compositeOver(look.fill.copy(alpha = look.alpha).compositeOver(surface))
+        return Composite(
+            fill = look.fill.copy(alpha = look.alpha).compositeOver(surface),
+            label = look.label.copy(alpha = look.alpha).compositeOver(surface),
+        )
     }
 
     private fun assertAll(colors: MoyiColors, mode: String) {
