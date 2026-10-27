@@ -34,35 +34,30 @@ class AppViewModel(
     private var restoring: Job? = null
 
     init {
-        restore(retry = false)
+        restore()
     }
 
     /** The app came to the foreground (ON_START). */
     fun onForeground() {
-        if (session.value == SessionState.Unknown) restore(retry = true)
-    }
-
-    private fun restore(retry: Boolean) {
-        if (restoring?.isActive == true) return
-        restoring = viewModelScope.launch {
-            try {
-                restoreSession(retry)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // e.g. the token store is locked (TokenStoreUnavailableException
-                // after PR #4's review fixes). Stay Unknown; the next foreground retries.
-                Logger.withTag("App").w { "Session restore deferred: ${e::class.simpleName}" }
-            }
-        }
+        if (session.value == SessionState.Unknown) restore()
     }
 
     /**
-     * The one seam for restoring. [retry] is a foreground retry; once
-     * SessionManager gains `retryRestore()` (PR #4 review fixes), that branch
-     * calls it through the repository. Until then both call restoreSession().
+     * restoreSession() is idempotent: a decided state returns at once, and
+     * Unknown tries the store again. So the foreground retry is the same call.
      */
-    private suspend fun restoreSession(retry: Boolean) {
-        if (retry) authRepository.restoreSession() else authRepository.restoreSession()
+    private fun restore() {
+        if (restoring?.isActive == true) return
+        restoring = viewModelScope.launch {
+            try {
+                authRepository.restoreSession()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // e.g. the token store is locked (TokenStoreUnavailableException).
+                // Stay Unknown, never signed out; the next foreground retries.
+                Logger.withTag("App").w { "Session restore deferred: ${e::class.simpleName}" }
+            }
+        }
     }
 }

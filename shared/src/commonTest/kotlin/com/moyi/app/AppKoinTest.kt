@@ -61,32 +61,34 @@ class AppKoinTest {
             koin.close()
         }
     }
+}
 
-    private class StubAuthRepository(private val onRestore: () -> Unit) : AuthRepository {
-        override val session: StateFlow<SessionState> = MutableStateFlow(SessionState.Unknown)
-        override val sessionEvents: Flow<SessionEvent> = emptyFlow()
+/** Session stays as set; restoreSession() runs [onRestore], which may throw. */
+internal class StubAuthRepository(private val onRestore: () -> Unit) : AuthRepository {
+    val state = MutableStateFlow<SessionState>(SessionState.Unknown)
+    override val session: StateFlow<SessionState> = state
+    override val sessionEvents: Flow<SessionEvent> = emptyFlow()
 
-        override suspend fun register(
-            displayName: String,
-            email: String,
-            password: String,
-            locale: String,
-            acceptedTermsVersion: String,
-            over18: Boolean,
-        ): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun register(
+        displayName: String,
+        email: String,
+        password: String,
+        locale: String,
+        acceptedTermsVersion: String,
+        over18: Boolean,
+    ): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-        override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-        override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-        override suspend fun login(email: String, password: String): Result<User, DataError> =
-            Result.Failure(DataError.Network.Unknown)
+    override suspend fun login(email: String, password: String): Result<User, DataError> =
+        Result.Failure(DataError.Network.Unknown)
 
-        override suspend fun logout() = Unit
+    override suspend fun logout() = Unit
 
-        override suspend fun restoreSession(): SessionState {
-            onRestore()
-            return SessionState.SignedOut
-        }
+    override suspend fun restoreSession(): SessionState {
+        onRestore()
+        return state.value
     }
 }
