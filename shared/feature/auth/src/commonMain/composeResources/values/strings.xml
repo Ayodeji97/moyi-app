@@ -1,3 +1,128 @@
 <resources>
-    <string name="auth_placeholder_title">Moyi</string>
+    <!--
+    The auth flow's copy. Each string says where it comes from:
+      strings-proposed.md / copy.md / states.md: the design system's corpus (copy.md wins).
+      PROPOSED: written in this PR, not yet approved by the owner. Listed in docs/missing-components.md.
+    Placeholders are positional (%1$s) because Compose resources have no named form; the
+    comment names each one, and no string is ever concatenated.
+    -->
+
+    <!-- ===== Shared across the auth screens ===== -->
+
+    <!-- field.email.label (strings-proposed.md §5). -->
+    <string name="auth_email_label">Email</string>
+    <!-- field.email.error (strings-proposed.md §5). Shown under the email field. -->
+    <string name="auth_email_error">That does not look like an email address yet.</string>
+    <!-- field.password.label (strings-proposed.md §5). -->
+    <string name="auth_password_label">Password</string>
+    <!-- Figma sign-up no-connection frame 394:240; states.md §1c. Above the action when the request never reached the server. -->
+    <string name="auth_error_offline">That didn't go through. Your details are still here.</string>
+    <!-- states.md §10 "Generic error", its two lines as one. Anything the client cannot explain more precisely. -->
+    <string name="auth_error_generic">That didn't work. Nothing was lost. Try again in a moment.</string>
+    <!-- PROPOSED. A 429 on register, verify or resend (ADR-0023). States when, never why (strings-proposed.md ratelimit note). -->
+    <string name="auth_error_rate_limited">This is paused for a short while. Try again in a few minutes.</string>
+    <!-- The button label after a failed submit (states.md §1c "button becomes Try again"). -->
+    <string name="auth_try_again">Try again</string>
+
+    <!-- ===== Register (Onboarding 2, Figma 340:9) ===== -->
+
+    <!-- Figma 340:10 eyebrow, set in label style (uppercased on screen). -->
+    <string name="register_eyebrow">New account</string>
+    <!-- signup.heading. -->
+    <string name="register_heading">Create your account</string>
+    <!-- PROPOSED. The name field is not in Figma or states.md §1; the API requires displayName. One name, no first/last split (copy.md i18n). -->
+    <string name="register_name_label">Your name</string>
+    <!-- PROPOSED. Helper under the name field: who sees it. "Your person" is the reader's one other member of the bond. -->
+    <string name="register_name_helper">What your person will see.</string>
+    <!-- PROPOSED. Name left empty. -->
+    <string name="register_name_error_blank">Add your name to continue.</string>
+    <!-- PROPOSED. Name over the API's 80 characters. -->
+    <string name="register_name_error_long">Keep it to 80 characters or fewer.</string>
+    <!-- field.email.helper. -->
+    <string name="register_email_helper">We will send a verification link.</string>
+    <!-- field.password.helper. -->
+    <string name="register_password_helper">8 characters or more. Anything you like.</string>
+    <!-- PROPOSED. Password shorter than 8 (client) or VALID_PASSWORD from the server. No composition rules, per field.password.helper's note. -->
+    <string name="register_password_error_short">That password is too short. Use 8 characters or more.</string>
+    <!-- copy.md "The breached-password message" (wins over strings-proposed.md field.password.error.breached). Server code NOT_BREACHED. -->
+    <string name="register_password_error_breached">This password shows up on a list of leaked passwords. Pick a different one.</string>
+    <!-- signup.consent. The whole row toggles. -->
+    <string name="register_consent">I am 18 or over, and I agree to the Terms and the Privacy Policy.</string>
+    <!-- Figma 389:205, the legal links. -->
+    <string name="register_terms">Terms</string>
+    <string name="register_privacy">Privacy Policy</string>
+    <!-- signup.action. -->
+    <string name="register_action">Create account</string>
+    <!-- PROPOSED. The button while the request is in flight (states.md §1c: the control says what it is doing). -->
+    <string name="register_action_sending">Creating your account</string>
+    <!-- Figma 359:3 secondary link. Reader's voice (copy.md "Whose voice is this?"). -->
+    <string name="register_have_account">I already have an account</string>
+
+    <!-- ===== Verify email (Onboarding 3, Figma 341:17) ===== -->
+
+    <string name="verify_eyebrow">New account</string>
+    <!-- verify.heading. -->
+    <string name="verify_heading">Check your email</string>
+    <!-- verify.line. %1$s is {email}, the address the person registered with. -->
+    <string name="verify_line">We sent a link to %1$s. Open it to finish setting up.</string>
+    <!-- PROPOSED. The paste-token field is not in Figma; a stand-in until deep links (docs/missing-components.md §6). -->
+    <string name="verify_token_label">Code from the email</string>
+    <!-- PROPOSED. Helper under the token field. The whole link may be pasted; the app takes the code out of it. -->
+    <string name="verify_token_helper">Paste the code from the link we sent, or the whole link.</string>
+    <!-- PROPOSED. Check again pressed with nothing pasted. -->
+    <string name="verify_token_error_blank">Paste the code from the email first.</string>
+    <!-- PROPOSED. 422 VERIFICATION_TOKEN_INVALID. No blame: the code did not match, not "you entered". -->
+    <string name="verify_token_error_invalid">That code does not match. Copy it again from the email.</string>
+    <!-- verify.action. Submits the pasted code (auth-placement-spec §7). -->
+    <string name="verify_action">Check again</string>
+    <!-- states.md §1c "Checking": PrimaryAction State=Sending. -->
+    <string name="verify_action_sending">Checking</string>
+    <!-- verify.resend. -->
+    <string name="verify_resend">Send it again</string>
+    <!-- verify.resent. Replaces the resend link for a minute. -->
+    <string name="verify_resent">Sent again. You can ask for another in a minute.</string>
+    <!-- verify.changeEmail. -->
+    <string name="verify_change_email">Use a different address</string>
+    <!-- verify.expired.heading. 410 VERIFICATION_TOKEN_EXPIRED. -->
+    <string name="verify_expired_heading">That link has expired</string>
+    <!-- verify.expired.line. -->
+    <string name="verify_expired_line">Links last 24 hours and work once. We can send you a new one.</string>
+    <!-- verify.expired.action. -->
+    <string name="verify_expired_action">Send a new link</string>
+    <!-- PROPOSED. The expired action while the new link is being requested. -->
+    <string name="verify_expired_action_sending">Sending a new link</string>
+
+    <!-- ===== Sign in (Account 1, Figma 344:18) ===== -->
+
+    <!-- Figma 344:19 eyebrow. -->
+    <string name="login_eyebrow">Account</string>
+    <!-- signin.heading. -->
+    <string name="login_heading">Sign in</string>
+    <!-- PROPOSED. Password left empty on sign in. -->
+    <string name="login_password_error_blank">Add your password to sign in.</string>
+    <!-- signin.forgot. Reader's voice. -->
+    <string name="login_forgot">I forgot my password</string>
+    <!-- signin.heading reused as the action (Figma 344:38). -->
+    <string name="login_action">Sign in</string>
+    <!-- PROPOSED. The button while signing in (auth-placement-spec §7 "Signing in"). -->
+    <string name="login_action_sending">Signing in</string>
+    <!-- signin.create. -->
+    <string name="login_create_account">Create an account</string>
+    <!-- states.md §1c: one message for every 401 cause, so the screen is no oracle (T-18). -->
+    <string name="login_error_credentials">That email and password do not match. Check both and try again.</string>
+    <!-- ratelimit.line plus a PROPOSED "when" (states.md §1b: states when to try again). The server does not send Retry-After to this layer yet. -->
+    <string name="login_error_rate_limited">Sign in is paused for a short while. Your account is fine. Try again in a few minutes.</string>
+    <!-- PROPOSED, owed: the session-ended state has no frame and no approved copy (states.md §1c gap). Shown on sign in after the server ended the session. -->
+    <string name="login_session_ended">You have been signed out. Sign in again to continue.</string>
+
+    <!-- ===== Signed-in placeholder (TEMPORARY, until Today is built) ===== -->
+
+    <!-- PROPOSED, temporary. %1$s is {name}, the person's displayName. -->
+    <string name="home_greeting">Hello, %1$s</string>
+    <!-- PROPOSED, temporary. -->
+    <string name="home_line">You are signed in. The rest of Moyi is on its way.</string>
+    <!-- PROPOSED, temporary. -->
+    <string name="home_sign_out">Sign out</string>
+    <!-- PROPOSED, temporary. -->
+    <string name="home_sign_out_sending">Signing out</string>
 </resources>
