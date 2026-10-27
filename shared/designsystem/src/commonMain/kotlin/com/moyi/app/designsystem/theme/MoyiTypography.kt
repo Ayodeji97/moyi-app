@@ -22,7 +22,7 @@ import org.jetbrains.compose.resources.Font
  * | entry    | Newsreader 400        | 34 / 1.40                         |
  * | title    | Newsreader 400        | 26 / 1.25                         |
  * | body     | system sans           | 16 / 1.50                         |
- * | label    | system sans           | 13 / 1.40, uppercase, +0.11em     |
+ * | label    | system sans 500       | 13 / 1.40, uppercase, +0.11em     |
  * | action   | Newsreader 400        | 16 (body size, serif face)        |
  * | code     | Newsreader 400        | 26 (title size), +0.28em tracking |
  *
@@ -90,7 +90,9 @@ internal fun moyiTypography(serif: FontFamily, wordmark: FontFamily): MoyiTypogr
     ),
     label = TextStyle(
         fontFamily = SystemSans,
-        fontWeight = FontWeight.Normal,
+        // Medium (500): the Figma `type/label` style. tokens.md §2 names the
+        // face and size and is silent on weight.
+        fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
         lineHeight = 1.40.em,
         // 0.11em, never 1.43px: Figma stores pixels only because it forces a

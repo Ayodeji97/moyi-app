@@ -24,14 +24,7 @@ data class MoyiSpacing(
     val xl: Dp = 32.dp,
     val xxl: Dp = 48.dp,
     val xxxl: Dp = 64.dp,
-    /**
-     * Side padding of every screen. 24, on the scale.
-     *
-     * `tokens.md` §2 measures the entry against "screen padding 20×2", but 20
-     * is not on the §3 scale and §3's audit removed every 20 it found. The two
-     * cannot both hold, so this takes the scale and the conflict is recorded
-     * in `docs/missing-components.md` for the owner. Changing it is this line.
-     */
+    /** Side padding of every screen: 16 (Figma §2, content 358 on a 390 frame). */
     val gutter: Dp = MoyiDimens.Scaffold.Gutter,
     /** Minimum touch target on both platforms (NFR-101; iOS's 44 is the smaller, so 48). */
     val touchTarget: Dp = MoyiDimens.TouchTarget,
@@ -48,5 +41,5 @@ data class MoyiSpacing(
 data class MoyiShapes(
     val radius: CornerBasedShape = RoundedCornerShape(12.dp),
     val full: Shape = CircleShape,
-    val hairline: Dp = MoyiDimens.PrimaryAction.DisabledBorder,
+    val hairline: Dp = MoyiDimens.PrimaryAction.Stroke,
 )

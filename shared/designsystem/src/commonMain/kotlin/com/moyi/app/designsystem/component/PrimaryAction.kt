@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -28,6 +29,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.theme.MoyiColors
 import com.moyi.app.designsystem.theme.MoyiDimens
 
 /**
@@ -65,11 +67,20 @@ sealed interface PrimaryActionState {
  * - Newsreader `action` label (body size, serif face). Not the sans label style.
  * - Hugs its label with a **minimum** width of 176 and a minimum height of
  *   48: a longer label or a 200 % font grows the control, never clips it.
- * - Disabled is `surfaceRaised` with an `outline` hairline and an `inkMuted`
- *   label. The hairline is required: in light mode `surfaceRaised` on
- *   `surface` is 1.04:1, and a fill alone made it vanish (`tokens.md` §7b).
- * - **No spinner, no animation, no overlay.** Sending swaps the label and
- *   stops taps; the change is announced politely to screen readers.
+ * - The four looks are Figma's (`docs/figma/auth-placement-spec.md` §4.1):
+ *
+ *   | State         | Fill            | Stroke              | Label     |
+ *   |---------------|-----------------|---------------------|-----------|
+ *   | Idle          | `ink`           | none                | `surface` |
+ *   | Sending       | `ink`, 60 % opacity on the whole button | none | `surface` |
+ *   | QueuedOffline | `surfaceRaised` | 1 `outlineStrong`   | `ink`     |
+ *   | Disabled      | `surface`       | 1 `outline`         | `inkMuted`|
+ *
+ *   Disabled's hairline is what keeps it visible: a fill difference alone
+ *   vanished in light mode (`tokens.md` §7b).
+ * - **No spinner, no animation, no overlay.** Sending swaps the label, dims
+ *   the button and stops taps; the change is announced politely to screen
+ *   readers. The dimming is a state change, not an animation.
  */
 @Composable
 fun PrimaryAction(
@@ -87,23 +98,21 @@ fun PrimaryAction(
         is PrimaryActionState.QueuedOffline -> state.label
     }
     val enabled = state == PrimaryActionState.Idle
-    val disabledLook = state == PrimaryActionState.Disabled
-    val fill = if (disabledLook) colors.surfaceRaised else colors.ink
-    val content = if (disabledLook) colors.inkMuted else colors.surface
-    val border = if (disabledLook) colors.outline else Color.Transparent
+    val look = colors.primaryActionLook(state)
 
     Box(
         modifier = modifier
             .widthIn(min = MoyiDimens.PrimaryAction.MinWidth)
             .heightIn(min = MoyiDimens.PrimaryAction.MinHeight)
+            .alpha(look.alpha)
             .clip(shapes.radius)
-            .background(fill)
-            .border(MoyiDimens.PrimaryAction.DisabledBorder, border, shapes.radius)
+            .background(look.fill)
+            .border(MoyiDimens.PrimaryAction.Stroke, look.stroke, shapes.radius)
             .clickable(
                 enabled = enabled,
                 role = Role.Button,
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = content),
+                indication = ripple(color = look.label),
                 onClick = onClick,
             )
             .semantics {
@@ -125,10 +134,21 @@ fun PrimaryAction(
         Text(
             text = label,
             style = MoyiTheme.type.action,
-            color = content,
+            color = look.label,
             textAlign = TextAlign.Center,
         )
     }
+}
+
+/** How a [PrimaryActionState] is painted. Pure, so the contrast test can read it. */
+data class PrimaryActionLook(val fill: Color, val stroke: Color, val label: Color, val alpha: Float)
+
+fun MoyiColors.primaryActionLook(state: PrimaryActionState): PrimaryActionLook = when (state) {
+    PrimaryActionState.Idle -> PrimaryActionLook(ink, Color.Transparent, surface, 1f)
+    is PrimaryActionState.Sending ->
+        PrimaryActionLook(ink, Color.Transparent, surface, MoyiDimens.PrimaryAction.SendingAlpha)
+    is PrimaryActionState.QueuedOffline -> PrimaryActionLook(surfaceRaised, outlineStrong, ink, 1f)
+    PrimaryActionState.Disabled -> PrimaryActionLook(surface, outline, inkMuted, 1f)
 }
 
 @Preview
@@ -149,7 +169,7 @@ private fun PrimaryActionStates(darkTheme: Boolean) {
             Spacer(Modifier.height(MoyiTheme.spacing.md))
             PrimaryAction("Create account", onClick = {}, state = PrimaryActionState.Disabled)
             Spacer(Modifier.height(MoyiTheme.spacing.md))
-            PrimaryAction("Send", onClick = {}, state = PrimaryActionState.QueuedOffline("Saved"))
+            PrimaryAction("Send", onClick = {}, state = PrimaryActionState.QueuedOffline("Queued"))
         }
     }
 }

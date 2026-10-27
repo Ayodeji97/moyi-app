@@ -1,6 +1,9 @@
 package com.moyi.app.designsystem
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import com.moyi.app.designsystem.component.PrimaryActionState
+import com.moyi.app.designsystem.component.primaryActionLook
 import com.moyi.app.designsystem.theme.MoyiColors
 import com.moyi.app.designsystem.theme.RosewoodDark
 import com.moyi.app.designsystem.theme.RosewoodLight
@@ -28,8 +31,10 @@ class TokenContrastTest {
         Pair("ink on surface (body and entry text)", { it.ink }, { it.surface }, TEXT),
         Pair("ink on surfaceRaised (entry card)", { it.ink }, { it.surfaceRaised }, TEXT),
         Pair("inkMuted on surface (labels, helper)", { it.inkMuted }, { it.surface }, TEXT),
-        Pair("inkMuted on surfaceRaised (disabled action label)", { it.inkMuted }, { it.surfaceRaised }, TEXT),
-        Pair("surface on ink (PrimaryAction label)", { it.surface }, { it.ink }, TEXT),
+        Pair("inkMuted on surfaceRaised", { it.inkMuted }, { it.surfaceRaised }, TEXT),
+        Pair("surface on ink (PrimaryAction Idle label)", { it.surface }, { it.ink }, TEXT),
+        Pair("ink on surfaceRaised (PrimaryAction Queued label, Field value)", { it.ink }, { it.surfaceRaised }, TEXT),
+        Pair("inkMuted on surface (PrimaryAction Disabled label)", { it.inkMuted }, { it.surface }, TEXT),
         Pair("surface on danger (destructive fill)", { it.surface }, { it.danger }, TEXT),
         Pair("danger on surface (error text)", { it.danger }, { it.surface }, TEXT),
         Pair("danger on surfaceRaised", { it.danger }, { it.surfaceRaised }, TEXT),
@@ -55,6 +60,32 @@ class TokenContrastTest {
         assertEquals(5.57, round2(contrast(RosewoodLight.surface, RosewoodLight.danger)))
         assertEquals(1.0, contrast(Color.White, Color.White))
         assertEquals(21.0, round2(contrast(Color.Black, Color.White)))
+    }
+
+    /**
+     * **Known finding, not a pass.** Figma draws Sending as the whole button at
+     * 60 % opacity (`docs/figma/auth-placement-spec.md` §4.1). Blended over
+     * `surface`, the label measures 3.13:1 dark and 2.57:1 light, below 4.5.
+     * WCAG 1.4.3 exempts inactive controls, and Sending is not tappable, but
+     * here the label is the only feedback that something is happening
+     * (`states.md` §1c), so it should be readable. Raised with the owner; the
+     * value is not changed here. This test pins the measurement, so a fix
+     * (or a regression) shows up as a failure that has to be looked at.
+     */
+    @Test
+    fun sendingLabelContrastIsAKnownFinding() {
+        val dark = round2(RosewoodDark.primaryActionComposite(PrimaryActionState.Sending("x")).let { contrast(it.second, it.first) })
+        val light = round2(RosewoodLight.primaryActionComposite(PrimaryActionState.Sending("x")).let { contrast(it.second, it.first) })
+        println("KNOWN FINDING  PrimaryAction Sending label at 60 %: dark $dark, light $light (needs $TEXT)")
+        assertEquals(3.13, dark)
+        assertEquals(2.57, light)
+    }
+
+    /** The button's fill and label as they reach the eye: each blended over `surface` at the state's alpha. */
+    private fun MoyiColors.primaryActionComposite(state: PrimaryActionState): kotlin.Pair<Color, Color> {
+        val look = primaryActionLook(state)
+        return look.fill.copy(alpha = look.alpha).compositeOver(surface) to
+            look.label.copy(alpha = look.alpha).compositeOver(look.fill.copy(alpha = look.alpha).compositeOver(surface))
     }
 
     private fun assertAll(colors: MoyiColors, mode: String) {

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
@@ -16,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,21 +27,18 @@ import com.moyi.app.designsystem.icon.MoyiIcons
  * The sign-up consent row: "I am 18 or over, and I agree to the Terms and
  * the Privacy Policy." (`signup.consent`, FR-011).
  *
- * **Not one of the ten components.** `states.md` §1 puts "18+ confirmation,
- * Terms and Privacy consent" on Sign up, and neither `tokens.md` nor
- * `states.md` says how it looks. This is the minimum that is accessible and
- * stays inside the tokens, and it is on `docs/missing-components.md` for the
- * owner to design:
+ * **Not one of the ten components**, and `tokens.md` and `states.md` do not
+ * say how it looks. Figma draws it as a loose frame on Sign up
+ * (`docs/figma/auth-placement-spec.md` §3.1, row 6), and this follows that:
  *
  * - The **whole row** toggles, with `Role.Checkbox`, and is at least 48 tall.
- * - Unchecked is an empty square with a 2 dp `outlineStrong` border (the
- *   border is the only thing identifying it, so it takes the strong token);
- *   checked fills with `ink` and draws the Lucide check in `surface`. The two
- *   differ by shape as well as colour.
- * - The box is square-cornered: the system has radius 12 and full, and 12
- *   on a 20 dp box would read as a radio button.
- * - The Terms and Privacy links are not wired yet: `copy.md`'s inline-link
- *   pattern (ink plus underline inside an inkMuted sentence) needs the URLs.
+ * - A 24 x 24 square, radius 0, with a 1 px `outlineStrong` border and no
+ *   fill, top-aligned with the text, 16 from it. Text is `body` `inkMuted`.
+ * - **Checked is not drawn in Figma.** Here it fills with `ink` and draws the
+ *   Lucide check in `surface`, so the states differ by shape as well as
+ *   colour. On `docs/missing-components.md` for the owner.
+ * - Figma puts "Terms" and "Privacy Policy" as separate `TextLink`s
+ *   (`TextLinkStyle.Body`) on their own row, so they never toggle consent.
  */
 @Composable
 fun ConsentCheckbox(
@@ -56,14 +53,13 @@ fun ConsentCheckbox(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = MoyiDimens.ConsentCheckbox.RowMinHeight)
-            .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onCheckedChange)
-            .padding(vertical = MoyiDimens.ConsentCheckbox.RowPaddingVertical),
-        verticalAlignment = Alignment.CenterVertically,
+            .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onCheckedChange),
+        verticalAlignment = Alignment.Top,
     ) {
         Box(
             modifier = Modifier
                 .size(MoyiDimens.ConsentCheckbox.Box)
-                .background(if (checked) colors.ink else colors.surface, RectangleShape)
+                .background(if (checked) colors.ink else Color.Transparent, RectangleShape)
                 .border(MoyiDimens.ConsentCheckbox.BoxStroke, if (checked) colors.ink else colors.outlineStrong, RectangleShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -78,7 +74,7 @@ fun ConsentCheckbox(
             }
         }
         Spacer(Modifier.width(MoyiDimens.ConsentCheckbox.Gap))
-        MoyiText(text = text, tone = if (enabled) TextTone.Ink else TextTone.Muted, modifier = Modifier.weight(1f))
+        MoyiText(text = text, tone = TextTone.Muted, modifier = Modifier.weight(1f))
     }
 }
 

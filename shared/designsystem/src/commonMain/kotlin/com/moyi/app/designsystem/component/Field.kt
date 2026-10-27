@@ -1,9 +1,11 @@
 package com.moyi.app.designsystem.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -35,7 +37,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.icon.MoyiIcons
@@ -66,12 +67,19 @@ fun fieldStateOf(enabled: Boolean, hasError: Boolean, focused: Boolean): FieldSt
 /** The box's stroke for a state: colour token and weight. */
 data class FieldStroke(val width: Dp, val color: Color)
 
+/** Figma §4.2: the box is `surfaceRaised`, and `surface` when Disabled. */
+fun MoyiColors.fieldFill(state: FieldState): Color = if (state == FieldState.Disabled) surface else surfaceRaised
+
 /**
  * Focus and Error change the stroke **weight**, not only the colour
  * (NFR-104: no information by colour alone), so both survive greyscale and
  * colour blindness. Focus is `ink`, not an accent (`tokens.md` §4).
- * Disabled drops to the decorative `outline`; WCAG 1.4.11 exempts inactive
- * controls, and the muted label and text carry the state too.
+ *
+ * Disabled is `outline`, as `tokens.md` §4/§7b and the Figma component's own
+ * description say. The Figma variants bind `outlineStrong` instead
+ * (`docs/figma/auth-placement-spec.md` D1); the ruling is that tokens.md
+ * wins on colour. WCAG 1.4.11 exempts inactive controls, and the `surface`
+ * fill and muted text carry the state too.
  */
 fun MoyiColors.fieldStroke(state: FieldState): FieldStroke = when (state) {
     FieldState.Idle -> FieldStroke(MoyiDimens.Field.StrokeIdle, outlineStrong)
@@ -85,12 +93,13 @@ fun MoyiColors.fieldStroke(state: FieldState): FieldStroke = when (state) {
  *
  * - The [label] is always visible above the box. No placeholder stands in
  *   for it: a placeholder disappears the moment someone types.
- * - The box is at least 56 tall with radius 12; it grows with the font.
+ * - The box is `surfaceRaised`, at least 56 tall, radius 12, padding 16;
+ *   it grows with the font. Every number is in `MoyiDimens.Field`.
  * - [error], when set, replaces [helper], is drawn in `danger`, and is
  *   exposed to screen readers as the field's error.
  * - [FieldType.Secure] hides the text and carries an eye toggle: a second
- *   48 dp target inside the row, with a spoken label that says what a tap
- *   will do.
+ *   target 48 wide and the box's full 56 tall, with a spoken label that
+ *   says what a tap will do.
  * - Keyboard type, capitalisation and IME action pass through
  *   [keyboardOptions] and [keyboardActions].
  *
@@ -152,15 +161,15 @@ fun Field(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = MoyiDimens.Field.BoxMinHeight)
+                        .background(colors.fieldFill(state), shapes.radius)
                         .border(stroke.width, stroke.color, shapes.radius)
-                        // A Secure field ends in the 48 target, which carries its own inset.
-                        .padding(
-                            start = MoyiDimens.Field.PaddingStart,
-                            end = if (secure) 0.dp else MoyiDimens.Field.PaddingEnd,
-                        ),
+                        // Vertical padding sits on the value, not the row, so the
+                        // eye target can take the box's full height.
+                        .padding(horizontal = MoyiDimens.Field.Padding),
+                    horizontalArrangement = Arrangement.spacedBy(MoyiDimens.Field.ItemGap),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.weight(1f).padding(vertical = MoyiDimens.Field.PaddingVertical)) { innerTextField() }
+                    Box(Modifier.weight(1f).padding(vertical = MoyiDimens.Field.Padding)) { innerTextField() }
                     if (secure) {
                         RevealToggle(revealed = revealed, enabled = enabled, onToggle = { revealed = !revealed })
                     }
@@ -180,7 +189,8 @@ private fun RevealToggle(revealed: Boolean, enabled: Boolean, onToggle: () -> Un
     val description = stringResource(if (revealed) Res.string.ds_password_hide else Res.string.ds_password_show)
     Box(
         modifier = Modifier
-            .size(MoyiDimens.Field.RevealTarget)
+            .width(MoyiDimens.Field.RevealTargetWidth)
+            .heightIn(min = MoyiDimens.Field.RevealTargetMinHeight)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = description, onClick = onToggle),
         contentAlignment = Alignment.Center,
     ) {
