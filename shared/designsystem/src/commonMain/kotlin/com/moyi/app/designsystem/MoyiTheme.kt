@@ -56,6 +56,7 @@ fun MoyiTheme(
 ) {
     val colors = if (darkTheme) RosewoodDark else RosewoodLight
     val typography = rememberMoyiTypography()
+    val spacing = remember { MoyiSpacing() }
     val shapes = remember { MoyiShapes() }
     val materialColors = remember(colors) { colors.toMaterialColorScheme() }
     val materialTypography = remember(typography) { typography.toMaterialTypography() }
@@ -73,7 +74,7 @@ fun MoyiTheme(
     CompositionLocalProvider(
         LocalMoyiColors provides colors,
         LocalMoyiTypography provides typography,
-        LocalMoyiSpacing provides MoyiSpacing(),
+        LocalMoyiSpacing provides spacing,
         LocalMoyiShapes provides shapes,
     ) {
         MaterialTheme(

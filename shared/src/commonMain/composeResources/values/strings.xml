@@ -12,7 +12,6 @@
     <string name="gallery_disabled_label">Bond name</string>
     <string name="gallery_disabled_value">Amara and Tunde</string>
     <string name="gallery_consent">I am 18 or over, and I agree to the Terms and the Privacy Policy.</string>
-    <string name="gallery_inline_error">That didn't work. Nothing was lost. Try again in a moment.</string>
     <string name="gallery_action">Create account</string>
     <string name="gallery_check_again">Check again</string>
     <string name="gallery_checking">Checking</string>
