@@ -13,8 +13,8 @@ class ResultTest {
 
     @Test
     fun mapKeepsFailure() {
-        val result: Result<Int, DataError> = Result.Failure(DataError.Network.NO_INTERNET)
-        assertEquals(Result.Failure(DataError.Network.NO_INTERNET), result.map { it * 2 })
+        val result: Result<Int, DataError> = Result.Failure(DataError.Network.NoInternet)
+        assertEquals(Result.Failure(DataError.Network.NoInternet), result.map { it * 2 })
     }
 
     @Test
