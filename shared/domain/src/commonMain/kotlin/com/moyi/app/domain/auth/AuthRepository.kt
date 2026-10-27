@@ -48,6 +48,12 @@ interface AuthRepository {
      */
     suspend fun logout()
 
-    /** Cold start: resumes a stored session if there is one. */
+    /**
+     * Cold start: resumes a stored session if there is one. Returns
+     * [SessionState.Unknown] when the secure store cannot be read yet (a
+     * locked Keychain after a reboot); that is not signed out. Safe to call
+     * again: once decided it returns the state without work, so the app shell
+     * calls it again when the app returns to the foreground while Unknown.
+     */
     suspend fun restoreSession(): SessionState
 }

@@ -157,6 +157,61 @@ class SessionManagerTest {
     }
 
     @Test
+    fun restoreWithALockedStoreStaysUnknownAndCanBeCalledAgain() = runTest {
+        val server = TestServer(initial = storedSession("r1")) { request ->
+            if (!request.isRefresh) fail("unexpected ${request.url}")
+            respondJson(tokenPairJson("a2", "r2"))
+        }
+        server.store.readFailure = TokenStoreUnavailableException("Keychain locked")
+        val events = collectEvents(server.sessionManager)
+
+        // Locked: not signed out, nothing sent, nothing wiped.
+        assertEquals(SessionState.Unknown, server.sessionManager.restore())
+        assertEquals(SessionState.Unknown, server.sessionManager.sessionState.value)
+        assertEquals(0, server.refreshCalls.load())
+        assertEquals("r1", server.store.current?.refreshToken)
+        assertEquals(emptyList(), events)
+
+        // Unlocked (the app came back to the foreground): the same call resumes.
+        server.store.readFailure = null
+        assertEquals(SessionState.SignedIn(ada), server.sessionManager.restore())
+        assertEquals(1, server.refreshCalls.load())
+    }
+
+    @Test
+    fun restoreOnceDecidedDoesNothingMore() = runTest {
+        val server = TestServer(initial = storedSession("r1")) { respondJson(tokenPairJson("a2", "r2")) }
+
+        assertEquals(SessionState.SignedIn(ada), server.sessionManager.restore())
+        assertEquals(SessionState.SignedIn(ada), server.sessionManager.restore())
+
+        assertEquals(1, server.refreshCalls.load())
+    }
+
+    @Test
+    fun aRefreshWithALockedStoreKeepsTheSession() = runTest {
+        val server = TestServer(initial = null) { fail("no network expected") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+        val events = collectEvents(server.sessionManager)
+        server.store.readFailure = TokenStoreUnavailableException("Keychain locked")
+
+        assertNull(server.sessionManager.refresh("a1"))
+
+        assertEquals(SessionState.SignedIn(ada), server.sessionManager.sessionState.value)
+        assertEquals("a1", server.sessionManager.currentAccessToken())
+        assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun theStoredRefreshTokenOfALockedStoreIsNullSoSignOutStillWipesLocally() = runTest {
+        val server = TestServer(initial = null) { fail("no network expected") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+        server.store.readFailure = TokenStoreUnavailableException("Keychain locked")
+
+        assertNull(server.sessionManager.storedRefreshToken())
+    }
+
+    @Test
     fun restoreOfARevokedSessionIsSignedOut() = runTest {
         val server = TestServer(initial = storedSession("r1")) {
             respondProblem(HttpStatusCode.Unauthorized, "REFRESH_TOKEN_INVALID")

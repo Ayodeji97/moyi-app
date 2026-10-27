@@ -38,6 +38,7 @@ import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
 import platform.Security.SecItemUpdate
+import platform.Security.errSecInteractionNotAllowed
 import platform.Security.errSecItemNotFound
 import platform.Security.errSecSuccess
 import platform.Security.kSecAttrAccessible
@@ -79,8 +80,10 @@ class KeychainTokenStore(
     private val log = Logger.withTag("SessionStore")
 
     override suspend fun read(): StoredSession? = locked {
-        // A Keychain that cannot be read right now (say, before the first
-        // unlock after a reboot) reads as no session but keeps the item.
+        // A locked Keychain (before the first unlock after a reboot) throws
+        // TokenStoreUnavailableException out of copyItem, so the caller keeps
+        // the session and retries. Any other read failure reads as no session
+        // but keeps the item.
         val text = try {
             copyItem()
         } catch (e: IllegalStateException) {
@@ -152,7 +155,7 @@ class KeychainTokenStore(
                     NSString.create(data = data, encoding = NSUTF8StringEncoding)?.toString()
                 }
                 errSecItemNotFound -> null
-                else -> error("Keychain read failed: $status")
+                else -> throw keychainReadFailure(status)
             }
         }
     }
@@ -201,3 +204,16 @@ class KeychainTokenStore(
         const val INSTALLED_FLAG = "moyi.installed"
     }
 }
+
+/**
+ * What a failed `SecItemCopyMatching` means. `errSecInteractionNotAllowed`
+ * (-25308) is a locked Keychain (before the first unlock after a reboot, for
+ * an `AfterFirstUnlock` item): the session is intact, just not readable yet,
+ * so it is [TokenStoreUnavailableException], never "signed out".
+ */
+internal fun keychainReadFailure(status: OSStatus): Exception =
+    if (status == errSecInteractionNotAllowed) {
+        TokenStoreUnavailableException("Keychain locked: $status")
+    } else {
+        IllegalStateException("Keychain read failed: $status")
+    }

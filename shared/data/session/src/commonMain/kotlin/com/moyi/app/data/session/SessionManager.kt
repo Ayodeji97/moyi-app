@@ -96,6 +96,9 @@ class SessionManager(
             is RefreshOutcome.Refreshed -> outcome.accessToken
             RefreshOutcome.NoSession, is RefreshOutcome.Ended -> null
             is RefreshOutcome.Unavailable -> throw RefreshUnavailableException(outcome.error)
+            // The store could not be read (locked Keychain): fail the request,
+            // not the session. DataError has no "local" network error, so Unknown.
+            RefreshOutcome.StoreUnavailable -> throw RefreshUnavailableException(DataError.Network.Unknown)
         }
 
     /**
@@ -121,8 +124,17 @@ class SessionManager(
         mutex.withLock { withContext(NonCancellable) { endLocked(reason) } }
     }
 
-    /** The stored refresh token, for `POST /auth/logout`. Null when signed out. */
-    suspend fun storedRefreshToken(): String? = store.read()?.refreshToken
+    /**
+     * The stored refresh token, for `POST /auth/logout`. Null when signed out,
+     * and null when the store cannot be read right now: sign-out must still
+     * wipe this device, and the server-side family then simply expires.
+     */
+    suspend fun storedRefreshToken(): String? = try {
+        store.read()?.refreshToken
+    } catch (_: TokenStoreUnavailableException) {
+        log.w { "Stored session not readable; signing out without telling the server" }
+        null
+    }
 
     /**
      * Cold start. With a stored session, one refresh: success is
@@ -130,12 +142,23 @@ class SessionManager(
      * [SessionState.SignedOut]; no network keeps the person signed in with the
      * stored user, and the first authed request refreshes again. With no
      * stored session it is [SessionState.SignedOut] and nothing is sent.
+     *
+     * A store that cannot be read right now ([TokenStoreUnavailableException]:
+     * a locked Keychain after a reboot) leaves the state [SessionState.Unknown]
+     * and sends nothing. It is not signed out: the session is still there.
+     *
+     * Idempotent, and that is the retry: once the state is decided it is
+     * returned without any work, and while it is still Unknown each call
+     * tries again. The app shell calls it at launch and again whenever the
+     * app returns to the foreground while the state is Unknown.
      */
     suspend fun restore(): SessionState {
+        state.value.let { if (it != SessionState.Unknown) return it }
         val next = when (val outcome = refreshOutcome(staleAccess = null)) {
             is RefreshOutcome.Refreshed -> state.value
             RefreshOutcome.NoSession, is RefreshOutcome.Ended -> SessionState.SignedOut
             is RefreshOutcome.Unavailable -> SessionState.SignedIn(outcome.stored.toUser())
+            RefreshOutcome.StoreUnavailable -> SessionState.Unknown
         }
         // A concurrent refresh, login or sign-out may have moved the state on;
         // only an undecided launch state is replaced here.
@@ -151,7 +174,12 @@ class SessionManager(
         val current = accessToken.value
         if (current != null && current != staleAccess) return@withLock RefreshOutcome.Refreshed(current)
 
-        val stored = store.read() ?: return@withLock RefreshOutcome.NoSession
+        val stored = try {
+            store.read()
+        } catch (_: TokenStoreUnavailableException) {
+            log.w { "Stored session not readable right now; session kept" }
+            return@withLock RefreshOutcome.StoreUnavailable
+        } ?: return@withLock RefreshOutcome.NoSession
 
         // From here the server may rotate the token. The caller going away
         // must not abandon the answer: a rotated token that is never stored
@@ -225,6 +253,9 @@ class SessionManager(
         }
 
         data object NoSession : RefreshOutcome
+
+        /** The store threw [TokenStoreUnavailableException]: the session may be intact, it just cannot be read now. */
+        data object StoreUnavailable : RefreshOutcome
 
         data class Ended(val reason: SessionEndReason) : RefreshOutcome
 

@@ -16,11 +16,26 @@ CLAUDE.md (Code); the server's side is ADR-0019 to ADR-0021 and doc 06 §3.1.
 - **iOS:** one Keychain generic-password item (service `com.moyi.app.session`), readable
   after the first unlock, never backed up or moved to another device. The Keychain
   survives deleting the app, so the first launch after an install (no `moyi.installed`
-  flag in UserDefaults) wipes it.
+  flag in UserDefaults) wipes it. Before the first unlock after a reboot the Keychain
+  answers `errSecInteractionNotAllowed` (-25308); that is read as "unavailable", not as
+  "no session".
 - **Android:** a file in `noBackupFilesDir`, AES-256-GCM encrypted under a non-exportable
-  Android Keystore key, written through `AtomicFile`. If it ever fails to decrypt (key
-  invalidated, file tampered or restored) the file and key are deleted and the person is
-  signed out.
+  Android Keystore key, written through `AtomicFile`. Only a failure that proves the key
+  or the payload is gone (`AEADBadTagException`, `KeyPermanentlyInvalidatedException`,
+  `UnrecoverableKeyException`, a missing key, a payload that fails its format checks or
+  does not decode; see `shouldWipe`) deletes the file and key and signs the person out.
+  Anything else (`ProviderException`, `KeyStoreException`, `IOException`) may be
+  transient and is read as "unavailable".
+
+"Unavailable" is `TokenStoreUnavailableException`. It never signs anyone out:
+
+- `SessionManager.restore()` leaves the state `Unknown` and sends nothing. `restore()` is
+  idempotent (a decided state is returned without work; an `Unknown` one tries again),
+  so the app shell calls `AuthRepository.restoreSession()` again when the app returns to
+  the foreground while the state is `Unknown`.
+- A refresh during a request fails that request (`DataError.Network.Unknown`) and keeps
+  the session.
+- Sign-out still wipes this device; the server is not told, and the family expires.
 
 ## One refresh at a time
 

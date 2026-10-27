@@ -20,12 +20,18 @@ class InMemoryTokenStore(
     private var session: StoredSession? = initial
 
     var failWrites: Boolean = false
+
+    /** When set, [read] throws it (say, a TokenStoreUnavailableException for a locked Keychain). */
+    var readFailure: Exception? = null
     var writes: Int = 0
         private set
 
     val current: StoredSession? get() = session
 
-    override suspend fun read(): StoredSession? = mutex.withLock { session }
+    override suspend fun read(): StoredSession? = mutex.withLock {
+        readFailure?.let { throw it }
+        session
+    }
 
     override suspend fun write(session: StoredSession) = mutex.withLock {
         if (failWrites) throw IllegalStateException("disk full")
