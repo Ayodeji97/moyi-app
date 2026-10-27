@@ -94,6 +94,8 @@ fun VerifyScreen(
                     sendingLabel = stringResource(
                         if (expired) Res.string.verify_expired_action_sending else Res.string.verify_action_sending,
                     ),
+                    // A link sent in the last minute holds "Send a new link" too (the 1/min limit).
+                    enabled = !(expired && state.resend == ResendStatus.Sent),
                 ),
             )
             Spacer(Modifier.height(spacing.lg))
@@ -114,6 +116,11 @@ fun VerifyScreen(
             text = if (expired) stringResource(Res.string.verify_expired_line) else stringResource(Res.string.verify_line, state.email),
             tone = TextTone.Muted,
         )
+        if (expired && state.resend == ResendStatus.Sent) {
+            // Says why "Send a new link" is waiting, so the held button is not a silent no-op.
+            Spacer(Modifier.height(spacing.lg))
+            ResentAcknowledgement()
+        }
         if (!expired) {
             Spacer(Modifier.height(spacing.lg))
             // NEW, not in Figma (docs/missing-components.md §6): a stand-in until deep links.

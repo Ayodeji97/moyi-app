@@ -88,6 +88,25 @@ class VerifyViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun sendANewLinkFromExpiredWaitsOutTheResendCooldown() = runTest {
+        // A resend from waiting starts the one-a-minute cooldown.
+        viewModel.onAction(VerifyAction.OnResendClick)
+        assertEquals(ResendStatus.Sent, viewModel.state.value.resend)
+
+        // The old link then turns out to be expired.
+        repo.verifyResult = Result.Failure(apiError(410, ApiErrorCode.VERIFICATION_TOKEN_EXPIRED))
+        viewModel.onAction(VerifyAction.OnTokenChange("old"))
+        viewModel.onAction(VerifyAction.OnSubmit)
+        assertEquals(VerifyMode.Expired, viewModel.state.value.mode)
+
+        // "Send a new link" within the minute sends nothing: the server would refuse it.
+        viewModel.onAction(VerifyAction.OnResendClick)
+        assertEquals(1, repo.resendCalls.size)
+        assertEquals(VerifyMode.Expired, viewModel.state.value.mode)
+        assertEquals(SubmitStatus.Idle, viewModel.state.value.submit)
+    }
+
+    @Test
     fun useADifferentAddressGoesBack() = runTest {
         viewModel.events.test {
             viewModel.onAction(VerifyAction.OnChangeEmailClick)

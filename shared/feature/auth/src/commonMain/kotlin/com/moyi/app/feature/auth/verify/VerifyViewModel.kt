@@ -83,12 +83,17 @@ class VerifyViewModel(
      * Resend always answers 202 on a reachable server, known address or not
      * (doc 06 §3.1). From the expired state a new link returns the screen to
      * waiting, with the paste field cleared for the new code.
+     *
+     * The server allows one resend a minute (ADR-0023) whichever button asks,
+     * so a link sent in the last minute ([ResendStatus.Sent]) makes both
+     * "Send it again" and the expired state's "Send a new link" wait.
      */
     private fun resend() {
         val current = _state.value
         val fromExpired = current.mode == VerifyMode.Expired
-        val busy = if (fromExpired) current.submit == SubmitStatus.Sending else current.resend != ResendStatus.Ready
-        if (busy) return
+        val coolingDown = current.resend == ResendStatus.Sent
+        val inFlight = if (fromExpired) current.submit == SubmitStatus.Sending else current.resend == ResendStatus.Sending
+        if (coolingDown || inFlight) return
 
         _state.update {
             if (fromExpired) it.copy(submit = SubmitStatus.Sending) else it.copy(resend = ResendStatus.Sending, submit = SubmitStatus.Idle)
