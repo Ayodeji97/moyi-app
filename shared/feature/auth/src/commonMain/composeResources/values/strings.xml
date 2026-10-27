@@ -46,8 +46,8 @@
     <string name="register_password_error_short">That password is too short. Use 8 characters or more.</string>
     <!-- copy.md "The breached-password message" (wins over strings-proposed.md field.password.error.breached). Server code NOT_BREACHED. -->
     <string name="register_password_error_breached">This password shows up on a list of leaked passwords. Pick a different one.</string>
-    <!-- signup.consent. The whole row toggles. -->
-    <string name="register_consent">I am 18 or over, and I agree to the Terms and the Privacy Policy.</string>
+    <!-- Figma 340:29 (consent text 6b). The whole row toggles. The Terms and Privacy Policy links sit right below it. -->
+    <string name="register_consent">I am 18 or over, and I agree to the terms below.</string>
     <!-- Figma 389:205, the legal links. -->
     <string name="register_terms">Terms</string>
     <string name="register_privacy">Privacy Policy</string>

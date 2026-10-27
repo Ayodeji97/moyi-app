@@ -92,9 +92,10 @@ Recorded in PR #5 (design system), 2026-10-27.
   `outlineStrong`, no fill, top-aligned, 16 from `body` `inkMuted` text; Terms and Privacy Policy
   are separate underlined links on their own row. `ConsentCheckbox` follows that.
 - **Still open:** the **checked** state is not drawn (built as an `ink` fill with the Lucide check
-  in `surface`); radius 0 is outside `tokens.md`'s 12-or-full (D3); the consent copy differs
-  (Figma "…agree to the terms below." vs `signup.consent` "…agree to the Terms and the Privacy
-  Policy."); and it is still not one of the ten components.
+  in `surface`); radius 0 is outside `tokens.md`'s 12-or-full (D3); and it is still not one of
+  the ten components. The consent copy follows Figma ("I am 18 or over, and I agree to the terms
+  below.", with the two links directly under it), not `signup.consent` ("…agree to the Terms and
+  the Privacy Policy."); `strings-proposed.md` should be brought in line.
 
 ### 8. The verification and reset emails
 
