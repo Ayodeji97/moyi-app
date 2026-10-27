@@ -66,11 +66,11 @@ class RegisterViewModel(
             password = current.password.validated(AuthValidation::newPassword),
         )
         if (checked.name.error != null || checked.email.error != null || checked.password.error != null) {
-            _state.value = checked.copy(submit = SubmitStatus.Idle)
+            _state.update { checked.copy(submit = SubmitStatus.Idle) }
             return
         }
 
-        _state.value = checked.copy(submit = SubmitStatus.Sending)
+        _state.update { checked.copy(submit = SubmitStatus.Sending) }
         val email = checked.email.value.trim()
         viewModelScope.launch {
             val result = authRepository.register(

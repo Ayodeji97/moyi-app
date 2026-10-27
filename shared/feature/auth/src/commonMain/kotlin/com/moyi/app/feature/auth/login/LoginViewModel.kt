@@ -62,10 +62,10 @@ class LoginViewModel(
             password = current.password.validated(AuthValidation::existingPassword),
         )
         if (checked.email.error != null || checked.password.error != null) {
-            _state.value = checked
+            _state.update { checked }
             return
         }
-        _state.value = checked.copy(submit = SubmitStatus.Sending, sessionEnded = false)
+        _state.update { checked.copy(submit = SubmitStatus.Sending, sessionEnded = false) }
         viewModelScope.launch {
             when (val result = authRepository.login(checked.email.value.trim(), checked.password.value)) {
                 is Result.Success -> {
