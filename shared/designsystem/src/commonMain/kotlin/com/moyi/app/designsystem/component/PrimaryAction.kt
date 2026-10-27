@@ -27,8 +27,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.theme.MoyiDimens
 
 /**
  * The states of [PrimaryAction] (`tokens.md` §4: idle / sending /
@@ -80,7 +80,6 @@ fun PrimaryAction(
 ) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
-    val spacing = MoyiTheme.spacing
 
     val label = when (state) {
         PrimaryActionState.Idle, PrimaryActionState.Disabled -> text
@@ -95,11 +94,11 @@ fun PrimaryAction(
 
     Box(
         modifier = modifier
-            .widthIn(min = MinWidth)
-            .heightIn(min = spacing.touchTarget)
+            .widthIn(min = MoyiDimens.PrimaryAction.MinWidth)
+            .heightIn(min = MoyiDimens.PrimaryAction.MinHeight)
             .clip(shapes.radius)
             .background(fill)
-            .border(shapes.hairline, border, shapes.radius)
+            .border(MoyiDimens.PrimaryAction.DisabledBorder, border, shapes.radius)
             .clickable(
                 enabled = enabled,
                 role = Role.Button,
@@ -117,7 +116,10 @@ fun PrimaryAction(
                     PrimaryActionState.Idle, PrimaryActionState.Disabled -> Unit
                 }
             }
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            .padding(
+                horizontal = MoyiDimens.PrimaryAction.PaddingHorizontal,
+                vertical = MoyiDimens.PrimaryAction.PaddingVertical,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -128,9 +130,6 @@ fun PrimaryAction(
         )
     }
 }
-
-/** `tokens.md` §8.1: a floor, not a fixed width, so a label never clips. */
-private val MinWidth = 176.dp
 
 @Preview
 @Composable

@@ -21,8 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.resources.Res
 import com.moyi.app.designsystem.resources.ds_back
@@ -50,7 +50,6 @@ fun MoyiScaffold(
     onBack: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val spacing = MoyiTheme.spacing
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -65,7 +64,10 @@ fun MoyiScaffold(
                 .fillMaxWidth()
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = spacing.gutter, vertical = spacing.lg),
+                .padding(
+                    horizontal = MoyiDimens.Scaffold.Gutter,
+                    vertical = MoyiDimens.Scaffold.ContentPaddingVertical,
+                ),
             content = content,
         )
     }
@@ -73,13 +75,12 @@ fun MoyiScaffold(
 
 @Composable
 private fun BackAffordance(onBack: () -> Unit) {
-    val spacing = MoyiTheme.spacing
     Box(
         modifier = Modifier
             // The glyph sits on the gutter line; its 48 target reaches past it.
-            .padding(start = spacing.gutter)
-            .offset(x = -(spacing.touchTarget - GlyphSize) / 2)
-            .size(spacing.touchTarget)
+            .padding(start = MoyiDimens.Scaffold.Gutter)
+            .offset(x = -(MoyiDimens.Scaffold.BackTarget - MoyiDimens.IconGlyph) / 2)
+            .size(MoyiDimens.Scaffold.BackTarget)
             .clickable(role = Role.Button, onClick = onBack),
         contentAlignment = Alignment.Center,
     ) {
@@ -91,8 +92,6 @@ private fun BackAffordance(onBack: () -> Unit) {
     }
 }
 
-/** Lucide's 24 px glyph. */
-private val GlyphSize = 24.dp
 
 @Preview
 @Composable

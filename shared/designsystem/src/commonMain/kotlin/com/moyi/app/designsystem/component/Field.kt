@@ -37,6 +37,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.resources.Res
 import com.moyi.app.designsystem.resources.ds_password_hide
@@ -73,10 +74,10 @@ data class FieldStroke(val width: Dp, val color: Color)
  * controls, and the muted label and text carry the state too.
  */
 fun MoyiColors.fieldStroke(state: FieldState): FieldStroke = when (state) {
-    FieldState.Idle -> FieldStroke(1.dp, outlineStrong)
-    FieldState.Focus -> FieldStroke(2.dp, ink)
-    FieldState.Error -> FieldStroke(2.dp, danger)
-    FieldState.Disabled -> FieldStroke(1.dp, outline)
+    FieldState.Idle -> FieldStroke(MoyiDimens.Field.StrokeIdle, outlineStrong)
+    FieldState.Focus -> FieldStroke(MoyiDimens.Field.StrokeEmphasis, ink)
+    FieldState.Error -> FieldStroke(MoyiDimens.Field.StrokeEmphasis, danger)
+    FieldState.Disabled -> FieldStroke(MoyiDimens.Field.StrokeDisabled, outline)
 }
 
 /**
@@ -110,7 +111,6 @@ fun Field(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     val colors = MoyiTheme.colors
-    val spacing = MoyiTheme.spacing
     val shapes = MoyiTheme.shapes
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -140,29 +140,34 @@ fun Field(
         keyboardActions = keyboardActions,
         visualTransformation = if (secure && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
         interactionSource = interactionSource,
-        // Everything inside the decoration box belongs to the text field's
-        // semantics node, so the label is read with the field ("Email, edit
-        // box") instead of as a separate, unconnected piece of text.
+        // The label sits inside the decoration box, as Material's text fields
+        // do, so it lives under the text field's semantics node rather than
+        // beside it. Not yet walked with TalkBack or VoiceOver: owed before
+        // release, per SKILL.md §8.
         decorationBox = { innerTextField ->
             Column {
                 MoyiText(text = label, role = TextRole.Label)
-                Spacer(Modifier.height(spacing.sm))
+                Spacer(Modifier.height(MoyiDimens.Field.LabelGap))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = BoxMinHeight)
+                        .heightIn(min = MoyiDimens.Field.BoxMinHeight)
                         .border(stroke.width, stroke.color, shapes.radius)
-                        .padding(start = spacing.md, end = if (secure) 0.dp else spacing.md),
+                        // A Secure field ends in the 48 target, which carries its own inset.
+                        .padding(
+                            start = MoyiDimens.Field.PaddingStart,
+                            end = if (secure) 0.dp else MoyiDimens.Field.PaddingEnd,
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.weight(1f).padding(vertical = spacing.sm)) { innerTextField() }
+                    Box(Modifier.weight(1f).padding(vertical = MoyiDimens.Field.PaddingVertical)) { innerTextField() }
                     if (secure) {
                         RevealToggle(revealed = revealed, enabled = enabled, onToggle = { revealed = !revealed })
                     }
                 }
                 val below = error ?: helper
                 if (below != null) {
-                    Spacer(Modifier.height(spacing.sm))
+                    Spacer(Modifier.height(MoyiDimens.Field.SupportGap))
                     MoyiText(text = below, tone = if (error != null) TextTone.Danger else TextTone.Muted)
                 }
             }
@@ -175,7 +180,7 @@ private fun RevealToggle(revealed: Boolean, enabled: Boolean, onToggle: () -> Un
     val description = stringResource(if (revealed) Res.string.ds_password_hide else Res.string.ds_password_show)
     Box(
         modifier = Modifier
-            .size(MoyiTheme.spacing.touchTarget)
+            .size(MoyiDimens.Field.RevealTarget)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = description, onClick = onToggle),
         contentAlignment = Alignment.Center,
     ) {
@@ -186,9 +191,6 @@ private fun RevealToggle(revealed: Boolean, enabled: Boolean, onToggle: () -> Un
         )
     }
 }
-
-/** `tokens.md` §4: 56 tall (65 for `Code`, not built yet). A floor, so 200 % text still fits. */
-private val BoxMinHeight = 56.dp
 
 @Preview
 @Composable

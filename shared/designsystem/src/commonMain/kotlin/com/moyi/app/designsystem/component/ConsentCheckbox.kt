@@ -19,8 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.icon.MoyiIcons
 
 /**
@@ -52,20 +52,19 @@ fun ConsentCheckbox(
     enabled: Boolean = true,
 ) {
     val colors = MoyiTheme.colors
-    val spacing = MoyiTheme.spacing
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = spacing.touchTarget)
+            .heightIn(min = MoyiDimens.ConsentCheckbox.RowMinHeight)
             .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onCheckedChange)
-            .padding(vertical = spacing.sm),
+            .padding(vertical = MoyiDimens.ConsentCheckbox.RowPaddingVertical),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(BoxSize)
+                .size(MoyiDimens.ConsentCheckbox.Box)
                 .background(if (checked) colors.ink else colors.surface, RectangleShape)
-                .border(2.dp, if (checked) colors.ink else colors.outlineStrong, RectangleShape),
+                .border(MoyiDimens.ConsentCheckbox.BoxStroke, if (checked) colors.ink else colors.outlineStrong, RectangleShape),
             contentAlignment = Alignment.Center,
         ) {
             if (checked) {
@@ -74,16 +73,14 @@ fun ConsentCheckbox(
                     // The row's checkbox role already says "checked".
                     contentDescription = null,
                     tint = colors.surface,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(MoyiDimens.ConsentCheckbox.CheckGlyph),
                 )
             }
         }
-        Spacer(Modifier.width(spacing.md))
+        Spacer(Modifier.width(MoyiDimens.ConsentCheckbox.Gap))
         MoyiText(text = text, tone = if (enabled) TextTone.Ink else TextTone.Muted, modifier = Modifier.weight(1f))
     }
 }
-
-private val BoxSize = 20.dp
 
 @Preview
 @Composable

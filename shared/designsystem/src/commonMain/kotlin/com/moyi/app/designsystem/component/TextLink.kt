@@ -13,6 +13,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.theme.MoyiDimens
 
 /**
  * A secondary action: `ink` with an underline (`tokens.md` §1).
@@ -31,7 +32,7 @@ fun TextLink(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val target = MoyiTheme.spacing.touchTarget
+    val target = MoyiDimens.TextLink.MinTarget
     Box(
         modifier = modifier
             .heightIn(min = target)

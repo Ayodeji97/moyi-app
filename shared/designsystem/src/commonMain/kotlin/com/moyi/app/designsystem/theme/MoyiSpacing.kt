@@ -32,9 +32,9 @@ data class MoyiSpacing(
      * cannot both hold, so this takes the scale and the conflict is recorded
      * in `docs/missing-components.md` for the owner. Changing it is this line.
      */
-    val gutter: Dp = 24.dp,
+    val gutter: Dp = MoyiDimens.Scaffold.Gutter,
     /** Minimum touch target on both platforms (NFR-101; iOS's 44 is the smaller, so 48). */
-    val touchTarget: Dp = 48.dp,
+    val touchTarget: Dp = MoyiDimens.TouchTarget,
 )
 
 /**
@@ -48,5 +48,5 @@ data class MoyiSpacing(
 data class MoyiShapes(
     val radius: CornerBasedShape = RoundedCornerShape(12.dp),
     val full: Shape = CircleShape,
-    val hairline: Dp = 1.dp,
+    val hairline: Dp = MoyiDimens.PrimaryAction.DisabledBorder,
 )
