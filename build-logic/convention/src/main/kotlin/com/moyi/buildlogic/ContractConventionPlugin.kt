@@ -2,7 +2,6 @@ package com.moyi.buildlogic
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.tasks.Copy
 import org.gradle.kotlin.dsl.register
 
 /**
@@ -31,11 +30,18 @@ class ContractConventionPlugin : Plugin<Project> {
             .orElse(rootDir.dir("../moyi-backend"))
         val backendContract = backendDir.map { it.file("contracts/openapi.json") }
 
-        tasks.register<Copy>("syncContract") {
+        // A plain task rather than a Copy: a Copy whose source is missing ends
+        // NO-SOURCE and reads as success, so a sync that did nothing looked done.
+        tasks.register("syncContract") {
             group = "contract"
             description = "Copies the backend's contracts/openapi.json into contracts/ (read-only on the backend)."
-            from(backendContract)
-            into(rootDir.dir("contracts"))
+            val source = backendContract
+            val target = vendored
+            doLast {
+                val from = source.get().asFile
+                check(from.isFile) { "No backend contract at $from. Set moyi.backendDir in local.properties." }
+                from.copyTo(target.asFile, overwrite = true)
+            }
         }
 
         val checkTask = tasks.register<CheckContractInSyncTask>("checkContractInSync") {

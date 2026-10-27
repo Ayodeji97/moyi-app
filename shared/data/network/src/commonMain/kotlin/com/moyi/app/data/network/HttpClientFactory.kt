@@ -35,8 +35,10 @@ object HttpClientFactory {
      * What every Moyi client shares. The seam for PR #4's authed client.
      *
      * The logger runs at INFO: method, URL and status only. It never logs
-     * bodies (passwords, tokens, entry text) and the Authorization header is
-     * sanitised in case the level is ever raised to HEADERS (CLAUDE.md, Code).
+     * bodies (passwords, tokens, entry text), the Authorization header is
+     * sanitised in case the level is ever raised to HEADERS, and query strings
+     * are cut from every line, because search sends its terms as `?q=`
+     * (CLAUDE.md, Code).
      */
     internal fun HttpClientConfig<*>.configureCommon() {
         expectSuccess = false // the generated HttpResponse reports success; safeApiCall maps failures
@@ -51,7 +53,7 @@ object HttpClientFactory {
             level = LogLevel.INFO
             logger = object : Logger {
                 private val log = KermitLogger.withTag("Http")
-                override fun log(message: String) = log.i { message }
+                override fun log(message: String) = log.i { redactQueries(message) }
             }
             sanitizeHeader { header -> header == HttpHeaders.Authorization }
         }
@@ -62,6 +64,11 @@ object HttpClientFactory {
         }
     }
 }
+
+private val queryInUrl = Regex("""(https?://[^\s?#]+)\?[^\s#]*""")
+
+/** Replaces every URL query string in [message] with `?…`, so search terms never reach a log. */
+internal fun redactQueries(message: String): String = queryInUrl.replace(message) { "${it.groupValues[1]}?…" }
 
 /** An HttpClient on this platform's engine: OkHttp on Android, Darwin (NSURLSession) on iOS. */
 internal expect fun platformHttpClient(config: HttpClientConfig<*>.() -> Unit): HttpClient
