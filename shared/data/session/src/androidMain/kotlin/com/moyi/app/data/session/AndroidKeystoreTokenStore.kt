@@ -29,11 +29,14 @@ import javax.crypto.spec.GCMParameterSpec
  *   half a new one.
  * - The Keystore picks the IV (randomized encryption is on by default); it is
  *   stored in front of the ciphertext. Layout: `[version][ivLength][iv][ciphertext+tag]`.
- * - Anything that fails to decrypt (a changed or invalidated key after a lock
- *   screen change, a restored file, a tampered byte: AEADBadTagException,
- *   KeyPermanentlyInvalidatedException and the rest) wipes the file and the
- *   key and reads as "no session", which signs the person out. There is no
+ * - A read that proves the key or payload is gone (a changed or invalidated
+ *   key after a lock screen change, a restored file, a tampered byte, an
+ *   unreadable payload; see [shouldWipe]) wipes the file and the key and
+ *   reads as "no session", which signs the person out. There is no
  *   recovering a session whose key is gone.
+ * - Any other failure (ProviderException, KeyStoreException, IOException)
+ *   may be transient, so nothing is wiped: [read] throws
+ *   [TokenStoreUnavailableException] and the caller can try again.
  *
  * Not EncryptedSharedPreferences: the security-crypto library is deprecated.
  */
@@ -51,6 +54,10 @@ class AndroidKeystoreTokenStore(
             val session = try {
                 StoredSessionCodec.decode(decrypt(file.readFully()).decodeToString())
             } catch (e: Exception) {
+                if (!shouldWipe(e)) {
+                    log.w { "Stored session not readable right now (${e::class.simpleName}); keeping it" }
+                    throw TokenStoreUnavailableException("Session store unavailable", e)
+                }
                 log.w { "Stored session unreadable (${e::class.simpleName}); wiping it" }
                 null
             }
@@ -97,7 +104,7 @@ class AndroidKeystoreTokenStore(
         val iv = data.copyOfRange(2, 2 + ivLength)
         val cipher = Cipher.getInstance(TRANSFORMATION)
         val existingKey = keyStore().getKey(KEY_ALIAS, null) as? SecretKey
-            ?: error("Session key missing")
+            ?: throw SessionKeyMissingException()
         cipher.init(Cipher.DECRYPT_MODE, existingKey, GCMParameterSpec(TAG_BITS, iv))
         return cipher.doFinal(data, 2 + ivLength, data.size - 2 - ivLength)
     }

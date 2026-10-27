@@ -10,7 +10,15 @@ package com.moyi.app.data.session
  * The access token is never stored; it lives only in memory.
  */
 interface SecureTokenStore {
-    /** The stored session, or null if there is none or it could not be read (which signs the person out). */
+    /**
+     * The stored session, or null if there is none or it is gone for good
+     * (unreadable, its key lost; that signs the person out).
+     *
+     * @throws TokenStoreUnavailableException when the store cannot be read
+     *   RIGHT NOW but the session may be intact (a locked Keychain, a
+     *   transient Keystore failure). The caller must not treat that as signed
+     *   out; it can try again later.
+     */
     suspend fun read(): StoredSession?
 
     /**
