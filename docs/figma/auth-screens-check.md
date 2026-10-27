@@ -36,6 +36,10 @@ below its last. Figma keeps the whole line box. The fix sets
 `LineHeightStyle(Alignment.Center, Trim.None)` on every Rosewood style (`MoyiTypography.kt`).
 The tables below are measured after it.
 
+**Where the fix lives.** The `LineHeightStyle(Trim.None)` change is in the base branch,
+`feat/design-system` (PR #5, commit c406f34), not in this PR. This PR is rebased onto it, so
+the measurements here include it; reviewing it belongs to PR #5.
+
 ## Sign up: consent scrolls (deliberate deviation from Figma)
 
 Figma 340:9 has no name field, and pins four parts to the bottom: the consent row, the
