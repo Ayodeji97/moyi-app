@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -18,10 +19,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.resources.Res
@@ -36,7 +42,9 @@ import org.jetbrains.compose.resources.stringResource
  * - `surface` ground. Inside the platform's safe areas
  *   ([WindowInsets.safeDrawing]: status and navigation bars, cutout and the
  *   keyboard), a padding of 16 at the sides and 24 at top and bottom. The
- *   24 is added inside the insets (D6, as ruled).
+ *   24 is added inside the insets (D6, as ruled). While the keyboard is
+ *   up the bottom 24 is dropped, so the action block sits flush on it
+ *   (Figma 362:1105).
  * - Three stacked parts, 16 apart: an optional header holding the 48 x 48
  *   back target with a 24 chevron and **no title**; the scrolling content;
  *   an optional [action] block pinned to the bottom, centred, which is
@@ -56,14 +64,21 @@ fun MoyiScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val itemSpacing = MoyiDimens.Scaffold.ItemSpacing
+    val imeVisible = rememberImeVisible()
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MoyiTheme.colors.surface)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(
-                horizontal = MoyiDimens.Scaffold.Gutter,
-                vertical = MoyiDimens.Scaffold.PaddingVertical,
+                start = MoyiDimens.Scaffold.Gutter,
+                end = MoyiDimens.Scaffold.Gutter,
+                top = MoyiDimens.Scaffold.PaddingVertical,
+                // At rest, 24 inside the safe area (D6). With the keyboard up
+                // the action block sits flush on it, as Figma's keyboard-up
+                // frame draws it (362:1105: action ends at 544, keyboard
+                // starts at 544). safeDrawing already includes the IME inset.
+                bottom = if (imeVisible) 0.dp else MoyiDimens.Scaffold.PaddingVertical,
             ),
     ) {
         if (onBack != null) {
@@ -86,6 +101,19 @@ fun MoyiScaffold(
             )
         }
     }
+}
+
+/**
+ * Whether the soft keyboard is showing. Read through [derivedStateOf] so the
+ * scaffold recomposes when the answer flips, not on every frame of the
+ * keyboard's slide.
+ */
+@Composable
+private fun rememberImeVisible(): Boolean {
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    val visible by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
+    return visible
 }
 
 @Composable

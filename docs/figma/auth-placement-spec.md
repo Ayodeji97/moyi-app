@@ -322,7 +322,7 @@ The auth screens follow Detail **without the header title**. They put an eyebrow
   - Sign up IDLE draws PrimaryAction as **State=Disabled**, which implies it is disabled until consent is checked. No written rule says so.
   - The no-connection frame also draws "Try again" as Disabled. That contradicts states.md §1c, under which the button becomes Try again after a submit, and a submit requires consent to have been given. It should be Idle.
 - **D5 — Scaffold vs the screens.** The Scaffold Detail header puts the title next to the back target (gap 8). The auth screens put no title in the header, an eyebrow below it, and the title 48 into the content.
-- **D6 — Safe area.** The screens are drawn with Android 24/24 and no status or navigation bar. The Scaffold doc says Android is "edge-to-edge with window insets", and tokens.md calls 24/24 the inset itself. **Unresolved: is the 24 replaced by the system insets, or added to them?**
+- **D6 — Safe area.** The screens are drawn with Android 24/24 and no status or navigation bar. The Scaffold doc says Android is "edge-to-edge with window insets", and tokens.md calls 24/24 the inset itself. **Unresolved: is the 24 replaced by the system insets, or added to them?** Ruled 2026-10-27: added inside them; see §8 for the keyboard-up exception.
 - **D7 — Sign-in error coverage.** states.md §1c specifies a single sign-in error ("That email and password do not match. Check both and try again.") and a session-revoked explanation. Figma draws **neither**. Only rate limited (345:53) exists, and its heading hard-codes "15 minutes", while states.md says the copy comes from `Retry-After` or the server `detail` (for example "3 minutes").
 - **D8 — Forgot-link alignment.** On sign in, the forgot text node fills its 48 target and is top-aligned. Every other secondary link is centred (offset 14.5). Build it centred and treat the Figma pixel offset as a drawing artefact.
 - **D9 — Field description.** It says "four types" while the set has five (Multiline). tokens.md §4 is correct (five).
@@ -353,3 +353,15 @@ The Figma MCP Starter-plan limit was hit after 15 calls. The following were not 
 - `get_variable_defs` on the Field and PrimaryAction sets. The colour bindings came from `get_design_context` variable references instead.
 - **Light-mode values.** These are taken from tokens.md and were not re-read from Figma.
 - **Pages StateBlock 72:2 and the Foundations pages 8:3, 8:4 and 8:5.** They were not opened. Their values were cross-checked through the bound variables only.
+
+---
+
+## 8. As built
+
+Where the code departs from a literal reading of the sections above, and why.
+
+- **Scaffold bottom padding with the keyboard up.** At rest the action block sits 24 inside
+  `WindowInsets.safeDrawing` (D6, as ruled). While the soft keyboard is visible
+  (`WindowInsets.ime` bottom > 0) the bottom padding is **0**, so the action block sits flush on
+  the keyboard, as the keyboard-up frame draws it (362:1105: action ends at 544, keyboard starts
+  at 544). `safeDrawing` already contains the IME inset, so nothing else changes.
