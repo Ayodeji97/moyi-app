@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -69,6 +70,9 @@ data class FieldStroke(val width: Dp, val color: Color)
 
 /** Figma §4.2: the box is `surfaceRaised`, and `surface` when Disabled. */
 fun MoyiColors.fieldFill(state: FieldState): Color = if (state == FieldState.Disabled) surface else surfaceRaised
+
+/** The value's colour: `ink`, and `inkMuted` when Disabled (Figma §4.2). */
+fun MoyiColors.fieldText(state: FieldState): Color = if (state == FieldState.Disabled) inkMuted else ink
 
 /**
  * Focus and Error change the stroke **weight**, not only the colour
@@ -127,7 +131,7 @@ fun Field(
 
     val state = fieldStateOf(enabled = enabled, hasError = error != null, focused = focused)
     val stroke = colors.fieldStroke(state)
-    val textColor = if (state == FieldState.Disabled) colors.inkMuted else colors.ink
+    val textColor = colors.fieldText(state)
     val secure = type == FieldType.Secure
     val effectiveKeyboard = if (secure && keyboardOptions == KeyboardOptions.Default) {
         KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
@@ -191,13 +195,18 @@ private fun RevealToggle(revealed: Boolean, enabled: Boolean, onToggle: () -> Un
         modifier = Modifier
             .width(MoyiDimens.Field.RevealTargetWidth)
             .heightIn(min = MoyiDimens.Field.RevealTargetMinHeight)
-            .clickable(enabled = enabled, role = Role.Button, onClickLabel = description, onClick = onToggle),
+            // The Icon's contentDescription is the spoken name; an onClickLabel with
+            // the same words made TalkBack say it twice.
+            .clickable(enabled = enabled, role = Role.Button, onClick = onToggle),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = if (revealed) MoyiIcons.EyeOff else MoyiIcons.Eye,
             contentDescription = description,
-            tint = if (enabled) MoyiTheme.colors.ink else MoyiTheme.colors.inkMuted,
+            // `ink` in every state, Disabled included: the Figma Field set
+            // (296:10, Type=Secure, State=Disabled) draws the eye in ink.
+            tint = MoyiTheme.colors.ink,
+            modifier = Modifier.size(MoyiDimens.IconGlyph),
         )
     }
 }

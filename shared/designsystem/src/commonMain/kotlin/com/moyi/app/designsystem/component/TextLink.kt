@@ -12,8 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.intl.Locale
@@ -62,17 +60,17 @@ fun TextLink(
         modifier = modifier
             .heightIn(min = target)
             .widthIn(min = target)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            // Spoken in its written casing, not letter by letter.
-            .clearAndSetSemantics {
-                this.text = AnnotatedString(text)
-                role = Role.Button
-                if (enabled) onClick { onClick(); true }
-            },
+            // One source of click semantics: `clickable` gives the role, the
+            // action and the disabled state, and merges the text below into
+            // this node.
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart,
     ) {
         Text(
             text = if (isLabel) text.toUpperCase(Locale.current) else text,
+            // Spoken in its written casing, not letter by letter: the drawn
+            // text is uppercased, the text it contributes to the merge is not.
+            modifier = Modifier.clearAndSetSemantics { this.text = AnnotatedString(text) },
             style = (if (isLabel) type.label else type.body).copy(textDecoration = TextDecoration.Underline),
             color = if (enabled) MoyiTheme.colors.ink else MoyiTheme.colors.inkMuted,
             textAlign = if (centered) TextAlign.Center else TextAlign.Start,

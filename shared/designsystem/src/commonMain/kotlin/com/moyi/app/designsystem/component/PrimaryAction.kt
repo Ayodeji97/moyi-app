@@ -25,7 +25,6 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
@@ -118,12 +117,9 @@ fun PrimaryAction(
             .semantics {
                 // The label change from "Check again" to "Checking" is the
                 // only feedback, so it must be spoken without a focus move.
+                // The label itself is the merged text; no stateDescription,
+                // which would repeat it and be read twice.
                 liveRegion = LiveRegionMode.Polite
-                when (state) {
-                    is PrimaryActionState.Sending -> stateDescription = state.label
-                    is PrimaryActionState.QueuedOffline -> stateDescription = state.label
-                    PrimaryActionState.Idle, PrimaryActionState.Disabled -> Unit
-                }
             }
             .padding(
                 horizontal = MoyiDimens.PrimaryAction.PaddingHorizontal,
