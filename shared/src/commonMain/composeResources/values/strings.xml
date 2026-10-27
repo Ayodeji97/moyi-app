@@ -17,4 +17,7 @@
     <string name="gallery_check_again">Check again</string>
     <string name="gallery_checking">Checking</string>
     <string name="gallery_forgot">I forgot my password</string>
+    <string name="gallery_terms">Terms</string>
+    <string name="gallery_privacy">Privacy Policy</string>
+    <string name="gallery_inline_error_figma">That didn't go through. Your details are still here.</string>
 </resources>

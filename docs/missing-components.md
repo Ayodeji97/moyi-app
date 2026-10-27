@@ -33,13 +33,21 @@ Recorded in PR #5 (design system), 2026-10-27.
 - **The open question:** whether any action is long enough, or blocking enough, to need more than
   the label. If one is, it needs a state in `states.md` before it gets a component.
 
-### 3. `PrimaryAction` `QueuedOffline`: what it looks like
+### 3. `PrimaryAction` `Sending` fails contrast
 
-- **Today:** `tokens.md` §4 names the state (idle / sending / queued-offline / disabled) and says
-  nothing about its look. `states.md` §4 says the queued entry is drawn on the Failure page as a
-  Today state.
-- **Here:** built as a state that looks like `Sending` (the `ink` fill, a label from the caller,
-  not tappable). No network logic. Confirm or redraw.
+- **Today:** Figma draws Sending as the whole button at 60 % opacity
+  (`docs/figma/auth-placement-spec.md` §4.1). `tokens.md` gives no Sending look.
+- **Measured:** the label, blended over `surface`, is **3.13:1 dark and 2.57:1 light**, against
+  4.5. WCAG 1.4.3 exempts inactive controls, but in this product the Sending label is the only
+  feedback that something is happening (`states.md` §1c), so it should be readable.
+- **Here:** built as Figma draws it. `TokenContrastTest.sendingLabelContrastIsAKnownFinding` pins
+  the two numbers so a fix shows up. Options for the owner: a higher opacity, or keep full opacity
+  and let the label change carry the state.
+
+### 3a. `PrimaryAction` `QueuedOffline`
+
+- Figma §4.1 draws it as `surfaceRaised` with a 1 px `outlineStrong` stroke and an `ink` label
+  ("Queued"). Built that way; no network logic.
 
 ## Account and sign-in
 
@@ -70,13 +78,13 @@ Recorded in PR #5 (design system), 2026-10-27.
 - **Today:** `states.md` §1 puts "18+ confirmation, Terms and Privacy consent (FR-011)" on Sign up,
   and `strings-proposed.md` has `signup.consent`. Neither `tokens.md` nor `states.md` says how it
   looks, and a checkbox is **not one of the ten components**.
-- **Here:** a stand-in `ConsentCheckbox`: the whole row toggles with `Role.Checkbox`, at least
-  48 tall; a 20 dp square with a 2 dp `outlineStrong` border, filled `ink` with the Lucide check in
-  `surface` when ticked. It is square-cornered because the system has only radius 12 and full,
-  and 12 on a 20 dp box reads as a radio button.
-- **Still open:** the "Terms" and "Privacy Policy" words are not links yet. `tokens.md` §1 says how
-  an inline link looks (`ink` plus underline inside an `inkMuted` sentence); it needs the URLs and
-  a decision on whether one sentence holds two links or two controls.
+- **Figma** draws it as a loose frame on Sign up (§3.1 row 6): a 24 x 24 square, radius 0, 1 px
+  `outlineStrong`, no fill, top-aligned, 16 from `body` `inkMuted` text; Terms and Privacy Policy
+  are separate underlined links on their own row. `ConsentCheckbox` follows that.
+- **Still open:** the **checked** state is not drawn (built as an `ink` fill with the Lucide check
+  in `surface`); radius 0 is outside `tokens.md`'s 12-or-full (D3); the consent copy differs
+  (Figma "…agree to the terms below." vs `signup.consent` "…agree to the Terms and the Privacy
+  Policy."); and it is still not one of the ten components.
 
 ### 8. The verification and reset emails
 
@@ -94,21 +102,27 @@ Recorded in PR #5 (design system), 2026-10-27.
 
 ## Conflicts found inside the design system
 
-### 10. Side gutter: 20 or 24
+### 10. Side gutter: 16, 20 or 24
 
-- `tokens.md` §2 measures the entry at "screen padding 20×2", which gives the 302 pt measure.
-  `tokens.md` §3 says the scale is `4 · 8 · 16 · 24 · 32 · 48 · 64`, and its audit removed every
-  20 it found. Both cannot hold.
-- **Here:** 24, on the scale (`MoyiDimens.Scaffold.Gutter`, one line to change). At 24 the
-  entry measure is 4 pt narrower per side than the measure the type scale was chosen against.
+- `tokens.md` §2 measures the entry at "screen padding 20×2" (302 pt measure); §3's scale has no
+  20; the Figma auth screens use **16** (content 358 on 390).
+- **Here:** 16, per Figma (`MoyiDimens.Scaffold.Gutter`). `tokens.md` §2's measure figure is now
+  out of date in a third direction and should be re-measured for the entry screens.
 
-### 11. Field stroke weights and paddings have no stated numbers
+### 11. Figma versus tokens.md, as built
 
-- `tokens.md` §4 requires Focus and Error to change stroke **weight** and gives no values, and
-  gives no internal paddings or label gap for `Field` or `PrimaryAction`.
-- **Here:** Idle 1, Focus and Error 2, Disabled 1 (`outline`); label gap 8; helper gap 8; box
-  padding 16. All in `MoyiDimens`, each marked "interpreted". The Figma comparison pass should
-  confirm or correct them.
+Ruling: Figma wins for placement and geometry, tokens.md for colour.
+
+- **D1, Field Disabled stroke:** Figma binds `outlineStrong`; tokens.md and the component
+  description say `outline`. Built `outline` (colour, so tokens.md).
+- **D3, rhythm:** sign up's action block uses 16 between its parts, sign in and verify use 24.
+  `MoyiScaffold` leaves the gaps inside `action` to the screen.
+- **D6, safe area:** Figma draws 24/24 with no system bars. Built as 24 inside
+  `WindowInsets.safeDrawing`, so on an iPhone the top is 59 + 24 and the bottom 34 + 24.
+- **D8, forgot link:** built start-aligned and vertically centred in its 48 target, not
+  top-aligned.
+- **D11, label tracking:** built as 0.11em, not 1.43 px.
+- **Label weight:** Figma's `type/label` is Medium (500); tokens.md is silent on weight. Built 500.
 
 ### 12. Newsreader's optical size
 
