@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.moyi.app.designsystem.resources.Res
@@ -69,24 +70,38 @@ internal fun rememberMoyiTypography(): MoyiTypography {
     }
 }
 
+/**
+ * Every line keeps its full line height, with the glyphs centred in it, the
+ * way Figma draws a text box (a label line is 18.2, drawn 19; a body line 24).
+ *
+ * Compose's default trims the space above the first line and below the last,
+ * which made every text box 4 to 6 shorter than Figma's and moved everything
+ * under it: each Field came out 9 short and the auth headings 4 high, found by
+ * measuring the PR #6 screens against auth-placement-spec §3.
+ */
+private val FigmaLineBox = LineHeightStyle(alignment = LineHeightStyle.Alignment.Center, trim = LineHeightStyle.Trim.None)
+
 internal fun moyiTypography(serif: FontFamily, wordmark: FontFamily): MoyiTypography = MoyiTypography(
     entry = TextStyle(
         fontFamily = serif,
         fontWeight = FontWeight.Normal,
         fontSize = 34.sp,
         lineHeight = 1.40.em,
+        lineHeightStyle = FigmaLineBox,
     ),
     title = TextStyle(
         fontFamily = serif,
         fontWeight = FontWeight.Normal,
         fontSize = 26.sp,
         lineHeight = 1.25.em,
+        lineHeightStyle = FigmaLineBox,
     ),
     body = TextStyle(
         fontFamily = SystemSans,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 1.50.em,
+        lineHeightStyle = FigmaLineBox,
     ),
     label = TextStyle(
         fontFamily = SystemSans,
@@ -95,6 +110,7 @@ internal fun moyiTypography(serif: FontFamily, wordmark: FontFamily): MoyiTypogr
         fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
         lineHeight = 1.40.em,
+        lineHeightStyle = FigmaLineBox,
         // 0.11em, never 1.43px: Figma stores pixels only because it forces a
         // bound letter-spacing into pixel units (tokens.md §2).
         letterSpacing = 0.11.em,
@@ -104,12 +120,14 @@ internal fun moyiTypography(serif: FontFamily, wordmark: FontFamily): MoyiTypogr
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 1.50.em,
+        lineHeightStyle = FigmaLineBox,
     ),
     code = TextStyle(
         fontFamily = serif,
         fontWeight = FontWeight.Normal,
         fontSize = 26.sp,
         lineHeight = 1.25.em,
+        lineHeightStyle = FigmaLineBox,
         letterSpacing = 0.28.em,
     ),
     wordmarkFamily = wordmark,
