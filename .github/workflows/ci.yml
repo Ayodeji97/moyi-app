@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Everything Linux can check: compile (Android + common), unit tests, the
+  # architecture rules and lint, as one Gradle invocation. iOS cannot be
+  # linked on Linux; each PR says whether the framework and the Xcode app were
+  # built locally on a Mac instead (CLAUDE.md, Reporting). A macOS runner was
+  # declined on purpose for now.
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # The Gradle daemon JVM is declared in gradle/gradle-daemon-jvm.properties
+      # (Azul 21); this JDK only launches the wrapper.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - run: ./gradlew check --continue
+
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports
+          path: |
+            **/build/reports/tests
+            **/build/reports/detekt
+            **/build/reports/lint-results*.html
+          retention-days: 14
+
+  wrapper:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: gradle/actions/wrapper-validation@v6
