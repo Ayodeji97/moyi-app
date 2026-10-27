@@ -37,6 +37,16 @@ kotlin {
             implementation(project(":shared:data:session"))
             implementation(project(":shared:data:repository"))
             implementation(project(":shared:feature:auth"))
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.androidx.navigation.compose)
+            implementation(libs.kermit)
+            // api: initKoin's signature (KoinAppDeclaration) is called from androidApp.
+            api(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlinx.coroutines.test)
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.testRunner)
