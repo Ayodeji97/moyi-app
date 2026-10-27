@@ -24,6 +24,10 @@ gradlePlugin {
             id = "moyi.kmp.compose"
             implementationClass = "com.moyi.buildlogic.KmpComposeConventionPlugin"
         }
+        register("contract") {
+            id = "moyi.contract"
+            implementationClass = "com.moyi.buildlogic.ContractConventionPlugin"
+        }
         register("dependencyGuard") {
             id = "moyi.dependency.guard"
             implementationClass = "com.moyi.buildlogic.DependencyGuardConventionPlugin"
