@@ -1,6 +1,8 @@
 rootProject.name = "Moyi"
 
 pluginManagement {
+    // Convention plugins: moyi.kmp.library, moyi.kmp.compose, moyi.dependency.guard.
+    includeBuild("build-logic")
     repositories {
         google {
             mavenContent {
