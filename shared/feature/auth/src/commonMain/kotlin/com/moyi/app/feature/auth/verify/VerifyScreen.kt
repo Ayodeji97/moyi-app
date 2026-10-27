@@ -9,6 +9,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -129,12 +132,7 @@ fun VerifyScreen(
             )
             Spacer(Modifier.height(spacing.lg))
             when (state.resend) {
-                ResendStatus.Sent -> MoyiText(
-                    text = stringResource(Res.string.verify_resent),
-                    tone = TextTone.Muted,
-                    // The acknowledgement takes the link's 48 so nothing below jumps.
-                    modifier = Modifier.heightIn(min = MoyiDimens.TouchTarget),
-                )
+                ResendStatus.Sent -> ResentAcknowledgement()
                 ResendStatus.Ready, ResendStatus.Sending -> TextLink(
                     stringResource(Res.string.verify_resend),
                     onClick = { onAction(VerifyAction.OnResendClick) },
@@ -144,6 +142,23 @@ fun VerifyScreen(
             }
         }
     }
+}
+
+/**
+ * "Sent again. You can ask for another in a minute." It replaces a control the
+ * person just used, so a screen reader announces it politely instead of
+ * leaving focus on nothing.
+ */
+@Composable
+private fun ResentAcknowledgement() {
+    MoyiText(
+        text = stringResource(Res.string.verify_resent),
+        tone = TextTone.Muted,
+        // The acknowledgement takes the link's 48 so nothing below jumps.
+        modifier = Modifier
+            .heightIn(min = MoyiDimens.TouchTarget)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    )
 }
 
 @Preview

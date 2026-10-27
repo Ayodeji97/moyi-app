@@ -9,7 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -109,7 +111,12 @@ fun LoginScreen(
         if (state.sessionEnded) {
             // No frame exists for this (auth-placement-spec §7); placed like verify's line, 16 under the heading.
             Spacer(Modifier.height(spacing.md))
-            MoyiText(stringResource(Res.string.login_session_ended), tone = TextTone.Muted)
+            // Announced politely: the person did not ask to be here, so a screen reader says why.
+            MoyiText(
+                stringResource(Res.string.login_session_ended),
+                tone = TextTone.Muted,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
         }
         Spacer(Modifier.height(spacing.lg))
         Field(
