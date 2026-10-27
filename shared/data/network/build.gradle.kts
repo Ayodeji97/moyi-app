@@ -16,6 +16,8 @@ kotlin {
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.serialization.kotlinxJson)
             implementation(libs.ktor.client.logging)
+            api(libs.ktor.client.auth)
+            implementation(libs.koin.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kermit)
         }
