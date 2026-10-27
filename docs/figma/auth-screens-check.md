@@ -58,8 +58,7 @@ InlineError (when shown), the PrimaryAction and "I already have an account" stay
 apart (D3). On a 390 × 844 frame the content area is 844 − 48 (padding) − 64 (header and
 gap) − 16 − 112 (action block) = 604, and the header plus three fields need 533, so Name,
 Email and Password are all visible at rest; consent and the links are one short scroll
-below. The rows in the table below for the consent row and the legal links are the
-measurements before this change and no longer hold.
+below. Re-measured on both platforms after the change (rows below).
 
 ## Sign up · IDLE (Figma 340:9)
 
@@ -71,8 +70,8 @@ measurements before this change and no longer hold.
 | **Field · name (NEW)** | none; §7 derives 16, 228, h 115; 24 | 16, 227.0, 379.4 × 114.3 | 16, 227, 370 × 115.7 | yes (derived) |
 | Field · email | 16, 228, h 115; 24. §7 moves it to 367 | 16, 365.3, h 114.3 | 16, 366.7, h 114.3 | yes (vs 367) |
 | Field · password | 16, 367, h 115. §7 moves it to 506 | 16, 503.6 | 16, 445.7 (scrolled) | yes. It scrolls, as §7 requires |
-| Consent row | 16, 580, 358 × 48 (264 from the bottom) | 264.0 from the bottom, h 48 | 264 from the bottom, h 48 | yes |
-| Legal "Terms" / "Privacy Policy" | 16 / 80, 644, 48 / 99 wide (200 from the bottom) | 16 / 80, 200 from the bottom, 48 / 98.7 | 16 / 80, 200 from the bottom, 48 / 104.7 | yes. iOS's SF is wider than Roboto |
+| Consent row | 16, 580, 358 × 48, pinned (264 from the bottom) | in the content, 24 below the password helper (content y 642.0 at rest), h 48 | in the content, 24 below the password helper; below the fold at rest, reached by scrolling | **deviation** (scrolls; see "Sign up: consent scrolls") |
+| Legal "Terms" / "Privacy Policy" | 16 / 80, 644, 48 / 99 wide, pinned; 16 below consent | in the content, 16 below consent, 48 / 98.7 wide | in the content, 16 below consent (640 when scrolled), 48 / 104.7 wide | **deviation** (scroll with consent) |
 | PrimaryAction "Create account", Disabled | centred, 708, 176 × 48 (136 from the bottom); 16 | x 117.7 (centred), 136 from the bottom, 176 × 48 | x 113 (centred), 136 from the bottom, 176 × 48 | yes |
 | Secondary "I already have an account" | 16, 772, 358 × 48; 16 | 16, 773.3, 379.4 × 48; 16 | 16, 768 (bottom 816 = 874 − 34 − 24), 370 × 48 | yes |
 | Bottom padding | 24 | 24 above the gesture bar | 24 above the home indicator | yes |
