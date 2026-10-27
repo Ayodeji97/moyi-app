@@ -1,65 +1,45 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidMultiplatformLibrary)
-    alias(libs.plugins.composeMultiplatform)
-    alias(libs.plugins.composeCompiler)
+    id("moyi.kmp.compose")
 }
 
+// The umbrella module. It depends on every other shared module, holds App(),
+// and is the single iOS framework ("Shared") the Xcode project links: iOS can
+// embed only one Kotlin framework, so everything is reached through this one.
+// Nothing is `export()`ed: Swift calls only MainViewController().
 kotlin {
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
+            // Without it the compiler guesses and warns on every link.
+            binaryOption("bundleId", "com.moyi.app.shared")
         }
     }
+
     android {
-       namespace = "com.moyi.app.shared"
-       compileSdk = libs.versions.android.compileSdk.get().toInt()
-       minSdk = libs.versions.android.minSdk.get().toInt()
-       compilerOptions {
-           jvmTarget = JvmTarget.JVM_11
-       }
-       androidResources {
-           enable = true
-       }
-       withHostTest {
-           isIncludeAndroidResources = true
-       }
-       withDeviceTestBuilder {
-           sourceSetTreeName = "test"
-       }.configure {
-           instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-       }
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }.configure {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        }
     }
+
     sourceSets {
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.compose.uiTooling)
-        }
         commonMain.dependencies {
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
+            implementation(project(":shared:core"))
+            implementation(project(":shared:domain"))
+            implementation(project(":shared:designsystem"))
+            implementation(project(":shared:data:api"))
+            implementation(project(":shared:data:network"))
+            implementation(project(":shared:data:session"))
+            implementation(project(":shared:data:repository"))
+            implementation(project(":shared:feature:auth"))
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.testRunner)
         }
     }
-}
-
-dependencies {
-    androidRuntimeClasspath(libs.compose.uiTooling)
 }
