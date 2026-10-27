@@ -59,22 +59,29 @@ Recorded in PR #5 (design system), 2026-10-27.
 - **Today:** a recorded gap. `states.md` §1c: "the *session revoked* state `13` names ... has no
   frame and no copy". The API's fallback sentence is "This sign-in was used from two places at
   once, so it has been ended. Sign in again to continue." Only that sign-in is ended.
-- **Here:** PR #6 routes to sign-in with a generic message, flagged as owed. No frame, no
-  approved copy.
+- **Here:** PR #6 routes to sign-in and shows a muted line 16 under the heading, flagged as
+  owed: "You have been signed out. Sign in again to continue." (`login_session_ended`,
+  proposed). It shows for `ReuseDetected` and `Invalid`, not for a sign-out the person asked for.
 
 ### 5. Sign-up name field
 
 - **Today:** not in Figma and not in `states.md` §1 (Sign up lists email, password, 18+
   confirmation and consent). The owner asked for it in this session. `SKILL.md` §10: one
   `displayName`, no first/last split.
-- **Here:** PR #6 uses `Field` `Text`. Its label and helper copy need approving.
+- **Here:** PR #6 uses `Field` `Text`, first in the form. Proposed copy: label "Your name",
+  helper "What your person will see.", errors "Add your name to continue." and "Keep it to 80
+  characters or fewer." The form scrolls; the action block stays pinned.
 
 ### 6. Verify-email paste-token field
 
 - **Today:** not in Figma. `states.md` §1 screen 3 has instruction, resend, "Check again" and
   "Use a different address", with no input. Deep links are meant to make the token invisible.
 - **Here:** PR #6 adds a `Field` `Text` for pasting the token from the local backend log, as a
-  development stand-in until deep links. Decide whether it ships or is debug-only.
+  development stand-in until deep links. The whole link may be pasted; the app takes the
+  value after `token=`. "Check again" submits it. Proposed copy: label "Code from the email",
+  helper "Paste the code from the link we sent, or the whole link.", errors "Paste the code
+  from the email first." and "That code does not match. Copy it again from the email."
+  In the expired state the field is hidden. Decide whether it ships or is debug-only.
 
 ### 7. 18+ and Terms consent control
 
@@ -93,6 +100,35 @@ Recorded in PR #5 (design system), 2026-10-27.
 
 - **Today:** a recorded gap (`states.md` §1c): the backend's plain-text copy is the design.
 - **Here:** nothing; the client never renders them. Listed so the brainstorm covers them.
+
+### 7a. Every string PR #6 proposed
+
+All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.xml`, marked
+`PROPOSED` there. None is in `copy.md` or `strings-proposed.md`; each needs the owner's approval.
+
+| Key | String | Why it exists |
+|---|---|---|
+| `register_name_label` / `_helper` | Your name / What your person will see. | Name field (§5) |
+| `register_name_error_blank` / `_long` | Add your name to continue. / Keep it to 80 characters or fewer. | Name validation |
+| `register_password_error_short` | That password is too short. Use 8 characters or more. | `VALID_PASSWORD`, client length check |
+| `register_action_sending` | Creating your account | Sending label (states.md §1c) |
+| `verify_token_label` / `_helper` | Code from the email / Paste the code from the link we sent, or the whole link. | Paste field (§6) |
+| `verify_token_error_blank` / `_invalid` | Paste the code from the email first. / That code does not match. Copy it again from the email. | `VERIFICATION_TOKEN_INVALID` |
+| `verify_expired_action_sending` | Sending a new link | Sending label for "Send a new link" |
+| `login_password_error_blank` | Add your password to sign in. | Empty password |
+| `login_action_sending` | Signing in | Sending label |
+| `login_error_rate_limited` | Sign in is paused for a short while. Your account is fine. Try again in a few minutes. | `ratelimit.line` plus a "when" (states.md §1b); the full-screen 345:53 is not built |
+| `auth_error_rate_limited` | This is paused for a short while. Try again in a few minutes. | 429 on register, verify, resend |
+| `login_session_ended` | You have been signed out. Sign in again to continue. | Session ended (§4) |
+| `home_greeting` / `home_line` | Hello, {name} / You are signed in. The rest of Moyi is on its way. | Temporary placeholder |
+| `home_sign_out` / `_sending` | Sign out / Signing out | Temporary placeholder |
+
+### 7b. Destinations PR #6 draws but cannot reach yet
+
+- **Terms** and **Privacy Policy** on sign up: no published URL, so the links do nothing.
+- **I forgot my password** on sign in: password reset is a later PR; the link does nothing.
+- **Sign in is the root** while the promise screen (Onboarding 1) is unbuilt, so it has no
+  back control and its eyebrow sits at the top of the content (as the unverified gate does).
 
 ## Platform
 
