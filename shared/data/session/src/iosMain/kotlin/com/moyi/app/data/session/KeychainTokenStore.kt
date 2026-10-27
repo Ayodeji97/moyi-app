@@ -143,6 +143,8 @@ class KeychainTokenStore(
         if (!defaults.boolForKey(INSTALLED_FLAG)) {
             deleteItem()
             defaults.setBool(true, forKey = INSTALLED_FLAG)
+            // Flush now: a flag lost to a crash would make the next launch wipe a live session.
+            defaults.synchronize()
         }
     }
 
