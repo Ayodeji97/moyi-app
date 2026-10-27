@@ -42,3 +42,6 @@ include(":shared:data:network")
 include(":shared:data:session")
 include(":shared:data:repository")
 include(":shared:feature:auth")
+
+// JVM-only Konsist rules over the shared sources.
+include(":architecture-tests")
