@@ -6,6 +6,7 @@ import com.moyi.app.feature.auth.resources.auth_email_error
 import com.moyi.app.feature.auth.resources.login_password_error_blank
 import com.moyi.app.feature.auth.resources.register_name_error_blank
 import com.moyi.app.feature.auth.resources.register_name_error_long
+import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
 
 /**
@@ -19,6 +20,13 @@ object AuthValidation {
 
     /** FR-001: 8 characters or more, nothing else. */
     const val PASSWORD_MIN_LENGTH = 8
+
+    /**
+     * The server's upper bound (128 characters, and 512 UTF-8 octets). 128
+     * UTF-16 units encode to at most 384 octets, so the octet limit can never
+     * bite once this one holds; it is not checked separately.
+     */
+    const val PASSWORD_MAX_LENGTH = 128
 
     // Something, an @, something, a dot, something. Deliberately loose: the
     // server decides what an address is; this only catches a missing @.
@@ -34,8 +42,11 @@ object AuthValidation {
         if (emailShape.matches(value.trim())) null else UiText.Resource(Res.string.auth_email_error)
 
     /** Counts characters as the server does (length of the string); spaces count, nothing is trimmed. */
-    fun newPassword(value: String): UiText? =
-        if (value.length >= PASSWORD_MIN_LENGTH) null else UiText.Resource(Res.string.register_password_error_short)
+    fun newPassword(value: String): UiText? = when {
+        value.length < PASSWORD_MIN_LENGTH -> UiText.Resource(Res.string.register_password_error_short)
+        value.length > PASSWORD_MAX_LENGTH -> UiText.Resource(Res.string.register_password_error_long)
+        else -> null
+    }
 
     fun existingPassword(value: String): UiText? =
         if (value.isEmpty()) UiText.Resource(Res.string.login_password_error_blank) else null

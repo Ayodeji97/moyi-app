@@ -42,8 +42,10 @@
     <string name="register_email_helper">We will send a verification link.</string>
     <!-- field.password.helper. -->
     <string name="register_password_helper">8 characters or more. Anything you like.</string>
-    <!-- PROPOSED. Password shorter than 8 (client) or VALID_PASSWORD from the server. No composition rules, per field.password.helper's note. -->
+    <!-- PROPOSED. Password shorter than 8 (client), or VALID_PASSWORD from the server for a password under 8. No composition rules, per field.password.helper's note. -->
     <string name="register_password_error_short">That password is too short. Use 8 characters or more.</string>
+    <!-- PROPOSED. Password over the server's 128 characters (client), or VALID_PASSWORD from the server for a password of 8 or more. -->
+    <string name="register_password_error_long">That password is too long. Use 128 characters or fewer.</string>
     <!-- copy.md "The breached-password message" (wins over strings-proposed.md field.password.error.breached). Server code NOT_BREACHED. -->
     <string name="register_password_error_breached">This password shows up on a list of leaked passwords. Pick a different one.</string>
     <!-- Figma 340:29 (consent text 6b). The whole row toggles. The Terms and Privacy Policy links sit right below it. -->

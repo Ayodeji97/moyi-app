@@ -13,6 +13,7 @@ import com.moyi.app.feature.auth.resources.login_error_credentials
 import com.moyi.app.feature.auth.resources.register_name_error_blank
 import com.moyi.app.feature.auth.resources.register_name_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_breached
+import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
 import com.moyi.app.feature.auth.resources.verify_token_error_invalid
 import com.moyi.app.feature.auth.violation
@@ -83,7 +84,7 @@ class AuthErrorMapperTest {
                 // The first violation for a field wins.
                 RegisterField.Password to res(Res.string.register_password_error_breached),
             ),
-            AuthErrorMapper.registerFieldErrors(error),
+            AuthErrorMapper.registerFieldErrors(error, submittedPassword = "correct horse"),
         )
         assertEquals(
             mapOf(
@@ -92,14 +93,33 @@ class AuthErrorMapperTest {
             ),
             AuthErrorMapper.registerFieldErrors(
                 apiError(422, ApiErrorCode.VALIDATION_FAILED, violation("displayName", "NOT_BLANK"), violation("password", "VALID_PASSWORD")),
+                submittedPassword = "short",
             ),
         )
     }
 
     @Test
+    fun validPasswordIsTooShortUnder8AndTooLongOtherwise() {
+        val error = apiError(422, ApiErrorCode.VALIDATION_FAILED, violation("password", "VALID_PASSWORD"))
+        assertEquals(
+            mapOf(RegisterField.Password to res(Res.string.register_password_error_short)),
+            AuthErrorMapper.registerFieldErrors(error, submittedPassword = "1234567"),
+        )
+        // 8 and over: the only way the server still says VALID_PASSWORD is its upper bound.
+        assertEquals(
+            mapOf(RegisterField.Password to res(Res.string.register_password_error_long)),
+            AuthErrorMapper.registerFieldErrors(error, submittedPassword = "12345678"),
+        )
+        assertEquals(
+            mapOf(RegisterField.Password to res(Res.string.register_password_error_long)),
+            AuthErrorMapper.registerFieldErrors(error, submittedPassword = "a".repeat(129)),
+        )
+    }
+
+    @Test
     fun aViolationOnAFieldTheScreenDoesNotHaveIsNotAFieldError() {
-        assertTrue(AuthErrorMapper.registerFieldErrors(apiError(422, ApiErrorCode.VALIDATION_FAILED, violation("locale", "PATTERN"))).isEmpty())
-        assertTrue(AuthErrorMapper.registerFieldErrors(DataError.Network.NoInternet).isEmpty())
+        assertTrue(AuthErrorMapper.registerFieldErrors(apiError(422, ApiErrorCode.VALIDATION_FAILED, violation("locale", "PATTERN")), "").isEmpty())
+        assertTrue(AuthErrorMapper.registerFieldErrors(DataError.Network.NoInternet, "").isEmpty())
     }
 
     @Test

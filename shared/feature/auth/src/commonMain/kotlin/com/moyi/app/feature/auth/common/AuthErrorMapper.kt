@@ -14,6 +14,7 @@ import com.moyi.app.feature.auth.resources.login_error_rate_limited
 import com.moyi.app.feature.auth.resources.register_name_error_blank
 import com.moyi.app.feature.auth.resources.register_name_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_breached
+import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
 import com.moyi.app.feature.auth.resources.verify_token_error_invalid
 
@@ -64,13 +65,17 @@ object AuthErrorMapper {
      * violation for a field wins. A violation on a field the screen does not
      * have (locale, acceptedTermsVersion) is not here; the caller falls back
      * to [formFailure] when this is empty.
+     *
+     * [submittedPassword] is the password that was sent. The server answers
+     * VALID_PASSWORD both for too short and for too long, so its length
+     * decides which sentence is true.
      */
-    fun registerFieldErrors(error: DataError): Map<RegisterField, UiText> {
+    fun registerFieldErrors(error: DataError, submittedPassword: String): Map<RegisterField, UiText> {
         val problem = (error as? DataError.Network.Api)?.problem ?: return emptyMap()
         val out = linkedMapOf<RegisterField, UiText>()
         for (violation in problem.fieldErrors) {
             val field = RegisterField.entries.firstOrNull { it.wireName == violation.field } ?: continue
-            if (field !in out) out[field] = registerFieldMessage(field, violation)
+            if (field !in out) out[field] = registerFieldMessage(field, violation, submittedPassword)
         }
         return out
     }
@@ -86,7 +91,7 @@ object AuthErrorMapper {
     /** 410 VERIFICATION_TOKEN_EXPIRED: expired or already used (doc 06 §3.1). */
     fun isVerificationExpired(error: DataError): Boolean = error.code() == ApiErrorCode.VERIFICATION_TOKEN_EXPIRED
 
-    private fun registerFieldMessage(field: RegisterField, violation: FieldError): UiText = when (field) {
+    private fun registerFieldMessage(field: RegisterField, violation: FieldError, submittedPassword: String): UiText = when (field) {
         RegisterField.Name -> UiText.Resource(
             if (violation.code == "SIZE") Res.string.register_name_error_long else Res.string.register_name_error_blank,
         )
@@ -94,10 +99,10 @@ object AuthErrorMapper {
         // NOT_BREACHED and VALID_PASSWORD are deliberately distinct codes so the
         // two get different copy (copy.md, the breached-password message).
         RegisterField.Password -> UiText.Resource(
-            if (violation.code == "NOT_BREACHED") {
-                Res.string.register_password_error_breached
-            } else {
-                Res.string.register_password_error_short
+            when {
+                violation.code == "NOT_BREACHED" -> Res.string.register_password_error_breached
+                submittedPassword.length < AuthValidation.PASSWORD_MIN_LENGTH -> Res.string.register_password_error_short
+                else -> Res.string.register_password_error_long
             },
         )
     }

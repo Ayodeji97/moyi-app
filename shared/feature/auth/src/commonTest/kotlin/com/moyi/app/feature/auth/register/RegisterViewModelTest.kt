@@ -15,6 +15,7 @@ import com.moyi.app.feature.auth.resources.auth_error_offline
 import com.moyi.app.feature.auth.resources.auth_error_rate_limited
 import com.moyi.app.feature.auth.resources.register_name_error_blank
 import com.moyi.app.feature.auth.resources.register_password_error_breached
+import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
 import com.moyi.app.feature.auth.violation
 import kotlinx.coroutines.CompletableDeferred
@@ -120,9 +121,27 @@ class RegisterViewModelTest : MainDispatcherTest() {
 
         val state = viewModel.state.value
         assertEquals(UiText.Resource(Res.string.auth_email_error), state.email.error)
-        assertEquals(UiText.Resource(Res.string.register_password_error_short), state.password.error)
+        // The client already stops anything under 8, so a VALID_PASSWORD for an
+        // 8-or-more password can only be the server's upper bound (512 octets, 128 characters).
+        assertEquals(UiText.Resource(Res.string.register_password_error_long), state.password.error)
         assertNull(state.name.error)
         assertEquals(SubmitStatus.Idle, state.submit)
+    }
+
+    @Test
+    fun aPasswordOver128CharactersIsCaughtBeforeTheRequest() = runTest {
+        fillValidForm()
+        viewModel.onAction(RegisterAction.OnPasswordChange("a".repeat(129)))
+        viewModel.onAction(RegisterAction.OnSubmit)
+
+        assertTrue(repo.registerCalls.isEmpty())
+        assertEquals(UiText.Resource(Res.string.register_password_error_long), viewModel.state.value.password.error)
+
+        // Exactly 128 is allowed.
+        viewModel.onAction(RegisterAction.OnPasswordChange("a".repeat(128)))
+        assertNull(viewModel.state.value.password.error)
+        viewModel.onAction(RegisterAction.OnSubmit)
+        assertEquals(1, repo.registerCalls.size)
     }
 
     @Test

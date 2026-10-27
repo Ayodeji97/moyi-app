@@ -87,7 +87,7 @@ class RegisterViewModel(
                     _events.send(RegisterEvent.NavigateToVerify(email))
                 }
                 is Result.Failure -> {
-                    val fieldErrors = AuthErrorMapper.registerFieldErrors(result.error)
+                    val fieldErrors = AuthErrorMapper.registerFieldErrors(result.error, submittedPassword = checked.password.value)
                     if (fieldErrors.isEmpty()) {
                         _state.update { it.copy(submit = AuthErrorMapper.formFailure(result.error)) }
                     } else {

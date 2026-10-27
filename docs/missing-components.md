@@ -111,7 +111,8 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 |---|---|---|
 | `register_name_label` / `_helper` | Your name / What your person will see. | Name field (§5) |
 | `register_name_error_blank` / `_long` | Add your name to continue. / Keep it to 80 characters or fewer. | Name validation |
-| `register_password_error_short` | That password is too short. Use 8 characters or more. | `VALID_PASSWORD`, client length check |
+| `register_password_error_short` | That password is too short. Use 8 characters or more. | Client check under 8; `VALID_PASSWORD` for a sent password under 8 |
+| `register_password_error_long` | That password is too long. Use 128 characters or fewer. | Client check over 128; `VALID_PASSWORD` for a sent password of 8 or more (the server's 128-character and 512-octet limits) |
 | `register_action_sending` | Creating your account | Sending label (states.md §1c) |
 | `verify_token_label` / `_helper` | Code from the email / Paste the code from the link we sent, or the whole link. | Paste field (§6) |
 | `verify_token_error_blank` / `_invalid` | Paste the code from the email first. / That code does not match. Copy it again from the email. | `VERIFICATION_TOKEN_INVALID` |
