@@ -36,6 +36,27 @@ below its last. Figma keeps the whole line box. The fix sets
 `LineHeightStyle(Alignment.Center, Trim.None)` on every Rosewood style (`MoyiTypography.kt`).
 The tables below are measured after it.
 
+## Sign up: consent scrolls (deliberate deviation from Figma)
+
+Figma 340:9 has no name field, and pins four parts to the bottom: the consent row, the
+Terms / Privacy links, the action and the secondary link. With the name field added (§7 of
+the spec), that layout failed on device:
+
+- **At rest on an iPhone 17**, the pinned block took 264 of the 778 between the safe areas, so
+  the password field sat behind it, with nothing to say the content scrolled.
+- **At 200 % font on a 360 × 640 phone**, the pinned block was taller than the space left, the
+  weighted content collapsed to 0, and the button clipped.
+
+**As built:** the consent row and the links row move into the scrolling content, 24 after
+the password field (the gap between the form's blocks); the links stay 16 under the consent
+text, as Figma draws them, because the text points at them ("the terms below"). Only the
+InlineError (when shown), the PrimaryAction and "I already have an account" stay pinned, 16
+apart (D3). On a 390 × 844 frame the content area is 844 − 48 (padding) − 64 (header and
+gap) − 16 − 112 (action block) = 604, and the header plus three fields need 533, so Name,
+Email and Password are all visible at rest; consent and the links are one short scroll
+below. The rows in the table below for the consent row and the legal links are the
+measurements before this change and no longer hold.
+
 ## Sign up · IDLE (Figma 340:9)
 
 | Element | Figma (x, y, w, h; gap above) | Android dp (content) | iOS pt (content) | Match? |
@@ -100,6 +121,5 @@ is the comparison.
   colours were not looked at on device.
 - The verify sub-states Resent (362:95) and Link expired (362:107) on device. They are covered
   by ViewModel tests and previews. The Figma text for both was never read (spec §7).
-- 200 % font scale on device. The content scrolls by construction; the pinned action block on
-  sign up holds four parts and will take much of a small screen at 200 %. That is worth
-  walking before release.
+- 200 % font scale was walked on the Android emulator after the consent change (see "Sign up:
+  consent scrolls"); not on iOS.

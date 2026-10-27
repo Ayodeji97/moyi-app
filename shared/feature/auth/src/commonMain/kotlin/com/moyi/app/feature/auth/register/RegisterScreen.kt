@@ -74,11 +74,14 @@ fun RegisterRoot(
 }
 
 /**
- * Placed per Figma 340:9 (auth-placement-spec §3.1). The Name field is new
- * (not in Figma; §7), so the content scrolls while the action block, which
- * Figma's keyboard-up frame shows holding consent, legal links, the action
- * and the secondary link, stays pinned. Every gap inside the action block is
- * 16 on this screen (D3).
+ * Placed per Figma 340:9 (auth-placement-spec §3.1), with one deliberate
+ * deviation (auth-screens-check.md, "Sign up: consent scrolls"). The Name
+ * field is new (not in Figma; §7), and with it the consent row and the legal
+ * links no longer fit in a pinned block: at rest on an iPhone 17 they hid the
+ * password, and at 200 % font they squeezed the scrolling content to nothing.
+ * So consent and the links scroll with the fields, 24 after the password, and
+ * only the InlineError (when shown), the action and the secondary link stay
+ * pinned. Gaps inside the action block stay 16 on this screen (D3).
  */
 @Composable
 fun RegisterScreen(
@@ -90,25 +93,6 @@ fun RegisterScreen(
     MoyiScaffold(
         onBack = { onAction(RegisterAction.OnBackClick) },
         action = {
-            ConsentCheckbox(
-                checked = state.consent,
-                onCheckedChange = { onAction(RegisterAction.OnConsentChange(it)) },
-                text = stringResource(Res.string.register_consent),
-            )
-            Spacer(Modifier.height(spacing.md))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-                TextLink(
-                    stringResource(Res.string.register_terms),
-                    onClick = { onAction(RegisterAction.OnLegalLinkClick) },
-                    style = TextLinkStyle.Body,
-                )
-                TextLink(
-                    stringResource(Res.string.register_privacy),
-                    onClick = { onAction(RegisterAction.OnLegalLinkClick) },
-                    style = TextLinkStyle.Body,
-                )
-            }
-            Spacer(Modifier.height(spacing.md))
             if (failed != null) {
                 InlineError(failed.message.asString())
                 Spacer(Modifier.height(spacing.md))
@@ -178,6 +162,26 @@ fun RegisterScreen(
                 .semantics { contentType = ContentType.NewPassword }
                 .onBlur { onAction(RegisterAction.OnFieldBlur(RegisterField.Password)) },
         )
+        Spacer(Modifier.height(spacing.lg))
+        ConsentCheckbox(
+            checked = state.consent,
+            onCheckedChange = { onAction(RegisterAction.OnConsentChange(it)) },
+            text = stringResource(Res.string.register_consent),
+        )
+        // The links the consent text points at ("the terms below"), right under it.
+        Spacer(Modifier.height(spacing.md))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+            TextLink(
+                stringResource(Res.string.register_terms),
+                onClick = { onAction(RegisterAction.OnLegalLinkClick) },
+                style = TextLinkStyle.Body,
+            )
+            TextLink(
+                stringResource(Res.string.register_privacy),
+                onClick = { onAction(RegisterAction.OnLegalLinkClick) },
+                style = TextLinkStyle.Body,
+            )
+        }
     }
 }
 
