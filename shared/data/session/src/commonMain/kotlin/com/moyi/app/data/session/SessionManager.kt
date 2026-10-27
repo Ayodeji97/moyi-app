@@ -46,6 +46,7 @@ import kotlinx.coroutines.withContext
 class SessionManager(
     private val store: SecureTokenStore,
     private val refreshApi: RefreshControllerApi,
+    logger: Logger = Logger,
 ) : BearerTokenSource {
     private val mutex = Mutex()
     private val accessToken = MutableStateFlow<String?>(null)
@@ -61,7 +62,18 @@ class SessionManager(
     private val issued = mutableSetOf<String>()
     private val state = MutableStateFlow<SessionState>(SessionState.Unknown)
     private val eventChannel = Channel<SessionEvent>(Channel.BUFFERED)
-    private val log = Logger.withTag("Session")
+    private val log = logger.withTag("Session")
+
+    /** Only exception class names, never a token: ADR-0021's "Revisit when", made measurable. */
+    private val ambiguousLog = logger.withTag("SessionRefreshAmbiguous")
+
+    /**
+     * The last refresh failure in this process that may have rotated the
+     * token without our hearing (its exception class name), or null. A
+     * `TOKEN_REUSE_DETECTED` while it is set is logged as correlated. Cleared
+     * by a successful refresh or a new session; guarded by [mutex].
+     */
+    private var lastAmbiguousFailure: String? = null
 
     val sessionState: StateFlow<SessionState> = state.asStateFlow()
     val events: Flow<SessionEvent> = eventChannel.receiveAsFlow()
@@ -85,7 +97,21 @@ class SessionManager(
      * - `401 TOKEN_REUSE_DETECTED` or `REFRESH_TOKEN_INVALID`: the session is
      *   over. Store and memory are wiped and [SessionEvent.Ended] is emitted.
      * - Offline, timeout, 5xx or anything else: nothing changes and null is
-     *   returned. A bad network never signs anyone out.
+     *   returned. The stored refresh token is kept, because there is nothing
+     *   better to present next time.
+     *
+     * That last rule does NOT mean a bad network never signs anyone out. The
+     * risk window is the whole time the refresh is in flight, not a few
+     * milliseconds: once the request has left, the server may rotate R1 to R2
+     * and the answer can still be lost (a read or request timeout, a reset
+     * connection). Presenting R1 again then trips `TOKEN_REUSE_DETECTED`,
+     * which revokes the family and emails the person (ADR-0021, no grace
+     * window). No client-side fix exists under strict rotation. What the
+     * client does is tell the two cases apart ([RefreshFailureKind]): a
+     * failure that may have reached the server is logged under the Kermit
+     * tag `SessionRefreshAmbiguous`, and so is a reuse that follows one in
+     * the same process, so the rate can be measured before the backend is
+     * asked for a fix (docs/backend-contract-gaps.md, row 11).
      */
     suspend fun refresh(staleAccess: String?): String? =
         (refreshOutcome(staleAccess) as? RefreshOutcome.Refreshed)?.accessToken
@@ -111,6 +137,7 @@ class SessionManager(
         mutex.withLock {
             withContext(NonCancellable) {
                 store.write(grant.toStoredSession())
+                lastAmbiguousFailure = null
                 issued.clear()
                 issued += grant.accessToken
                 accessToken.value = grant.accessToken
@@ -185,14 +212,24 @@ class SessionManager(
         // must not abandon the answer: a rotated token that is never stored
         // makes the next refresh a reuse. HttpTimeout bounds the wait.
         withContext(NonCancellable) {
-            val result = safeApiCall { refreshApi.refresh(RefreshRequest(stored.refreshToken)) }
+            // Kept to tell a request that never left from one whose answer was
+            // lost (RefreshFailureKind); safeApiCall keeps only the error type.
+            var thrown: Throwable? = null
+            val result = safeApiCall {
+                try {
+                    refreshApi.refresh(RefreshRequest(stored.refreshToken))
+                } catch (e: Throwable) {
+                    thrown = e
+                    throw e
+                }
+            }
             val grant = when (result) {
                 is Result.Success -> result.data.toSessionGrant()
                 is Result.Failure -> result
             }
             when (grant) {
                 is Result.Success -> publish(grant.data)
-                is Result.Failure -> onRefreshFailed(grant.error, stored)
+                is Result.Failure -> onRefreshFailed(grant.error, stored, thrown)
             }
         }
     }
@@ -211,21 +248,32 @@ class SessionManager(
             endLocked(SessionEndReason.Invalid)
             return RefreshOutcome.Ended(SessionEndReason.Invalid)
         }
+        lastAmbiguousFailure = null
         issued += grant.accessToken
         accessToken.value = grant.accessToken
         state.value = SessionState.SignedIn(grant.user)
         return RefreshOutcome.Refreshed(grant.accessToken)
     }
 
-    private suspend fun onRefreshFailed(error: DataError.Network, stored: StoredSession): RefreshOutcome {
+    private suspend fun onRefreshFailed(error: DataError.Network, stored: StoredSession, thrown: Throwable?): RefreshOutcome {
         val reason = when ((error as? DataError.Network.Api)?.problem?.code) {
             ApiErrorCode.TOKEN_REUSE_DETECTED -> SessionEndReason.ReuseDetected
             ApiErrorCode.REFRESH_TOKEN_INVALID -> SessionEndReason.Invalid
             else -> null
         }
         if (reason == null) {
+            if (classifyRefreshFailure(thrown, error) == RefreshFailureKind.Ambiguous) {
+                val cause = thrown?.let { it::class.simpleName } ?: error::class.simpleName
+                lastAmbiguousFailure = cause
+                ambiguousLog.w { "Refresh failed after it may have reached the server ($cause); the next refresh may be read as reuse" }
+            }
             log.i { "Refresh unavailable, session kept: $error" }
             return RefreshOutcome.Unavailable(error, stored)
+        }
+        lastAmbiguousFailure?.let { cause ->
+            if (reason == SessionEndReason.ReuseDetected) {
+                ambiguousLog.w { "TOKEN_REUSE_DETECTED after an ambiguous refresh failure ($cause) in this process" }
+            }
         }
         endLocked(reason)
         return RefreshOutcome.Ended(reason)
@@ -241,6 +289,7 @@ class SessionManager(
             log.w { "Stored session could not be cleared" }
         }
         accessToken.value = null
+        lastAmbiguousFailure = null
         issued.clear()
         state.value = SessionState.SignedOut
         log.i { "Session ended: $reason" }

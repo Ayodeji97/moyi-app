@@ -2,6 +2,8 @@
 
 package com.moyi.app.data.session
 
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.StaticConfig
 import com.moyi.app.api.apis.MeControllerApi
 import com.moyi.app.api.apis.RefreshControllerApi
 import com.moyi.app.data.network.HttpClientFactory
@@ -51,7 +53,12 @@ class TestServer(
     )
 
     val publicClient = HttpClientFactory.createPublicClient(engine)
-    val sessionManager = SessionManager(store, RefreshControllerApi(ORIGIN, publicClient))
+    val logs = CapturingLogWriter()
+    val sessionManager = SessionManager(
+        store,
+        RefreshControllerApi(ORIGIN, publicClient),
+        Logger(StaticConfig(logWriterList = listOf(logs))),
+    )
     val authedClient = HttpClientFactory.createAuthedClient(engine, sessionManager)
     val me = MeControllerApi(ORIGIN, authedClient)
 }

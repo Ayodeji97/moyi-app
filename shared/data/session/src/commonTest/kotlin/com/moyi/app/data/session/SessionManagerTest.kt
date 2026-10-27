@@ -9,6 +9,9 @@ import com.moyi.app.data.testing.tokenPairJson
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
+import co.touchlab.kermit.Severity
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -20,7 +23,10 @@ import kotlinx.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.test.fail
+
+private const val AMBIGUOUS = "SessionRefreshAmbiguous"
 
 /** SessionManager on its own: the single-flight guarantee, ordering, and cold start. */
 class SessionManagerTest {
@@ -108,6 +114,67 @@ class SessionManagerTest {
         assertEquals("a1", server.sessionManager.currentAccessToken())
         assertEquals(SessionState.SignedIn(ada), server.sessionManager.sessionState.value)
         assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun aRefreshThatTimesOutAfterSendingKeepsTheSessionAndLogsItAsAmbiguous() = runTest {
+        val server = TestServer(initial = null) { throw SocketTimeoutException("read timed out") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+
+        assertNull(server.sessionManager.refresh("a1"))
+
+        assertEquals("r1", server.store.current?.refreshToken)
+        assertEquals(SessionState.SignedIn(ada), server.sessionManager.sessionState.value)
+        val ambiguous = server.logs.tagged(AMBIGUOUS)
+        assertEquals(1, ambiguous.size, server.logs.entries.toString())
+        assertEquals(Severity.Warn, ambiguous.single().severity)
+        assertTrue("SocketTimeoutException" in ambiguous.single().message)
+        assertNoTokenLogged(server)
+    }
+
+    @Test
+    fun aRefreshThatNeverLeftIsNotLoggedAsAmbiguous() = runTest {
+        val server = TestServer(initial = null) { throw ConnectTimeoutException("connect timed out") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+
+        assertNull(server.sessionManager.refresh("a1"))
+
+        assertEquals(emptyList(), server.logs.tagged(AMBIGUOUS))
+    }
+
+    @Test
+    fun reuseDetectedAfterAnAmbiguousFailureIsLoggedAsCorrelated() = runTest {
+        var calls = 0
+        val server = TestServer(initial = null) {
+            if (++calls == 1) throw SocketTimeoutException("read timed out")
+            respondProblem(HttpStatusCode.Unauthorized, "TOKEN_REUSE_DETECTED")
+        }
+        server.sessionManager.startSession(grant("a1", "r1"))
+
+        assertNull(server.sessionManager.refresh("a1"))
+        assertNull(server.sessionManager.refresh("a1"))
+
+        val ambiguous = server.logs.tagged(AMBIGUOUS)
+        assertEquals(2, ambiguous.size, server.logs.entries.toString())
+        assertTrue("TOKEN_REUSE_DETECTED" in ambiguous[1].message)
+        assertEquals(SessionState.SignedOut, server.sessionManager.sessionState.value)
+        assertNoTokenLogged(server)
+    }
+
+    @Test
+    fun reuseDetectedWithNoEarlierAmbiguousFailureLogsNoCorrelation() = runTest {
+        val server = TestServer(initial = null) { respondProblem(HttpStatusCode.Unauthorized, "TOKEN_REUSE_DETECTED") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+
+        assertNull(server.sessionManager.refresh("a1"))
+
+        assertEquals(emptyList(), server.logs.tagged(AMBIGUOUS))
+    }
+
+    private fun assertNoTokenLogged(server: TestServer) {
+        server.logs.entries.forEach { entry ->
+            listOf("a1", "r1").forEach { token -> assertTrue(token !in entry.message, "token in log: $entry") }
+        }
     }
 
     @Test

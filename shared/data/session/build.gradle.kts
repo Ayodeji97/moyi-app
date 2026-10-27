@@ -22,6 +22,10 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.koin.android)
         }
+        iosMain.dependencies {
+            // DarwinHttpRequestException, to classify a failed refresh (RefreshFailureKind).
+            implementation(libs.ktor.client.darwin)
+        }
         commonTest.dependencies {
             implementation(project(":shared:data:testing"))
             implementation(libs.ktor.client.mock)
