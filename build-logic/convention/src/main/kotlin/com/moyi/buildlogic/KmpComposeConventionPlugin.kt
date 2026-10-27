@@ -35,9 +35,6 @@ class KmpComposeConventionPlugin : Plugin<Project> {
                 implementation(libs.library("androidx-lifecycle-viewmodelCompose"))
                 implementation(libs.library("androidx-lifecycle-runtimeCompose"))
             }
-            sourceSets.getByName("androidMain").dependencies {
-                implementation(libs.library("compose-uiToolingPreview"))
-            }
         }
 
         // Previews render in the IDE from the Android runtime classpath.

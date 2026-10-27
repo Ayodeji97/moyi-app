@@ -20,8 +20,12 @@ object ImportRules {
         "com.moyi.app.data",
     )
 
-    /** Features talk to the domain, never to the data layer directly. */
-    val forbiddenInFeatures: List<String> = listOf("com.moyi.app.data")
+    /**
+     * Features talk to the domain, never to the data layer directly, and never to
+     * the generated network DTOs (`com.moyi.app.api`, PR #3): those are mapped to
+     * domain models in the repository layer.
+     */
+    val forbiddenInFeatures: List<String> = listOf("com.moyi.app.data", "com.moyi.app.api")
 
     /**
      * Kotlin sources under [directory] (relative to the repository root), with

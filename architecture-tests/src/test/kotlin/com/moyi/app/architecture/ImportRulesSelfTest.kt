@@ -2,6 +2,7 @@ package com.moyi.app.architecture
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Proves the rules fire. Each fixture is a deliberately violating .kt file
@@ -41,6 +42,9 @@ class ImportRulesSelfTest {
             ImportRules.forbiddenInDomain,
         )
         val allowed = setOf("com.moyi.app.core.Result", "kotlinx.coroutines.flow.Flow", "androidxish.Fake")
+        // The allowed imports must actually be in the fixture, or this test would pass vacuously.
+        val parsed = ImportRules.scope("$fixtures/domain").files.flatMap { file -> file.imports.map { it.name } }.toSet()
+        assertTrue(parsed.containsAll(allowed), "fixture is missing allowed imports: ${allowed - parsed}")
         assertEquals(emptyList(), violations.filter { it.substringAfter("import ") in allowed })
     }
 
@@ -50,6 +54,9 @@ class ImportRulesSelfTest {
             ImportRules.scope("$fixtures/feature"),
             ImportRules.forbiddenInFeatures,
         )
-        assertEquals(listOf("com.moyi.app.data.repository.ModuleInfo"), violations.map { it.substringAfter("import ") })
+        assertEquals(
+            setOf("com.moyi.app.data.repository.ModuleInfo", "com.moyi.app.api.models.LoginResponse"),
+            violations.map { it.substringAfter("import ") }.toSet(),
+        )
     }
 }

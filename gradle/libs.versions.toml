@@ -24,7 +24,7 @@ kotlinx-datetime = "0.8.0"
 kotlinx-serialization = "1.12.0"
 ktor = "3.6.0"
 material3 = "1.12.0-alpha03"
-openapi-generator = "7.14.0"
+openapi-generator = "7.26.0"
 turbine = "1.2.1"
 
 [libraries]

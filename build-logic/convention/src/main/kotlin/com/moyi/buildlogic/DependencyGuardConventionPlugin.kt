@@ -86,6 +86,9 @@ class DependencyGuardConventionPlugin : Plugin<Project> {
             report.set(layout.buildDirectory.file("reports/dependency-guard/report.txt"))
         }
 
-        tasks.matching { it.name == "check" }.configureEach { dependsOn(checkTask) }
+        // Lazy: `matching` would realise every task in the module to test its name.
+        pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+            tasks.named("check") { dependsOn(checkTask) }
+        }
     }
 }
