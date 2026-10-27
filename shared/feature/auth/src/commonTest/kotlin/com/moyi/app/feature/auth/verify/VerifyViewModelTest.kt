@@ -37,7 +37,13 @@ class VerifyViewModelTest : MainDispatcherTest() {
         viewModel.onAction(VerifyAction.OnTokenChange("abc"))
         viewModel.onAction(VerifyAction.OnSubmit)
         assertEquals(SubmitStatus.Sending, viewModel.state.value.submit)
+
+        // A second tap while checking sends nothing more.
+        viewModel.onAction(VerifyAction.OnSubmit)
+        assertEquals(1, repo.verifyCalls.size)
+
         gate.complete(Unit)
+        assertEquals(SubmitStatus.Idle, viewModel.state.value.submit)
     }
 
     @Test

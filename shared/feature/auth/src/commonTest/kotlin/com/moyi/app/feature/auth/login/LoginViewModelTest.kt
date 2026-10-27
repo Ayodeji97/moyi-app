@@ -53,7 +53,13 @@ class LoginViewModelTest : MainDispatcherTest() {
         vm.onAction(LoginAction.OnPasswordChange("correct horse"))
         vm.onAction(LoginAction.OnSubmit)
         assertEquals(SubmitStatus.Sending, vm.state.value.submit)
+
+        // A second tap while signing in sends nothing more.
+        vm.onAction(LoginAction.OnSubmit)
+        assertEquals(1, repo.loginCalls.size)
+
         gate.complete(Unit)
+        assertEquals(SubmitStatus.Idle, vm.state.value.submit)
     }
 
     @Test
