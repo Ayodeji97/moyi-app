@@ -15,7 +15,9 @@ import org.jetbrains.compose.resources.StringResource
  * A UI model, not the API's `Bond.type`: the mapping is exact (COUPLE,
  * FRIENDS, FAMILY) and `PARENT_CHILD` has no card. It moves to the domain
  * when the bond repository exists.
- * TODO(logic): map to the domain's bond type for `POST /api/v1/bonds` (`type`).
+ * TODO(logic): map to the domain's bond type for `POST /api/v1/bonds` (`type`). The other way,
+ *  `InvitePreviewResponse.bondType` can be PARENT_CHILD, which has no entry here: the joiner's
+ *  confirm screen needs a fallback for it (a generic line), not a crash.
  */
 enum class RelationshipType(val label: StringResource, val confirmLine: StringResource) {
     Couple(Res.string.bond_type_couple, Res.string.join_confirm_line_couple),
