@@ -176,6 +176,44 @@ Ruling: Figma wins for placement and geometry, tokens.md for colour.
 
 ## Components the design system has and this PR does not build
 
-`EntryCard`, `ComposeField`, `DayCell`, `StateBlock`, `InviteCode`, `Chip`, `FavouriteToggle`,
-and `Field`'s `Select`, `Code` and `Multiline` types. None is needed for the auth flow. They are
-built when a screen needs them, and they are not gaps in the design system.
+`DayCell`, `StateBlock`, `InviteCode`, `Chip`, `FavouriteToggle`, and `Field`'s `Select`, `Code`
+and `Multiline` types. They are built when a screen needs them, and they are not gaps in the
+design system. `EntryCard` and `ComposeField` arrived with the daily loop (PR #8); `StateBlock`
+and `InviteCode` arrive with onboarding (PR #7), and the daily loop's `DayNote` stand-ins give
+way to `StateBlock` at the rebase.
+
+## The daily loop (PR #8, UI only)
+
+### 13. Strings PR #8 proposed
+
+Each is marked PROPOSED in `shared/feature/today/.../strings.xml`; none is approved.
+
+| Key | String | Why |
+|---|---|---|
+| `today_write_action` | Write | Today's PrimaryAction; the corpus has no label (spec gap) |
+| `write_send` | Send | the composer's PrimaryAction; the corpus has no label (spec gap) |
+| `write_saving` | Saving | Save in flight, mirroring Sending |
+| `write_queued` | Waiting to send | PrimaryAction QueuedOffline |
+| `write_counter` | %1$d / 500 | the counter past 400 |
+| `today_author_you` / `today_author_partner` | From you / From %1$s | EntryCard author labels ("From you" is fixed for the tombstone by states.md) |
+| `today_edit` | Edit what you wrote | parallels the established "Delete what you wrote" |
+| `today_tombstone_line` | You deleted what you wrote. | the one body line on the tombstone (420:59) |
+| `today_nav_archive` / `today_nav_settings` | Archive / Bond settings | spoken names of the nav icons |
+| `delete_eyebrow` / `delete_heading` | Your entry / Delete what you wrote? | 420:65 and 420:67, copy never read |
+| `delete_confirm` / `delete_deleting` | Delete / Deleting | the danger PrimaryAction |
+| `ds_compose_dismiss_prompt` | Hide the prompt | spoken name of the composer's X |
+
+Two corpus lines were adapted, not invented: the waiting line is copy.md's sentence split at
+its full stop into a heading and a line (the StateBlock shape), and save failed uses states.md
+§10's form without "Try again?", because the button under it already says Try again.
+
+### 14. Delete-after-reveal and the tombstone: which surface
+
+`states.md` §6 says it is unsettled. PR #8 puts the link on Today · revealed and the tombstone
+on Today's layout (not on the Reveal surface Figma draws it on), so nothing dead-ends. The link
+pushes the revealed cards 24 above 159:19. Owner call.
+
+### 15. The motion board was never read
+
+The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
+`TODO(motion)`), pending Figma 180:21. The design system has no motion tokens yet.
