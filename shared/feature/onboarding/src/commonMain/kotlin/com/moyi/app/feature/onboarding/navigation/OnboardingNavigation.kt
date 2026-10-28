@@ -98,11 +98,7 @@ fun NavGraphBuilder.onboardingGraph(
             val route = entry.toRoute<CreateBondRoute>()
             CreateBondRoot(
                 type = route.type,
-                onNavigateToInvite = { code ->
-                    navController.navigate(InviteHandoffRoute(code)) {
-                        popUpTo(navController.graph.id) { inclusive = true }
-                    }
-                },
+                onNavigateToInvite = { code -> navController.replaceWithInvite(code) },
                 onNavigateBack = { navController.navigateUp() },
             )
         }
@@ -136,6 +132,16 @@ fun NavGraphBuilder.onboardingGraph(
                 onNavigateBack = { navController.navigateUp() },
             )
         }
+    }
+}
+
+/**
+ * The bond exists once Create bond succeeds, so the invite handoff replaces
+ * everything: neither back nor system back may return to the form.
+ */
+internal fun NavController.replaceWithInvite(code: String) {
+    navigate(InviteHandoffRoute(code)) {
+        popUpTo(graph.id) { inclusive = true }
     }
 }
 

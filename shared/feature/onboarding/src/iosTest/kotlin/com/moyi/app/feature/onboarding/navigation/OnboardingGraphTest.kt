@@ -7,6 +7,7 @@ import androidx.navigation.toRoute
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Builds the real onboarding graph and navigates to every route with an
@@ -45,5 +46,17 @@ class OnboardingGraphTest {
         val nav = controller()
         nav.navigate(OnboardingRoute)
         assertEquals(RelationshipTypeRoute, nav.currentBackStackEntry!!.toRoute<RelationshipTypeRoute>())
+    }
+
+    @Test
+    fun theInviteHandoffCannotBeReturnedFrom() {
+        val nav = controller()
+        nav.navigate(OnboardingRoute)
+        nav.navigate(CreateBondRoute(RelationshipType.entries.first()))
+
+        nav.replaceWithInvite("K7Q2PD")
+
+        assertEquals("K7Q2PD", nav.currentBackStackEntry!!.toRoute<InviteHandoffRoute>().code)
+        assertNull(nav.previousBackStackEntry, "the bond exists; back must not return to the form")
     }
 }

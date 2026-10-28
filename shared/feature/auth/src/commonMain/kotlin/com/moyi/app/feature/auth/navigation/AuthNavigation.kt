@@ -55,10 +55,7 @@ fun NavGraphBuilder.authGraph(
         RegisterRoot(
             onNavigateToVerify = { email -> navController.navigate(VerifyRoute(email)) },
             onNavigateToLogin = { navController.backToLogin() },
-            onNavigateBack = {
-                // From the promise, back returns to it; from sign in, to sign in.
-                if (navController.previousBackStackEntry != null) navController.navigateUp() else navController.backToLogin()
-            },
+            onNavigateBack = { navController.backFromRegister() },
         )
     }
     composable<VerifyRoute> { entry ->
@@ -78,12 +75,17 @@ fun NavGraphBuilder.authGraph(
     }
 }
 
+/** From the promise, back returns to it; from sign in, to sign in; alone, sign in replaces it. */
+internal fun NavController.backFromRegister() {
+    if (previousBackStackEntry != null) navigateUp() else backToLogin()
+}
+
 /**
  * Pops to sign in when it is directly underneath. Otherwise (sign up was
  * opened from the promise, or is the only screen) sign in replaces sign up,
  * so back from sign in returns to whatever was under sign up.
  */
-private fun NavController.backToLogin() {
+internal fun NavController.backToLogin() {
     if (previousBackStackEntry?.destination?.hasRoute<LoginRoute>() == true) {
         navigateUp()
     } else {
