@@ -26,8 +26,17 @@ data object OnboardingRoute
 @Serializable
 data object RelationshipTypeRoute
 
+/**
+ * [typeName] is a [RelationshipType] by name. Navigation has no built-in
+ * NavType for an enum on iOS (the app crashed building the graph), so the
+ * route carries a String; [type] reads it back.
+ */
 @Serializable
-data class CreateBondRoute(val type: RelationshipType)
+data class CreateBondRoute(val typeName: String) {
+    constructor(type: RelationshipType) : this(type.name)
+
+    val type: RelationshipType get() = RelationshipType.valueOf(typeName)
+}
 
 @Serializable
 data class InviteHandoffRoute(val code: String)
