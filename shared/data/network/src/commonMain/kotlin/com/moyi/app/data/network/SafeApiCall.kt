@@ -42,6 +42,9 @@ private suspend fun <R : HttpResponse<*>, T> execute(
         if (response.success) onSuccess(response) else Result.Failure(response.toFailure())
     } catch (e: CancellationException) {
         throw e
+    } catch (e: RefreshUnavailableException) {
+        // The request hit a 401 and the refresh to answer it failed; report why.
+        Result.Failure(e.error)
     } catch (_: HttpRequestTimeoutException) {
         Result.Failure(DataError.Network.Timeout)
     } catch (_: ConnectTimeoutException) {

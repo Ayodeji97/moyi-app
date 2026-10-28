@@ -38,4 +38,10 @@ class SafeApiCallTest {
         val result = safeApiCall<String> { throw IllegalStateException("boom") }
         assertEquals(Result.Failure(DataError.Network.Unknown), result)
     }
+
+    @Test
+    fun aFailedRefreshReportsItsOwnErrorNotUnknown() = runTest {
+        val result = safeApiCall<String> { throw RefreshUnavailableException(DataError.Network.Timeout) }
+        assertEquals(Result.Failure(DataError.Network.Timeout), result)
+    }
 }

@@ -41,6 +41,7 @@ include(":shared:data:api")
 include(":shared:data:network")
 include(":shared:data:session")
 include(":shared:data:repository")
+include(":shared:data:testing")
 include(":shared:feature:auth")
 
 // JVM-only Konsist rules over the shared sources.

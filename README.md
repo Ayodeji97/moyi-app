@@ -18,6 +18,7 @@ Compose Multiplatform UI. Package `com.moyi.app`. The rules for working here are
 | `:shared:data:network` | `com.moyi.app.data.network` | HttpClient, auth, error mapping |
 | `:shared:data:session` | `com.moyi.app.data.session` | Token storage and the session |
 | `:shared:data:repository` | `com.moyi.app.data.repository` | Repository implementations |
+| `:shared:data:testing` | `com.moyi.app.data.testing` | Test fixtures for the data modules' tests only (fake store, MockEngine helpers) |
 | `:shared:feature:auth` | `com.moyi.app.feature.auth` | Register, verify, sign in |
 | `:architecture-tests` | | JVM-only Konsist rules over `shared/**` |
 | `build-logic/` | | Convention plugins: `moyi.kmp.library`, `moyi.kmp.compose`, `moyi.dependency.guard` |
@@ -30,6 +31,17 @@ Domain stays framework-free two ways. `checkDependencyGuard` (part of `check`) f
 kotlin-test or kotlinx-coroutines. The Konsist rules in `:architecture-tests` fail if a
 domain file imports Ktor, SQLDelight, Koin, kotlinx.serialization, Android, AndroidX,
 iOS platform APIs or the data layer, or if a feature file imports the data layer.
+
+## The session
+
+The access token lives only in memory; the refresh token sits in the iOS Keychain or an
+Android-Keystore-encrypted file. `SessionManager` (`:shared:data:session`) is the one place
+that refreshes: concurrent `401`s share one refresh behind a `Mutex`, the new refresh token
+is stored before the new access token is used, and only `TOKEN_REUSE_DETECTED` or
+`REFRESH_TOKEN_INVALID` signs the person out. Auth endpoints use a public `HttpClient`
+without the bearer plugin; everything else uses the authed one. The design, and the
+accepted crash window between a rotation and its write, are in
+[docs/session.md](./docs/session.md).
 
 ## Commands
 
