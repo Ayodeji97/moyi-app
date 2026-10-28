@@ -38,7 +38,6 @@ import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
 import platform.Security.SecItemUpdate
-import platform.Security.errSecInteractionNotAllowed
 import platform.Security.errSecItemNotFound
 import platform.Security.errSecSuccess
 import platform.Security.kSecAttrAccessible
@@ -80,22 +79,28 @@ class KeychainTokenStore(
     private val log = Logger.withTag("SessionStore")
 
     override suspend fun read(): StoredSession? = locked {
-        // A locked Keychain (before the first unlock after a reboot) throws
-        // TokenStoreUnavailableException out of copyItem, so the caller keeps
-        // the session and retries. Any other read failure reads as no session
-        // but keeps the item.
-        val text = try {
-            copyItem()
-        } catch (e: IllegalStateException) {
-            log.w { e.message.orEmpty() }
-            null
-        } ?: return@locked null
-        val session = StoredSessionCodec.decode(text)
-        if (session == null) {
-            log.w { "Stored session unreadable; wiping it" }
-            deleteItem()
+        // Only errSecItemNotFound means "no session", and only a payload that
+        // does not decode means "corrupt" (wiped). Every other status is
+        // TokenStoreUnavailableException: the caller keeps the session and
+        // retries, so a passing Keychain hiccup never signs anyone out.
+        when (val outcome = copyItem()) {
+            KeychainReadOutcome.NoSession -> null
+            is KeychainReadOutcome.Unavailable -> throw TokenStoreUnavailableException("Keychain read failed: ${outcome.status}")
+            KeychainReadOutcome.Corrupt -> wipeUnreadable()
+            is KeychainReadOutcome.Found -> StoredSessionCodec.decode(outcome.text) ?: wipeUnreadable()
         }
-        session
+    }
+
+    /** The item exists but cannot be a session: wipe it and read as signed out. */
+    private fun wipeUnreadable(): StoredSession? {
+        log.w { "Stored session unreadable; wiping it" }
+        try {
+            deleteItem()
+        } catch (e: IllegalStateException) {
+            // Still signed out: the item is useless, and the next login overwrites it.
+            log.w { e.message.orEmpty() }
+        }
+        return null
     }
 
     override suspend fun write(session: StoredSession) = locked {
@@ -148,17 +153,13 @@ class KeychainTokenStore(
         }
     }
 
-    private fun copyItem(): String? = withQuery(kSecReturnData to kCFBooleanTrue, kSecMatchLimit to kSecMatchLimitOne) { query ->
+    private fun copyItem(): KeychainReadOutcome = withQuery(kSecReturnData to kCFBooleanTrue, kSecMatchLimit to kSecMatchLimitOne) { query ->
         memScoped {
             val result = alloc<CFTypeRefVar>()
-            when (val status = SecItemCopyMatching(query, result.ptr)) {
-                errSecSuccess -> {
-                    val data = CFBridgingRelease(result.value) as? NSData ?: return@memScoped null
-                    NSString.create(data = data, encoding = NSUTF8StringEncoding)?.toString()
-                }
-                errSecItemNotFound -> null
-                else -> throw keychainReadFailure(status)
-            }
+            val status = SecItemCopyMatching(query, result.ptr)
+            // Released whatever the status, so a non-null result never leaks.
+            val data = result.value?.let { CFBridgingRelease(it) } as? NSData
+            keychainReadOutcome(status, data)
         }
     }
 
@@ -207,15 +208,35 @@ class KeychainTokenStore(
     }
 }
 
-/**
- * What a failed `SecItemCopyMatching` means. `errSecInteractionNotAllowed`
- * (-25308) is a locked Keychain (before the first unlock after a reboot, for
- * an `AfterFirstUnlock` item): the session is intact, just not readable yet,
- * so it is [TokenStoreUnavailableException], never "signed out".
- */
-internal fun keychainReadFailure(status: OSStatus): Exception =
-    if (status == errSecInteractionNotAllowed) {
-        TokenStoreUnavailableException("Keychain locked: $status")
-    } else {
-        IllegalStateException("Keychain read failed: $status")
+/** What one `SecItemCopyMatching` for the session item came to. */
+internal sealed interface KeychainReadOutcome {
+    class Found(val text: String) : KeychainReadOutcome {
+        override fun toString(): String = "Found(<redacted>)"
     }
+
+    /** `errSecItemNotFound`: there is no session. */
+    data object NoSession : KeychainReadOutcome
+
+    /** The item is there but its data is not UTF-8 text: it is wiped. */
+    data object Corrupt : KeychainReadOutcome
+
+    /** Any other status: the session may be intact and is read again later. */
+    data class Unavailable(val status: OSStatus) : KeychainReadOutcome
+}
+
+/**
+ * Maps a `SecItemCopyMatching` status and its data to what [KeychainTokenStore.read]
+ * does. Only `errSecItemNotFound` (-25300) proves there is no session. Every
+ * other failure is [KeychainReadOutcome.Unavailable], so the caller keeps the
+ * session Unknown and retries instead of signing the person out for good:
+ * `errSecInteractionNotAllowed` (-25308, locked before the first unlock),
+ * `errSecNotAvailable` (-25291), and any status not expected here.
+ */
+internal fun keychainReadOutcome(status: OSStatus, data: NSData?): KeychainReadOutcome = when (status) {
+    errSecSuccess -> data
+        ?.let { NSString.create(data = it, encoding = NSUTF8StringEncoding)?.toString() }
+        ?.let { KeychainReadOutcome.Found(it) }
+        ?: KeychainReadOutcome.Corrupt
+    errSecItemNotFound -> KeychainReadOutcome.NoSession
+    else -> KeychainReadOutcome.Unavailable(status)
+}
