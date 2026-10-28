@@ -50,8 +50,8 @@ There is no backend behind these screens yet, so a debug build can start on them
   fails on the guard above.
 - `moyiUiPreview` is a BuildKonfig field in `:shared` (`UiPreviewConfig.UI_PREVIEW`). Empty,
   the default, is the real app. `today` starts at Today without waiting for a session and
-  switches on the debug gestures. Other UI PRs add their own value to the same property
-  (`uiPreviewScreens` in `shared/build.gradle.kts`); an unknown value fails the build.
+  switches on the debug gestures. The allowed values are the one list `uiPreviewScreens` in
+  `shared/build.gradle.kts` (`""`, `onboarding`, `today`); an unknown value fails the build.
 - **Long-press the date** on Today to step through the states in order: not written,
   written-waiting, (the reveal plays and settles) revealed, tombstone, partner not joined,
   solo you wrote, solo they wrote, queued, and round again.
@@ -198,9 +198,11 @@ layout so the nav row stays.
 
 ## iOS
 
-iPhone 17 simulator (402 × 874 pt), signed ad hoc as `docs/session.md` describes, built with
-`moyiUiPreview=today` (then read from `local.properties`, which no longer works: see "Reaching the screens"), driven with Maestro (`longPressOn` a point for the
-debug switch). Every Today state, every Write state, the reveal after, the settle, delete
+iPhone 17 simulator (402 × 874 pt), signed ad hoc as `docs/session.md` describes. The run
+recorded here was built with the switch in `local.properties`, before the switch became
+`-P` only; today it is built with ` -PmoyiUiPreview=today` added locally to Xcode's "Compile
+Kotlin Framework" phase (see "Reaching the screens"). Driven with Maestro (`longPressOn` a
+point for the debug switch). Every Today state, every Write state, the reveal after, the settle, delete
 confirm, the tombstone and the settings route render as on Android. Not measured node by node:
 `idb` is not installed on this machine any more, so the iOS row is by eye against the Android
 measurements. The simulator had its hardware keyboard connected, so Write shows no software

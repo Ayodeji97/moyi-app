@@ -61,17 +61,19 @@ framework and the Xcode app were built locally.
 
 ### UI preview (debug only)
 
-The onboarding screens run on fake state, so they can be clicked through with no backend
-and no session. Build with `-PmoyiUiPreview=onboarding` and the app opens on a preview
-index (`shared/src/commonMain/kotlin/com/moyi/app/debug/UiPreviewIndex.kt`) instead of
-deciding from the session:
+The onboarding and daily-loop screens run on fake state, so they can be clicked through
+with no backend and no session. Build with `-PmoyiUiPreview=onboarding` and the app opens on
+a preview index (`shared/src/commonMain/kotlin/com/moyi/app/debug/UiPreviewIndex.kt`)
+instead of deciding from the session; build with `-PmoyiUiPreview=today` and it opens on
+Today with its debug gestures (`docs/figma/today-check.md`, "Reaching the screens"):
 
 ```sh
 ./gradlew :androidApp:installDebug -PmoyiUiPreview=onboarding
+./gradlew :androidApp:installDebug -PmoyiUiPreview=today
 ```
 
 The switch is one string, `UiPreviewConfig.UI_PREVIEW` in `:shared`. Its allowed values
-are one list in `shared/build.gradle.kts` (`""`, off, and `onboarding`); any other value
+are one list in `shared/build.gradle.kts` (`""`, off, `onboarding` and `today`); any other value
 fails the build. Only the command line counts: a value in `gradle.properties`,
 `ORG_GRADLE_PROJECT_moyiUiPreview` or `local.properties` is ignored, because those persist
 and would ride along into the next build.
@@ -82,9 +84,9 @@ with `CONFIGURATION=Debug`. So `assemble`, `build`, `assembleRelease`, an Xcode 
 build, and any build with `CI` set all fail at configuration.
 
 **On iOS**, Xcode cannot pass the switch through the environment. Locally, add
-`-PmoyiUiPreview=onboarding` to the `./gradlew` line of the iosApp target's "Compile Kotlin
-Framework" build phase, and build the Debug configuration. **Never commit that change**:
-the build phase is shared by every build of the app.
+`-PmoyiUiPreview=onboarding` (or `=today`) to the `./gradlew` line of the iosApp target's
+"Compile Kotlin Framework" build phase, and build the Debug configuration. **Never commit
+that change**: the build phase is shared by every build of the app.
 
 In the join flow, the code `ZZZZZZ` plays "cannot be used" and any other well-formed code
 resolves. Build again without the switch to get the normal start back.
