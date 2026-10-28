@@ -2,6 +2,7 @@ package com.moyi.app.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -60,12 +62,17 @@ import org.jetbrains.compose.resources.stringResource
  * - Leave [onBack] null on root screens (Today, Onboarding 1, the unverified
  *   gate); `SKILL.md` §9 lists them. System back is the platform's either way.
  * - No navigation bar or rail: the product has no persistent chrome.
+ * - [contentArrangement], when set, makes the content at least the height of
+ *   its viewport and arranges the children in it (a block centred when it fits),
+ *   whether the actions are pinned or scroll with it. Left null, the content
+ *   is top-aligned, as before.
  */
 @Composable
 fun MoyiScaffold(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
     action: (@Composable ColumnScope.() -> Unit)? = null,
+    contentArrangement: Arrangement.Vertical? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val itemSpacing = MoyiDimens.Scaffold.ItemSpacing
@@ -90,7 +97,7 @@ fun MoyiScaffold(
             BackAffordance(onBack)
             Spacer(Modifier.height(itemSpacing))
         }
-        if (action == null) {
+        if (action == null && contentArrangement == null) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -98,10 +105,26 @@ fun MoyiScaffold(
                     .verticalScroll(rememberScrollState()),
                 content = content,
             )
+        } else if (action == null) {
+            // The content is at least as tall as the space it scrolls in, so the
+            // arrangement has room to centre a block that fits (Join · cannot be
+            // used, 310:23), and it still scrolls when it does not (200 % font).
+            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+                val viewport = maxHeight
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .heightIn(min = viewport),
+                    verticalArrangement = contentArrangement ?: Arrangement.Top,
+                    content = content,
+                )
+            }
         } else {
             ContentAndAction(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 action = action,
+                contentArrangement = contentArrangement ?: Arrangement.Top,
                 content = content,
             )
         }
@@ -122,11 +145,15 @@ fun MoyiScaffold(
  * before the content is laid out. The content keeps its slot either way,
  * so switching (say, when the keyboard opens) does not reset its state or
  * take the focus away from a field.
+ *
+ * The content column is never shorter than the room above the actions, in
+ * both modes, so [contentArrangement] can place its children in that room.
  */
 @Composable
 private fun ContentAndAction(
     modifier: Modifier,
     action: @Composable ColumnScope.() -> Unit,
+    contentArrangement: Arrangement.Vertical,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val outerScroll = rememberScrollState()
@@ -153,6 +180,7 @@ private fun ContentAndAction(
                     // Pinned: the content scrolls on its own in the room left.
                     // Stacked: it takes its full height and the outer scroll moves both.
                     modifier = if (stacked) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().verticalScroll(innerScroll),
+                    verticalArrangement = contentArrangement,
                     content = content,
                 )
             }.map {

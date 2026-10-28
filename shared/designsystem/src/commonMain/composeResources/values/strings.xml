@@ -6,4 +6,10 @@
     <string name="ds_password_hide">Hide password</string>
     <!-- Spoken by the back control at the top of a screen. -->
     <string name="ds_back">Back</string>
+    <!-- InviteCode caption. settings.invite.code.caption (strings-proposed.md §6b). -->
+    <string name="ds_invite_code_caption">Invite code</string>
+    <!-- PROPOSED. InviteCode's copy control, Idle. Toggles in place, so no underline. -->
+    <string name="ds_invite_copy">Copy code</string>
+    <!-- PROPOSED. InviteCode's copy control, Copied (tokens.md §4: Copied is not optional). Announced politely. -->
+    <string name="ds_invite_copied">Copied</string>
 </resources>

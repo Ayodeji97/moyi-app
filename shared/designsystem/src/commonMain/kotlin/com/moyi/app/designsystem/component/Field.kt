@@ -30,14 +30,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.icon.MoyiIcons
@@ -48,11 +52,17 @@ import com.moyi.app.designsystem.theme.MoyiColors
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The `Field` types this PR builds. `tokens.md` §4 defines five
- * (`Text` / `Secure` / `Select` / `Code` / `Multiline`); the other three are
- * added when a screen needs them.
+ * The `Field` types built so far. `tokens.md` §4 defines five
+ * (`Text` / `Secure` / `Select` / `Code` / `Multiline`); `Multiline` is added
+ * when a screen needs it.
+ *
+ * - [Code]: one field set in the `code` style (28 % tracking), box 65 tall,
+ *   **not six boxes** (six boxes announce as six controls, break paste and
+ *   fail at 200 % scale). Capitalises characters, no autocorrect.
+ * - [Select]: the box is a button showing the chosen value with a trailing
+ *   chevron; tapping it opens a picker the screen owns (`onClick`).
  */
-enum class FieldType { Text, Secure }
+enum class FieldType { Text, Secure, Code, Select }
 
 /** `Field`'s four visual states (`tokens.md` §4). Derived, never passed in. */
 enum class FieldState { Idle, Focus, Error, Disabled }
@@ -122,7 +132,12 @@ fun Field(
     enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    onClick: () -> Unit = {},
 ) {
+    if (type == FieldType.Select) {
+        SelectField(value, label, modifier, helper, error, enabled, onClick)
+        return
+    }
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
     val interactionSource = remember { MutableInteractionSource() }
@@ -133,10 +148,17 @@ fun Field(
     val stroke = colors.fieldStroke(state)
     val textColor = colors.fieldText(state)
     val secure = type == FieldType.Secure
-    val effectiveKeyboard = if (secure && keyboardOptions == KeyboardOptions.Default) {
-        KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
-    } else {
-        keyboardOptions
+    val code = type == FieldType.Code
+    val effectiveKeyboard = when {
+        keyboardOptions != KeyboardOptions.Default -> keyboardOptions
+        secure -> KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
+        // Capitals and digits: auto-capitalise, never a numeric pad (states.md §2).
+        code -> KeyboardOptions(
+            capitalization = KeyboardCapitalization.Characters,
+            autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Ascii,
+        )
+        else -> keyboardOptions
     }
 
     BasicTextField(
@@ -147,7 +169,7 @@ fun Field(
             .semantics { if (error != null) error(error) },
         enabled = enabled,
         singleLine = true,
-        textStyle = MoyiTheme.type.body.copy(color = textColor),
+        textStyle = (if (code) MoyiTheme.type.code else MoyiTheme.type.body).copy(color = textColor),
         cursorBrush = SolidColor(colors.ink),
         keyboardOptions = effectiveKeyboard,
         keyboardActions = keyboardActions,
@@ -164,7 +186,7 @@ fun Field(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = MoyiDimens.Field.BoxMinHeight)
+                        .heightIn(min = if (code) MoyiDimens.Field.CodeBoxMinHeight else MoyiDimens.Field.BoxMinHeight)
                         .background(colors.fieldFill(state), shapes.radius)
                         .border(stroke.width, stroke.color, shapes.radius)
                         // Vertical padding sits on the value, not the row, so the
@@ -173,7 +195,8 @@ fun Field(
                     horizontalArrangement = Arrangement.spacedBy(MoyiDimens.Field.ItemGap),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.weight(1f).padding(vertical = MoyiDimens.Field.Padding)) { innerTextField() }
+                    // A Code value (32.5 line) is centred in its 65 box rather than padded.
+                    Box(Modifier.weight(1f).padding(vertical = if (code) 0.dp else MoyiDimens.Field.Padding)) { innerTextField() }
                     if (secure) {
                         RevealToggle(revealed = revealed, enabled = enabled, onToggle = { revealed = !revealed })
                     }
@@ -186,6 +209,64 @@ fun Field(
             }
         },
     )
+}
+
+/**
+ * [FieldType.Select]: the same label, box and helper, but the box is a button.
+ * It shows the chosen value and a chevron, and [onClick] opens the picker
+ * (onboarding's time zone). Focus is never drawn here: the picker takes over.
+ */
+@Composable
+private fun SelectField(
+    value: String,
+    label: String,
+    modifier: Modifier,
+    helper: String?,
+    error: String?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = MoyiTheme.colors
+    val shapes = MoyiTheme.shapes
+    val state = fieldStateOf(enabled = enabled, hasError = error != null, focused = false)
+    val stroke = colors.fieldStroke(state)
+    Column(modifier.fillMaxWidth()) {
+        MoyiText(text = label, role = TextRole.Label)
+        Spacer(Modifier.height(MoyiDimens.Field.LabelGap))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = MoyiDimens.Field.BoxMinHeight)
+                .clip(shapes.radius)
+                .background(colors.fieldFill(state))
+                .border(stroke.width, stroke.color, shapes.radius)
+                .clickable(enabled = enabled, role = Role.DropdownList, onClick = onClick)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = label
+                    if (error != null) error(error)
+                }
+                .padding(horizontal = MoyiDimens.Field.Padding),
+            horizontalArrangement = Arrangement.spacedBy(MoyiDimens.Field.ItemGap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MoyiText(
+                text = value,
+                modifier = Modifier.weight(1f).padding(vertical = MoyiDimens.Field.Padding),
+                tone = if (state == FieldState.Disabled) TextTone.Muted else TextTone.Ink,
+            )
+            Icon(
+                imageVector = MoyiIcons.ChevronDown,
+                contentDescription = null,
+                tint = colors.ink,
+                modifier = Modifier.size(MoyiDimens.IconGlyph),
+            )
+        }
+        val below = error ?: helper
+        if (below != null) {
+            Spacer(Modifier.height(MoyiDimens.Field.SupportGap))
+            MoyiText(text = below, tone = if (error != null) TextTone.Danger else TextTone.Muted)
+        }
+    }
 }
 
 @Composable
@@ -242,6 +323,22 @@ private fun FieldStates(darkTheme: Boolean) {
             )
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
             Field(value = "amara@example.com", onValueChange = {}, label = "Email", enabled = false)
+            Spacer(Modifier.height(MoyiTheme.spacing.lg))
+            Field(
+                value = "K7Q2PD",
+                onValueChange = {},
+                label = "Invite code",
+                type = FieldType.Code,
+                helper = "Six characters. Capitals and numbers. Case does not matter.",
+            )
+            Spacer(Modifier.height(MoyiTheme.spacing.lg))
+            Field(
+                value = "Lagos",
+                onValueChange = {},
+                label = "Shared time zone",
+                type = FieldType.Select,
+                helper = "Your day starts and ends on Lagos time, for both of you, even when either of you travels.",
+            )
         }
     }
 }
