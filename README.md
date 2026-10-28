@@ -1,31 +1,47 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Moyi (app)
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+The Kotlin Multiplatform client for Moyi: Android and iOS from one codebase, with
+Compose Multiplatform UI. Package `com.moyi.app`. The rules for working here are in
+[CLAUDE.md](./CLAUDE.md); the architecture is `../documents/13-kmp-client-architecture.md`.
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+## Modules
 
-### Running the apps
+| Gradle path | Namespace | What it holds |
+|---|---|---|
+| `:androidApp` | `com.moyi.app` | Android shell: Activity, manifest |
+| `iosApp/` (Xcode) | | iOS shell; links the `Shared` framework |
+| `:shared` | `com.moyi.app.shared` | Umbrella: `App()`, and the one iOS framework (`Shared`, static) |
+| `:shared:core` | `com.moyi.app.core` | `Result`, `DataError`, shared utilities |
+| `:shared:domain` | `com.moyi.app.domain` | Models and repository interfaces. **No framework dependencies** |
+| `:shared:designsystem` | `com.moyi.app.designsystem` | Theme, tokens and components (Rosewood, PR #5) |
+| `:shared:data:api` | `com.moyi.app.data.api` | Generated OpenAPI client only (PR #3) |
+| `:shared:data:network` | `com.moyi.app.data.network` | HttpClient, auth, error mapping |
+| `:shared:data:session` | `com.moyi.app.data.session` | Token storage and the session |
+| `:shared:data:repository` | `com.moyi.app.data.repository` | Repository implementations |
+| `:shared:feature:auth` | `com.moyi.app.feature.auth` | Register, verify, sign in |
+| `:architecture-tests` | | JVM-only Konsist rules over `shared/**` |
+| `build-logic/` | | Convention plugins: `moyi.kmp.library`, `moyi.kmp.compose`, `moyi.dependency.guard` |
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+Dependencies point inwards: feature to domain, designsystem and core; repository to
+domain and the data modules; domain to core only; `:shared` to everything.
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+Domain stays framework-free two ways. `checkDependencyGuard` (part of `check`) fails if
+`:shared:domain` declares anything but `:shared:core`, the Kotlin standard library,
+kotlin-test or kotlinx-coroutines. The Konsist rules in `:architecture-tests` fail if a
+domain file imports Ktor, SQLDelight, Koin, kotlinx.serialization, Android, AndroidX,
+iOS platform APIs or the data layer, or if a feature file imports the data layer.
 
-### Running tests
+## Commands
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+```sh
+./gradlew build                                  # everything, both platforms' Kotlin
+./gradlew check                                  # tests, architecture rules, dependency guard, lint
+./gradlew :androidApp:assembleDebug              # Android debug APK
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64   # iOS framework for the simulator
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO
+```
 
----
-
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+CI runs `./gradlew check` on Linux, which cannot link iOS; each PR says whether the iOS
+framework and the Xcode app were built locally.
