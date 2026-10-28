@@ -9,6 +9,7 @@ import com.moyi.app.feature.onboarding.createbond.CreateBondEvent
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.bond_name_error_blank
+import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -41,6 +42,29 @@ class CreateBondViewModelTest : MainDispatcherTest() {
             viewModel.onAction(CreateBondAction.OnCreateClick)
             assertEquals(CreateBondEvent.NavigateToInvite(FakeOnboardingData.INVITE_CODE), awaitItem())
         }
+    }
+
+    @Test
+    fun sixtyCharactersIsAllowed() = runTest {
+        viewModel.onAction(CreateBondAction.OnNameChange("a".repeat(60)))
+        assertNull(viewModel.state.value.nameError)
+        viewModel.events.test {
+            viewModel.onAction(CreateBondAction.OnCreateClick)
+            assertEquals(CreateBondEvent.NavigateToInvite(FakeOnboardingData.INVITE_CODE), awaitItem())
+        }
+    }
+
+    @Test
+    fun sixtyOneCharactersIsAFieldErrorWhileTypingAndGoesNowhere() = runTest {
+        val tooLong = UiText.Resource(Res.string.bond_name_error_too_long)
+        viewModel.onAction(CreateBondAction.OnNameChange("a".repeat(61)))
+        assertEquals(tooLong, viewModel.state.value.nameError)
+        viewModel.events.test {
+            viewModel.onAction(CreateBondAction.OnCreateClick)
+            expectNoEvents()
+        }
+        assertEquals(tooLong, viewModel.state.value.nameError)
+        assertEquals("a".repeat(61), viewModel.state.value.name, "the name is kept, not cut")
     }
 
     @Test

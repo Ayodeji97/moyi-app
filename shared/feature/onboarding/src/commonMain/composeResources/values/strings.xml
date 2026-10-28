@@ -56,6 +56,8 @@
     <string name="bond_name_helper">Only the two of you will see this.</string>
     <!-- PROPOSED. Create bond pressed with the name empty. -->
     <string name="bond_name_error_blank">Give your bond a name to continue.</string>
+    <!-- PROPOSED. The bond name is over 60 characters (CreateBondRequest.name maxLength 60). -->
+    <string name="bond_name_error_too_long">Keep it to 60 characters or fewer.</string>
     <!-- field.timezone.label. -->
     <string name="field_timezone_label">Shared time zone</string>
     <!-- field.timezone.helper, the in-file wording with the city as a placeholder. The highest-stakes string in the product (strings-proposed.md). %1$s is the time zone's city, e.g. Lagos. -->

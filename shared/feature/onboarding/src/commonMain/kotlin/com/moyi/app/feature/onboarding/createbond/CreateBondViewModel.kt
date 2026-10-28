@@ -7,6 +7,7 @@ import com.moyi.app.feature.onboarding.common.FakeOnboardingData
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.bond_name_error_blank
+import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +33,10 @@ class CreateBondViewModel(type: RelationshipType) : ViewModel() {
 
     fun onAction(action: CreateBondAction) {
         when (action) {
-            is CreateBondAction.OnNameChange -> _state.update { it.copy(name = action.value, nameError = null) }
+            // Over the limit is said while typing, so the person sees it before pressing Create.
+            is CreateBondAction.OnNameChange -> _state.update {
+                it.copy(name = action.value, nameError = if (action.value.length > MAX_NAME_LENGTH) tooLong else null)
+            }
             // TODO(logic): open a time-zone picker (the platform's zone list; no endpoint). A load failure
             //  shows `field.timezone.error` in the field, and reopening it retries (strings-proposed.md).
             CreateBondAction.OnTimeZoneClick -> Unit
@@ -48,10 +52,25 @@ class CreateBondViewModel(type: RelationshipType) : ViewModel() {
             _state.update { it.copy(nameError = UiText.Resource(Res.string.bond_name_error_blank)) }
             return
         }
+        if (current.name.length > MAX_NAME_LENGTH) {
+            _state.update { it.copy(nameError = tooLong) }
+            return
+        }
         // TODO(logic): `POST /api/v1/bonds` with { name, type (COUPLE/FRIENDS/FAMILY), anchorTimezone,
-        //  reminderTimezone } (no revealTimeLocal: it lives in Bond settings, states.md §1). Show Sending
-        //  while in flight; on failure set Failed and keep the fields (394:1441). On 201 the invite is
+        //  reminderTimezone } (no revealTimeLocal: it lives in Bond settings, states.md §1). `name` must
+        //  hold a non-space and at most 60 characters (CreateBondRequest maxLength 60); both are checked
+        //  above, so a 422 for either means the rules drifted. Show Sending while in flight; on failure set Failed and keep the fields (394:1441). On 201 the invite is
         //  BondResponse.invite (or `POST /api/v1/bonds/{bondId}/invites` if it is absent).
         viewModelScope.launch { _events.send(CreateBondEvent.NavigateToInvite(FakeOnboardingData.INVITE_CODE)) }
+    }
+
+    private val tooLong = UiText.Resource(Res.string.bond_name_error_too_long)
+
+    companion object {
+        /**
+         * `CreateBondRequest.name` maxLength. Counted as String.length (UTF-16 units), as the
+         * backend's Bean Validation `@Size` counts it, so the two agree on every name.
+         */
+        const val MAX_NAME_LENGTH = 60
     }
 }
