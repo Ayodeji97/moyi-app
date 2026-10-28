@@ -43,6 +43,7 @@ include(":shared:data:session")
 include(":shared:data:repository")
 include(":shared:data:testing")
 include(":shared:feature:auth")
+include(":shared:feature:onboarding")
 
 // JVM-only Konsist rules over the shared sources.
 include(":architecture-tests")
