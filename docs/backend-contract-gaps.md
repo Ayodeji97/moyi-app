@@ -16,9 +16,14 @@ until then. Checked with `jq` against the contract, not only read.
 | 7 | `servers[0].url` is `http://localhost` and paths carry `/api/v1` | `06` §1: base URL ends in `/api/v1` | server has no path; every path starts `/api/v1` | Config keeps the `…/api/v1` form; one tested function derives the origin for the generated client |
 | 8 | `DeviceRequest.platform` is a `pattern`, not an `enum` | `ANDROID \| IOS \| WEAR` | `pattern: "ANDROID\|IOS\|WEAR"` | Generated as `String`; the client sends constants |
 | 9 | `RegisterRequest.over18` is optional | sign-up requires the 18+ confirmation | not in `required` | Sent as the consent box's value; the action stays disabled until it is checked |
+| 10 | `DayResponse.partnerEntry` / `TodayResponse.partnerEntry` is a `oneOf` with a `status` discriminator whose mapping sends three statuses to `EntryResponse` | `06` §3.4: the partner's entry is locked, revealed or erased, told apart by `status` | OpenAPI Generator 7.26 (`kotlin`/`multiplatform`) emits a sealed class with **no subclasses**, so every non-null `partnerEntry` throws on decode (spike, 2026-10-27, MockEngine). kotlinx polymorphism cannot map several discriminator values to one class either | Not used before M6 (Today and Archive come later), so left as generated. When the Today screen is built: `schemaMappings` `DayResponse_partnerEntry` (the raw inline name, not `DayResponsePartnerEntry`) to a hand-written sealed `PartnerEntry` with a `JsonContentPolymorphicSerializer` that switches on `status` |
 
 Suggested backend fix for 1–3 and 6: declare the 401/410 responses with the
 `ProblemDetail` schema on those operations, add `traceId` to `ProblemDetail`, and mark the
 always-present response fields `required` (springdoc: non-null Kotlin properties, or
 `@Schema(requiredMode = REQUIRED)`). That is a contract change, so it carries the
 backend's `breaking-api-change` review.
+
+Suggested backend fix for 10: give each partner-entry variant its own schema and one
+discriminator value (`LOCKED`, `REVEALED`, `ERASED`, and so on), so the generated sealed
+class has one subclass per value and the client needs no hand-written serializer.

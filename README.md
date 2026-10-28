@@ -45,3 +45,49 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 
 CI runs `./gradlew check` on Linux, which cannot link iOS; each PR says whether the iOS
 framework and the Xcode app were built locally.
+
+## The API contract
+
+`contracts/openapi.json` is a byte copy of `../moyi-backend/contracts/openapi.json`, so
+CI and fresh clones build without the backend. The network client in `:shared:data:api`
+is generated from it on every build.
+
+```sh
+./gradlew syncContract          # copy the backend's contract over the vendored one
+./gradlew checkContractInSync   # fail if they differ (part of check; skipped if the backend is absent)
+```
+
+A contract change is its own PR: that diff is the API changing. The backend is read, never
+written. A git worktree of this repo does not sit next to `moyi-backend`; point the tasks
+at it with `moyi.backendDir=/path/to/moyi-backend` in `local.properties` or `-P`.
+
+## Which backend the app talks to
+
+Development builds talk to a **local** backend:
+
+| Running on | Default base URL |
+|---|---|
+| Android emulator | `http://10.0.2.2:8080/api/v1` (the emulator's name for the Mac) |
+| iOS simulator | `http://localhost:8080/api/v1` |
+
+Override it for both platforms in `local.properties` (not committed), or once with
+`-Pmoyi.apiBaseUrl=...`:
+
+```properties
+moyi.apiBaseUrl=http://localhost:8080/api/v1
+```
+
+The value keeps the `/api/v1` ending, the same as Bruno. **The build fails if the host is
+`getmoyi.app` or one of its subdomains**: real people's data lives there.
+
+Real devices:
+
+- **Android phone over USB:** run `adb reverse tcp:8080 tcp:8080`, then set
+  `moyi.apiBaseUrl=http://localhost:8080/api/v1`. The phone's port 8080 is forwarded to
+  the Mac. Debug builds allow cleartext HTTP to `10.0.2.2`, `localhost` and `127.0.0.1`
+  only (`androidApp/src/debug/res/xml/network_security_config.xml`).
+- **iPhone on the same Wi-Fi:** set `moyi.apiBaseUrl=http://<mac-name>.local:8080/api/v1`
+  (the name is in System Settings, General, Sharing, Local hostname). Allow incoming
+  connections for `java` in the macOS firewall, and accept the Local Network prompt on
+  the phone. `Info.plist` allows local networking (`NSAllowsLocalNetworking`) and carries
+  the prompt's text (`NSLocalNetworkUsageDescription`).
