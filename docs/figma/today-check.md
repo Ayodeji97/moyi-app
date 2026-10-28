@@ -33,9 +33,21 @@ There is no backend behind these screens yet, so a debug build can start on them
 
 ```
 ./gradlew :androidApp:assembleDebug -PmoyiUiPreview=today
-# or moyiUiPreview=today in local.properties; for iOS, put it in local.properties and build
 ```
 
+- **Only the `-P` switch counts.** `local.properties`, `gradle.properties` and
+  `ORG_GRADLE_PROJECT_moyiUiPreview` are ignored: those persist, so a value left in one would
+  ride into the next build, a release included. It is the one switch the README's "UI preview
+  (debug only)" describes, shared with `-PmoyiUiPreview=onboarding`.
+- **Debug only.** With it set, the build fails unless every requested task contains `Debug`,
+  or the only task is Xcode's `embedAndSignAppleFrameworkForXcode` with `CONFIGURATION=Debug`.
+  So `assemble`, `build`, `assembleRelease`, an Xcode Release build and anything with `CI` set
+  all fail at configuration.
+- **iOS**: Xcode's "Compile Kotlin Framework" build phase runs
+  `./gradlew :shared:embedAndSignAppleFrameworkForXcode` with no switch. To preview on iOS, add
+  ` -PmoyiUiPreview=today` to the end of that line locally, build the Debug configuration, and
+  revert the line before committing. Left in by mistake, it cannot ship: a Release build or CI
+  fails on the guard above.
 - `moyiUiPreview` is a BuildKonfig field in `:shared` (`UiPreviewConfig.UI_PREVIEW`). Empty,
   the default, is the real app. `today` starts at Today without waiting for a session and
   switches on the debug gestures. Other UI PRs add their own value to the same property
@@ -187,7 +199,7 @@ layout so the nav row stays.
 ## iOS
 
 iPhone 17 simulator (402 × 874 pt), signed ad hoc as `docs/session.md` describes, built with
-`moyiUiPreview=today` in `local.properties`, driven with Maestro (`longPressOn` a point for the
+`moyiUiPreview=today` (then read from `local.properties`, which no longer works: see "Reaching the screens"), driven with Maestro (`longPressOn` a point for the
 debug switch). Every Today state, every Write state, the reveal after, the settle, delete
 confirm, the tombstone and the settings route render as on Android. Not measured node by node:
 `idb` is not installed on this machine any more, so the iOS row is by eye against the Android
