@@ -56,7 +56,8 @@ class VerifyViewModel(
             }
             return
         }
-        _state.update { it.copy(submit = SubmitStatus.Sending) }
+        // A new check supersedes an old resend failure: one message at a time above the action.
+        _state.update { it.copy(submit = SubmitStatus.Sending, resendFailure = null) }
         viewModelScope.launch {
             when (val result = authRepository.verifyEmail(token)) {
                 is Result.Success -> {
@@ -87,32 +88,44 @@ class VerifyViewModel(
      * The server allows one resend a minute (ADR-0023) whichever button asks,
      * so a link sent in the last minute ([ResendStatus.Sent]) makes both
      * "Send it again" and the expired state's "Send a new link" wait.
+     *
+     * Two buttons, two statuses. From the expired state the resend IS the
+     * primary action, so it drives [VerifyState.submit]. While waiting,
+     * "Send it again" drives only [VerifyState.resend] and its own
+     * [VerifyState.resendFailure]: it never touches the check's status, so it
+     * can neither reopen "Check again" mid-check nor overwrite its verdict.
+     * It is held while a check is in flight.
      */
     private fun resend() {
         val current = _state.value
         val fromExpired = current.mode == VerifyMode.Expired
         val coolingDown = current.resend == ResendStatus.Sent
-        val inFlight = if (fromExpired) current.submit == SubmitStatus.Sending else current.resend == ResendStatus.Sending
+        val inFlight = current.submit == SubmitStatus.Sending || (!fromExpired && current.resend == ResendStatus.Sending)
         if (coolingDown || inFlight) return
 
         _state.update {
-            if (fromExpired) it.copy(submit = SubmitStatus.Sending) else it.copy(resend = ResendStatus.Sending, submit = SubmitStatus.Idle)
+            if (fromExpired) it.copy(submit = SubmitStatus.Sending) else it.copy(resend = ResendStatus.Sending, resendFailure = null)
         }
         viewModelScope.launch {
             when (val result = authRepository.resendVerification(current.email)) {
                 is Result.Success -> {
                     _state.update {
-                        it.copy(
-                            mode = VerifyMode.Waiting,
-                            token = if (fromExpired) it.token.copy(value = "", error = null) else it.token,
-                            resend = ResendStatus.Sent,
-                            submit = SubmitStatus.Idle,
-                        )
+                        if (fromExpired) {
+                            it.copy(
+                                mode = VerifyMode.Waiting,
+                                token = it.token.copy(value = "", error = null),
+                                resend = ResendStatus.Sent,
+                                submit = SubmitStatus.Idle,
+                            )
+                        } else {
+                            it.copy(resend = ResendStatus.Sent)
+                        }
                     }
                     startCooldown()
                 }
                 is Result.Failure -> _state.update {
-                    it.copy(resend = ResendStatus.Ready, submit = AuthErrorMapper.formFailure(result.error))
+                    val failure = AuthErrorMapper.formFailure(result.error)
+                    if (fromExpired) it.copy(submit = failure) else it.copy(resend = ResendStatus.Ready, resendFailure = failure.message)
                 }
             }
         }

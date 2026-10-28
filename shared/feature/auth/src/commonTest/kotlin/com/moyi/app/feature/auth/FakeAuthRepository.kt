@@ -34,6 +34,10 @@ class FakeAuthRepository : AuthRepository {
 
     var gate: CompletableDeferred<Unit>? = null
 
+    /** Hold only verify or only resend, so the two can overlap in a test; each falls back to [gate]. */
+    var verifyGate: CompletableDeferred<Unit>? = null
+    var resendGate: CompletableDeferred<Unit>? = null
+
     data class RegisterCall(
         val displayName: String,
         val email: String,
@@ -64,13 +68,13 @@ class FakeAuthRepository : AuthRepository {
 
     override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> {
         verifyCalls += token
-        gate?.await()
+        (verifyGate ?: gate)?.await()
         return verifyResult
     }
 
     override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> {
         resendCalls += email
-        gate?.await()
+        (resendGate ?: gate)?.await()
         return resendResult
     }
 

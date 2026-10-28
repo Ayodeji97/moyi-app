@@ -80,11 +80,12 @@ fun VerifyScreen(
     val spacing = MoyiTheme.spacing
     val expired = state.mode == VerifyMode.Expired
     val failed = state.submit as? SubmitStatus.Failed
+    val actionError = failed?.message ?: state.resendFailure
     MoyiScaffold(
         onBack = { onAction(VerifyAction.OnBackClick) },
         action = {
-            if (failed != null) {
-                InlineError(failed.message.asString())
+            if (actionError != null) {
+                InlineError(actionError.asString())
                 Spacer(Modifier.height(spacing.lg))
             }
             PrimaryAction(
@@ -143,7 +144,8 @@ fun VerifyScreen(
                 ResendStatus.Ready, ResendStatus.Sending -> TextLink(
                     stringResource(Res.string.verify_resend),
                     onClick = { onAction(VerifyAction.OnResendClick) },
-                    enabled = state.resend == ResendStatus.Ready,
+                    // Held while a check is in flight (VerifyViewModel.resend).
+                    enabled = state.resend == ResendStatus.Ready && state.submit != SubmitStatus.Sending,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

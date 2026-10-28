@@ -2,11 +2,13 @@ package com.moyi.app.feature.auth.verify
 
 import app.cash.turbine.test
 import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.FakeAuthRepository
 import com.moyi.app.feature.auth.MainDispatcherTest
 import com.moyi.app.feature.auth.apiError
+import com.moyi.app.feature.auth.common.AuthErrorMapper
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.verify_token_error_blank
@@ -104,6 +106,41 @@ class VerifyViewModelTest : MainDispatcherTest() {
         assertEquals(1, repo.resendCalls.size)
         assertEquals(VerifyMode.Expired, viewModel.state.value.mode)
         assertEquals(SubmitStatus.Idle, viewModel.state.value.submit)
+    }
+
+    @Test
+    fun sendItAgainWhileCheckingNeitherReopensCheckAgainNorOverwritesItsVerdict() = runTest {
+        val verifying = CompletableDeferred<Unit>().also { repo.verifyGate = it }
+        repo.verifyResult = Result.Failure(DataError.Network.NoInternet)
+        viewModel.onAction(VerifyAction.OnTokenChange("abc"))
+        viewModel.onAction(VerifyAction.OnSubmit)
+
+        viewModel.onAction(VerifyAction.OnResendClick)
+        assertEquals(SubmitStatus.Sending, viewModel.state.value.submit)
+        viewModel.onAction(VerifyAction.OnSubmit) // "Check again" stays held
+        assertEquals(1, repo.verifyCalls.size)
+
+        verifying.complete(Unit)
+        assertEquals(AuthErrorMapper.formFailure(DataError.Network.NoInternet), viewModel.state.value.submit)
+        assertEquals(1, repo.verifyCalls.size)
+    }
+
+    @Test
+    fun aResendThatFinishesAfterACheckLeavesTheChecksVerdictAlone() = runTest {
+        val resending = CompletableDeferred<Unit>().also { repo.resendGate = it }
+        viewModel.onAction(VerifyAction.OnResendClick)
+        assertEquals(ResendStatus.Sending, viewModel.state.value.resend)
+
+        // The check runs on its own and fails while the resend is still out.
+        repo.verifyResult = Result.Failure(DataError.Network.NoInternet)
+        viewModel.onAction(VerifyAction.OnTokenChange("abc"))
+        viewModel.onAction(VerifyAction.OnSubmit)
+        val verdict = viewModel.state.value.submit
+        assertEquals(AuthErrorMapper.formFailure(DataError.Network.NoInternet), verdict)
+
+        resending.complete(Unit)
+        assertEquals(ResendStatus.Sent, viewModel.state.value.resend)
+        assertEquals(verdict, viewModel.state.value.submit)
     }
 
     @Test

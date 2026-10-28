@@ -1,6 +1,7 @@
 package com.moyi.app.feature.auth.verify
 
 import androidx.compose.runtime.Immutable
+import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
 
@@ -11,7 +12,10 @@ data class VerifyState(
     val token: FieldInput = FieldInput(),
     val mode: VerifyMode = VerifyMode.Waiting,
     val resend: ResendStatus = ResendStatus.Ready,
+    /** The primary action: "Check again" while waiting, "Send a new link" when expired. */
     val submit: SubmitStatus = SubmitStatus.Idle,
+    /** Why the last "Send it again" failed, shown above the action; never part of [submit]. */
+    val resendFailure: UiText? = null,
 )
 
 /** The two drawn layouts: waiting for the link (341:17) and the link expired (362:107). */
