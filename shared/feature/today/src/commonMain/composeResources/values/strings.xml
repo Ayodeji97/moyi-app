@@ -1,0 +1,86 @@
+<resources>
+    <!--
+    The daily loop's copy (PR #8, UI only). Each string says where it comes from:
+      copy.md / states.md: the design system's corpus (copy.md's table is authoritative).
+      FIGMA NODE NAME: the auto-name of a Figma text node (not verified `characters`).
+      PROPOSED: written in this PR, not yet approved by the owner. Never shipped unreviewed.
+    Placeholders are positional (%1$s) because Compose resources have no named form; the
+    comment names each one, and no string is ever concatenated. No em or en dashes, no
+    exclamation marks (copy.md).
+    -->
+
+    <!-- ===== Today (Figma 159:2 and siblings) ===== -->
+
+    <!-- PROPOSED. Spoken name of the calendar target in Today's nav row (states.md §3: to Archive). -->
+    <string name="today_nav_archive">Archive</string>
+    <!-- PROPOSED. Spoken name of the settings target in Today's nav row (states.md §3: to Bond settings). -->
+    <string name="today_nav_settings">Bond settings</string>
+    <!-- PROPOSED (the spec's gap: "Today · action, not in the corpus"). Not written: the one job is to write. A plain verb, no "now", no urgency. -->
+    <string name="today_write_action">Write</string>
+    <!-- states.md §3 announce for Not written. -->
+    <string name="today_announce_not_written">Not yet written for today</string>
+    <!-- PROPOSED. The author label on your own EntryCard (label style, uppercased on screen). states.md Appendix fixes "From you" for the tombstone. -->
+    <string name="today_author_you">From you</string>
+    <!-- PROPOSED. The author label on the other member's EntryCard. %1$s = partnerName. -->
+    <string name="today_author_partner">From %1$s</string>
+    <!-- copy.md table "Waiting", split at its full stop into the note's heading and line. -->
+    <string name="today_waiting_heading">Written.</string>
+    <!-- copy.md table "Waiting", the second sentence. %1$s = partnerName. -->
+    <string name="today_waiting_line">You'll see %1$s's when it's ready.</string>
+    <!-- states.md §3 announce for Written, waiting. -->
+    <string name="today_announce_waiting">Written. Your partner's entry is not open yet</string>
+    <!-- PROPOSED. Edit before reveal (states.md §4: free, no warning). Parallels "Delete what you wrote". -->
+    <string name="today_edit">Edit what you wrote</string>
+    <!-- strings-proposed.md §favourites note and states.md §6: the established delete link. Before reveal it needs no confirmation (states.md §4). -->
+    <string name="today_delete">Delete what you wrote</string>
+    <!-- copy.md table "Reveal". The revealed title on Today and on Reveal. -->
+    <string name="today_revealed_title">Your day is open.</string>
+    <!-- states.md §3 announce for Revealed. -->
+    <string name="today_announce_revealed">Your day is open. Two entries</string>
+    <!-- copy.md warmth audit (canvas wording). Partner not joined. %1$s = partnerName. -->
+    <string name="today_partner_pending_line">It will be here when %1$s joins.</string>
+    <!-- states.md §8. Opens the OS share sheet; navigates nowhere. -->
+    <string name="today_share_invite_again">Share the invite again</string>
+    <!-- FIGMA NODE NAME on 188:507. A solo day, either way round. -->
+    <string name="today_solo_line">This day closed with one entry.</string>
+    <!-- states.md §10 "Offline", with the Bond-day it counts for (BR-3a). %1$s = the locale date of that Bond-day. -->
+    <string name="today_queued_line">It'll send when you're back online. It will count for %1$s.</string>
+    <!-- PROPOSED. The line that stands where your deleted entry was (EntryCard Tombstone, 420:59, one body line). -->
+    <string name="today_tombstone_line">You deleted what you wrote.</string>
+
+    <!-- ===== Write, the composer (Figma 181:3 and siblings) ===== -->
+
+    <!-- PROPOSED (the spec's gap: "Send label not in the corpus"). The composer's PrimaryAction. -->
+    <string name="write_send">Send</string>
+    <!-- states.md §4 announce "Sending"; PrimaryAction State=Sending (419:193). -->
+    <string name="write_sending">Sending</string>
+    <!-- states.md §4: editing before reveal, the action reads Save (419:291). -->
+    <string name="write_save">Save</string>
+    <!-- PROPOSED. Save while in flight, mirroring Sending. -->
+    <string name="write_saving">Saving</string>
+    <!-- states.md §10 "Save failed": the action becomes Try again. -->
+    <string name="write_try_again">Try again</string>
+    <!-- states.md §10 "Save failed" (2026-09-03 form, without the duplicate "Try again?" of the copy.md example, because the button already says it). -->
+    <string name="write_save_failed">That didn't save. Your words are still here.</string>
+    <!-- PROPOSED. PrimaryAction State=QueuedOffline while the entry waits for a connection. -->
+    <string name="write_queued">Waiting to send</string>
+    <!-- PROPOSED. The counter past 400 graphemes (states.md §4: neutral count). %1$d = graphemes typed. The 500 is FR-041's ceiling. -->
+    <string name="write_counter">%1$d / 500</string>
+    <!-- states.md §4 announce for Edit before reveal. -->
+    <string name="write_announce_editing">Editing today's entry</string>
+
+    <!-- ===== Delete after reveal (Figma 420:64) ===== -->
+
+    <!-- PROPOSED. The eyebrow (420:65), label style. -->
+    <string name="delete_eyebrow">Your entry</string>
+    <!-- PROPOSED. The heading (420:67). -->
+    <string name="delete_heading">Delete what you wrote?</string>
+    <!-- states.md Appendix, the drawn copy. Never a read receipt. %1$s = partnerName. -->
+    <string name="delete_line">The day is open, so deleting leaves a mark where your entry was. It cannot be undone, and what %1$s wrote stays.</string>
+    <!-- PROPOSED. The danger PrimaryAction (420:73). -->
+    <string name="delete_confirm">Delete</string>
+    <!-- PROPOSED. Delete while in flight. -->
+    <string name="delete_deleting">Deleting</string>
+    <!-- copy.md warmth audit: bare "Cancel" dismisses a dialog (420:76, 57 wide). -->
+    <string name="delete_cancel">Cancel</string>
+</resources>
