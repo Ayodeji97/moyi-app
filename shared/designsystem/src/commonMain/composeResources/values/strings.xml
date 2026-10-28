@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Moyi</string>
+    <!-- Spoken by the Secure field's eye toggle when the password is hidden: says what a tap does. -->
+    <string name="ds_password_show">Show password</string>
+    <!-- Spoken by the Secure field's eye toggle when the password is visible: says what a tap does. -->
+    <string name="ds_password_hide">Hide password</string>
+    <!-- Spoken by the back control at the top of a screen. -->
+    <string name="ds_back">Back</string>
 </resources>

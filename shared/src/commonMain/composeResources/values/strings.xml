@@ -1,0 +1,22 @@
+<resources>
+    <!-- Temporary component gallery (PR #5). Removed with the gallery in PR #6.
+         Copy comes from strings-proposed.md and copy.md where it exists. -->
+    <string name="gallery_wordmark">Mọyì</string>
+    <string name="gallery_label">Component gallery</string>
+    <string name="gallery_entry">You stayed up to help me finish it, and never once made it about you.</string>
+    <string name="gallery_heading">Create your account</string>
+    <string name="gallery_email">Email</string>
+    <string name="gallery_password">Password</string>
+    <string name="gallery_password_helper">8 characters or more. Anything you like.</string>
+    <string name="gallery_password_breached">This password shows up on a list of leaked passwords. Pick a different one.</string>
+    <string name="gallery_disabled_label">Bond name</string>
+    <string name="gallery_disabled_value">Amara and Tunde</string>
+    <string name="gallery_consent">I am 18 or over, and I agree to the Terms and the Privacy Policy.</string>
+    <string name="gallery_action">Create account</string>
+    <string name="gallery_check_again">Check again</string>
+    <string name="gallery_checking">Checking</string>
+    <string name="gallery_forgot">I forgot my password</string>
+    <string name="gallery_terms">Terms</string>
+    <string name="gallery_privacy">Privacy Policy</string>
+    <string name="gallery_inline_error_figma">That didn't go through. Your details are still here.</string>
+</resources>
