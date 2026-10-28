@@ -64,10 +64,13 @@ class WriteViewModel(
                 viewModelScope.launch { _events.send(WriteEvent.NavigateBack) }
             }
             WriteAction.OnAddPhotoClick -> {
-                // TODO(logic): pick a photo, upload it, and send its id as `imageMediaId`. Optional (NFR-103).
+                // TODO(logic): pick a photo and send its id as `imageMediaId` (POST and PATCH both take it).
+                //  Optional (NFR-103). The contract has no media upload endpoint yet, so there is no id to send.
             }
             WriteAction.OnRecordVoiceClick -> {
-                // TODO(logic): record a voice note. Optional and secondary; text is always sufficient (NFR-103).
+                // TODO(logic): record a voice note and send its id as `voiceMediaId` (POST and PATCH both take
+                //  it). Optional and secondary; text is always sufficient (NFR-103). The contract has no media
+                //  upload endpoint yet, so there is no id to send.
             }
             WriteAction.OnDebugCycle -> debugCycle()
         }
@@ -78,11 +81,14 @@ class WriteViewModel(
         if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
         // TODO(logic): new entry: mint the Idempotency-Key at THIS tap (a UUID, kept with the queued
         //  entry and reused on every retry; states.md §4), stamp `intendedAt` (the Bond-day it was
-        //  written for, BR-3a), and POST /api/v1/bonds/{bondId}/entries with { text, promptId?,
-        //  imageMediaId?, intendedAt }. Optimistic: Today shows written-waiting at once.
-        //  Offline: put it in the local outbox and show Today · queued (384:327) instead.
-        //  Editing: PATCH /api/v1/entries/{entryId} with { text }; 409 ENTRY_IMMUTABLE means the day
-        //  opened while editing, which has no drawn state yet (states.md §5a).
+        //  written for, BR-3a), and POST /api/v1/bonds/{bondId}/entries (Idempotency-Key required)
+        //  with { text, promptId?, imageMediaId?, voiceMediaId?, intendedAt? }. 409
+        //  ENTRY_ALREADY_EXISTS is one entry a day (doc 06). Optimistic: Today shows written-waiting
+        //  at once. Offline: put it in the local outbox and show Today · queued (384:327) instead.
+        //  Editing: PATCH /api/v1/entries/{entryId} with an Idempotency-Key (optional in the contract;
+        //  send one minted at the tap, as for POST) and { text, imageMediaId?, voiceMediaId? }. A 409 is
+        //  ENTRY_IMMUTABLE (the day opened while editing) or BOND_ARCHIVED (doc 06; the contract
+        //  lists the 409 without codes); neither has a drawn state yet (states.md §5a).
         //  A failure keeps the text and shows Failed (384:229); a 2xx clears the local draft.
         _state.update { it.copy(submit = WriteSubmit.Sending) }
         viewModelScope.launch {

@@ -20,6 +20,10 @@ import kotlinx.coroutines.launch
  * refresh behind with `GET /api/v1/bonds/{bondId}/today` (states.md §3; no chained
  * round trips), refresh again on every foreground (states.md §10: never rely on a
  * push having arrived), and map `bondDay.status` as `TodayStatus` documents.
+ * `partnerEntry` in that response is a oneOf on `status` (SUBMITTED, REVEALED, DELETED,
+ * LOCKED, REMOVED). It becomes [TodayState.partnerEntry] only on the three layouts that
+ * show it (Revealed, Tombstone, SoloTheyWrote); a LOCKED one carries no text, and every
+ * other layout maps to null whatever the response holds.
  * Which bond: the member's one active bond, from `GET /api/v1/bonds`.
  */
 class TodayViewModel(
@@ -50,7 +54,7 @@ class TodayViewModel(
             TodayAction.OnWriteClick -> send(TodayEvent.NavigateToWrite(editing = false))
             TodayAction.OnEditClick -> send(TodayEvent.NavigateToWrite(editing = true))
             TodayAction.OnDeleteBeforeRevealClick -> {
-                // TODO(logic): DELETE /api/v1/entries/{entryId}, optimistic, no confirmation
+                // TODO(logic): DELETE /api/v1/entries/{entryId} (no body, no Idempotency-Key, 204), optimistic, no confirmation
                 //  (states.md §4: not irreversible yet). A failure restores the entry and says so.
                 //  Whether the deleted words come back as a draft is not in states.md: owner ruling owed.
                 loop.setStatus(TodayStatus.NotWritten)
@@ -61,9 +65,10 @@ class TodayViewModel(
             }
             TodayAction.OnSettingsClick -> send(TodayEvent.NavigateToSettings)
             TodayAction.OnShareInviteClick -> {
-                // TODO(logic): open the OS share sheet with the invite link (POST /api/v1/bonds/{bondId}/invites
-                //  issues a fresh one if the old one expired). It navigates nowhere, and the sheet closing is
-                //  never proof the invite was sent (SKILL.md §9).
+                // TODO(logic): open the OS share sheet with the invite link. POST /api/v1/bonds/{bondId}/invites
+                //  (no body, 201) issues a new invite and revokes any outstanding one (doc 06); 409 is
+                //  BOND_FULL or BOND_ARCHIVED. It navigates nowhere, and the sheet closing is never proof the
+                //  invite was sent (SKILL.md §9).
             }
             TodayAction.OnDebugCycle -> {
                 // Waiting steps through the reveal, the way a real day opens: the partner writes,

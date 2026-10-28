@@ -64,7 +64,8 @@ data class FakeDay(
  *  - `GET /api/v1/bonds/{bondId}/today` (cache first, refresh behind; states.md §3:
  *    "renders from cache instantly"),
  *  - `POST /api/v1/bonds/{bondId}/entries` (Idempotency-Key header),
- *  - `PATCH /api/v1/entries/{entryId}` and `DELETE /api/v1/entries/{entryId}`,
+ *  - `PATCH /api/v1/entries/{entryId}` (Idempotency-Key optional) and
+ *    `DELETE /api/v1/entries/{entryId}` (no Idempotency-Key),
  *  and the local draft and outbox tables (doc 13 §5).
  */
 class FakeDailyLoop {

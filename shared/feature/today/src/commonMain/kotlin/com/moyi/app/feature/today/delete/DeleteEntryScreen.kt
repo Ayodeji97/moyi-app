@@ -78,10 +78,12 @@ class DeleteEntryViewModel(
                 if (_state.value.deleting) return
                 _state.update { it.copy(deleting = true) }
                 viewModelScope.launch {
-                    // TODO(logic): DELETE /api/v1/entries/{entryId} (Idempotency-Key optional). Not
-                    //  optimistic: it is irreversible, so the tombstone shows only after a 2xx. A failure
-                    //  stays here with the generic error (states.md §10). 409 BOND_ARCHIVED has no
-                    //  drawn state (states.md §5a, owner's question 1).
+                    // TODO(logic): DELETE /api/v1/entries/{entryId}. The contract takes no body and no
+                    //  Idempotency-Key, and lists 204, 401, 403, 404, 429 and 500: no 409, because an
+                    //  author's delete is a 204 even on a Bond that has ended (doc 06, ADR-0035 decision
+                    //  15). Not optimistic: it is irreversible, so the tombstone shows only after the 204.
+                    //  A failure stays here with the generic error (states.md §10); a 404 (the entry is
+                    //  already gone, or was never the caller's) refreshes Today instead.
                     delay(fakeLatency)
                     loop.setStatus(TodayStatus.Tombstone)
                     _events.send(DeleteEntryEvent.NavigateBack)
