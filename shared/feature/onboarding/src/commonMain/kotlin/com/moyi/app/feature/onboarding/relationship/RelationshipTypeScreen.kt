@@ -2,6 +2,8 @@ package com.moyi.app.feature.onboarding.relationship
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -78,13 +81,18 @@ fun RelationshipTypeScreen(
         Spacer(Modifier.height(spacing.md))
         MoyiText(stringResource(Res.string.bond_type_line), tone = TextTone.Muted)
         Spacer(Modifier.height(spacing.xxl))
-        RelationshipType.entries.forEachIndexed { index, type ->
-            if (index > 0) Spacer(Modifier.height(spacing.md))
-            RelationshipCard(
-                label = stringResource(type.label),
-                selected = state.selected == type,
-                onClick = { onAction(RelationshipTypeAction.OnSelect(type)) },
-            )
+        // One radio group: screen readers announce "1 of 3" and treat the cards as a set.
+        Column(
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(spacing.md),
+        ) {
+            RelationshipType.entries.forEach { type ->
+                RelationshipCard(
+                    label = stringResource(type.label),
+                    selected = state.selected == type,
+                    onClick = { onAction(RelationshipTypeAction.OnSelect(type)) },
+                )
+            }
         }
     }
 }

@@ -42,7 +42,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.icon.MoyiIcons
@@ -197,7 +196,8 @@ fun Field(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // A Code value (32.5 line) is centred in its 65 box rather than padded.
-                    Box(Modifier.weight(1f).padding(vertical = if (code) 0.dp else MoyiDimens.Field.Padding)) { innerTextField() }
+                    val verticalPadding = if (code) Modifier else Modifier.padding(vertical = MoyiDimens.Field.Padding)
+                    Box(Modifier.weight(1f).then(verticalPadding)) { innerTextField() }
                     if (secure) {
                         RevealToggle(revealed = revealed, enabled = enabled, onToggle = { revealed = !revealed })
                     }
