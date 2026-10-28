@@ -89,6 +89,12 @@ object MoyiDimens {
         val PaddingVertical = 24.dp
         /** Figma §2: the root frame's item spacing, between header, content and action. */
         val ItemSpacing = 16.dp
+        /**
+         * Not in Figma: the least height the content keeps beside a pinned
+         * action block. Below it (or with actions over half the height) the
+         * actions scroll with the content instead of being pinned.
+         */
+        val MinContentHeight = 120.dp
         /** Figma §2: header back target 48×48 with a 24 chevron, no title. */
         val BackTarget = TouchTarget
     }

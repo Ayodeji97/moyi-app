@@ -7,6 +7,11 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":shared:core"))
         }
+        // Compose UI tests run on iOS (Skiko, no device needed beyond the test
+        // runner); on the Android host they would need Robolectric.
+        iosTest.dependencies {
+            implementation(libs.compose.uiTest)
+        }
     }
 }
 

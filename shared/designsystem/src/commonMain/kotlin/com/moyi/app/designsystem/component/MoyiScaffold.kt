@@ -3,6 +3,7 @@ package com.moyi.app.designsystem.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
@@ -24,9 +25,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.icon.MoyiIcons
@@ -51,7 +54,9 @@ import org.jetbrains.compose.resources.stringResource
  *   where `PrimaryAction`, an `InlineError` and a secondary `TextLink` go.
  * - The content scrolls: at 200 % font scale almost every form is taller
  *   than the screen, and a form that cannot scroll truncates (NFR-102).
- *   The action block stays visible, as in Figma's keyboard-up frames.
+ *   The action block stays visible, as in Figma's keyboard-up frames,
+ *   unless it would take over half the height or leave the content less
+ *   than 120: then content and actions scroll together ([ContentAndAction]).
  * - Leave [onBack] null on root screens (Today, Onboarding 1, the unverified
  *   gate); `SKILL.md` §9 lists them. System back is the platform's either way.
  * - No navigation bar or rail: the product has no persistent chrome.
@@ -85,23 +90,95 @@ fun MoyiScaffold(
             BackAffordance(onBack)
             Spacer(Modifier.height(itemSpacing))
         }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-            content = content,
-        )
-        if (action != null) {
-            Spacer(Modifier.height(itemSpacing))
+        if (action == null) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                content = action,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                content = content,
+            )
+        } else {
+            ContentAndAction(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                action = action,
+                content = content,
             )
         }
     }
 }
+
+/**
+ * The content and the action block, 16 apart, in the height left below the
+ * header.
+ *
+ * Normally the action block is pinned to the bottom and only the content
+ * scrolls. When the two cannot share the height (keyboard up on a short
+ * screen, landscape, 200 % font) pinning would squeeze the content to
+ * nothing and clip the actions, so then content and actions scroll together
+ * as one column ([shouldStackActions]).
+ *
+ * A [SubcomposeLayout], because the choice needs the action block's height
+ * before the content is laid out. The content keeps its slot either way,
+ * so switching (say, when the keyboard opens) does not reset its state or
+ * take the focus away from a field.
+ */
+@Composable
+private fun ContentAndAction(
+    modifier: Modifier,
+    action: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val outerScroll = rememberScrollState()
+    val innerScroll = rememberScrollState()
+    BoxWithConstraints(modifier) {
+        val viewport = constraints.maxHeight
+        val spacing = MoyiDimens.Scaffold.ItemSpacing
+        val minContent = MoyiDimens.Scaffold.MinContentHeight
+        SubcomposeLayout(Modifier.fillMaxWidth().verticalScroll(outerScroll)) { incoming ->
+            val loose = incoming.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+            val actionPlaceable = subcompose(ScaffoldSlot.Action) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    content = action,
+                )
+            }.map { it.measure(loose) }
+            val actionHeight = actionPlaceable.maxOfOrNull { it.height } ?: 0
+            val gap = spacing.roundToPx()
+            val stacked = shouldStackActions(viewport, actionHeight, gap, minContent.roundToPx())
+            val room = (viewport - gap - actionHeight).coerceAtLeast(0)
+            val contentPlaceable = subcompose(ScaffoldSlot.Content) {
+                Column(
+                    // Pinned: the content scrolls on its own in the room left.
+                    // Stacked: it takes its full height and the outer scroll moves both.
+                    modifier = if (stacked) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().verticalScroll(innerScroll),
+                    content = content,
+                )
+            }.map {
+                it.measure(
+                    if (stacked) loose.copy(minHeight = room) else loose.copy(minHeight = room, maxHeight = room),
+                )
+            }
+            val contentHeight = contentPlaceable.maxOfOrNull { it.height } ?: 0
+            layout(incoming.maxWidth, contentHeight + gap + actionHeight) {
+                contentPlaceable.forEach { it.place(0, 0) }
+                actionPlaceable.forEach { it.place(0, contentHeight + gap) }
+            }
+        }
+    }
+}
+
+private enum class ScaffoldSlot { Content, Action }
+
+/**
+ * Whether the action block must scroll with the content instead of being
+ * pinned below it, given the [available] height for both and the [gap]
+ * between them (all in px): when the actions would take more than half of
+ * it, or leave the content less than [minContent].
+ */
+internal fun shouldStackActions(available: Int, action: Int, gap: Int, minContent: Int): Boolean =
+    action * 2 > available || available - gap - action < minContent
 
 /**
  * Whether the soft keyboard is showing. Read through [derivedStateOf] so the
@@ -140,6 +217,11 @@ private fun MoyiScaffoldDarkPreview() = ScaffoldSample(darkTheme = true)
 @Preview
 @Composable
 private fun MoyiScaffoldLightPreview() = ScaffoldSample(darkTheme = false)
+
+/** A short viewport (keyboard up, landscape, 200 % font): content and actions scroll together. */
+@Preview(widthDp = 360, heightDp = 400, fontScale = 2f)
+@Composable
+private fun MoyiScaffoldShortViewportPreview() = ScaffoldSample(darkTheme = true)
 
 @Composable
 private fun ScaffoldSample(darkTheme: Boolean) {
