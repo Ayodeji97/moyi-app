@@ -107,6 +107,48 @@ object MoyiDimens {
         val Gap = 16.dp
     }
 
+    /**
+     * tokens.md §4 component 1, and the daily-loop spec §5 (`docs/figma/today-check.md`).
+     * Instance heights seen in Figma: 144, 226, 321 (hug the text) and 107 (tombstone).
+     */
+    object EntryCard {
+        /** tokens.md §2 "card padding 24×2"; daily-loop spec §5. */
+        val Padding = 24.dp
+        /**
+         * **Interpreted** from Figma heights: 226 = 24 + 19 (label) + 16 + 143 (three entry
+         * lines) + 24, and 107 = 24 + 19 + 16 + 24 (one body line) + 24. The slot gap is 16.
+         */
+        val LabelGap = 16.dp
+        /** tokens.md §3: elevation is a hairline `outline`, no shadow. */
+        val Stroke = 1.dp
+    }
+
+    /**
+     * tokens.md §3 and §6 ("the composer toolbar lives inside the field"): text and icon
+     * glyphs align at 20 from the box edge. A 48 target centring a 24 glyph contributes 12;
+     * the text wrap matches it with 12; the box's own padding is the remaining 8.
+     */
+    object ComposeField {
+        /** Figma 181:3: the instance is 358 × 360 with the keyboard up. A minimum, not a cap. */
+        val MinHeight = 360.dp
+        /** Figma 384:229: the box shrinks to 328 when the save-failed line takes 32 of it. */
+        val MinHeightWithError = 328.dp
+        /** 20 (tokens.md §6 optical edge) − 12 (the wrap). **Derived**, not on the 8 pt scale on purpose. */
+        val BoxPadding = 8.dp
+        /** tokens.md §3 "one derived exception: 12 pt inside the composer" = (48 − 24) / 2. */
+        val Wrap = 12.dp
+        /** tokens.md §6: the field border identifies the control, so `outlineStrong`, 1. */
+        val Stroke = 1.dp
+        /** Icon-only media and dismiss controls, 48 targets (tokens.md §4). */
+        val IconTarget = TouchTarget
+    }
+
+    /** Today's `nav` row (Figma 159:2: 358 × 48 at y 24; daily-loop spec §2). */
+    object NavRow {
+        /** Figma 159:3 / 429:1352: 48 tall, the targets 48 × 48. */
+        val Height = TouchTarget
+    }
+
     object Scaffold {
         /** Figma §2 and §5: side margin 16 (content 358 on a 390 frame). */
         val Gutter = 16.dp

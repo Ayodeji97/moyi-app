@@ -87,6 +87,13 @@ fun PrimaryAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     state: PrimaryActionState = PrimaryActionState.Idle,
+    /**
+     * The destructive confirm (Figma 420:64, Reveal · delete · CONFIRM): `danger`
+     * fill with a `surface` label (6.54:1 dark / 5.57:1 light, tokens.md §1 "no
+     * onDanger"). Figma draws it as an override on the instance, not a variant.
+     * Only for confirming the irreversible (SKILL.md §3).
+     */
+    destructive: Boolean = false,
 ) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
@@ -97,7 +104,7 @@ fun PrimaryAction(
         is PrimaryActionState.QueuedOffline -> state.label
     }
     val enabled = state == PrimaryActionState.Idle
-    val look = colors.primaryActionLook(state)
+    val look = colors.primaryActionLook(state, destructive)
 
     Box(
         modifier = modifier
@@ -139,10 +146,10 @@ fun PrimaryAction(
 /** How a [PrimaryActionState] is painted. Pure, so the contrast test can read it. */
 data class PrimaryActionLook(val fill: Color, val stroke: Color, val label: Color, val alpha: Float)
 
-fun MoyiColors.primaryActionLook(state: PrimaryActionState): PrimaryActionLook = when (state) {
-    PrimaryActionState.Idle -> PrimaryActionLook(ink, Color.Transparent, surface, 1f)
+fun MoyiColors.primaryActionLook(state: PrimaryActionState, destructive: Boolean = false): PrimaryActionLook = when (state) {
+    PrimaryActionState.Idle -> PrimaryActionLook(if (destructive) danger else ink, Color.Transparent, surface, 1f)
     is PrimaryActionState.Sending ->
-        PrimaryActionLook(ink, Color.Transparent, surface, MoyiDimens.PrimaryAction.SendingAlpha)
+        PrimaryActionLook(if (destructive) danger else ink, Color.Transparent, surface, MoyiDimens.PrimaryAction.SendingAlpha)
     is PrimaryActionState.QueuedOffline -> PrimaryActionLook(surfaceRaised, outlineStrong, ink, 1f)
     PrimaryActionState.Disabled -> PrimaryActionLook(surface, outline, inkMuted, 1f)
 }
@@ -166,6 +173,8 @@ private fun PrimaryActionStates(darkTheme: Boolean) {
             PrimaryAction("Create account", onClick = {}, state = PrimaryActionState.Disabled)
             Spacer(Modifier.height(MoyiTheme.spacing.md))
             PrimaryAction("Send", onClick = {}, state = PrimaryActionState.QueuedOffline("Queued"))
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+            PrimaryAction("Delete", onClick = {}, destructive = true)
         }
     }
 }

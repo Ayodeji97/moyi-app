@@ -73,6 +73,18 @@ fun MoyiScaffold(
     onBack: (() -> Unit)? = null,
     action: (@Composable ColumnScope.() -> Unit)? = null,
     contentArrangement: Arrangement.Vertical? = null,
+    /**
+     * A root screen's own top row in place of the back target: Today's `nav` row
+     * (date, then Archive and Bond settings). Pinned above the content, 16 above
+     * it like the back. Ignored when [onBack] is set: a screen has one or the other.
+     */
+    header: (@Composable () -> Unit)? = null,
+    /**
+     * False when the screen lays out and scrolls its content itself, for example
+     * to centre it vertically when it fits (Today, Reveal). The content then gets
+     * the full remaining height with no scroll from here.
+     */
+    scrollContent: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val itemSpacing = MoyiDimens.Scaffold.ItemSpacing
@@ -96,8 +108,29 @@ fun MoyiScaffold(
         if (onBack != null) {
             BackAffordance(onBack)
             Spacer(Modifier.height(itemSpacing))
+        } else if (header != null) {
+            header()
+            Spacer(Modifier.height(itemSpacing))
         }
-        if (action == null && contentArrangement == null) {
+        if (!scrollContent) {
+            // The screen lays out and scrolls its content itself (Today, Write,
+            // Reveal), so it gets the bounded room left and the actions stay
+            // pinned below it. No stacking fallback: content that scrolls
+            // itself cannot be measured at its full height.
+            Column(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = contentArrangement ?: Arrangement.Top,
+                content = content,
+            )
+            if (action != null) {
+                Spacer(Modifier.height(itemSpacing))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    content = action,
+                )
+            }
+        } else if (action == null && contentArrangement == null) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
