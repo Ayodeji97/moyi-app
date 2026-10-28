@@ -26,7 +26,8 @@ data class RevealState(
     val date: String = FakeCopy.DATE,
     val partnerName: String = FakeCopy.PARTNER_NAME,
     val myEntry: String = FakeCopy.MY_ENTRY,
-    val partnerEntry: String = FakeCopy.PARTNER_ENTRY,
+    /** The partner's words: null in [RevealPhase.Before], set only once the day turns to [RevealPhase.After]. */
+    val partnerEntry: String? = null,
 )
 
 sealed interface RevealAction {
@@ -55,9 +56,7 @@ class RevealViewModel(
     private val afterHold: Duration = RevealMotion.AfterHold,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(
-        RevealState(myEntry = loop.day.value.myEntry, partnerEntry = loop.day.value.partnerEntry),
-    )
+    private val _state = MutableStateFlow(RevealState(myEntry = loop.day.value.myEntry))
     val state: StateFlow<RevealState> = _state.asStateFlow()
 
     private val _events = Channel<RevealEvent>()
@@ -77,10 +76,10 @@ class RevealViewModel(
 
     private fun play() {
         sequence?.cancel()
-        _state.update { it.copy(phase = RevealPhase.Before) }
+        _state.update { it.copy(phase = RevealPhase.Before, partnerEntry = null) }
         sequence = viewModelScope.launch {
             delay(beforeHold)
-            _state.update { it.copy(phase = RevealPhase.After) }
+            _state.update { it.copy(phase = RevealPhase.After, partnerEntry = loop.day.value.partnerEntry) }
             delay(afterHold)
             loop.setStatus(TodayStatus.Revealed)
             _events.send(RevealEvent.Settle)

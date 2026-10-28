@@ -25,6 +25,7 @@ import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.CenteredContent
 import com.moyi.app.feature.today.common.DayNote
+import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.NoteAction
 import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.TodayNavRow
@@ -272,16 +273,24 @@ internal fun OwnCard(state: TodayState) {
 internal fun PartnerCard(state: TodayState) {
     EntryCard(
         authorLabel = stringResource(Res.string.today_author_partner, state.partnerName),
-        text = state.partnerEntry,
+        // Only Revealed, Tombstone and SoloTheyWrote draw this card, and only they hold the words.
+        text = state.partnerEntry.orEmpty(),
         variant = EntryCardVariant.Partner,
     )
 }
 
 // ---- Previews: every state, dark (the reference) ----
 
+private fun previewState(status: TodayStatus) = TodayState(
+    status = status,
+    partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf {
+        status == TodayStatus.Revealed || status == TodayStatus.Tombstone || status == TodayStatus.SoloTheyWrote
+    },
+)
+
 @Composable
 private fun TodayPreview(status: TodayStatus) {
-    MoyiTheme(darkTheme = true) { TodayScreen(state = TodayState(status = status), onAction = {}) }
+    MoyiTheme(darkTheme = true) { TodayScreen(state = previewState(status), onAction = {}) }
 }
 
 @Preview @Composable private fun TodayNotWrittenPreview() = TodayPreview(TodayStatus.NotWritten)
@@ -303,5 +312,5 @@ private fun TodayPreview(status: TodayStatus) {
 @Preview
 @Composable
 private fun TodayRevealedLightPreview() {
-    MoyiTheme(darkTheme = false) { TodayScreen(state = TodayState(status = TodayStatus.Revealed), onAction = {}) }
+    MoyiTheme(darkTheme = false) { TodayScreen(state = previewState(TodayStatus.Revealed), onAction = {}) }
 }

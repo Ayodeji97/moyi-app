@@ -1,6 +1,7 @@
 package com.moyi.app.feature.today
 
 import app.cash.turbine.test
+import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.FakeDailyLoop
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.write.WriteAction
@@ -115,5 +116,18 @@ class WriteViewModelTest : MainDispatcherTest() {
         assertEquals(WriteSubmit.Failed, seen[4].submit) // 384:229
         assertEquals(WriteSubmit.Queued, seen[5].submit)
         assertEquals(WriteState(), seen[6]) // back to 181:3
+    }
+
+    @Test
+    fun theDebugFillerNeverPutsThePartnersWordsInMyComposer() {
+        val vm = viewModel()
+        val partnerWords = FakeCopy.PARTNER_ENTRY.split(". ").map { it.trim().trimEnd('.') }.filter { it.length > 8 }
+        repeat(7) {
+            vm.onAction(WriteAction.OnDebugCycle)
+            val text = vm.state.value.text
+            partnerWords.forEach { sentence ->
+                assertFalse(text.contains(sentence), "the composer holds the partner's \"$sentence\"")
+            }
+        }
     }
 }

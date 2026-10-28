@@ -12,6 +12,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TodayViewModelTest : MainDispatcherTest() {
@@ -86,5 +88,23 @@ class TodayViewModelTest : MainDispatcherTest() {
         val today = viewModel.state.value.date
         loop.setStatus(TodayStatus.SoloYouWrote)
         assertEquals(false, viewModel.state.value.date == today)
+    }
+
+    @Test
+    fun thePartnersWordsAreHeldOnlyWhenTheDayIsOpenOrSolo() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        // A screen cannot leak what its state does not hold (states.md §3).
+        for (status in listOf(TodayStatus.NotWritten, TodayStatus.Waiting, TodayStatus.Queued)) {
+            loop.setStatus(status)
+            assertNull(viewModel.state.value.partnerEntry, "partnerEntry must be null in $status")
+        }
+        for (status in listOf(TodayStatus.PartnerNotJoined, TodayStatus.SoloYouWrote)) {
+            loop.setStatus(status)
+            assertNull(viewModel.state.value.partnerEntry, "partnerEntry must be null in $status")
+        }
+        for (status in listOf(TodayStatus.Revealed, TodayStatus.Tombstone, TodayStatus.SoloTheyWrote)) {
+            loop.setStatus(status)
+            assertNotNull(viewModel.state.value.partnerEntry, "partnerEntry must be set in $status")
+        }
     }
 }

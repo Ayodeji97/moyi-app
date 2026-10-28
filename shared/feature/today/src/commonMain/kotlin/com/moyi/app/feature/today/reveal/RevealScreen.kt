@@ -25,6 +25,7 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.CenteredContent
 import com.moyi.app.feature.today.common.DateLabel
+import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.common.isReducedMotionEnabled
@@ -171,11 +172,11 @@ private fun RevealBeforePreview() {
 @Preview
 @Composable
 private fun RevealAfterPreview() {
-    MoyiTheme(darkTheme = true) { RevealScreen(state = RevealState(phase = RevealPhase.After), onAction = {}, reducedMotion = false) }
+    MoyiTheme(darkTheme = true) { RevealScreen(state = RevealState(phase = RevealPhase.After, partnerEntry = FakeCopy.PARTNER_ENTRY), onAction = {}, reducedMotion = false) }
 }
 
 @Preview
 @Composable
 private fun RevealAfterLightPreview() {
-    MoyiTheme(darkTheme = false) { RevealScreen(state = RevealState(phase = RevealPhase.After), onAction = {}, reducedMotion = true) }
+    MoyiTheme(darkTheme = false) { RevealScreen(state = RevealState(phase = RevealPhase.After, partnerEntry = FakeCopy.PARTNER_ENTRY), onAction = {}, reducedMotion = true) }
 }

@@ -114,8 +114,12 @@ class WriteViewModel(
         }
     }
 
+    /**
+     * Filler for the long debug frames: my own words, repeated. Never the partner's: their
+     * words must never appear in my composer, not even as a stand-in.
+     */
     private fun sampleOf(length: Int): String {
-        val words = "${FakeCopy.PARTNER_ENTRY} "
+        val words = "${FakeCopy.MY_ENTRY} "
         return words.repeat(length / words.length + 1).take(length)
     }
 

@@ -21,8 +21,12 @@ data class TodayState(
     /** The server's prompt for today, personalised (ADR-0038). Not a client string. */
     val prompt: String = FakeCopy.PROMPT,
     val myEntry: String = FakeCopy.MY_ENTRY,
-    /** Only ever shown once the day is open (Revealed, Tombstone) or SOLO (FR-063). */
-    val partnerEntry: String = FakeCopy.PARTNER_ENTRY,
+    /**
+     * The partner's words: set ONLY for Revealed, Tombstone (the day is open) and
+     * SoloTheyWrote (unlocked at rollover, FR-063); null in every other layout, so a
+     * layout that must not show them has nothing it could show.
+     */
+    val partnerEntry: String? = null,
     /** The Bond-day a queued entry will count for (states.md §4, BR-3a, `intendedAt`). */
     val queuedForDate: String = FakeCopy.DATE_IN_SENTENCE,
 )

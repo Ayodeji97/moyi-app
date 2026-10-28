@@ -37,7 +37,7 @@ class TodayViewModel(
                     FakeCopy.DATE
                 },
                 myEntry = day.myEntry,
-                partnerEntry = day.partnerEntry,
+                partnerEntry = day.partnerEntry.takeIf { day.status in PartnerVisible },
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayState(status = loop.day.value.status))
@@ -79,5 +79,10 @@ class TodayViewModel(
 
     private fun send(event: TodayEvent) {
         viewModelScope.launch { _events.send(event) }
+    }
+
+    private companion object {
+        /** The only layouts that may hold the partner's words: the day is open, or it closed SOLO with theirs. */
+        val PartnerVisible = setOf(TodayStatus.Revealed, TodayStatus.Tombstone, TodayStatus.SoloTheyWrote)
     }
 }
