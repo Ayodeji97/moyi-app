@@ -24,8 +24,10 @@ import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 
 /**
  * [AuthRepository] over the generated auth APIs.
@@ -99,11 +101,17 @@ class AuthRepositoryImpl(
     /**
      * Ends the session here first, then tells the server (best effort; it
      * answers `204` whatever the token). The local wipe cannot be skipped by
-     * a dead network or a closed screen.
+     * a dead network or a closed screen: the read and the wipe, including the
+     * wait for a refresh that holds the session lock, run [NonCancellable].
+     * A caller cancelled meanwhile still gets a wiped device; only the
+     * server call is skipped.
      */
     override suspend fun logout() {
-        val refreshToken = sessionManager.storedRefreshToken()
-        sessionManager.endSession(SessionEndReason.SignedOut)
+        val refreshToken = withContext(NonCancellable) {
+            sessionManager.storedRefreshToken().also {
+                sessionManager.endSession(SessionEndReason.SignedOut)
+            }
+        }
         if (refreshToken != null) {
             safeApiCallEmpty { logoutApi.logout(LogoutRequest(refreshToken)) }
         }

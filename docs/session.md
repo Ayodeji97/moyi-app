@@ -16,9 +16,11 @@ CLAUDE.md (Code); the server's side is ADR-0019 to ADR-0021 and doc 06 §3.1.
 - **iOS:** one Keychain generic-password item (service `com.moyi.app.session`), readable
   after the first unlock, never backed up or moved to another device. The Keychain
   survives deleting the app, so the first launch after an install (no `moyi.installed`
-  flag in UserDefaults) wipes it. Before the first unlock after a reboot the Keychain
-  answers `errSecInteractionNotAllowed` (-25308); that is read as "unavailable", not as
-  "no session".
+  flag in UserDefaults) wipes it. Only `errSecItemNotFound` (-25300) reads as "no
+  session", and only data that is not UTF-8 or does not decode is wiped. Every other
+  read status is "unavailable": `errSecInteractionNotAllowed` (-25308, before the first
+  unlock after a reboot), `errSecNotAvailable` (-25291) and anything unexpected
+  (`keychainReadOutcome`).
 - **Android:** a file in `noBackupFilesDir`, AES-256-GCM encrypted under a non-exportable
   Android Keystore key, written through `AtomicFile`. Only a failure that proves the key
   or the payload is gone (`AEADBadTagException`, `KeyPermanentlyInvalidatedException`,
@@ -36,6 +38,8 @@ CLAUDE.md (Code); the server's side is ADR-0019 to ADR-0021 and doc 06 §3.1.
 - A refresh during a request fails that request (`DataError.Network.Unknown`) and keeps
   the session.
 - Sign-out still wipes this device; the server is not told, and the family expires.
+  The read and the wipe run `NonCancellable`, including the wait for a refresh that
+  holds the session lock, so closing the screen mid sign-out cannot skip the wipe.
 
 ## One refresh at a time
 

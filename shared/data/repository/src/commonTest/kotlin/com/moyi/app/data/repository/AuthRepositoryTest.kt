@@ -35,6 +35,7 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -202,6 +203,37 @@ class AuthRepositoryTest {
         assertTrue(log.indexOf("GET /api/v1/me Bearer a1") in 0..<log.indexOf("store.clear"), log.joinToString("\n"))
         // After sign-out the authed client sends no token at all: nothing cached a1.
         assertEquals("GET /api/v1/me no-auth", log.last())
+    }
+
+    @Test
+    fun aLogoutCancelledWhileARefreshHoldsTheLockStillWipesThisDevice() = runTest {
+        val refreshStarted = CompletableDeferred<Unit>()
+        val releaseRefresh = CompletableDeferred<Unit>()
+        val fixture = Fixture { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/auth/login" -> respondJson(tokenPairJson("a1", "r1"))
+                "/api/v1/auth/refresh" -> {
+                    refreshStarted.complete(Unit)
+                    releaseRefresh.await()
+                    respondJson(tokenPairJson("a2", "r2"))
+                }
+                else -> respond("", HttpStatusCode.NoContent)
+            }
+        }
+        fixture.repository.login("ada@example.test", "pw")
+        val refresh = launch { fixture.sessionManager.refresh("a1") }
+        refreshStarted.await()
+
+        // Unconfined: runs until it suspends, which is on the session lock the refresh holds.
+        val logout = launch(UnconfinedTestDispatcher(testScheduler)) { fixture.repository.logout() }
+        logout.cancel() // the screen that asked for sign-out is closed
+        releaseRefresh.complete(Unit)
+        refresh.join()
+        logout.join()
+
+        assertNull(fixture.store.current)
+        assertNull(fixture.sessionManager.currentAccessToken())
+        assertEquals(SessionState.SignedOut, fixture.repository.session.value)
     }
 
     @Test
