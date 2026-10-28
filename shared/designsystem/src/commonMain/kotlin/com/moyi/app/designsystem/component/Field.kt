@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -231,7 +232,8 @@ private fun SelectField(
     val state = fieldStateOf(enabled = enabled, hasError = error != null, focused = false)
     val stroke = colors.fieldStroke(state)
     Column(modifier.fillMaxWidth()) {
-        MoyiText(text = label, role = TextRole.Label)
+        // The box below speaks the label with its value; spoken here too, it was read twice.
+        MoyiText(text = label, role = TextRole.Label, modifier = Modifier.clearAndSetSemantics {})
         Spacer(Modifier.height(MoyiDimens.Field.LabelGap))
         Row(
             modifier = Modifier

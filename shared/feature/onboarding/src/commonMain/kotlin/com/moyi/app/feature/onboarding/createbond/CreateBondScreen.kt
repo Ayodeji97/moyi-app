@@ -98,7 +98,8 @@ fun CreateBondScreen(
             helper = stringResource(Res.string.bond_name_helper),
             error = state.nameError?.asString(),
             keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words,
+                // Sentences, not Words: "Amara and Tunde", never "Amara And Tunde".
+                capitalization = KeyboardCapitalization.Sentences,
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(onDone = { onAction(CreateBondAction.OnCreateClick) }),
