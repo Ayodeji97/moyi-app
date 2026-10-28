@@ -2,6 +2,7 @@ package com.moyi.app.feature.auth.navigation
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.moyi.app.feature.auth.home.HomePlaceholderRoot
@@ -28,7 +29,8 @@ data object HomePlaceholderRoute
  * The auth screens. Back stack, from the start destination (sign in):
  *
  * - Sign in → "Create an account" pushes Register.
- * - Register → back, or "I already have an account", pops to sign in.
+ * - Register → back pops to whatever is underneath (sign in, or the promise);
+ *   "I already have an account" pops to sign in, or replaces sign up with it.
  * - Register → 201 pushes Verify. Verify → back or "Use a different address"
  *   pops to Register, whose ViewModel kept the fields.
  * - Verify → 200 replaces the whole stack with sign in, email prefilled: the
@@ -53,7 +55,10 @@ fun NavGraphBuilder.authGraph(
         RegisterRoot(
             onNavigateToVerify = { email -> navController.navigate(VerifyRoute(email)) },
             onNavigateToLogin = { navController.backToLogin() },
-            onNavigateBack = { navController.backToLogin() },
+            onNavigateBack = {
+                // From the promise, back returns to it; from sign in, to sign in.
+                if (navController.previousBackStackEntry != null) navController.navigateUp() else navController.backToLogin()
+            },
         )
     }
     composable<VerifyRoute> { entry ->
@@ -73,11 +78,15 @@ fun NavGraphBuilder.authGraph(
     }
 }
 
-/** Pops to sign in when it is underneath; otherwise makes it the only screen. */
+/**
+ * Pops to sign in when it is directly underneath. Otherwise (sign up was
+ * opened from the promise, or is the only screen) sign in replaces sign up,
+ * so back from sign in returns to whatever was under sign up.
+ */
 private fun NavController.backToLogin() {
-    if (previousBackStackEntry != null) {
+    if (previousBackStackEntry?.destination?.hasRoute<LoginRoute>() == true) {
         navigateUp()
     } else {
-        navigate(LoginRoute()) { popUpTo(graph.id) { inclusive = true } }
+        navigate(LoginRoute()) { popUpTo<RegisterRoute> { inclusive = true } }
     }
 }

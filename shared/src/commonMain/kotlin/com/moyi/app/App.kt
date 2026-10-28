@@ -22,9 +22,15 @@ import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
+import com.moyi.app.debug.UiPreviewRoute
+import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.HomePlaceholderRoute
 import com.moyi.app.feature.auth.navigation.LoginRoute
+import com.moyi.app.feature.auth.navigation.RegisterRoute
 import com.moyi.app.feature.auth.navigation.authGraph
+import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
+import com.moyi.app.feature.onboarding.navigation.PromiseRoute
+import com.moyi.app.feature.onboarding.navigation.onboardingGraph
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -34,12 +40,12 @@ import org.koin.compose.viewmodel.koinViewModel
  *   motion (states.md §0; CLAUDE.md "no spinner is invented"). It also covers
  *   a locked token store, which keeps the state Unknown until a foreground
  *   retry succeeds.
- * - **SignedIn**: the placeholder.
- * - **SignedOut**: sign in, with "Create an account" leading to sign up.
- *   Sign in rather than sign up because the promise screen, the real root for
- *   a new person, is not built yet; sign in is where every returning person,
- *   every sign-out and every ended session must land anyway, and sign up is
- *   one tap from it.
+ * - **SignedIn**: onboarding (relationship type). Its last action calls
+ *   `onOnboardingFinished`, which lands on the placeholder until Today exists.
+ * - **SignedOut**: the promise (Onboarding 1), leading to sign up or sign in.
+ *   A sign-out or an ended session still lands on sign in (below).
+ * - **UI preview** (debug builds with `-PmoyiUiPreview=true` only): a preview
+ *   index, chosen before the session is known; see `UiPreviewIndex`.
  *
  * The start destination is chosen once, when the state first leaves Unknown.
  * Later changes are navigation: a sign-in navigates from the screen, and a
@@ -51,9 +57,10 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         val session by viewModel.session.collectAsStateWithLifecycle()
         LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onForeground() }
 
-        var start by remember { mutableStateOf<Any?>(null) }
+        var start by remember { mutableStateOf<Any?>(if (AppBuildKonfig.UI_PREVIEW) UiPreviewRoute else null) }
         if (start == null && session != SessionState.Unknown) {
-            start = if (session is SessionState.SignedIn) HomePlaceholderRoute else LoginRoute()
+            // TODO(logic): skip onboarding when the person already has a bond (`GET /api/v1/bonds`).
+            start = if (session is SessionState.SignedIn) OnboardingRoute else PromiseRoute
         }
 
         val startDestination = start
@@ -93,8 +100,17 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
     ) {
         authGraph(
             navController = navController,
-            onSignedIn = { navController.resetTo(HomePlaceholderRoute) },
+            // TODO(logic): skip onboarding when the person already has a bond (`GET /api/v1/bonds`).
+            onSignedIn = { navController.resetTo(OnboardingRoute) },
         )
+        onboardingGraph(
+            navController = navController,
+            onNavigateToRegister = { navController.navigate(RegisterRoute) },
+            onNavigateToSignIn = { navController.navigate(LoginRoute()) },
+            // PR #8 swaps the placeholder for Today.
+            onOnboardingFinished = { navController.resetTo(HomePlaceholderRoute) },
+        )
+        if (AppBuildKonfig.UI_PREVIEW) uiPreviewGraph(navController)
     }
 }
 
