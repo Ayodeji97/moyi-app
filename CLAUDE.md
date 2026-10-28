@@ -45,7 +45,7 @@ have judged it.
   it, run its migrations against a shared database, or push to it. A contract problem
   found from this side is written into `docs/backend-contract-gaps.md` for a backend
   session to fix.
-- **Commits follow Conventional Commits, subject at most 88 characters**, checked by CI on
+- **Commits follow Conventional Commits, the whole first line at most 88 characters** (type and scope included), checked by CI on
   every commit and on the PR title with its ` (#N)` suffix. Switch the hook on locally:
   `git config core.hooksPath .githooks`.
 - **Every PR description has a "Decisions" and a "Concepts worth studying" section.** The

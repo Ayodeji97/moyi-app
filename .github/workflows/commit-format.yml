@@ -59,15 +59,16 @@ jobs:
           message=$(mktemp)
           failures=0
 
-          check() { # $1 = what it is, $2 = the subject line
+          check() { # $1 = what it is, $2 = the subject line, $3 = "title" for the PR title
             printf '%s\n' "$2" > "$message"
-            if ! bash "$hook" "$message" 2> /dev/null; then
-              echo "::error::$1 does not follow Conventional Commits: \"$2\" (${#2} characters). Expected type(scope): subject, with the subject at most 88 characters. Allowed types: feat fix chore docs refactor test build ci perf revert."
+            # A title is never a merge commit, so the hook's Merge exemption is off for it.
+            if ! MOYI_CHECK_TITLE="${3:-}" bash "$hook" "$message" 2> /dev/null; then
+              echo "::error::$1 does not follow Conventional Commits: \"$2\" (${#2} characters). Expected type(scope): subject, at most 88 characters for the whole line. Allowed types: feat fix chore docs refactor test build ci perf revert."
               failures=$(( failures + 1 ))
             fi
           }
 
-          check "The pull request title, as it will land on main after a squash merge," "$TITLE (#$NUMBER)"
+          check "The pull request title, as it will land on main after a squash merge," "$TITLE (#$NUMBER)" title
 
           # Subjects only, oldest first. `git log` on a range is empty for a
           # branch with no commits of its own, which is a pass, not an error.
