@@ -61,7 +61,7 @@ kotlin {
     }
 }
 
-// ---- UI preview (DEBUG ONLY; docs/ui-preview.md) -----------------------------
+// ---- UI preview (DEBUG ONLY; README "UI preview") -----------------------------
 //
 // `-PmoyiUiPreview=true` (or ORG_GRADLE_PROJECT_moyiUiPreview=true for an
 // Xcode build) starts the app at a preview index of the onboarding screens,

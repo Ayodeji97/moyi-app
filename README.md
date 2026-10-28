@@ -20,6 +20,7 @@ Compose Multiplatform UI. Package `com.moyi.app`. The rules for working here are
 | `:shared:data:repository` | `com.moyi.app.data.repository` | Repository implementations |
 | `:shared:data:testing` | `com.moyi.app.data.testing` | Test fixtures for the data modules' tests only (fake store, MockEngine helpers) |
 | `:shared:feature:auth` | `com.moyi.app.feature.auth` | Register, verify, sign in |
+| `:shared:feature:onboarding` | `com.moyi.app.feature.onboarding` | The promise, relationship type, create bond, invite handoff, join (UI on fake state, PR #7) |
 | `:architecture-tests` | | JVM-only Konsist rules over `shared/**` |
 | `build-logic/` | | Convention plugins: `moyi.kmp.library`, `moyi.kmp.compose`, `moyi.dependency.guard` |
 
@@ -57,6 +58,27 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 
 CI runs `./gradlew check` on Linux, which cannot link iOS; each PR says whether the iOS
 framework and the Xcode app were built locally.
+
+### UI preview (debug only)
+
+The onboarding screens run on fake state, so they can be clicked through with no backend
+and no session. Build with the Gradle property `moyiUiPreview` and the app opens on a
+preview index (`shared/src/commonMain/kotlin/com/moyi/app/debug/UiPreviewIndex.kt`)
+instead of deciding from the session:
+
+```sh
+./gradlew :androidApp:installDebug -PmoyiUiPreview=true
+
+# Xcode's Gradle build phase reads it from the environment:
+ORG_GRADLE_PROJECT_moyiUiPreview=true xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
+  -sdk iphonesimulator -destination 'id=<simulator-udid>' \
+  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build
+```
+
+It is off unless set, it becomes `AppBuildKonfig.UI_PREVIEW` in `:shared`, and a Gradle
+invocation that names a release task with it on fails at configuration. In the join flow,
+the code `ZZZZZZ` plays "cannot be used" and any other well-formed code resolves. Build
+again without the property to get the normal start back.
 
 ## The API contract
 
