@@ -14,8 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +29,7 @@ import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.common.isReducedMotionEnabled
 import com.moyi.app.feature.today.resources.Res
+import com.moyi.app.feature.today.resources.today_announce_revealed
 import com.moyi.app.feature.today.resources.today_author_partner
 import com.moyi.app.feature.today.resources.today_author_you
 import com.moyi.app.feature.today.resources.today_revealed_title
@@ -109,28 +109,41 @@ private fun androidx.compose.foundation.layout.ColumnScope.Before(state: RevealS
     CenteredContent {
         EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
-        // Drawn as the same Waiting instance as Today (179:7); its links do nothing mid-reveal.
-        WaitingNote(partnerName = state.partnerName, onEdit = {}, onDelete = {})
+        // The same Waiting instance as Today (179:7), without its links: mid-reveal they would
+        // do nothing, so they are not drawn (and so never reach TalkBack or VoiceOver focus).
+        WaitingNote(partnerName = state.partnerName, onEdit = null, onDelete = null)
     }
 }
 
-/** 179:8: "Your day is open." and both entries, the partner's first. */
+/**
+ * 179:8: "Your day is open." and both entries, the partner's first.
+ *
+ * Announced as it appears: a `paneTitle` on the after column, so TalkBack and VoiceOver
+ * speak states.md §3's "Your day is open. Two entries" when the pane changes. A
+ * `liveRegion` alone is not enough: it announces a node whose content CHANGES, not one
+ * that appears, and the after column is a new node, not a changed one.
+ */
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.After(state: RevealState) {
-    // Announced once as it appears: the copy is the push's own line (copy.md table).
-    ScreenTitle(
-        text = stringResource(Res.string.today_revealed_title),
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-    )
-    Spacer(Modifier.height(MoyiTheme.spacing.md))
-    CenteredContent {
-        EntryCard(
-            authorLabel = stringResource(Res.string.today_author_partner, state.partnerName),
-            text = state.partnerEntry,
-            variant = EntryCardVariant.Partner,
-        )
+    val announce = stringResource(Res.string.today_announce_revealed)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .weight(1f)
+            .semantics { paneTitle = announce },
+    ) {
+        ScreenTitle(text = stringResource(Res.string.today_revealed_title))
         Spacer(Modifier.height(MoyiTheme.spacing.md))
-        EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry)
+        CenteredContent {
+            EntryCard(
+                authorLabel = stringResource(Res.string.today_author_partner, state.partnerName),
+                // Null only before the turn, and the after frame is drawn only after it.
+                text = state.partnerEntry.orEmpty(),
+                variant = EntryCardVariant.Partner,
+            )
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+            EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry)
+        }
     }
 }
 

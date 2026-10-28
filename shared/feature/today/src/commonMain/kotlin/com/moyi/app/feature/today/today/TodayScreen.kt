@@ -31,7 +31,10 @@ import com.moyi.app.feature.today.common.TodayNavRow
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.today_announce_not_written
+import com.moyi.app.feature.today.resources.today_announce_partner_not_joined
+import com.moyi.app.feature.today.resources.today_announce_queued
 import com.moyi.app.feature.today.resources.today_announce_revealed
+import com.moyi.app.feature.today.resources.today_announce_solo
 import com.moyi.app.feature.today.resources.today_announce_waiting
 import com.moyi.app.feature.today.resources.today_author_partner
 import com.moyi.app.feature.today.resources.today_author_you
@@ -153,16 +156,22 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
     }
 }
 
-/** The waiting StateBlock stand-in, shared with Reveal · before (179:7 is the same 224 instance). */
+/**
+ * The waiting StateBlock stand-in, shared with Reveal · before (179:7 is the same 224 instance).
+ * Reveal passes no handlers: mid-reveal the links would do nothing, so they are not drawn
+ * at all rather than drawn as focusable targets that lie about being actions.
+ */
 @Composable
-internal fun WaitingNote(partnerName: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+internal fun WaitingNote(partnerName: String, onEdit: (() -> Unit)?, onDelete: (() -> Unit)?) {
+    val edit = stringResource(Res.string.today_edit)
+    val delete = stringResource(Res.string.today_delete)
     DayNote(
         heading = stringResource(Res.string.today_waiting_heading),
         line = stringResource(Res.string.today_waiting_line, partnerName),
-        actions = listOf(
-            NoteAction(stringResource(Res.string.today_edit), onEdit),
+        actions = listOfNotNull(
+            onEdit?.let { NoteAction(edit, it) },
             // Before the reveal it is not irreversible yet: `ink`, not `danger`, and no confirm.
-            NoteAction(stringResource(Res.string.today_delete), onDelete),
+            onDelete?.let { NoteAction(delete, it) },
         ),
     )
 }
@@ -206,7 +215,8 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
 /** 188:481. The creator writes normally; the entry simply waits (SKILL.md §4). */
 @Composable
 private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayAction) -> Unit) {
-    CenteredContent {
+    val announce = stringResource(Res.string.today_announce_partner_not_joined)
+    CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         DayNote(
@@ -221,7 +231,8 @@ private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayActi
 /** 188:491. The day closed at rollover with only my entry. Factual, forgiving. */
 @Composable
 private fun ColumnScope.SoloYouWrote(state: TodayState) {
-    CenteredContent {
+    val announce = stringResource(Res.string.today_announce_solo)
+    CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         DayNote(line = stringResource(Res.string.today_solo_line))
@@ -231,7 +242,8 @@ private fun ColumnScope.SoloYouWrote(state: TodayState) {
 /** 188:501. The partner's lone entry, unlocked at rollover (FR-063), and one line. */
 @Composable
 private fun ColumnScope.SoloTheyWrote(state: TodayState) {
-    CenteredContent {
+    val announce = stringResource(Res.string.today_announce_solo)
+    CenteredContent(Modifier.semantics { paneTitle = announce }) {
         PartnerCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         MoyiText(stringResource(Res.string.today_solo_line))
@@ -241,7 +253,8 @@ private fun ColumnScope.SoloTheyWrote(state: TodayState) {
 /** 384:327. My entry is safe on the device and says which Bond-day it counts for. */
 @Composable
 private fun ColumnScope.Queued(state: TodayState) {
-    CenteredContent {
+    val announce = stringResource(Res.string.today_announce_queued)
+    CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         // TODO(logic): the outbox sends it when the connection returns (doc 13 §5), with the

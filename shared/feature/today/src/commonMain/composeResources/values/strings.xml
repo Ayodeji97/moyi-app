@@ -39,12 +39,19 @@
     <string name="today_announce_revealed">Your day is open. Two entries</string>
     <!-- copy.md warmth audit (canvas wording). Partner not joined. %1$s = partnerName. -->
     <string name="today_partner_pending_line">It will be here when %1$s joins.</string>
+    <!-- states.md §3 announce for Partner not yet joined. -->
+    <string name="today_announce_partner_not_joined">Written. Waiting for your partner to join</string>
     <!-- states.md §8. Opens the OS share sheet; navigates nowhere. -->
     <string name="today_share_invite_again">Share the invite again</string>
     <!-- FIGMA NODE NAME on 188:507. A solo day, either way round. -->
     <string name="today_solo_line">This day closed with one entry.</string>
+    <!-- states.md §3 announce for Solo day, either way round (you wrote, or they did). -->
+    <string name="today_announce_solo">Day closed with one entry</string>
     <!-- states.md §10 "Offline", with the Bond-day it counts for (BR-3a). %1$s = the locale date of that Bond-day. -->
     <string name="today_queued_line">It'll send when you're back online. It will count for %1$s.</string>
+    <!-- proposed -->
+    <!-- PROPOSED. states.md §3 has no announce for Queued (384:327). Shaped like the others ("Written. ..."), and it says only what is true of my entry: it is on the device and will send. No partner status. -->
+    <string name="today_announce_queued">Written. It will send when you're back online</string>
     <!-- PROPOSED. The line that stands where your deleted entry was (EntryCard Tombstone, 420:59, one body line). -->
     <string name="today_tombstone_line">You deleted what you wrote.</string>
 
