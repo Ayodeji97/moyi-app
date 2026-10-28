@@ -93,6 +93,15 @@ class WriteViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun editsWhileSendingAreIgnored() {
+        val vm = viewModel()
+        repeat(3) { vm.onAction(WriteAction.OnDebugCycle) } // 419:193 sending
+        val sending = vm.state.value
+        vm.onAction(WriteAction.OnTextChange("changed"))
+        assertEquals(sending, vm.state.value)
+    }
+
+    @Test
     fun theDebugSwitchVisitsEachDrawnComposerStateAndWraps() {
         val vm = viewModel()
         val seen = (1..7).map {

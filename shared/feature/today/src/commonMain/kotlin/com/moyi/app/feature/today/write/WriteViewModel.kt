@@ -48,6 +48,8 @@ class WriteViewModel(
     fun onAction(action: WriteAction) {
         when (action) {
             is WriteAction.OnTextChange -> {
+                // The words being sent are the words on screen: no edits in flight.
+                if (_state.value.submit == WriteSubmit.Sending) return
                 // TODO(logic): autosave the draft locally on every keystroke pause (debounced, about
                 //  500 ms; doc 13 §5, states.md §4 "Draft saved: silent"). No toast, no "saved".
                 _state.update { it.copy(text = action.text, submit = it.submit.afterEdit()) }

@@ -32,7 +32,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.resources.Res
@@ -48,8 +47,8 @@ import org.jetbrains.compose.resources.stringResource
  *   ([WindowInsets.safeDrawing]: status and navigation bars, cutout and the
  *   keyboard), a padding of 16 at the sides and 24 at top and bottom. The
  *   24 is added inside the insets (D6, as ruled). While the keyboard is
- *   up the bottom 24 is dropped, so the action block sits flush on it
- *   (Figma 362:1105).
+ *   up the bottom 24 becomes 16, the gap Figma draws between the button
+ *   and the keyboard (362:1105, 362:1284).
  * - Three stacked parts, 16 apart: an optional header holding the 48 x 48
  *   back target with a 24 chevron and **no title**; the scrolling content;
  *   an optional [action] block pinned to the bottom, centred, which is
@@ -99,10 +98,12 @@ fun MoyiScaffold(
                 end = MoyiDimens.Scaffold.Gutter,
                 top = MoyiDimens.Scaffold.PaddingVertical,
                 // At rest, 24 inside the safe area (D6). With the keyboard up
-                // the action block sits flush on it, as Figma's keyboard-up
-                // frame draws it (362:1105: action ends at 544, keyboard
-                // starts at 544). safeDrawing already includes the IME inset.
-                bottom = if (imeVisible) 0.dp else MoyiDimens.Scaffold.PaddingVertical,
+                // the action frame sits flush on it (362:1105, 181:3: frame
+                // 472 to 544, keyboard from 544) but the button inside it ends
+                // at 528, so 16 stays between the button and the keyboard
+                // (measured on the composer, PR #8). safeDrawing already
+                // includes the IME inset.
+                bottom = if (imeVisible) MoyiDimens.Scaffold.KeyboardGap else MoyiDimens.Scaffold.PaddingVertical,
             ),
     ) {
         if (onBack != null) {

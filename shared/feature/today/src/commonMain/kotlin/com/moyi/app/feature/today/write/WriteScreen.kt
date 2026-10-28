@@ -104,7 +104,8 @@ fun WriteScreen(
             onDismissPrompt = { onAction(WriteAction.OnDismissPrompt) },
             counter = if (state.showCounter) stringResource(Res.string.write_counter, state.characterCount) else null,
             invalid = state.overLimit,
-            enabled = state.submit != WriteSubmit.Sending,
+            // Never disabled or read-only while sending: either drops focus and the keyboard
+            // (419:193 keeps it up). The ViewModel ignores edits in flight instead.
             onAddPhoto = { onAction(WriteAction.OnAddPhotoClick) },
             onRecordVoice = { onAction(WriteAction.OnRecordVoiceClick) },
             focusRequester = focusRequester,
@@ -112,6 +113,10 @@ fun WriteScreen(
                 .weight(1f)
                 .then(if (state.editing) Modifier.semantics { paneTitle = editingAnnounce } else Modifier),
         )
+        // The field ends 24 above the first thing in the action block (Figma 181:3:
+        // field to 456, button at 480; 384:229: field to 424, error at 448): the
+        // scaffold's 16 plus these 8.
+        Spacer(Modifier.height(MoyiTheme.spacing.sm))
     }
 }
 

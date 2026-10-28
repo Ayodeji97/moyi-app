@@ -24,7 +24,7 @@ data class TodayState(
     /** Only ever shown once the day is open (Revealed, Tombstone) or SOLO (FR-063). */
     val partnerEntry: String = FakeCopy.PARTNER_ENTRY,
     /** The Bond-day a queued entry will count for (states.md §4, BR-3a, `intendedAt`). */
-    val queuedForDate: String = FakeCopy.DATE,
+    val queuedForDate: String = FakeCopy.DATE_IN_SENTENCE,
 )
 
 sealed interface TodayAction {

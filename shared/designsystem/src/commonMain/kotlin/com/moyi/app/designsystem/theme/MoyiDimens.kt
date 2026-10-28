@@ -162,6 +162,11 @@ object MoyiDimens {
          * actions scroll with the content instead of being pinned.
          */
         val MinContentHeight = 120.dp
+        /**
+         * Keyboard up: the gap between the action and the keyboard. Figma 181:3 and
+         * 362:1196 draw the action frame 472 to 544 with the button 480 to 528.
+         */
+        val KeyboardGap = 16.dp
         /** Figma §2: header back target 48×48 with a 24 chevron, no title. */
         val BackTarget = TouchTarget
     }

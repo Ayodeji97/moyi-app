@@ -100,6 +100,9 @@ object FakeCopy {
     const val PARTNER_NAME = "Tunde"
     const val DATE = "Tuesday · 2 September"
     const val SOLO_DATE = "Monday · 1 September"
+
+    /** The same day in running text ("It will count for Tuesday, 2 September.", states.md §10). */
+    const val DATE_IN_SENTENCE = "Tuesday, 2 September"
     const val PROMPT = "What did Tunde do today that you noticed?"
     const val MY_ENTRY = "The way you sat on the phone with me until I fell asleep."
     const val PARTNER_ENTRY =
