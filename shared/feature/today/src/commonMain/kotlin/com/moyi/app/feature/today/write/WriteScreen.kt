@@ -102,7 +102,7 @@ fun WriteScreen(
             onValueChange = { onAction(WriteAction.OnTextChange(it)) },
             prompt = state.prompt,
             onDismissPrompt = { onAction(WriteAction.OnDismissPrompt) },
-            counter = if (state.showCounter) stringResource(Res.string.write_counter, state.characterCount) else null,
+            counter = if (state.showCounter) stringResource(Res.string.write_counter, state.characterCount, WriteState.MAX_CHARACTERS) else null,
             invalid = state.overLimit,
             // Never disabled or read-only while sending: either drops focus and the keyboard
             // (419:193 keeps it up). The ViewModel ignores edits in flight instead.

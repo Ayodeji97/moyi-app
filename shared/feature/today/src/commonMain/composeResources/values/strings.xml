@@ -71,8 +71,8 @@
     <string name="write_save_failed">That didn't save. Your words are still here.</string>
     <!-- PROPOSED. PrimaryAction State=QueuedOffline while the entry waits for a connection. -->
     <string name="write_queued">Waiting to send</string>
-    <!-- PROPOSED. The counter past 400 graphemes (states.md §4: neutral count). %1$d = graphemes typed. The 500 is FR-041's ceiling. -->
-    <string name="write_counter">%1$d / 500</string>
+    <!-- PROPOSED. The counter past 400 graphemes (states.md §4: neutral count). %1$d = graphemes typed; %2$d = the ceiling, WriteState.MAX_CHARACTERS (FR-041's 500), passed in so the number lives in one place. -->
+    <string name="write_counter">%1$d / %2$d</string>
     <!-- states.md §4 announce for Edit before reveal. -->
     <string name="write_announce_editing">Editing today's entry</string>
 
