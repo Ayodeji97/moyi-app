@@ -2,6 +2,7 @@ package com.moyi.app.designsystem.component
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -39,7 +40,9 @@ fun StateBlock(
 ) {
     Column(
         modifier = modifier
+            // At most 350, and 350 whenever there is room: widthIn first, then fill.
             .widthIn(max = MoyiDimens.StateBlock.NativeWidth)
+            .fillMaxWidth()
             .padding(MoyiDimens.StateBlock.Padding),
     ) {
         MoyiText(heading, role = TextRole.Title, modifier = Modifier.semantics { heading() })
