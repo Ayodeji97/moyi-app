@@ -44,7 +44,7 @@ import org.koin.compose.viewmodel.koinViewModel
  *   `onOnboardingFinished`, which lands on the placeholder until Today exists.
  * - **SignedOut**: the promise (Onboarding 1), leading to sign up or sign in.
  *   A sign-out or an ended session still lands on sign in (below).
- * - **UI preview** (debug builds with `-PmoyiUiPreview=true` only): a preview
+ * - **UI preview** (debug builds with `-PmoyiUiPreview=onboarding` only): a preview
  *   index, chosen before the session is known; see `UiPreviewIndex`.
  *
  * The start destination is chosen once, when the state first leaves Unknown.
@@ -57,7 +57,7 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         val session by viewModel.session.collectAsStateWithLifecycle()
         LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onForeground() }
 
-        var start by remember { mutableStateOf<Any?>(if (AppBuildKonfig.UI_PREVIEW) UiPreviewRoute else null) }
+        var start by remember { mutableStateOf<Any?>(if (UiPreview.onboarding) UiPreviewRoute else null) }
         if (start == null && session != SessionState.Unknown) {
             // TODO(logic): skip onboarding when the person already has a bond (`GET /api/v1/bonds`).
             start = if (session is SessionState.SignedIn) OnboardingRoute else PromiseRoute
@@ -110,7 +110,7 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
             // PR #8 swaps the placeholder for Today.
             onOnboardingFinished = { navController.resetTo(HomePlaceholderRoute) },
         )
-        if (AppBuildKonfig.UI_PREVIEW) uiPreviewGraph(navController)
+        if (UiPreview.onboarding) uiPreviewGraph(navController)
     }
 }
 
@@ -120,4 +120,9 @@ private fun NavHostController.resetTo(route: Any) {
         popUpTo(graph.id) { inclusive = true }
         launchSingleTop = true
     }
+}
+
+/** The `moyiUiPreview` build switch (shared/build.gradle.kts). Empty in every normal build. */
+private object UiPreview {
+    val onboarding: Boolean = UiPreviewConfig.UI_PREVIEW == "onboarding"
 }

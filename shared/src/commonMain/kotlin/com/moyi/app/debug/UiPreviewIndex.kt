@@ -20,7 +20,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * DEBUG ONLY. Registered and started only when the app is built with
- * `-PmoyiUiPreview=true` (`AppBuildKonfig.UI_PREVIEW`), so the onboarding
+ * `-PmoyiUiPreview=onboarding` (`UiPreviewConfig.UI_PREVIEW`), so the onboarding
  * screens can be clicked through and screenshotted without a backend: they
  * hold fake state, so no session is needed.
  *

@@ -23,7 +23,7 @@ Figma (the MCP limit was hit), so those are compared only by their outer box.
   Android). A centred element's x shifts by half the difference.
 - Within 2 counts as a match (a label line of 18.2 is drawn 19 in Figma).
 
-Reached through the debug UI preview (README, "UI preview"): `-PmoyiUiPreview=true`.
+Reached through the debug UI preview (README, "UI preview"): `-PmoyiUiPreview=onboarding`.
 
 ## Defect found by running, and fixed
 

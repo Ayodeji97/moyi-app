@@ -62,23 +62,32 @@ framework and the Xcode app were built locally.
 ### UI preview (debug only)
 
 The onboarding screens run on fake state, so they can be clicked through with no backend
-and no session. Build with the Gradle property `moyiUiPreview` and the app opens on a
-preview index (`shared/src/commonMain/kotlin/com/moyi/app/debug/UiPreviewIndex.kt`)
-instead of deciding from the session:
+and no session. Build with `-PmoyiUiPreview=onboarding` and the app opens on a preview
+index (`shared/src/commonMain/kotlin/com/moyi/app/debug/UiPreviewIndex.kt`) instead of
+deciding from the session:
 
 ```sh
-./gradlew :androidApp:installDebug -PmoyiUiPreview=true
-
-# Xcode's Gradle build phase reads it from the environment:
-ORG_GRADLE_PROJECT_moyiUiPreview=true xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
-  -sdk iphonesimulator -destination 'id=<simulator-udid>' \
-  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build
+./gradlew :androidApp:installDebug -PmoyiUiPreview=onboarding
 ```
 
-It is off unless set, it becomes `AppBuildKonfig.UI_PREVIEW` in `:shared`, and a Gradle
-invocation that names a release task with it on fails at configuration. In the join flow,
-the code `ZZZZZZ` plays "cannot be used" and any other well-formed code resolves. Build
-again without the property to get the normal start back.
+The switch is one string, `UiPreviewConfig.UI_PREVIEW` in `:shared`. Its allowed values
+are one list in `shared/build.gradle.kts` (`""`, off, and `onboarding`); any other value
+fails the build. Only the command line counts: a value in `gradle.properties`,
+`ORG_GRADLE_PROJECT_moyiUiPreview` or `local.properties` is ignored, because those persist
+and would ride along into the next build.
+
+With it set, the build fails unless it is plainly a debug build: every requested task
+must contain `Debug`, or the only task must be Xcode's `embedAndSignAppleFrameworkForXcode`
+with `CONFIGURATION=Debug`. So `assemble`, `build`, `assembleRelease`, an Xcode Release
+build, and any build with `CI` set all fail at configuration.
+
+**On iOS**, Xcode cannot pass the switch through the environment. Locally, add
+`-PmoyiUiPreview=onboarding` to the `./gradlew` line of the iosApp target's "Compile Kotlin
+Framework" build phase, and build the Debug configuration. **Never commit that change**:
+the build phase is shared by every build of the app.
+
+In the join flow, the code `ZZZZZZ` plays "cannot be used" and any other well-formed code
+resolves. Build again without the switch to get the normal start back.
 
 ## The API contract
 
