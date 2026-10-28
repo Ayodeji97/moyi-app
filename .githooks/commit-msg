@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Enforces Conventional Commits (doc 18 §2): type(scope): subject
+# Enable with: git config core.hooksPath .githooks
+#
+# The 88-character limit applies to the WHOLE first line, type and scope
+# included: that line is what `git log --oneline` and GitHub show.
+#
+# Real merge commits are exempt ("Merge branch …"), but only when this runs as
+# a commit hook. CI checks a squash PR title by running this same script with
+# MOYI_CHECK_TITLE=1, and a title is never a merge commit: without that, a
+# title such as "Merge anything (#1)" would pass and land on main as-is.
+
+commit_msg_file="$1"
+first_line=$(head -1 "$commit_msg_file")
+
+pattern='^(feat|fix|chore|docs|refactor|test|build|ci|perf|revert)(\([a-z0-9-]+\))?!?: .+$'
+max_length=88
+
+if [[ -z "${MOYI_CHECK_TITLE:-}" && "$first_line" =~ ^Merge\  ]]; then
+  exit 0
+fi
+
+if ! [[ "$first_line" =~ $pattern ]] || (( ${#first_line} > max_length )); then
+  echo "Commit message does not follow Conventional Commits." >&2
+  echo "  Got:      $first_line (${#first_line} characters)" >&2
+  echo "  Expected: type(scope): subject, at most $max_length characters in all" >&2
+  echo "            e.g. feat(gratitude): add reveal engine" >&2
+  echo "  Allowed types: feat fix chore docs refactor test build ci perf revert" >&2
+  exit 1
+fi
