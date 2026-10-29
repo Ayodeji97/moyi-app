@@ -1,7 +1,6 @@
 package com.moyi.app.feature.today.di
 
 import com.moyi.app.feature.today.common.FakeDailyLoop
-import com.moyi.app.feature.today.delete.DeleteEntryViewModel
 import com.moyi.app.feature.today.reveal.RevealViewModel
 import com.moyi.app.feature.today.today.TodayViewModel
 import com.moyi.app.feature.today.write.WriteViewModel
@@ -20,5 +19,4 @@ val todayFeatureModule = module {
     viewModel { TodayViewModel(get()) }
     viewModel { (editing: Boolean) -> WriteViewModel(editing, get()) }
     viewModel { RevealViewModel(get()) }
-    viewModel { DeleteEntryViewModel(get()) }
 }

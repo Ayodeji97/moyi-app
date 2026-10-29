@@ -169,5 +169,11 @@ object MoyiDimens {
         val KeyboardGap = 16.dp
         /** Figma §2: header back target 48×48 with a 24 chevron, no title. */
         val BackTarget = TouchTarget
+        /**
+         * **Interpreted**, not in Figma: how far a swipe down on an iOS task's
+         * header must travel to count as Cancel (D10, sheet style). Longer than
+         * the 48 row, so a tap that wobbles is never a close.
+         */
+        val SwipeDownToClose = 64.dp
     }
 }

@@ -6,6 +6,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":shared:core"))
+            // System back on screens with no back arrow (BackHandlers.kt, D10, D12).
+            implementation(libs.androidx.navigationevent.compose)
         }
         // Chrome Custom Tabs for the in-app browser (InAppBrowser, D8).
         androidMain.dependencies {

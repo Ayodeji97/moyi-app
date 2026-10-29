@@ -6,6 +6,10 @@
     <string name="ds_password_hide">Hide password</string>
     <!-- Spoken by the back control at the top of a screen. -->
     <string name="ds_back">Back</string>
+    <!-- PROPOSED. Spoken by the close (X) control that ends a task on Android (D10: Write). -->
+    <string name="ds_close">Close</string>
+    <!-- Closes a task on iOS (D10: Write, sheet style). copy.md: bare "Cancel" dismisses a dialog, and a sheet is one. -->
+    <string name="ds_cancel">Cancel</string>
     <!-- InviteCode caption. settings.invite.code.caption (strings-proposed.md §6b). -->
     <string name="ds_invite_code_caption">Invite code</string>
     <!-- PROPOSED. InviteCode's copy control, Idle. Toggles in place, so no underline. -->

@@ -22,6 +22,7 @@ import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.EntryCard
 import com.moyi.app.designsystem.component.EntryCardVariant
 import com.moyi.app.designsystem.component.MoyiScaffold
+import com.moyi.app.designsystem.platform.NoArrowBackHandler
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.CenteredContent
 import com.moyi.app.feature.today.common.DateLabel
@@ -38,6 +39,10 @@ import com.moyi.app.feature.today.today.WaitingNote
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * Android Back settles the reveal into Today (D12) instead of popping it; the iOS
+ * edge swipe does nothing (no arrow, D3), and the reveal settles on its own.
+ */
 @Composable
 fun RevealRoot(
     onSettle: () -> Unit,
@@ -50,6 +55,7 @@ fun RevealRoot(
             RevealEvent.Settle -> onSettle()
         }
     }
+    NoArrowBackHandler { viewModel.onAction(RevealAction.OnBack) }
     RevealScreen(
         state = state,
         onAction = viewModel::onAction,

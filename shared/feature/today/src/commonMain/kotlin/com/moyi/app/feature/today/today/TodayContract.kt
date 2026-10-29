@@ -29,6 +29,10 @@ data class TodayState(
     val partnerEntry: String? = null,
     /** The Bond-day a queued entry will count for (states.md §4, BR-3a, `intendedAt`). */
     val queuedForDate: String = FakeCopy.DATE_IN_SENTENCE,
+    /** Deleting my revealed entry is being confirmed, in the platform dialog over Today (D11). */
+    val confirmingDelete: Boolean = false,
+    /** The delete is in flight: its link is disabled so it cannot be sent twice. */
+    val deleting: Boolean = false,
 )
 
 sealed interface TodayAction {
@@ -38,8 +42,14 @@ sealed interface TodayAction {
     /** Before the reveal: immediate, no confirmation (states.md §4). */
     data object OnDeleteBeforeRevealClick : TodayAction
 
-    /** After the reveal: confirmation first (states.md §5). */
+    /** After the reveal: confirmation first (states.md §5), in the platform dialog (D11). */
     data object OnDeleteAfterRevealClick : TodayAction
+
+    /** The delete dialog's destructive answer. */
+    data object OnDeleteConfirm : TodayAction
+
+    /** The delete dialog's Cancel (or Android Back over it): nothing changes. */
+    data object OnDeleteDismiss : TodayAction
     data object OnArchiveClick : TodayAction
     data object OnSettingsClick : TodayAction
     data object OnShareInviteClick : TodayAction
@@ -51,6 +61,5 @@ sealed interface TodayAction {
 sealed interface TodayEvent {
     data class NavigateToWrite(val editing: Boolean) : TodayEvent
     data object NavigateToReveal : TodayEvent
-    data object NavigateToDeleteConfirm : TodayEvent
     data object NavigateToSettings : TodayEvent
 }
