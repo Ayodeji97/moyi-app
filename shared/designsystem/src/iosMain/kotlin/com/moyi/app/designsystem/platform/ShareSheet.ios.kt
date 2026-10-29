@@ -1,6 +1,11 @@
+@file:OptIn(ExperimentalForeignApi::class)
+
 package com.moyi.app.designsystem.platform
 
 import androidx.compose.runtime.Composable
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
+import platform.CoreGraphics.CGRectMake
 import androidx.compose.runtime.remember
 import androidx.compose.ui.uikit.LocalUIViewController
 import platform.UIKit.UIActivityViewController
@@ -19,7 +24,10 @@ actual fun rememberShareSheet(): ShareSheet {
             if (top is UIActivityViewController) return@ShareSheet
             val sheet = UIActivityViewController(activityItems = listOf(text), applicationActivities = null)
             // On iPad the sheet is a popover and needs an anchor, or UIKit throws.
-            sheet.popoverPresentationController?.sourceView = top.view
+            sheet.popoverPresentationController?.let { popover ->
+                popover.sourceView = top.view
+                popover.sourceRect = top.view.bounds.useContents { CGRectMake(size.width / 2, size.height / 2, 0.0, 0.0) }
+            }
             top.presentViewController(sheet, animated = true, completion = null)
         }
     }

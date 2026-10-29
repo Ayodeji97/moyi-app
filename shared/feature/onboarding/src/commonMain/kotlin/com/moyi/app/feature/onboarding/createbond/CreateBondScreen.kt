@@ -113,6 +113,7 @@ fun CreateBondScreen(
             label = stringResource(Res.string.field_timezone_label),
             type = FieldType.Select,
             helper = stringResource(Res.string.field_timezone_helper, state.timeZoneCity),
+            error = state.timeZoneError?.asString(),
             onClick = { onAction(CreateBondAction.OnTimeZoneClick) },
         )
     }

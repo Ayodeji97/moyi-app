@@ -18,7 +18,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -58,7 +57,18 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
         viewModel.onAction(JoinConfirmAction.OnJoinClick)
         assertEquals(1, bonds.acceptCalls.size)
         bonds.gate!!.complete(Unit)
-        assertFalse(viewModel.state.value.joining)
+    }
+
+    @Test
+    fun afterJoiningTheButtonStaysJoiningSoNoSecondAcceptIsSent() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.Finish, awaitItem())
+            viewModel.onAction(JoinConfirmAction.OnJoinClick)
+            expectNoEvents()
+        }
+        assertTrue(viewModel.state.value.joining)
+        assertEquals(1, bonds.acceptCalls.size)
     }
 
     @Test

@@ -17,6 +17,7 @@ import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.bond_create_error_limit
 import com.moyi.app.feature.onboarding.resources.bond_name_error_blank
 import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
+import com.moyi.app.feature.onboarding.resources.field_timezone_error_unsupported
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +72,10 @@ class CreateBondViewModel(
             _state.update { it.copy(nameError = tooLong) }
             return
         }
+        if (!isRegionZone(deviceTimeZone)) {
+            _state.update { it.copy(timeZoneError = unsupportedZone) }
+            return
+        }
         _state.update { it.copy(status = CreateBondStatus.Sending, error = null) }
         val existing = createdBond
         viewModelScope.launch {
@@ -109,6 +114,8 @@ class CreateBondViewModel(
                 val message = if (it.name.length > MAX_NAME_LENGTH) tooLong else UiText.Resource(Res.string.bond_name_error_blank)
                 it.copy(status = CreateBondStatus.Idle, nameError = message)
             }
+            error.code() == ApiErrorCode.VALIDATION_FAILED && (error.violates("anchorTimezone") || error.violates("reminderTimezone")) ->
+                _state.update { it.copy(status = CreateBondStatus.Idle, timeZoneError = unsupportedZone) }
             error.code() == ApiErrorCode.BOND_LIMIT_REACHED ->
                 _state.update { it.copy(status = CreateBondStatus.Failed, error = UiText.Resource(Res.string.bond_create_error_limit)) }
             else -> _state.update { it.copy(status = CreateBondStatus.Failed, error = error.formMessage()) }
@@ -119,6 +126,7 @@ class CreateBondViewModel(
         (this as? DataError.Network.Api)?.problem?.fieldErrors?.any { it.field == field } == true
 
     private val tooLong = UiText.Resource(Res.string.bond_name_error_too_long)
+    private val unsupportedZone = UiText.Resource(Res.string.field_timezone_error_unsupported)
 
     companion object {
         /**
@@ -132,6 +140,16 @@ class CreateBondViewModel(
          * `America/Argentina/Buenos_Aires` is Buenos Aires. Not localised yet
          * (the platform's own zone names are owed with the picker).
          */
+        /**
+         * The backend takes only a region zone (`Africa/Lagos`), never `UTC`, `GMT`
+         * or `Etc/…`, which some devices and emulators report. Checked before
+         * sending, so the person is told on the field instead of seeing a generic
+         * error they can retry forever. The backend stays the judge: its `422` on
+         * the zone lands on the same field.
+         */
+        fun isRegionZone(zoneId: String): Boolean =
+            '/' in zoneId && !zoneId.startsWith("Etc/") && !zoneId.startsWith("SystemV/")
+
         fun cityOf(zoneId: String): String = zoneId.substringAfterLast('/').replace('_', ' ')
     }
 }

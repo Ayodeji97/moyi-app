@@ -183,11 +183,7 @@ fun NavGraphBuilder.onboardingGraph(
         }
         composable<JoinCannotBeUsedRoute> {
             JoinCannotBeUsedRoot(
-                onEnterDifferentCode = {
-                    navController.navigate(JoinCodeRoute()) {
-                        popUpTo<JoinCannotBeUsedRoute> { inclusive = true }
-                    }
-                },
+                onEnterDifferentCode = { navController.replaceWithManualEntry() },
                 onNavigateBack = { navController.navigateUp() },
             )
         }
@@ -201,6 +197,17 @@ fun NavGraphBuilder.onboardingGraph(
 internal fun NavController.replaceWithInvite(code: String, link: String) {
     navigate(InviteHandoffRoute(code, link)) {
         popUpTo(graph.id) { inclusive = true }
+    }
+}
+
+/**
+ * "Enter a different code": a fresh manual entry replaces both the failed
+ * screen and the code screen that led to it, so back never returns to the
+ * rejected code.
+ */
+internal fun NavController.replaceWithManualEntry() {
+    navigate(JoinCodeRoute()) {
+        popUpTo<JoinCodeRoute> { inclusive = true }
     }
 }
 

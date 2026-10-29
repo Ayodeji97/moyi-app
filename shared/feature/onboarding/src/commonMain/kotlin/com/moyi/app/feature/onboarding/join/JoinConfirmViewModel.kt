@@ -65,14 +65,19 @@ class JoinConfirmViewModel(
         _state.update { it.copy(joining = true, failure = null) }
         viewModelScope.launch {
             val accepted = bonds.acceptInvite(code)
-            _state.update { it.copy(joining = false) }
+            // Joined (or already in it): the button stays Joining until the screen goes,
+            // so a second tap cannot send a second accept while Finish is on its way.
             if (accepted is Result.Success) {
                 _events.send(JoinConfirmEvent.Finish)
                 return@launch
             }
             val error = (accepted as Result.Failure).error
+            if (error.code() == ApiErrorCode.ALREADY_MEMBER) {
+                _events.send(JoinConfirmEvent.Finish)
+                return@launch
+            }
+            _state.update { it.copy(joining = false) }
             when {
-                error.code() == ApiErrorCode.ALREADY_MEMBER -> _events.send(JoinConfirmEvent.Finish)
                 error.code() == ApiErrorCode.INVITE_NOT_USABLE || error.code() == ApiErrorCode.VALIDATION_FAILED ->
                     _events.send(JoinConfirmEvent.NavigateToCannotBeUsed)
                 error.isUnverified() -> _events.send(JoinConfirmEvent.NavigateToGate)

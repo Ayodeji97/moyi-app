@@ -64,6 +64,8 @@
     <string name="field_timezone_label">Shared time zone</string>
     <!-- field.timezone.helper, the in-file wording with the city as a placeholder. The highest-stakes string in the product (strings-proposed.md). %1$s is the time zone's city, e.g. Lagos. -->
     <string name="field_timezone_helper">Your day starts and ends on %1$s time, for both of you, even when either of you travels.</string>
+    <!-- PROPOSED. The device reports a zone the backend refuses (UTC, GMT, Etc/...: only a region zone such as Africa/Lagos is accepted) and the picker is not built yet. -->
+    <string name="field_timezone_error_unsupported">Your phone has no city set for its time zone. Choose one in your phone's settings, then come back.</string>
     <!-- bond.create.action. -->
     <string name="bond_create_action">Create bond</string>
     <!-- PROPOSED. The button while the bond is being created (PrimaryAction Sending, states.md §1c). -->

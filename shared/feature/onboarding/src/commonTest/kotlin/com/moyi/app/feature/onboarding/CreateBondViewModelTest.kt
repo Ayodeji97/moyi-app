@@ -16,6 +16,7 @@ import com.moyi.app.feature.onboarding.resources.bond_create_error
 import com.moyi.app.feature.onboarding.resources.bond_create_error_limit
 import com.moyi.app.feature.onboarding.resources.bond_name_error_blank
 import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
+import com.moyi.app.feature.onboarding.resources.field_timezone_error_unsupported
 import com.moyi.app.feature.onboarding.resources.onboarding_error_generic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
@@ -167,6 +168,26 @@ class CreateBondViewModelTest : MainDispatcherTest() {
         assertEquals(tooLong, viewModel.state.value.nameError)
         assertEquals("a".repeat(61), viewModel.state.value.name, "the name is kept, not cut")
         assertEquals(emptyList(), bonds.createCalls)
+    }
+
+    @Test
+    fun aZoneTheBackendRefusesIsSaidOnTheFieldAndNeverSent() {
+        for (zone in listOf("UTC", "GMT", "Etc/GMT+1")) {
+            val vm = CreateBondViewModel(RelationshipType.Couple, bonds, deviceTimeZone = zone)
+            vm.onAction(CreateBondAction.OnNameChange("Us"))
+            vm.onAction(CreateBondAction.OnCreateClick)
+            assertEquals(UiText.Resource(Res.string.field_timezone_error_unsupported), vm.state.value.timeZoneError, zone)
+        }
+        assertEquals(emptyList(), bonds.createCalls)
+    }
+
+    @Test
+    fun aServerRefusalOfTheZoneLandsOnTheZoneField() {
+        bonds.createResult = Result.Failure(problem(422, ApiErrorCode.VALIDATION_FAILED, "anchorTimezone"))
+        viewModel.onAction(CreateBondAction.OnNameChange("Us"))
+        viewModel.onAction(CreateBondAction.OnCreateClick)
+        assertEquals(UiText.Resource(Res.string.field_timezone_error_unsupported), viewModel.state.value.timeZoneError)
+        assertEquals(CreateBondStatus.Idle, viewModel.state.value.status)
     }
 
     @Test

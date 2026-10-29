@@ -12,6 +12,8 @@ data class CreateBondState(
     val nameError: UiText? = null,
     /** The anchor time zone's city. Defaults to the device's (states.md §1). */
     val timeZoneCity: String,
+    /** The zone cannot be sent (not a region zone); shown on the time-zone field. */
+    val timeZoneError: UiText? = null,
     val status: CreateBondStatus = CreateBondStatus.Idle,
     /** What [CreateBondStatus.Failed] says, above the button. */
     val error: UiText? = null,

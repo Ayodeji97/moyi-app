@@ -81,4 +81,17 @@ class OnboardingGraphTest {
         assertEquals("K7Q2PD", nav.currentBackStackEntry!!.toRoute<InviteHandoffRoute>().code)
         assertNull(nav.previousBackStackEntry, "the bond exists; back must not return to the form")
     }
+
+    @Test
+    fun enteringADifferentCodeLeavesNoRejectedCodeBehind() {
+        val nav = controller()
+        nav.navigate(OnboardingRoute)
+        nav.navigate(JoinCodeRoute())
+        nav.navigate(JoinCannotBeUsedRoute)
+
+        nav.replaceWithManualEntry()
+
+        assertEquals(null, nav.currentBackStackEntry!!.toRoute<JoinCodeRoute>().prefilledCode)
+        assertEquals(RelationshipTypeRoute, nav.previousBackStackEntry!!.toRoute<RelationshipTypeRoute>())
+    }
 }
