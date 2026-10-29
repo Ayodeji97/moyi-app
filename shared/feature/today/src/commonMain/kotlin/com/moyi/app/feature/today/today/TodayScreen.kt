@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.EntryCard
 import com.moyi.app.designsystem.component.EntryCardVariant
 import com.moyi.app.designsystem.component.MoyiScaffold
@@ -39,6 +40,10 @@ import com.moyi.app.feature.today.resources.today_announce_solo
 import com.moyi.app.feature.today.resources.today_announce_waiting
 import com.moyi.app.feature.today.resources.today_author_partner
 import com.moyi.app.feature.today.resources.today_author_you
+import com.moyi.app.feature.today.resources.delete_cancel
+import com.moyi.app.feature.today.resources.delete_confirm
+import com.moyi.app.feature.today.resources.delete_heading
+import com.moyi.app.feature.today.resources.delete_line
 import com.moyi.app.feature.today.resources.today_delete
 import com.moyi.app.feature.today.resources.today_edit
 import com.moyi.app.feature.today.resources.today_partner_pending_line
@@ -57,7 +62,6 @@ import org.koin.compose.viewmodel.koinViewModel
 fun TodayRoot(
     onNavigateToWrite: (editing: Boolean) -> Unit,
     onNavigateToReveal: () -> Unit,
-    onNavigateToDeleteConfirm: () -> Unit,
     onNavigateToSettings: () -> Unit,
     debugTools: Boolean,
     viewModel: TodayViewModel = koinViewModel(),
@@ -67,7 +71,6 @@ fun TodayRoot(
         when (event) {
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)
             TodayEvent.NavigateToReveal -> onNavigateToReveal()
-            TodayEvent.NavigateToDeleteConfirm -> onNavigateToDeleteConfirm()
             TodayEvent.NavigateToSettings -> onNavigateToSettings()
         }
     }
@@ -113,6 +116,20 @@ fun TodayScreen(
             TodayStatus.SoloTheyWrote -> SoloTheyWrote(state)
             TodayStatus.Queued -> Queued(state)
         }
+    }
+    if (state.confirmingDelete) {
+        // D11: the platform's confirm, over Today, in place of Figma 420:64's full screen.
+        // The line must never become a read receipt (states.md Appendix): it says what is
+        // true without reporting on anyone, and that deleting yours never touches theirs.
+        ConfirmDialog(
+            title = stringResource(Res.string.delete_heading),
+            message = stringResource(Res.string.delete_line, state.partnerName),
+            confirmLabel = stringResource(Res.string.delete_confirm),
+            dismissLabel = stringResource(Res.string.delete_cancel),
+            onConfirm = { onAction(TodayAction.OnDeleteConfirm) },
+            onDismiss = { onAction(TodayAction.OnDeleteDismiss) },
+            destructive = true,
+        )
     }
 }
 
@@ -207,6 +224,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
                 text = stringResource(Res.string.today_delete),
                 onClick = { onAction(TodayAction.OnDeleteAfterRevealClick) },
                 destructive = true,
+                enabled = !state.deleting,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

@@ -85,6 +85,29 @@ object MoyiIcons {
     /** Back, as each platform draws it: [ArrowBack] on Android, [ChevronLeft] on iOS (D2). */
     val Back: ImageVector get() = PlatformBackIcon
 
+    /**
+     * Closes a task on Android (D10: Write, full-screen dialog style): Material Icons
+     * `close` (filled, Apache 2.0), the glyph Android's full-screen dialogs draw. Like
+     * [ArrowBack], the platform's glyph wins over the house set (D2). iOS closes a task
+     * with the word Cancel instead, so this is drawn on Android only.
+     */
+    val CloseTask: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "CloseTask",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            addPath(
+                pathData = addPathNodes(
+                    "M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12z",
+                ),
+                fill = SolidColor(Color.Black),
+            )
+        }.build()
+    }
+
     /** Today's nav row: to Archive (states.md §3). `calendar`: two `<path>`s, `<rect x3 y3 18x18 rx2>`, `<path>`. */
     val Calendar: ImageVector by lazy {
         lucide(

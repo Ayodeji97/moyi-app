@@ -12,13 +12,17 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TodayViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
-    private val viewModel by lazy { TodayViewModel(loop) }
+    private val viewModel by lazy { TodayViewModel(loop, fakeLatency = Duration.ZERO) }
 
     @Test
     fun startsNotWritten() = runTest {
@@ -71,10 +75,66 @@ class TodayViewModelTest : MainDispatcherTest() {
     }
 
     @Test
-    fun deletingAfterTheRevealAsksFirstAndEditingOpensTheComposer() = runTest {
+    fun deletingAfterTheRevealAsksInADialogOverTodayAndNavigatesNowhere() = runTest {
+        loop.setStatus(TodayStatus.Revealed)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         viewModel.events.test {
             viewModel.onAction(TodayAction.OnDeleteAfterRevealClick)
-            assertEquals(TodayEvent.NavigateToDeleteConfirm, awaitItem())
+            assertTrue(viewModel.state.value.confirmingDelete)
+            expectNoEvents()
+        }
+        assertEquals(TodayStatus.Revealed, viewModel.state.value.status)
+    }
+
+    @Test
+    fun confirmingTheDeleteClosesTheDialogAndLeavesTheTombstone() = runTest {
+        loop.setStatus(TodayStatus.Revealed)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        viewModel.onAction(TodayAction.OnDeleteAfterRevealClick)
+        viewModel.onAction(TodayAction.OnDeleteConfirm)
+        assertFalse(viewModel.state.value.confirmingDelete)
+        assertFalse(viewModel.state.value.deleting)
+        assertEquals(TodayStatus.Tombstone, viewModel.state.value.status)
+    }
+
+    @Test
+    fun whileDeletingTheDeleteCannotBeAskedForOrSentAgain() = runTest {
+        // Irreversible, so not optimistic: Today stays revealed until the delete lands.
+        loop.setStatus(TodayStatus.Revealed)
+        val slow = TodayViewModel(loop, fakeLatency = 1.hours)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { slow.state.collect {} }
+        slow.onAction(TodayAction.OnDeleteAfterRevealClick)
+        slow.onAction(TodayAction.OnDeleteConfirm)
+        assertTrue(slow.state.value.deleting)
+        slow.onAction(TodayAction.OnDeleteAfterRevealClick)
+        assertFalse(slow.state.value.confirmingDelete)
+        assertEquals(TodayStatus.Revealed, slow.state.value.status)
+    }
+
+    @Test
+    fun cancellingTheDeleteClosesTheDialogAndDeletesNothing() = runTest {
+        loop.setStatus(TodayStatus.Revealed)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        viewModel.onAction(TodayAction.OnDeleteAfterRevealClick)
+        viewModel.onAction(TodayAction.OnDeleteDismiss)
+        assertFalse(viewModel.state.value.confirmingDelete)
+        assertFalse(viewModel.state.value.deleting)
+        assertEquals(TodayStatus.Revealed, viewModel.state.value.status)
+    }
+
+    @Test
+    fun aDeleteQuestionLeftOpenDoesNotReturnWithTheNextRevealedDay() = runTest {
+        loop.setStatus(TodayStatus.Revealed)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        viewModel.onAction(TodayAction.OnDeleteAfterRevealClick)
+        viewModel.onAction(TodayAction.OnDebugCycle)
+        loop.setStatus(TodayStatus.Revealed)
+        assertFalse(viewModel.state.value.confirmingDelete)
+    }
+
+    @Test
+    fun editingAndWritingOpenTheComposer() = runTest {
+        viewModel.events.test {
             viewModel.onAction(TodayAction.OnEditClick)
             assertEquals(TodayEvent.NavigateToWrite(editing = true), awaitItem())
             viewModel.onAction(TodayAction.OnWriteClick)

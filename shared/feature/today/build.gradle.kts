@@ -24,6 +24,13 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+        // TodayBackTest drives a real NavHost and sends system back through the
+        // navigation event dispatcher. Compose UI tests run on iOS only (Skiko);
+        // on the Android host they would need Robolectric.
+        iosTest.dependencies {
+            implementation(libs.compose.uiTest)
+            implementation(libs.androidx.navigationevent.compose)
+        }
     }
 }
 

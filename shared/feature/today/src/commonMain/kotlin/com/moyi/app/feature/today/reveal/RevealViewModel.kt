@@ -31,6 +31,13 @@ data class RevealState(
 )
 
 sealed interface RevealAction {
+    /**
+     * Android Back during the reveal (D12): the moment ends early and settles into
+     * Today · revealed, exactly as if it had played out. Never out of the app, and
+     * never back to before the day opened: the reveal is a point of no return.
+     */
+    data object OnBack : RevealAction
+
     /** DEBUG ONLY (PR #8): play the reveal again from before. */
     data object OnDebugReplay : RevealAction
 }
@@ -64,6 +71,9 @@ class RevealViewModel(
 
     private var sequence: Job? = null
 
+    /** Settle is sent once: a Back as the hold ends must not navigate twice. */
+    private var settled = false
+
     init {
         play()
     }
@@ -71,18 +81,28 @@ class RevealViewModel(
     fun onAction(action: RevealAction) {
         when (action) {
             RevealAction.OnDebugReplay -> play()
+            RevealAction.OnBack -> settle()
         }
     }
 
+    /** Ends the moment now: the day is open whether or not the animation finished. */
+    private fun settle() {
+        if (settled) return
+        settled = true
+        sequence?.cancel()
+        loop.setStatus(TodayStatus.Revealed)
+        viewModelScope.launch { _events.send(RevealEvent.Settle) }
+    }
+
     private fun play() {
+        if (settled) return
         sequence?.cancel()
         _state.update { it.copy(phase = RevealPhase.Before, partnerEntry = null) }
         sequence = viewModelScope.launch {
             delay(beforeHold)
             _state.update { it.copy(phase = RevealPhase.After, partnerEntry = loop.day.value.partnerEntry) }
             delay(afterHold)
-            loop.setStatus(TodayStatus.Revealed)
-            _events.send(RevealEvent.Settle)
+            settle()
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +46,11 @@ import androidx.compose.ui.unit.Constraints
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.platform.DismissKeyboardOnTapAndDrag
+import com.moyi.app.designsystem.platform.TaskPresentsAsSheet
 import com.moyi.app.designsystem.resources.Res
 import com.moyi.app.designsystem.resources.ds_back
+import com.moyi.app.designsystem.resources.ds_cancel
+import com.moyi.app.designsystem.resources.ds_close
 import com.moyi.app.designsystem.theme.MoyiDimens
 import org.jetbrains.compose.resources.stringResource
 
@@ -71,6 +76,10 @@ import org.jetbrains.compose.resources.stringResource
  *   than 120: then content and actions scroll together ([ContentAndAction]).
  * - Leave [onBack] null on root screens (Today, Onboarding 1, the unverified
  *   gate); `SKILL.md` §9 lists them. System back is the platform's either way.
+ * - A task (Write, D10) passes [onClose] instead: it closes rather than going
+ *   back. Android draws an X in the same 48 target (full-screen dialog style);
+ *   iOS draws Cancel and treats a swipe down on the header as Cancel (sheet
+ *   style). The screen answers system back itself (`NoArrowBackHandler`).
  * - No navigation bar or rail: the product has no persistent chrome.
  * - Whether the screen has a back target is provided to the content
  *   ([LocalScaffoldHasBack]), so [ScreenHeader] drops the eyebrow under a back
@@ -86,6 +95,11 @@ import org.jetbrains.compose.resources.stringResource
 fun MoyiScaffold(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    /**
+     * Closes a task (D10). Ignored when [onBack] is set: a screen goes back or
+     * closes, never both.
+     */
+    onClose: (() -> Unit)? = null,
     action: (@Composable ColumnScope.() -> Unit)? = null,
     contentArrangement: Arrangement.Vertical? = null,
     /**
@@ -105,7 +119,7 @@ fun MoyiScaffold(
     val itemSpacing = MoyiDimens.Scaffold.ItemSpacing
     val imeVisible = rememberImeVisible()
     val focusManager = LocalFocusManager.current
-    CompositionLocalProvider(LocalScaffoldHasBack provides (onBack != null)) {
+    CompositionLocalProvider(LocalScaffoldHasBack provides (onBack != null || onClose != null)) {
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -127,6 +141,9 @@ fun MoyiScaffold(
         ) {
             if (onBack != null) {
                 BackAffordance(onBack)
+                Spacer(Modifier.height(itemSpacing))
+            } else if (onClose != null) {
+                CloseAffordance(onClose)
                 Spacer(Modifier.height(itemSpacing))
             } else if (header != null) {
                 header()
@@ -327,6 +344,59 @@ private fun BackAffordance(onBack: () -> Unit) {
             tint = MoyiTheme.colors.ink,
             modifier = Modifier.size(MoyiDimens.IconGlyph),
         )
+    }
+}
+
+/**
+ * The header row of a task (D10), the same 48 high as the back target's.
+ *
+ * - Android: the Material close glyph in a 48 x 48 target at the start, as a
+ *   full-screen dialog draws it.
+ * - iOS: Cancel at the start, as a sheet's navigation bar places it, set as a
+ *   [TextLink] (the design system's text control; it has no bar button). The whole
+ *   row also takes a swipe down past [MoyiDimens.Scaffold.SwipeDownToClose] as
+ *   Cancel. The row does not follow the finger: the sheet's slide is the only
+ *   motion it spends (SKILL.md §5), and it is gone under Reduce Motion.
+ */
+@Composable
+private fun CloseAffordance(onClose: () -> Unit) {
+    if (!TaskPresentsAsSheet) {
+        Box(
+            modifier = Modifier
+                .size(MoyiDimens.Scaffold.BackTarget)
+                .clickable(role = Role.Button, onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = MoyiIcons.CloseTask,
+                contentDescription = stringResource(Res.string.ds_close),
+                tint = MoyiTheme.colors.ink,
+                modifier = Modifier.size(MoyiDimens.IconGlyph),
+            )
+        }
+        return
+    }
+    val currentOnClose by rememberUpdatedState(onClose)
+    val threshold = MoyiDimens.Scaffold.SwipeDownToClose
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = MoyiDimens.Scaffold.BackTarget)
+            .pointerInput(threshold) {
+                val distance = threshold.toPx()
+                var dragged = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { dragged = 0f },
+                    onDragEnd = { if (dragged > distance) currentOnClose() },
+                    onDragCancel = { dragged = 0f },
+                ) { change, amount ->
+                    dragged += amount
+                    change.consume()
+                }
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        TextLink(text = stringResource(Res.string.ds_cancel), onClick = onClose)
     }
 }
 
