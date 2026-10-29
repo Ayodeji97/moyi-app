@@ -9,6 +9,16 @@ Recorded 2026-10-29 from the owner's review of the running app. Status: **owed**
 built), **ruling owed** (needs the owner), **checklist** (applies to a screen not yet built),
 **done**.
 
+## When a screen has a back arrow
+
+Following Android's navigation principles and Apple's Human Interface Guidelines (owner, 2026-10-29):
+
+- **Root screens have none**: Promise, Today, sign in while it is the first screen, and any screen after a point of no return (Invite, once the bond exists). On Android, system back exits from the start destination.
+- **Pushed screens have one**: Register, Verify, Relationship type and Join code when reached from another screen, Create bond, Join confirm, the "cannot be used" screen.
+- **Tasks close instead of going back**: Write (D10). Confirmations are dialogs (D11).
+- **Back never crosses a point of no return**: account created, email verified, signed in, bond created. The earlier screens are removed from the stack.
+- **The iOS edge swipe (D3) follows the arrow exactly**: it works where the arrow shows and nowhere else.
+
 ## Agreed changes to the screens that exist
 
 | # | Change | Why | Figma follows? | Status |
@@ -22,6 +32,9 @@ built), **ruling owed** (needs the owner), **checklist** (applies to a screen no
 | D7 | **Overscroll.** Bounce on iOS, stretch on Android: check both on device. | Compose mostly does this already; not yet verified. | No | owed (verify) |
 | D8 | **Legal links open in-app**: Chrome Custom Tabs on Android, SFSafariViewController on iOS. | Neither an external browser nor nothing (today they do nothing; the URLs are still owed). | No | owed (needs the URLs) |
 | D9 | **Sign up: consent and legal links scroll with the fields** (already built in PR #6, see `auth-screens-check.md`). | With the name field, the pinned block hid the password and clipped at 200 % font. | Yes | done |
+| D10 | **Write is a task, not a pushed screen.** Close it with a close (X) control on Android (full-screen dialog style) and Cancel on iOS (sheet style), not a back arrow. If text has been typed, closing asks to discard it first, in the platform's own dialog. | Both platforms present a self-contained task as dismissible; Apple reserves Back for steps in a flow. Today back drops the typed words without asking. Owner approval 2026-10-29. | Yes (181:3 draws a back arrow) | owed |
+| D11 | **Deleting an entry confirms in the platform's dialog**: an alert with a destructive Delete on iOS, a Material dialog on Android, instead of the full Delete screen. Applies C2. | A destructive confirmation is a dialog on both platforms. Owner approval 2026-10-29. | Yes (420:64 draws a full screen) | owed |
+| D12 | **Back during the reveal settles to Today.** The reveal replaces Today in the back stack, so Android back during it currently closes the app. | Back must never exit from a moment the person is inside. iOS already settles to Today on its own. Owner approval 2026-10-29. | No (behaviour) | owed |
 
 ## Rulings owed by the owner
 
