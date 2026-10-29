@@ -87,6 +87,8 @@ class TodayViewModel(
                 //  invite was sent (SKILL.md §9).
             }
             TodayAction.OnDebugCycle -> {
+                // A delete question left open must not come back when the cycle returns to Revealed.
+                deleteUi.update { it.copy(confirming = false) }
                 // Waiting steps through the reveal, the way a real day opens: the partner writes,
                 // the reveal plays, and it settles into Revealed.
                 if (loop.day.value.status == TodayStatus.Waiting) {

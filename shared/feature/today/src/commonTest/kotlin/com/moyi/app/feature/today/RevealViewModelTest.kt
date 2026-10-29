@@ -46,6 +46,7 @@ class RevealViewModelTest : MainDispatcherTest() {
             expectNoEvents()
         }
         assertEquals(TodayStatus.Revealed, loop.day.value.status)
+        assertEquals(RevealPhase.Before, vm.state.value.phase, "settled early: the turn never played")
     }
 
     @Test

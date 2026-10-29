@@ -97,7 +97,8 @@ class WriteViewModel(
         viewModelScope.launch {
             delay(fakeLatency)
             loop.setMyEntry(current.text, TodayStatus.Waiting)
-            _state.update { it.copy(submit = WriteSubmit.Idle) }
+            // The state stays Sending until the composer closes: the words are saved, and a
+            // close tapped in the moment before it goes must not ask to discard them (D10).
             _events.send(WriteEvent.Close)
         }
     }

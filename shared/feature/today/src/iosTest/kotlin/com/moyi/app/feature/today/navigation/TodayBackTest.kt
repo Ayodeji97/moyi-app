@@ -3,6 +3,7 @@
 package com.moyi.app.feature.today.navigation
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -52,7 +53,7 @@ class TodayBackTest {
     }
 
     private fun ComposeUiTest.showTheDailyLoop() = setContent {
-        val store = ViewModelStore()
+        val store = remember { ViewModelStore() }
         CompositionLocalProvider(
             LocalViewModelStoreOwner provides object : ViewModelStoreOwner {
                 override val viewModelStore = store

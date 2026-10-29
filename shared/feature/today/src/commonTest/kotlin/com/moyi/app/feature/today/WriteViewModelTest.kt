@@ -177,6 +177,30 @@ class WriteViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun aCloseAfterASuccessfulSendDoesNotAskToDiscardTheSavedWords() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("You made the tea."))
+            vm.onAction(WriteAction.OnSubmit)
+            assertEquals(WriteEvent.Close, awaitItem())
+            vm.onAction(WriteAction.OnCloseClick)
+            assertFalse(vm.state.value.confirmingDiscard)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun editingDownToOnlySpacesClosesSilently() = runTest {
+        loop.setMyEntry("Already written.", TodayStatus.Waiting)
+        val vm = viewModel(editing = true)
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("   "))
+            vm.onAction(WriteAction.OnCloseClick)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+    }
+
+    @Test
     fun blankSendsNothing() = runTest {
         val vm = viewModel()
         vm.events.test {

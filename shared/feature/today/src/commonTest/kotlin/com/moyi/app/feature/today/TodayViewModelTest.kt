@@ -123,6 +123,16 @@ class TodayViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun aDeleteQuestionLeftOpenDoesNotReturnWithTheNextRevealedDay() = runTest {
+        loop.setStatus(TodayStatus.Revealed)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        viewModel.onAction(TodayAction.OnDeleteAfterRevealClick)
+        viewModel.onAction(TodayAction.OnDebugCycle)
+        loop.setStatus(TodayStatus.Revealed)
+        assertFalse(viewModel.state.value.confirmingDelete)
+    }
+
+    @Test
     fun editingAndWritingOpenTheComposer() = runTest {
         viewModel.events.test {
             viewModel.onAction(TodayAction.OnEditClick)
