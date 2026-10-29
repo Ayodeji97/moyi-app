@@ -29,12 +29,12 @@ built), **ruling owed** (needs the owner), **checklist** (applies to a screen no
 |---|---|---|
 | R1 | **Consent below the fold on iOS.** Add a scroll cue, or leave it? | On an iPhone 17 at rest the consent row sits just below the fold with no scroll cue (PR #6 device run). The control itself is settled: a checkbox on both platforms, as Figma draws it (owner, 2026-10-29). |
 | R2 | **The proposed string** "That password is too long. Use 128 characters or fewer." | From PR #6 (`register_password_error_long`). |
-| R3 | **Screen capture on the private screens.** Block screenshots and screen recording, and hide content in the app switcher, on the screens that show entry text (write, Today, reveal)? | On Android, the only switch left at API 37 is `FLAG_SECURE`: `setContentCaptureEnabled(false)` no longer opts out of Content Capture. `FLAG_SECURE` also blocks the person's own screenshots and blanks the recents thumbnail. iOS cannot block screenshots; the equivalent is covering the content when the app leaves the foreground. See P2. |
 
 ## Rulings made
 
 | # | Ruling | Notes |
 |---|---|---|
+| R3 | **Screen capture: not blocked, for now** (owner, 2026-10-29). | No `FLAG_SECURE` on any screen, and no app-switcher cover on iOS. People may screenshot their entries and reveals. Revisit as its own decision if it is wanted later; the option then is `FLAG_SECURE` scoped to the entry screens (write, Today with the partner's words, reveal, Archive) on Android and covering the content when backgrounded on iOS. Consequence accepted: on Android 17, system Content Capture can read those screens. |
 | R4 | **Assistants and agents: only harmless actions** (owner, 2026-10-29). | Actions such as "open today's entry" and "remind me to write" may be exposed later through Android AppFunctions and iOS App Intents. Entry text, a partner's words and bond details are never exposed. Nothing is built yet (P9). |
 | R5 | **No navigation bar, tab bar or rail**, at any width (existing decision; the owner asked about it 2026-10-29 and the recommendation is to keep it). | Already decided in `states.md` §3 and the design system's notes: Today is home, with Archive and Bond settings one tap away from its `nav` row. A persistent bar would advertise destinations for an app whose point is one entry a day. Liquid Glass (P8) is not a reason to add one. |
 
@@ -68,7 +68,7 @@ device yet unless it says so.
 | # | Change | What it means for Moyi | Status |
 |---|---|---|---|
 | P1 | **Android 17: no opting out of orientation and resizability on large screens** (smallest width 600 dp and up) for apps targeting API 37. | Every screen must lay out in landscape and on tablets and foldables. Only portrait phones have been walked so far. The Figma Tablet section is the reference. | owed (walk a tablet and landscape) |
-| P2 | **Android 17: `setContentCaptureEnabled(false)` no longer opts out of Content Capture**; only `FLAG_SECURE` does. | A journal's entry text could be read by system capture services. Ruling R3. | ruling owed |
+| P2 | **Android 17: `setContentCaptureEnabled(false)` no longer opts out of Content Capture**; only `FLAG_SECURE` does. | A journal's entry text could be read by system capture services. Ruled in R3: not blocked for now. | ruled (no change) |
 | P3 | **`android:allowBackup="true"`** in the manifest (wizard default). | Auto-backup could copy the Keystore-encrypted token file. The key does not restore with it, so a restored install would hold an unreadable session. Either turn backup off or exclude the session file with data extraction rules. | owed (security) |
 | P4 | **Android 16: predictive back on by default** for apps targeting API 36 or higher; `onBackPressed` and `KEYCODE_BACK` no longer run. | No legacy back handling exists in the code. D4 is now a verification. | owed (verify) |
 | P5 | **Android 16: edge-to-edge is mandatory**; the opt-out is gone. | Already done (`enableEdgeToEdge()`, `MoyiScaffold` on `safeDrawing`). Check 3-button navigation (S1). | done, S1 owed |
