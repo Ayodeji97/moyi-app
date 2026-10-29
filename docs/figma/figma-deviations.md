@@ -36,7 +36,7 @@ built), **ruling owed** (needs the owner), **checklist** (applies to a screen no
 | # | Ruling | Notes |
 |---|---|---|
 | R4 | **Assistants and agents: only harmless actions** (owner, 2026-10-29). | Actions such as "open today's entry" and "remind me to write" may be exposed later through Android AppFunctions and iOS App Intents. Entry text, a partner's words and bond details are never exposed. Nothing is built yet (P9). |
-| R5 | **No navigation bar, tab bar or rail**, at any width (confirmed 2026-10-29). | Already decided in `states.md` §3 and the design system's notes: Today is home, with Archive and Bond settings one tap away from its `nav` row. A persistent bar would advertise destinations for an app whose point is one entry a day. Liquid Glass (P8) is not a reason to add one. |
+| R5 | **No navigation bar, tab bar or rail**, at any width (existing decision; the owner asked about it 2026-10-29 and the recommendation is to keep it). | Already decided in `states.md` §3 and the design system's notes: Today is home, with Archive and Bond settings one tap away from its `nav` row. A persistent bar would advertise destinations for an app whose point is one entry a day. Liquid Glass (P8) is not a reason to add one. |
 
 ## Checklist for screens not yet built
 
