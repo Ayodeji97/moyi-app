@@ -28,8 +28,8 @@ import com.moyi.app.feature.auth.navigation.HomePlaceholderRoute
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.RegisterRoute
 import com.moyi.app.feature.auth.navigation.authGraph
-import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
+import com.moyi.app.feature.onboarding.navigation.SignedInStartRoute
 import com.moyi.app.feature.onboarding.navigation.onboardingGraph
 import com.moyi.app.feature.today.navigation.TodayRoute
 import com.moyi.app.feature.today.navigation.todayGraph
@@ -42,9 +42,10 @@ import org.koin.compose.viewmodel.koinViewModel
  *   motion (states.md §0; CLAUDE.md "no spinner is invented"). It also covers
  *   a locked token store, which keeps the state Unknown until a foreground
  *   retry succeeds.
- * - **SignedIn**: onboarding (relationship type). Its last action calls
- *   `onOnboardingFinished`, which lands on Today, the root of the signed-in
- *   app (UI only for now, PR #8).
+ * - **SignedIn**: the signed-in start, which asks the server where this
+ *   person is (`GET /bonds`, `GET /me`) and replaces itself with Today, the
+ *   unverified gate or onboarding. Onboarding's last action calls
+ *   `onOnboardingFinished`, which lands on Today, the root of the signed-in app.
  * - **SignedOut**: the promise (Onboarding 1), leading to sign up or sign in.
  *   A sign-out or an ended session still lands on sign in (below).
  * - **UI preview** (debug builds only), chosen before the session is known:
@@ -71,8 +72,7 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
             )
         }
         if (start == null && session != SessionState.Unknown) {
-            // TODO(logic): skip onboarding when the person already has a bond (`GET /api/v1/bonds`).
-            start = if (session is SessionState.SignedIn) OnboardingRoute else PromiseRoute
+            start = if (session is SessionState.SignedIn) SignedInStartRoute else PromiseRoute
         }
 
         val startDestination = start
@@ -112,8 +112,7 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
     ) {
         authGraph(
             navController = navController,
-            // TODO(logic): skip onboarding when the person already has a bond (`GET /api/v1/bonds`).
-            onSignedIn = { navController.resetTo(OnboardingRoute) },
+            onSignedIn = { navController.resetTo(SignedInStartRoute) },
         )
         todayGraph(
             navController = navController,

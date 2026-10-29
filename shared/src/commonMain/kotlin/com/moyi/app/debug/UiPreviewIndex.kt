@@ -22,8 +22,8 @@ import kotlinx.serialization.Serializable
 /**
  * DEBUG ONLY. Registered and started only when the app is built with
  * `-PmoyiUiPreview=onboarding` (`UiPreviewConfig.UI_PREVIEW`), so the onboarding
- * screens can be clicked through and screenshotted without a backend: they
- * hold fake state, so no session is needed.
+ * screens can be clicked through and screenshotted without a backend: that
+ * build binds [PreviewBondRepository] over the real one, so no session is needed.
  *
  * The labels are developer text, never shown to a member, so they are not
  * string resources (CLAUDE.md's rule is for user-facing text).

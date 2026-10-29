@@ -17,9 +17,13 @@ sealed interface RelationshipTypeAction {
     /** One tap selects and advances. There is no Continue (states.md §1a). */
     data class OnSelect(val type: RelationshipType) : RelationshipTypeAction
     data object OnBackClick : RelationshipTypeAction
+
+    /** "I have an invite code" (not in Figma): manual code entry. */
+    data object OnHaveCodeClick : RelationshipTypeAction
 }
 
 sealed interface RelationshipTypeEvent {
     data class NavigateToCreateBond(val type: RelationshipType) : RelationshipTypeEvent
     data object NavigateBack : RelationshipTypeEvent
+    data object NavigateToJoin : RelationshipTypeEvent
 }

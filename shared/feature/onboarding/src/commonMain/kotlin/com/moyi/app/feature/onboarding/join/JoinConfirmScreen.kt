@@ -8,7 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
+import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
@@ -31,15 +33,20 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun JoinConfirmRoot(
     code: String,
+    preview: InvitePreview,
     onFinish: () -> Unit,
+    onNavigateToCannotBeUsed: () -> Unit,
+    onNavigateToGate: () -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: JoinConfirmViewModel = koinViewModel { parametersOf(code) },
+    viewModel: JoinConfirmViewModel = koinViewModel { parametersOf(code, preview) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             JoinConfirmEvent.Finish -> onFinish()
             JoinConfirmEvent.NavigateBack -> onNavigateBack()
+            JoinConfirmEvent.NavigateToCannotBeUsed -> onNavigateToCannotBeUsed()
+            JoinConfirmEvent.NavigateToGate -> onNavigateToGate()
         }
     }
     JoinConfirmScreen(state = state, onAction = viewModel::onAction)
@@ -60,6 +67,10 @@ fun JoinConfirmScreen(
     MoyiScaffold(
         onBack = { onAction(JoinConfirmAction.OnBackClick) },
         action = {
+            state.failure?.let {
+                InlineError(it.asString())
+                Spacer(Modifier.height(spacing.sm))
+            }
             PrimaryAction(
                 text = stringResource(Res.string.join_confirm_action),
                 onClick = { onAction(JoinConfirmAction.OnJoinClick) },

@@ -38,14 +38,16 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun CreateBondRoot(
     type: RelationshipType,
-    onNavigateToInvite: (code: String) -> Unit,
+    onNavigateToInvite: (code: String, link: String) -> Unit,
+    onNavigateToGate: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: CreateBondViewModel = koinViewModel { parametersOf(type) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is CreateBondEvent.NavigateToInvite -> onNavigateToInvite(event.code)
+            is CreateBondEvent.NavigateToInvite -> onNavigateToInvite(event.code, event.link)
+            CreateBondEvent.NavigateToGate -> onNavigateToGate()
             CreateBondEvent.NavigateBack -> onNavigateBack()
         }
     }
@@ -72,7 +74,7 @@ fun CreateBondScreen(
         onBack = { onAction(CreateBondAction.OnBackClick) },
         action = {
             if (state.status == CreateBondStatus.Failed) {
-                InlineError(stringResource(Res.string.bond_create_error))
+                InlineError(state.error?.asString() ?: stringResource(Res.string.bond_create_error))
                 Spacer(Modifier.height(spacing.sm))
             }
             PrimaryAction(

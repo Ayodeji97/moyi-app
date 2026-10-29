@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
+import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.icon.MoyiIcons
@@ -35,6 +36,7 @@ import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.bond_type_card_hint
+import com.moyi.app.feature.onboarding.resources.bond_type_have_code
 import com.moyi.app.feature.onboarding.resources.bond_type_heading
 import com.moyi.app.feature.onboarding.resources.bond_type_line
 import com.moyi.app.feature.onboarding.resources.onboarding_eyebrow_new_bond
@@ -44,6 +46,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun RelationshipTypeRoot(
     onNavigateToCreateBond: (RelationshipType) -> Unit,
+    onNavigateToJoin: () -> Unit,
     onNavigateBack: (() -> Unit)?,
     viewModel: RelationshipTypeViewModel = koinViewModel(),
 ) {
@@ -52,6 +55,7 @@ fun RelationshipTypeRoot(
         when (event) {
             is RelationshipTypeEvent.NavigateToCreateBond -> onNavigateToCreateBond(event.type)
             RelationshipTypeEvent.NavigateBack -> onNavigateBack?.invoke()
+            RelationshipTypeEvent.NavigateToJoin -> onNavigateToJoin()
         }
     }
     RelationshipTypeScreen(state = state, onAction = viewModel::onAction, showBack = onNavigateBack != null)
@@ -63,6 +67,11 @@ fun RelationshipTypeRoot(
  * 358×81 starting 48 under the line (the card group's 24 plus its 24 top
  * padding), 16 apart. **No PrimaryAction**: a tap selects and advances.
  *
+ * NOT IN FIGMA: "I have an invite code", a secondary link in the action block
+ * at 772, for someone who signed up to join rather than to create. Figma draws
+ * manual entry (309:42) with a back, but nothing that leads to it; without
+ * this, a joiner with no link could only create a bond. Owner ruling owed.
+ *
  * [showBack] is false when this is the first screen after sign in (nothing
  * behind it); the eyebrow returns and the heading sits at 107, as on every root form.
  */
@@ -73,7 +82,17 @@ fun RelationshipTypeScreen(
     showBack: Boolean = true,
 ) {
     val spacing = MoyiTheme.spacing
-    MoyiScaffold(onBack = if (showBack) ({ onAction(RelationshipTypeAction.OnBackClick) }) else null) {
+    MoyiScaffold(
+        onBack = if (showBack) ({ onAction(RelationshipTypeAction.OnBackClick) }) else null,
+        action = {
+            TextLink(
+                stringResource(Res.string.bond_type_have_code),
+                onClick = { onAction(RelationshipTypeAction.OnHaveCodeClick) },
+                centered = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    ) {
         ScreenHeader(
             eyebrow = stringResource(Res.string.onboarding_eyebrow_new_bond),
             heading = stringResource(Res.string.bond_type_heading),

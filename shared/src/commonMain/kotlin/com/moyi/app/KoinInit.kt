@@ -1,6 +1,7 @@
 package com.moyi.app
 
 import com.moyi.app.data.network.networkModule
+import com.moyi.app.debug.previewDataModule
 import com.moyi.app.data.repository.repositoryModules
 import com.moyi.app.data.session.sessionModules
 import com.moyi.app.feature.auth.di.authFeatureModule
@@ -28,4 +29,6 @@ val appModules: List<Module> = listOf(networkModule) + sessionModules + reposito
 fun initKoin(config: KoinAppDeclaration = {}): KoinApplication = startKoin {
     config()
     modules(appModules)
+    // DEBUG ONLY: the onboarding preview runs on fake bonds (UiPreviewIndex).
+    if (UiPreviewConfig.UI_PREVIEW == "onboarding") modules(previewDataModule)
 }
