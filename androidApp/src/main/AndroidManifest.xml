@@ -4,9 +4,19 @@
     <!-- The API client (PR #3 onwards). -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- No backup and no device-to-device transfer (figma-deviations.md P3). Nothing
+         on the device is worth restoring: the server holds the account and every
+         entry, and the session is bound to an Android Keystore key that never leaves
+         this device, so a restored session file could not be decrypted. The local
+         entry cache to come (SQLDelight) will hold entry text, which must not travel
+         to a backup at all. allowBackup="false" covers API 30 and below; from API 31
+         it no longer stops device-to-device transfer, so dataExtractionRules
+         excludes everything for both. The session file is also in noBackupFilesDir,
+         a third guard. -->
     <application
         android:name=".MoyiApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
