@@ -25,7 +25,7 @@ import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
-import com.moyi.app.feature.auth.common.AuthHeader
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.common.toActionState
 import com.moyi.app.feature.auth.resources.Res
@@ -108,7 +108,7 @@ fun VerifyScreen(
             )
         },
     ) {
-        AuthHeader(
+        ScreenHeader(
             eyebrow = stringResource(Res.string.verify_eyebrow),
             heading = stringResource(if (expired) Res.string.verify_expired_heading else Res.string.verify_heading),
         )

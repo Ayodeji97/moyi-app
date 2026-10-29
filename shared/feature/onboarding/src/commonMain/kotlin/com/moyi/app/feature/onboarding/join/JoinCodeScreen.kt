@@ -25,7 +25,7 @@ import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.presentation.UiText
-import com.moyi.app.feature.onboarding.common.OnboardingHeader
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.field_code_error_character
 import com.moyi.app.feature.onboarding.resources.field_code_helper
@@ -65,8 +65,8 @@ fun JoinCodeRoot(
  * - **Prefilled (308:4)**, a root: eyebrow at 24, heading at 107 (64 below),
  *   then the line and the Code field as siblings 16 apart. No back: it is
  *   reached by deep link from a cold install.
- * - **Manual (309:42)**, drawn keyboard-up: back, then eyebrow, heading,
- *   line and field 16 apart throughout. The field takes focus on arrival, so
+ * - **Manual (309:42)**, drawn keyboard-up: back, then the heading (no
+ *   eyebrow under a back target, figma-deviations.md D1), line and field 16 apart. The field takes focus on arrival, so
  *   the keyboard is up as drawn.
  *
  * The action block holds only "Continue" (772, or on the keyboard).
@@ -88,12 +88,12 @@ fun JoinCodeScreen(
             PrimaryAction(stringResource(Res.string.join_code_action), onClick = { onAction(JoinCodeAction.OnContinueClick) })
         },
     ) {
-        OnboardingHeader(
+        ScreenHeader(
             eyebrow = stringResource(Res.string.join_eyebrow),
             heading = stringResource(
                 if (state.prefilled) Res.string.join_code_heading_prefilled else Res.string.join_code_heading_manual,
             ),
-            gap = if (state.prefilled) spacing.xxxl else spacing.md,
+            rootGap = if (state.prefilled) spacing.xxxl else spacing.md,
         )
         Spacer(Modifier.height(spacing.md))
         MoyiText(

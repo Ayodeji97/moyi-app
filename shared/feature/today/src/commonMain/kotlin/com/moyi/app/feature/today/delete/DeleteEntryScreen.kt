@@ -7,8 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,9 +15,9 @@ import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.TextLink
-import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.FakeCopy
@@ -139,12 +137,9 @@ fun DeleteEntryScreen(
             )
         },
     ) {
-        MoyiText(stringResource(Res.string.delete_eyebrow), role = TextRole.Label)
-        Spacer(Modifier.height(MoyiTheme.spacing.xxxl))
-        MoyiText(
-            text = stringResource(Res.string.delete_heading),
-            role = TextRole.Title,
-            modifier = Modifier.semantics { heading() },
+        ScreenHeader(
+            eyebrow = stringResource(Res.string.delete_eyebrow),
+            heading = stringResource(Res.string.delete_heading),
         )
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         MoyiText(stringResource(Res.string.delete_line, state.partnerName), tone = TextTone.Muted)

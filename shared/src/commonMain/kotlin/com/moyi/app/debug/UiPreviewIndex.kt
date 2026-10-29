@@ -13,6 +13,7 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
+import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.onboarding.navigation.JoinCodeRoute
 import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
@@ -41,6 +42,9 @@ private val entries: List<Pair<String, Any>> = listOf(
     "Onboarding 4 to 6: relationship type, create bond, invite" to OnboardingRoute,
     "Join: code from link (prefilled)" to JoinCodeRoute(prefilledCode = "K7Q2PD"),
     "Join: manual entry (ZZZZZZ plays cannot be used)" to JoinCodeRoute(),
+    // Check email needs a 201 from sign up to reach; here it opens directly. Its
+    // actions call the API, so they fail without a backend: this is for layout.
+    "Auth: check email" to VerifyRoute(email = "amara@example.com"),
 )
 
 @Composable

@@ -15,7 +15,7 @@ import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
-import com.moyi.app.feature.onboarding.common.OnboardingHeader
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.join_confirm_action
@@ -46,8 +46,8 @@ fun JoinConfirmRoot(
 }
 
 /**
- * Join · confirm (Figma 310:14; spec §3.7). Back, eyebrow, the heading at
- * 171 naming the inviter and the bond, the reciprocity line 16 below, the
+ * Join · confirm (Figma 310:14; spec §3.7). Back, the heading at 96 (no
+ * eyebrow under a back target, figma-deviations.md D1) naming the inviter and the bond, the reciprocity line 16 below, the
  * type line 16 below that. "Join" at 700 and "Not now" at 772: a centred
  * link whose target hugs its text (67 wide in Figma), not full width.
  */
@@ -73,7 +73,7 @@ fun JoinConfirmScreen(
             TextLink(stringResource(Res.string.join_confirm_secondary), onClick = { onAction(JoinConfirmAction.OnNotNowClick) }, centered = true)
         },
     ) {
-        OnboardingHeader(
+        ScreenHeader(
             eyebrow = stringResource(Res.string.join_eyebrow),
             heading = stringResource(Res.string.join_confirm_heading, state.inviterName, state.bondName),
         )

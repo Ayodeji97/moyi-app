@@ -16,7 +16,7 @@ import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
-import com.moyi.app.feature.onboarding.common.OnboardingHeader
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.invite_action
 import com.moyi.app.feature.onboarding.resources.invite_heading
@@ -67,7 +67,7 @@ fun InviteHandoffScreen(
             )
         },
     ) {
-        OnboardingHeader(
+        ScreenHeader(
             eyebrow = stringResource(Res.string.onboarding_eyebrow_new_bond),
             heading = stringResource(Res.string.invite_heading),
         )

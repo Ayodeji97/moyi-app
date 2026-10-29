@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
+import com.moyi.app.designsystem.platform.PlatformBackIcon
 
 /**
  * The Lucide glyphs the design system uses (`tokens.md` §6: Lucide, ISC
@@ -57,8 +58,32 @@ object MoyiIcons {
         )
     }
 
-    /** Directional: mirrored under RTL with `autoMirror`. */
+    /** Directional: mirrored under RTL with `autoMirror`. The iOS back glyph ([Back]). */
     val ChevronLeft: ImageVector by lazy { lucide("ChevronLeft", "m15 18-6-6 6-6", autoMirror = true) }
+
+    /**
+     * The Android back glyph ([Back]): Material Icons `arrow_back` (filled, Apache 2.0),
+     * the glyph Android's own top bars draw. Not Lucide: on Android the platform's back
+     * wins over the house icon set (figma-deviations.md D2). Mirrored under RTL.
+     */
+    val ArrowBack: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "ArrowBack",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+            autoMirror = true,
+        ).apply {
+            addPath(
+                pathData = addPathNodes("M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z"),
+                fill = SolidColor(Color.Black),
+            )
+        }.build()
+    }
+
+    /** Back, as each platform draws it: [ArrowBack] on Android, [ChevronLeft] on iOS (D2). */
+    val Back: ImageVector get() = PlatformBackIcon
 
     /** Today's nav row: to Archive (states.md §3). `calendar`: two `<path>`s, `<rect x3 y3 18x18 rx2>`, `<path>`. */
     val Calendar: ImageVector by lazy {

@@ -29,7 +29,9 @@ import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextLinkStyle
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.presentation.UiText
-import com.moyi.app.feature.auth.common.AuthHeader
+import com.moyi.app.designsystem.component.ScreenHeader
+import com.moyi.app.designsystem.platform.rememberInAppBrowser
+import com.moyi.app.feature.auth.common.LegalDocument
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.RegisterField
 import com.moyi.app.feature.auth.common.SubmitStatus
@@ -63,11 +65,13 @@ fun RegisterRoot(
     viewModel: RegisterViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val browser = rememberInAppBrowser()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is RegisterEvent.NavigateToVerify -> onNavigateToVerify(event.email)
             RegisterEvent.NavigateToLogin -> onNavigateToLogin()
             RegisterEvent.NavigateBack -> onNavigateBack()
+            is RegisterEvent.OpenLegalPage -> browser.open(event.url)
         }
     }
     RegisterScreen(state = state, onAction = viewModel::onAction)
@@ -114,7 +118,7 @@ fun RegisterScreen(
             )
         },
     ) {
-        AuthHeader(stringResource(Res.string.register_eyebrow), stringResource(Res.string.register_heading))
+        ScreenHeader(stringResource(Res.string.register_eyebrow), stringResource(Res.string.register_heading))
         Spacer(Modifier.height(spacing.lg))
         // NEW, not in Figma (docs/missing-components.md §5): label and helper are proposed copy.
         Field(
@@ -173,12 +177,12 @@ fun RegisterScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
             TextLink(
                 stringResource(Res.string.register_terms),
-                onClick = { onAction(RegisterAction.OnLegalLinkClick) },
+                onClick = { onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Terms)) },
                 style = TextLinkStyle.Body,
             )
             TextLink(
                 stringResource(Res.string.register_privacy),
-                onClick = { onAction(RegisterAction.OnLegalLinkClick) },
+                onClick = { onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Privacy)) },
                 style = TextLinkStyle.Body,
             )
         }

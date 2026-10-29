@@ -1,5 +1,6 @@
 package com.moyi.app.designsystem
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
@@ -16,6 +17,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.moyi.app.designsystem.platform.platformPressIndication
 import com.moyi.app.designsystem.theme.MoyiColors
 import com.moyi.app.designsystem.theme.MoyiShapes
 import com.moyi.app.designsystem.theme.MoyiSpacing
@@ -43,7 +45,7 @@ internal val LocalMoyiShapes = staticCompositionLocalOf { MoyiShapes() }
  * reference. Material 3 **dynamic colour is off**, always: the product has
  * its own palette (`13` §107), and nothing here reads the wallpaper.
  *
- * Material 3 stays underneath because its internals (ripples, text
+ * Material 3 stays underneath because its internals (text
  * selection handles, any stray `Text`) read `MaterialTheme`. Its colour
  * scheme, typography and shapes are therefore mapped from the Rosewood
  * tokens, so none of them can show Material's default purple or its type
@@ -67,6 +69,7 @@ fun MoyiTheme(
         large = shapes.radius,
         extraLarge = shapes.radius,
     ) }
+    val indication = remember { platformPressIndication() }
     val selection = remember(colors) {
         TextSelectionColors(handleColor = colors.ink, backgroundColor = colors.ink.copy(alpha = 0.3f))
     }
@@ -82,10 +85,13 @@ fun MoyiTheme(
             typography = materialTypography,
             shapes = materialShapes,
         ) {
-            // MaterialTheme provides its own selection colours from `primary`;
-            // ours goes inside it so it wins.
+            // MaterialTheme provides its own selection colours from `primary`
+            // and a ripple as LocalIndication; ours go inside it so they win.
+            // The indication is the platform's press feedback (D5): a ripple on
+            // Android, a dim on iOS. Every `clickable` reads it.
             CompositionLocalProvider(
                 LocalTextSelectionColors provides selection,
+                LocalIndication provides indication,
                 LocalContentColor provides colors.ink,
                 content = content,
             )

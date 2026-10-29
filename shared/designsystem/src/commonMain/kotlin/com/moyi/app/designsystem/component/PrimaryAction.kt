@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -29,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiColors
+import com.moyi.app.designsystem.platform.platformPressIndication
 import com.moyi.app.designsystem.theme.MoyiDimens
 
 /**
@@ -112,15 +112,19 @@ fun PrimaryAction(
             .heightIn(min = MoyiDimens.PrimaryAction.MinHeight)
             .alpha(look.alpha)
             .clip(shapes.radius)
-            .background(look.fill)
-            .border(MoyiDimens.PrimaryAction.Stroke, look.stroke, shapes.radius)
+            // Before the fill and border, so the iOS dim covers the whole
+            // button and the Android ripple draws over the fill, clipped to it.
             .clickable(
                 enabled = enabled,
                 role = Role.Button,
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = look.label),
+                // The platform's press (D5), tinted with the label on Android:
+                // the default ripple reads `ink`, which vanishes on the ink fill.
+                indication = platformPressIndication(color = look.label),
                 onClick = onClick,
             )
+            .background(look.fill)
+            .border(MoyiDimens.PrimaryAction.Stroke, look.stroke, shapes.radius)
             .semantics {
                 // The label change from "Check again" to "Checking" is the
                 // only feedback, so it must be spoken without a focus move.

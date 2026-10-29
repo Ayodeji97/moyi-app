@@ -31,7 +31,7 @@ import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
-import com.moyi.app.feature.onboarding.common.OnboardingHeader
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.bond_type_card_hint
@@ -58,13 +58,13 @@ fun RelationshipTypeRoot(
 }
 
 /**
- * Onboarding 4 (Figma 341:24 / 359:79; spec §3.2). Eyebrow, the heading 64
- * below (171 under the back target), the line 16 below, then three cards
+ * Onboarding 4 (Figma 341:24 / 359:79; spec §3.2). Under the back target the
+ * heading at 96 with no eyebrow (figma-deviations.md D1), the line 16 below, then three cards
  * 358×81 starting 48 under the line (the card group's 24 plus its 24 top
  * padding), 16 apart. **No PrimaryAction**: a tap selects and advances.
  *
  * [showBack] is false when this is the first screen after sign in (nothing
- * behind it); the heading then sits at 107, as on every root form.
+ * behind it); the eyebrow returns and the heading sits at 107, as on every root form.
  */
 @Composable
 fun RelationshipTypeScreen(
@@ -74,7 +74,7 @@ fun RelationshipTypeScreen(
 ) {
     val spacing = MoyiTheme.spacing
     MoyiScaffold(onBack = if (showBack) ({ onAction(RelationshipTypeAction.OnBackClick) }) else null) {
-        OnboardingHeader(
+        ScreenHeader(
             eyebrow = stringResource(Res.string.onboarding_eyebrow_new_bond),
             heading = stringResource(Res.string.bond_type_heading),
         )
@@ -120,9 +120,10 @@ private fun RelationshipCard(label: String, selected: Boolean, onClick: () -> Un
         modifier = Modifier
             .fillMaxWidth()
             .clip(shapes.radius)
+            // Before the fill, so the press feedback covers the whole card (D5).
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .background(colors.surfaceRaised)
             .border(shapes.hairline, colors.outlineStrong, shapes.radius)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .semantics { onClick(label = hint) { onClick(); true } }
             .padding(MoyiTheme.spacing.lg),
         // No gap: the selected label narrows from 310 to 286, the check's 24 (359:79).

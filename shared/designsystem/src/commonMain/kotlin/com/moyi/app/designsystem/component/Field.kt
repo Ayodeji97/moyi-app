@@ -240,9 +240,10 @@ private fun SelectField(
                 .fillMaxWidth()
                 .heightIn(min = MoyiDimens.Field.BoxMinHeight)
                 .clip(shapes.radius)
+                // Before the fill, so the press feedback covers the whole box (D5).
+                .clickable(enabled = enabled, role = Role.DropdownList, onClick = onClick)
                 .background(colors.fieldFill(state))
                 .border(stroke.width, stroke.color, shapes.radius)
-                .clickable(enabled = enabled, role = Role.DropdownList, onClick = onClick)
                 .semantics(mergeDescendants = true) {
                     contentDescription = label
                     if (error != null) error(error)

@@ -1,7 +1,10 @@
 package com.moyi.app.designsystem.component
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,18 +25,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.icon.MoyiIcons
+import com.moyi.app.designsystem.platform.DismissKeyboardOnTapAndDrag
 import com.moyi.app.designsystem.resources.Res
 import com.moyi.app.designsystem.resources.ds_back
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -50,7 +60,8 @@ import org.jetbrains.compose.resources.stringResource
  *   up the bottom 24 becomes 16, the gap Figma draws between the button
  *   and the keyboard (362:1105, 362:1284).
  * - Three stacked parts, 16 apart: an optional header holding the 48 x 48
- *   back target with a 24 chevron and **no title**; the scrolling content;
+ *   back target with the platform's 24 back glyph ([MoyiIcons.Back]: arrow on
+ *   Android, chevron on iOS, D2) and **no title**; the scrolling content;
  *   an optional [action] block pinned to the bottom, centred, which is
  *   where `PrimaryAction`, an `InlineError` and a secondary `TextLink` go.
  * - The content scrolls: at 200 % font scale almost every form is taller
@@ -61,6 +72,11 @@ import org.jetbrains.compose.resources.stringResource
  * - Leave [onBack] null on root screens (Today, Onboarding 1, the unverified
  *   gate); `SKILL.md` §9 lists them. System back is the platform's either way.
  * - No navigation bar or rail: the product has no persistent chrome.
+ * - Whether the screen has a back target is provided to the content
+ *   ([LocalScaffoldHasBack]), so [ScreenHeader] drops the eyebrow under a back
+ *   target and keeps it on a root screen (D1) without each screen deciding.
+ * - On iOS, a tap outside a field or a drag of the content puts the keyboard
+ *   away (D6, [DismissKeyboardOnTapAndDrag]). Android leaves it to Back.
  * - [contentArrangement], when set, makes the content at least the height of
  *   its viewport and arranges the children in it (a block centred when it fits),
  *   whether the actions are pinned or scroll with it. Left null, the content
@@ -88,79 +104,83 @@ fun MoyiScaffold(
 ) {
     val itemSpacing = MoyiDimens.Scaffold.ItemSpacing
     val imeVisible = rememberImeVisible()
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MoyiTheme.colors.surface)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(
-                start = MoyiDimens.Scaffold.Gutter,
-                end = MoyiDimens.Scaffold.Gutter,
-                top = MoyiDimens.Scaffold.PaddingVertical,
-                // At rest, 24 inside the safe area (D6). With the keyboard up
-                // the action frame sits flush on it (362:1105, 181:3: frame
-                // 472 to 544, keyboard from 544) but the button inside it ends
-                // at 528, so 16 stays between the button and the keyboard
-                // (measured on the composer, PR #8). safeDrawing already
-                // includes the IME inset.
-                bottom = if (imeVisible) MoyiDimens.Scaffold.KeyboardGap else MoyiDimens.Scaffold.PaddingVertical,
-            ),
-    ) {
-        if (onBack != null) {
-            BackAffordance(onBack)
-            Spacer(Modifier.height(itemSpacing))
-        } else if (header != null) {
-            header()
-            Spacer(Modifier.height(itemSpacing))
-        }
-        if (!scrollContent) {
-            // The screen lays out and scrolls its content itself (Today, Write,
-            // Reveal), so it gets the bounded room left and the actions stay
-            // pinned below it. No stacking fallback: content that scrolls
-            // itself cannot be measured at its full height.
-            Column(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = contentArrangement ?: Arrangement.Top,
-                content = content,
-            )
-            if (action != null) {
+    val focusManager = LocalFocusManager.current
+    CompositionLocalProvider(LocalScaffoldHasBack provides (onBack != null)) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MoyiTheme.colors.surface)
+                .then(if (DismissKeyboardOnTapAndDrag) Modifier.clearFocusOnTap(focusManager) else Modifier)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(
+                    start = MoyiDimens.Scaffold.Gutter,
+                    end = MoyiDimens.Scaffold.Gutter,
+                    top = MoyiDimens.Scaffold.PaddingVertical,
+                    // At rest, 24 inside the safe area (D6). With the keyboard up
+                    // the action frame sits flush on it (362:1105, 181:3: frame
+                    // 472 to 544, keyboard from 544) but the button inside it ends
+                    // at 528, so 16 stays between the button and the keyboard
+                    // (measured on the composer, PR #8). safeDrawing already
+                    // includes the IME inset.
+                    bottom = if (imeVisible) MoyiDimens.Scaffold.KeyboardGap else MoyiDimens.Scaffold.PaddingVertical,
+                ),
+        ) {
+            if (onBack != null) {
+                BackAffordance(onBack)
                 Spacer(Modifier.height(itemSpacing))
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    content = action,
-                )
+            } else if (header != null) {
+                header()
+                Spacer(Modifier.height(itemSpacing))
             }
-        } else if (action == null && contentArrangement == null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                content = content,
-            )
-        } else if (action == null) {
-            // The content is at least as tall as the space it scrolls in, so the
-            // arrangement has room to centre a block that fits (Join · cannot be
-            // used, 310:23), and it still scrolls when it does not (200 % font).
-            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
-                val viewport = maxHeight
+            if (!scrollContent) {
+                // The screen lays out and scrolls its content itself (Today, Write,
+                // Reveal), so it gets the bounded room left and the actions stay
+                // pinned below it. No stacking fallback: content that scrolls
+                // itself cannot be measured at its full height.
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .heightIn(min = viewport),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     verticalArrangement = contentArrangement ?: Arrangement.Top,
                     content = content,
                 )
+                if (action != null) {
+                    Spacer(Modifier.height(itemSpacing))
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        content = action,
+                    )
+                }
+            } else if (action == null && contentArrangement == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberKeyboardDismissingScrollState()),
+                    content = content,
+                )
+            } else if (action == null) {
+                // The content is at least as tall as the space it scrolls in, so the
+                // arrangement has room to centre a block that fits (Join · cannot be
+                // used, 310:23), and it still scrolls when it does not (200 % font).
+                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+                    val viewport = maxHeight
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberKeyboardDismissingScrollState())
+                            .heightIn(min = viewport),
+                        verticalArrangement = contentArrangement ?: Arrangement.Top,
+                        content = content,
+                    )
+                }
+            } else {
+                ContentAndAction(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    action = action,
+                    contentArrangement = contentArrangement ?: Arrangement.Top,
+                    content = content,
+                )
             }
-        } else {
-            ContentAndAction(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                action = action,
-                contentArrangement = contentArrangement ?: Arrangement.Top,
-                content = content,
-            )
         }
     }
 }
@@ -190,8 +210,8 @@ private fun ContentAndAction(
     contentArrangement: Arrangement.Vertical,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val outerScroll = rememberScrollState()
-    val innerScroll = rememberScrollState()
+    val outerScroll = rememberKeyboardDismissingScrollState()
+    val innerScroll = rememberKeyboardDismissingScrollState()
     BoxWithConstraints(modifier) {
         val viewport = constraints.maxHeight
         val spacing = MoyiDimens.Scaffold.ItemSpacing
@@ -255,6 +275,44 @@ private fun rememberImeVisible(): Boolean {
     return visible
 }
 
+/**
+ * Whether the enclosing [MoyiScaffold] draws a back target. Read by
+ * [ScreenHeader]: under a back target the eyebrow goes (D1). False outside a
+ * scaffold, so a header in a preview or a test reads as a root screen's.
+ */
+internal val LocalScaffoldHasBack = staticCompositionLocalOf { false }
+
+/**
+ * iOS (D6): a tap that nothing inside took, a tap on the ground or on plain
+ * text, clears the focus, and with it the keyboard. A field, a button or a
+ * link consumes its own tap, so this never fires for them: the gesture only
+ * sees a tap no child consumed.
+ */
+private fun Modifier.clearFocusOnTap(focusManager: FocusManager): Modifier =
+    pointerInput(focusManager) { detectTapGestures { focusManager.clearFocus() } }
+
+/**
+ * A scroll state for the scaffold's own scrolling. On iOS (D6) a drag of the
+ * content clears the focus, like `UIScrollView.keyboardDismissMode = .onDrag`.
+ *
+ * It listens for the person's drag only ([DragInteraction.Start]): the scroll
+ * that brings a newly focused field into view is not a drag, so focusing a
+ * field never dismisses the keyboard it just raised.
+ */
+@Composable
+private fun rememberKeyboardDismissingScrollState(): ScrollState {
+    val state = rememberScrollState()
+    if (DismissKeyboardOnTapAndDrag) {
+        val focusManager = LocalFocusManager.current
+        LaunchedEffect(state, focusManager) {
+            state.interactionSource.interactions.collect { interaction ->
+                if (interaction is DragInteraction.Start) focusManager.clearFocus()
+            }
+        }
+    }
+    return state
+}
+
 @Composable
 private fun BackAffordance(onBack: () -> Unit) {
     Box(
@@ -264,7 +322,7 @@ private fun BackAffordance(onBack: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = MoyiIcons.ChevronLeft,
+            imageVector = MoyiIcons.Back,
             contentDescription = stringResource(Res.string.ds_back),
             tint = MoyiTheme.colors.ink,
             modifier = Modifier.size(MoyiDimens.IconGlyph),
