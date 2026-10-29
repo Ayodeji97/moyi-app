@@ -1,0 +1,129 @@
+<resources>
+    <!--
+    Onboarding's copy. Each string says where it comes from:
+      strings-proposed.md / copy.md / states.md: the design system's corpus. Nothing in
+        strings-proposed.md is approved yet; "IN FILE" means it is on the Figma canvas.
+      PROPOSED: written in this PR, not in the corpus. Listed in the PR and in
+        docs/figma/onboarding-check.md, for the owner to approve or replace.
+    Placeholders are positional (%1$s) because Compose resources have no named form; the
+    comment names each one, and no string is ever concatenated.
+    -->
+
+    <!-- ===== Onboarding 1 · the promise (Figma 358:45) ===== -->
+
+    <!-- promise.reciprocity. DECIDED and canonical (strings-proposed.md §6). Never paraphrase. -->
+    <string name="promise_reciprocity">Write before you read. Your day opens when you both have.</string>
+    <!-- promise.line (strings-proposed.md §4a, in file). -->
+    <string name="promise_line">Once a day you each write one thing you appreciate about the other. Nothing else.</string>
+    <!-- promise.action (strings-proposed.md §4a). Leads to sign up. -->
+    <string name="promise_action">Begin</string>
+    <!-- Same words as register_have_account (Figma 359:3), reader's voice. Key owed (spec §4: signin.existing). Leads to sign in. -->
+    <string name="promise_have_account">I already have an account</string>
+    <!-- PROPOSED. The sample entry card's author label: it says this is an example, not a real entry (states.md §1). -->
+    <string name="promise_sample_label">An example</string>
+    <!-- PROPOSED. The sample entry, set in entry type. Short enough for one line at 34. -->
+    <string name="promise_sample_entry">You waited up.</string>
+    <!-- PROPOSED. Spoken for the sample card, so it is announced as an example (states.md §1). %1$s is the sample entry. -->
+    <string name="promise_sample_a11y">An example entry: %1$s</string>
+
+    <!-- ===== Shared by the creator's screens ===== -->
+
+    <!-- PROPOSED. The eyebrow on relationship type, create bond and the invite handoff. Figma's text was not read; "New bond" is the surface term copy.md §"bond" lists. -->
+    <string name="onboarding_eyebrow_new_bond">New bond</string>
+
+    <!-- ===== Onboarding 4 · relationship type (Figma 341:24, 359:79) ===== -->
+
+    <!-- bond.type.heading (strings-proposed.md §1). -->
+    <string name="bond_type_heading">Who are you writing to?</string>
+    <!-- bond.type.line. -->
+    <string name="bond_type_line">This shapes the prompts we suggest. You can change it later.</string>
+    <!-- bond.type.couple. First person (copy.md "Whose voice is this?"). COUPLE. -->
+    <string name="bond_type_couple">My partner</string>
+    <!-- bond.type.friends. FRIENDS. -->
+    <string name="bond_type_friends">My close friend</string>
+    <!-- bond.type.family. FAMILY, never "parent and child" (states.md §1a). -->
+    <string name="bond_type_family">My family</string>
+    <!-- bond.type.card.hint. Accessibility only: tapping selects and continues. -->
+    <string name="bond_type_card_hint">Selects and continues</string>
+
+    <!-- ===== Onboarding 5 · create bond (Figma 342:17, 362:1196, 394:1441) ===== -->
+
+    <!-- bond.create.heading. -->
+    <string name="bond_create_heading">Set up your bond</string>
+    <!-- bond.name.label. "Bond name", never "Name" (copy.md). -->
+    <string name="bond_name_label">Bond name</string>
+    <!-- bond.name.helper. -->
+    <string name="bond_name_helper">Only the two of you will see this.</string>
+    <!-- PROPOSED. Create bond pressed with the name empty. -->
+    <string name="bond_name_error_blank">Give your bond a name to continue.</string>
+    <!-- PROPOSED. The bond name is over 60 characters (CreateBondRequest.name maxLength 60). -->
+    <string name="bond_name_error_too_long">Keep it to 60 characters or fewer.</string>
+    <!-- field.timezone.label. -->
+    <string name="field_timezone_label">Shared time zone</string>
+    <!-- field.timezone.helper, the in-file wording with the city as a placeholder. The highest-stakes string in the product (strings-proposed.md). %1$s is the time zone's city, e.g. Lagos. -->
+    <string name="field_timezone_helper">Your day starts and ends on %1$s time, for both of you, even when either of you travels.</string>
+    <!-- bond.create.action. -->
+    <string name="bond_create_action">Create bond</string>
+    <!-- PROPOSED. The button while the bond is being created (PrimaryAction Sending, states.md §1c). -->
+    <string name="bond_create_action_sending">Creating your bond</string>
+    <!-- The sign-up precedent (Figma 394:240, states.md §1c), for create bond's failed state 394:1441. -->
+    <string name="bond_create_error">That didn't go through. Your details are still here.</string>
+
+    <!-- ===== Onboarding 6 · invite handoff (Figma 342:48, 394:1468) ===== -->
+
+    <!-- invite.heading. -->
+    <string name="invite_heading">Your bond is ready</string>
+    <!-- invite.line. -->
+    <string name="invite_line">Send this invite only to the person you want in it. It works once and expires in seven days.</string>
+    <!-- invite.action. Opens the OS share sheet and navigates nowhere. -->
+    <string name="invite_action">Share invite</string>
+    <!-- invite.later. The single exit, to Today. -->
+    <string name="invite_later">Continue</string>
+
+    <!-- ===== Join (Figma 308:4, 309:42, 310:14, 310:23) ===== -->
+
+    <!-- join.eyebrow (in file). -->
+    <string name="join_eyebrow">Join a bond</string>
+    <!-- join.code.heading.prefilled (in file). -->
+    <string name="join_code_heading_prefilled">Your invite code</string>
+    <!-- join.code.line.prefilled (in file). -->
+    <string name="join_code_line_prefilled">This came from the link they sent you.</string>
+    <!-- join.code.heading.manual (in file). -->
+    <string name="join_code_heading_manual">Enter your invite code</string>
+    <!-- join.code.line.manual (in file). -->
+    <string name="join_code_line_manual">Ask them to read it out if you need to. It is meant to be said aloud.</string>
+    <!-- join.code.action (in file). -->
+    <string name="join_code_action">Continue</string>
+    <!-- PROPOSED. While the code resolves (PrimaryAction Sending). -->
+    <string name="join_code_action_sending">Checking</string>
+    <!-- field.code.label (in file). -->
+    <string name="field_code_label">Invite code</string>
+    <!-- field.code.helper (in file). -->
+    <string name="field_code_helper">Six characters. Capitals and numbers. Case does not matter.</string>
+    <!-- field.code.error.character (in file). 0 O 1 I L U are not in the alphabet (states.md §2). -->
+    <string name="field_code_error_character">That code has a character we do not use. Check it against the one they sent you.</string>
+    <!-- PROPOSED. Continue pressed with fewer than six characters. -->
+    <string name="field_code_error_length">That code is shorter than six characters. Check it against the one they sent you.</string>
+    <!-- join.confirm.heading (in file). %1$s is {inviterName}, %2$s is {bondName}. -->
+    <string name="join_confirm_heading">%1$s invited you to %2$s.</string>
+    <!-- join.confirm.line.reciprocity. Canonical, the same sentence as the promise. -->
+    <string name="join_confirm_line_reciprocity">Write before you read. Your day opens when you both have.</string>
+    <!-- join.confirm.line.couple (in file). -->
+    <string name="join_confirm_line_couple">The prompts will be about the two of you.</string>
+    <!-- join.confirm.line.friends (strings-proposed.md §3, proposal). -->
+    <string name="join_confirm_line_friends">The prompts will be about your friendship.</string>
+    <!-- join.confirm.line.family (strings-proposed.md §3, proposal). -->
+    <string name="join_confirm_line_family">The prompts will be about your family.</string>
+    <!-- join.confirm.action (in file). -->
+    <string name="join_confirm_action">Join</string>
+    <!-- PROPOSED. While joining (PrimaryAction Sending). -->
+    <string name="join_confirm_action_sending">Joining</string>
+    <!-- join.confirm.secondary (in file). -->
+    <string name="join_confirm_secondary">Not now</string>
+    <!-- join.failed.heading (in file). One string for expired, revoked, full, never existed (FR-024). -->
+    <string name="join_failed_heading">That code isn’t working.</string>
+    <!-- join.failed.line (in file). -->
+    <string name="join_failed_line">Ask them to send you a new one.</string>
+    <!-- join.failed.action (in file). -->
+    <string name="join_failed_action">Enter a different code</string>
+</resources>

@@ -43,6 +43,8 @@ object MoyiDimens {
     object Field {
         /** Figma §4.2 Text/Secure box 56; tokens.md L284 ("56 tall, 65 for Code"). A minimum. */
         val BoxMinHeight = 56.dp
+        /** tokens.md L284 "65 for Code"; onboarding spec §3.5 (Field · code 308:9, box 65). A minimum. */
+        val CodeBoxMinHeight = 65.dp
         /** Figma §4.2: Idle and Disabled stroke 1. */
         val StrokeIdle = 1.dp
         /** Figma §4.2: Focus and Error stroke 2; tokens.md L284 (weight changes, NFR-104). */
@@ -79,6 +81,29 @@ object MoyiDimens {
         /** **Interpreted**: Figma does not draw the checked state; 16 keeps the check inside a 24 box. */
         val CheckGlyph = 16.dp
         /** Figma §3.1 row 6: gap 16 between box and text. */
+        val Gap = 16.dp
+    }
+
+    /**
+     * tokens.md §4 component 7. Onboarding spec §3.4: the instance is 358×195 (342:53). The
+     * component page (219:2) was not read, so the inner layout is **Interpreted**: padding 24,
+     * caption, 24, code, 24, a 48 copy target: 24 + 19 + 24 + 32.5 + 24 + 48 + 24 = 195.5.
+     */
+    object InviteCode {
+        val Padding = 24.dp
+        val Gap = 24.dp
+        val CopyTarget = TouchTarget
+        val CopyGap = 8.dp
+    }
+
+    /**
+     * tokens.md §4 component 5. Onboarding spec §3.8: "cannot be used" is 350×185 (310:26), at
+     * its native 350 width. The page (72:2) was not read, so the inside is **Interpreted**:
+     * padding 24, heading 33, 16, line 24, 16, action 48, padding 24 = 185.
+     */
+    object StateBlock {
+        val NativeWidth = 350.dp
+        val Padding = 24.dp
         val Gap = 16.dp
     }
 
