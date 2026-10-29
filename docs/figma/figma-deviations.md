@@ -30,7 +30,13 @@ built), **ruling owed** (needs the owner), **checklist** (applies to a screen no
 | R1 | **Consent below the fold on iOS.** Add a scroll cue, or leave it? | On an iPhone 17 at rest the consent row sits just below the fold with no scroll cue (PR #6 device run). The control itself is settled: a checkbox on both platforms, as Figma draws it (owner, 2026-10-29). |
 | R2 | **The proposed string** "That password is too long. Use 128 characters or fewer." | From PR #6 (`register_password_error_long`). |
 | R3 | **Screen capture on the private screens.** Block screenshots and screen recording, and hide content in the app switcher, on the screens that show entry text (write, Today, reveal)? | On Android, the only switch left at API 37 is `FLAG_SECURE`: `setContentCaptureEnabled(false)` no longer opts out of Content Capture. `FLAG_SECURE` also blocks the person's own screenshots and blanks the recents thumbnail. iOS cannot block screenshots; the equivalent is covering the content when the app leaves the foreground. See P2. |
-| R4 | **Assistants and agents (Gemini, Siri).** Expose nothing, or only harmless actions such as "open today's entry" and "remind me to write"? | Both platforms now let assistants call app functions: Android AppFunctions (experimental; Gemini in private preview) and iOS App Intents (Apple's path for Siri and Apple Intelligence; SiriKit is deprecated). Entry text must never be exposed. See P9. |
+
+## Rulings made
+
+| # | Ruling | Notes |
+|---|---|---|
+| R4 | **Assistants and agents: only harmless actions** (owner, 2026-10-29). | Actions such as "open today's entry" and "remind me to write" may be exposed later through Android AppFunctions and iOS App Intents. Entry text, a partner's words and bond details are never exposed. Nothing is built yet (P9). |
+| R5 | **No navigation bar, tab bar or rail**, at any width (confirmed 2026-10-29). | Already decided in `states.md` §3 and the design system's notes: Today is home, with Archive and Bond settings one tap away from its `nav` row. A persistent bar would advertise destinations for an app whose point is one entry a day. Liquid Glass (P8) is not a reason to add one. |
 
 ## Checklist for screens not yet built
 
@@ -69,7 +75,7 @@ device yet unless it says so.
 | P6 | **Android 17: Certificate Transparency on by default.** | `api.getmoyi.app` uses a publicly logged certificate, so it should pass. Verify once with a release build against production. | owed (verify) |
 | P7 | **Android 17: `ACCESS_LOCAL_NETWORK` runtime permission** for LAN access. | Affects only a physical phone reaching a development backend on the LAN. The emulator through `localhost` and `adb reverse` worked in the PR #6 run. Development note only. | note |
 | P8 | **iOS 26 Liquid Glass** is drawn by the system only on native navigation components (NavigationStack, TabView). | Moyi has no navigation bar or tab bar by design, so there is little to adopt. The back chevron is drawn by Compose and will not be glass; that is accepted. The edge swipe (D3) still has to come from our navigation. The simulator runs iOS 26; walk the current iOS release too. | accepted, D3 owed |
-| P9 | **Assistants calling apps**: Android AppFunctions, iOS App Intents. | Nothing is built. Ruling R4 decides the scope. | ruling owed |
+| P9 | **Assistants calling apps**: Android AppFunctions, iOS App Intents. | Nothing is built. Scope ruled in R4: harmless actions only. | ruled, not built |
 
 Sources: [Android 16 behaviour changes](https://developer.android.com/about/versions/16/behavior-changes-16),
 [Android 17 behaviour changes](https://developer.android.com/about/versions/17/behavior-changes-17),
