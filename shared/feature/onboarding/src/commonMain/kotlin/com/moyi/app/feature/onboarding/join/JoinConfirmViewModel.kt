@@ -2,24 +2,49 @@ package com.moyi.app.feature.onboarding.join
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.moyi.app.feature.onboarding.common.FakeOnboardingData
+import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.core.Result
+import com.moyi.app.designsystem.presentation.UiText
+import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.feature.onboarding.common.RelationshipType
+import com.moyi.app.feature.onboarding.common.code
+import com.moyi.app.feature.onboarding.common.formMessage
+import com.moyi.app.feature.onboarding.common.isUnverified
+import com.moyi.app.feature.onboarding.resources.Res
+import com.moyi.app.feature.onboarding.resources.join_error_limit
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** FAKE: every code resolves to the same inviter and bond, and joining succeeds at once. */
-class JoinConfirmViewModel(private val code: String) : ViewModel() {
-    // TODO(logic): the InvitePreviewResponse (bondName, bondType, inviterDisplayName) from the
-    //  `GET /api/v1/invites/{code}` the code screen made; pass it on, do not resolve the code twice.
-    //  `bondType` includes PARENT_CHILD, which RelationshipType cannot map: it needs a fallback line.
+/**
+ * Join · confirm. Shows the preview the code screen resolved, and joins with
+ * `POST /invites/{code}/accept`, which spends the invite (single use, FR-023).
+ *
+ * - `200`: Today, Day 1 for both.
+ * - `404 INVITE_NOT_USABLE`, or a `422`: cannot be used. The code may have
+ *   been revoked, spent or filled since it resolved; nothing says which.
+ * - `409 ALREADY_MEMBER`: the person is in this bond already (usually the
+ *   creator trying their own code), so they are where joining would take
+ *   them: Today.
+ * - `409 BOND_LIMIT_REACHED`: said, because it is the caller's own state.
+ * - `403 EMAIL_NOT_VERIFIED`: the gate.
+ * - Offline, `429`, anything else: inline, and they can try again.
+ */
+class JoinConfirmViewModel(
+    private val code: String,
+    preview: InvitePreview,
+    private val bonds: BondRepository,
+) : ViewModel() {
     private val _state = MutableStateFlow(
         JoinConfirmState(
-            inviterName = FakeOnboardingData.INVITER_NAME,
-            bondName = FakeOnboardingData.BOND_NAME,
-            type = FakeOnboardingData.BOND_TYPE,
+            inviterName = preview.inviterName,
+            bondName = preview.bondName,
+            type = RelationshipType.of(preview.bondType),
         ),
     )
     val state: StateFlow<JoinConfirmState> = _state.asStateFlow()
@@ -29,16 +54,37 @@ class JoinConfirmViewModel(private val code: String) : ViewModel() {
 
     fun onAction(action: JoinConfirmAction) {
         when (action) {
-            // TODO(logic): `POST /api/v1/invites/{code}/accept` with [code], PrimaryAction Sending
-            //  ("Joining"). The contract declares 200, 401, 403, 404, 409, 422, 429 and 500 (no 410).
-            //  200 → Today, Day 1. 404 INVITE_NOT_USABLE (every way a code fails, full included, FR-024) →
-            //  cannot be used. 409 is the caller's own state, so it may be said: ALREADY_MEMBER or
-            //  BOND_LIMIT_REACHED (copy owed). 422 (malformed; the code screen should stop it first) →
-            //  cannot be used. 401 → the session layer; 403 EMAIL_NOT_VERIFIED, 429, 500 and offline →
-            //  InlineError and stay. Accepting spends the invite (single-use, FR-023).
-            JoinConfirmAction.OnJoinClick -> viewModelScope.launch { _events.send(JoinConfirmEvent.Finish) }
+            JoinConfirmAction.OnJoinClick -> join()
             JoinConfirmAction.OnNotNowClick, JoinConfirmAction.OnBackClick ->
-                viewModelScope.launch { _events.send(JoinConfirmEvent.NavigateBack) }
+                if (!_state.value.joining) viewModelScope.launch { _events.send(JoinConfirmEvent.NavigateBack) }
+        }
+    }
+
+    private fun join() {
+        if (_state.value.joining) return
+        _state.update { it.copy(joining = true, failure = null) }
+        viewModelScope.launch {
+            val accepted = bonds.acceptInvite(code)
+            // Joined (or already in it): the button stays Joining until the screen goes,
+            // so a second tap cannot send a second accept while Finish is on its way.
+            if (accepted is Result.Success) {
+                _events.send(JoinConfirmEvent.Finish)
+                return@launch
+            }
+            val error = (accepted as Result.Failure).error
+            if (error.code() == ApiErrorCode.ALREADY_MEMBER) {
+                _events.send(JoinConfirmEvent.Finish)
+                return@launch
+            }
+            _state.update { it.copy(joining = false) }
+            when {
+                error.code() == ApiErrorCode.INVITE_NOT_USABLE || error.code() == ApiErrorCode.VALIDATION_FAILED ->
+                    _events.send(JoinConfirmEvent.NavigateToCannotBeUsed)
+                error.isUnverified() -> _events.send(JoinConfirmEvent.NavigateToGate)
+                error.code() == ApiErrorCode.BOND_LIMIT_REACHED ->
+                    _state.update { it.copy(failure = UiText.Resource(Res.string.join_error_limit)) }
+                else -> _state.update { it.copy(failure = error.formMessage()) }
+            }
         }
     }
 }

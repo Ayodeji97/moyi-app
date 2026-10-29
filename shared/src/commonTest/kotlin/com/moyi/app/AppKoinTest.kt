@@ -7,7 +7,21 @@ import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
+import com.moyi.app.debug.PreviewBondRepository
+import com.moyi.app.domain.auth.AccountRepository
+import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.bond.BondType
+import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.feature.auth.di.authFeatureModule
+import com.moyi.app.feature.onboarding.common.RelationshipType
+import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
+import com.moyi.app.feature.onboarding.di.onboardingFeatureModule
+import com.moyi.app.feature.onboarding.gate.UnverifiedGateViewModel
+import com.moyi.app.feature.onboarding.invite.InviteHandoffViewModel
+import com.moyi.app.feature.onboarding.join.JoinCodeViewModel
+import com.moyi.app.feature.onboarding.join.JoinConfirmViewModel
+import com.moyi.app.feature.onboarding.relationship.RelationshipTypeViewModel
+import com.moyi.app.feature.onboarding.start.SignedInStartViewModel
 import com.moyi.app.feature.auth.home.HomePlaceholderViewModel
 import com.moyi.app.feature.auth.login.LoginViewModel
 import com.moyi.app.feature.auth.register.RegisterViewModel
@@ -47,7 +61,16 @@ class AppKoinTest {
         val restores = mutableListOf<Unit>()
         val repo = StubAuthRepository { restores += Unit }
         val koin = koinApplication {
-            modules(authFeatureModule, appModule, module { single<AuthRepository> { repo } })
+            modules(
+                authFeatureModule,
+                onboardingFeatureModule,
+                appModule,
+                module {
+                    single<AuthRepository> { repo }
+                    single<BondRepository> { PreviewBondRepository() }
+                    single<AccountRepository> { StubAccountRepository }
+                },
+            )
         }.koin
         try {
             koin.get<RegisterViewModel>()
@@ -55,6 +78,15 @@ class AppKoinTest {
             koin.get<VerifyViewModel> { parametersOf("amara@example.com") }
             val login = koin.get<LoginViewModel> { parametersOf("amara@example.com", true) }
             assertEquals("amara@example.com", login.state.value.email.value)
+            koin.get<SignedInStartViewModel>()
+            koin.get<UnverifiedGateViewModel>()
+            koin.get<RelationshipTypeViewModel>()
+            koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }
+            koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD") }
+            koin.get<JoinCodeViewModel> { parametersOf(null) }
+            koin.get<JoinCodeViewModel> { parametersOf("K7Q2PD") }
+            val preview = InvitePreview("Amara", "Amara and Tunde", BondType.COUPLE)
+            assertEquals("Amara", koin.get<JoinConfirmViewModel> { parametersOf("K7Q2PD", preview) }.state.value.inviterName)
             koin.get<AppViewModel>()
             assertEquals(1, restores.size, "the shell restores the session once at launch")
         } finally {
@@ -91,4 +123,8 @@ internal class StubAuthRepository(private val onRestore: () -> Unit) : AuthRepos
         onRestore()
         return state.value
     }
+}
+
+private object StubAccountRepository : AccountRepository {
+    override suspend fun currentUser(): Result<User, DataError.Network> = Result.Failure(DataError.Network.Unknown)
 }

@@ -21,7 +21,11 @@ import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.FieldType
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
+import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.PrimaryAction
+import com.moyi.app.designsystem.component.PrimaryActionState
+import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.feature.onboarding.resources.join_code_action_sending
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.presentation.UiText
@@ -43,7 +47,7 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun JoinCodeRoot(
     prefilledCode: String?,
-    onNavigateToConfirm: (code: String) -> Unit,
+    onNavigateToConfirm: (code: String, preview: InvitePreview) -> Unit,
     onNavigateToCannotBeUsed: () -> Unit,
     onNavigateBack: (() -> Unit)?,
     viewModel: JoinCodeViewModel = koinViewModel { parametersOf(prefilledCode) },
@@ -51,7 +55,7 @@ fun JoinCodeRoot(
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is JoinCodeEvent.NavigateToConfirm -> onNavigateToConfirm(event.code)
+            is JoinCodeEvent.NavigateToConfirm -> onNavigateToConfirm(event.code, event.preview)
             JoinCodeEvent.NavigateToCannotBeUsed -> onNavigateToCannotBeUsed()
             JoinCodeEvent.NavigateBack -> onNavigateBack?.invoke()
         }
@@ -69,7 +73,9 @@ fun JoinCodeRoot(
  *   eyebrow under a back target, figma-deviations.md D1), line and field 16 apart. The field takes focus on arrival, so
  *   the keyboard is up as drawn.
  *
- * The action block holds only "Continue" (772, or on the keyboard).
+ * The action block holds only "Continue" (772, or on the keyboard), which
+ * says "Checking" while the code resolves. A failure that is not about the
+ * code sits 8 above it, as on create bond (394:1441), the code kept.
  */
 @Composable
 fun JoinCodeScreen(
@@ -85,7 +91,19 @@ fun JoinCodeScreen(
     MoyiScaffold(
         onBack = if (showBack) ({ onAction(JoinCodeAction.OnBackClick) }) else null,
         action = {
-            PrimaryAction(stringResource(Res.string.join_code_action), onClick = { onAction(JoinCodeAction.OnContinueClick) })
+            state.failure?.let {
+                InlineError(it.asString())
+                Spacer(Modifier.height(spacing.sm))
+            }
+            PrimaryAction(
+                text = stringResource(Res.string.join_code_action),
+                onClick = { onAction(JoinCodeAction.OnContinueClick) },
+                state = if (state.checking) {
+                    PrimaryActionState.Sending(stringResource(Res.string.join_code_action_sending))
+                } else {
+                    PrimaryActionState.Idle
+                },
+            )
         },
     ) {
         ScreenHeader(
@@ -144,6 +162,14 @@ private fun JoinCodeCharacterErrorPreview() {
             ),
             onAction = {},
         )
+    }
+}
+
+@Preview
+@Composable
+private fun JoinCodeCheckingPreview() {
+    MoyiTheme(darkTheme = true) {
+        JoinCodeScreen(state = JoinCodeState(prefilled = false, code = "K7Q2PD", checking = true), onAction = {})
     }
 }
 

@@ -12,7 +12,11 @@ data class CreateBondState(
     val nameError: UiText? = null,
     /** The anchor time zone's city. Defaults to the device's (states.md §1). */
     val timeZoneCity: String,
+    /** The zone cannot be sent (not a region zone); shown on the time-zone field. */
+    val timeZoneError: UiText? = null,
     val status: CreateBondStatus = CreateBondStatus.Idle,
+    /** What [CreateBondStatus.Failed] says, above the button. */
+    val error: UiText? = null,
 )
 
 enum class CreateBondStatus {
@@ -31,7 +35,10 @@ sealed interface CreateBondAction {
 }
 
 sealed interface CreateBondEvent {
-    /** The bond exists; hand off its invite code. */
-    data class NavigateToInvite(val code: String) : CreateBondEvent
+    /** The bond exists; hand off its invite. */
+    data class NavigateToInvite(val code: String, val link: String) : CreateBondEvent
+
+    /** `403 EMAIL_NOT_VERIFIED`: the account cannot create a bond yet (FR-002). */
+    data object NavigateToGate : CreateBondEvent
     data object NavigateBack : CreateBondEvent
 }

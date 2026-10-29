@@ -189,3 +189,35 @@ On the iPhone simulator (and the Android emulator where noted):
   reason to look at `TextFieldState` (see the PR's concepts). The emulator also raised one
   ANR on that screen: "Input dispatching timed out ... Waited 5059ms for KeyEvent", with the
   emulator's load at 38 / 45 / 50. The same screen and typing ran without a stall on iOS.
+
+## Wired to the backend (feat/onboarding-wiring)
+
+Run 2026-10-29 against an isolated backend copy (port 8092, its own Postgres and Valkey
+containers, removed afterwards), on a Pixel 8 Pro emulator and an iPhone 17 simulator
+(iOS 26.3, ad-hoc signed for the Keychain).
+
+| Step | Device | Result |
+|---|---|---|
+| Sign in, verified, no bond | Android | Start check (`GET /bonds`, `GET /me`) → relationship type, as a root with its eyebrow |
+| Create bond "Amara and Tunde", device zone Europe/Lisbon | Android | `POST /bonds` 201 → invite handoff with the real code (XHB4Q2, matched in the database) |
+| Copy code, Share invite | Android | Copied state; the system share sheet with the link and the code |
+| Continue; relaunch | Android | Today; a cold launch goes straight to Today (pending bond) |
+| Sign in, unverified, no bond | iOS | Unverified gate (345:46) with the address |
+| Send it again | iOS | The Resent acknowledgement |
+| Verify via the API, return to the app | iOS | The gate re-reads `GET /me` and moves to relationship type |
+| "I have an invite code", paste `http://localhost:3000/i/xhb4q2` | iOS | The field holds `XHB4Q2` |
+| Continue | iOS | Confirm: "Amara invited you to Amara and Tunde.", the couple line |
+| Join; relaunch | iOS | `POST /invites/XHB4Q2/accept` 200; bond ACTIVE with two members; Today, and Today again on a cold launch |
+
+Not run on a device: the cannot-be-used screen from a real `404` (the API's `404
+INVITE_NOT_USABLE` for the spent code and `422` for a malformed one were checked with curl;
+the mapping is unit-tested), offline and rate-limited states (unit-tested), the Generic
+error (preview and unit test only). Today itself still shows fake data.
+
+### Not in Figma
+
+- **"I have an invite code"** on relationship type. Manual entry (309:42) has a back, but
+  nothing in Figma leads to it; without a way in, a joiner without a link could only create
+  a bond. Owner ruling owed on the link, its copy and its place.
+- **Join errors other than "cannot be used"** sit inline above the action, the code kept,
+  following create bond's failed state (394:1441). No frame exists for them.

@@ -23,6 +23,12 @@ import com.moyi.app.feature.onboarding.resources.invite_heading
 import com.moyi.app.feature.onboarding.resources.invite_later
 import com.moyi.app.feature.onboarding.resources.invite_line
 import com.moyi.app.feature.onboarding.resources.onboarding_eyebrow_new_bond
+import com.moyi.app.designsystem.platform.rememberShareSheet
+import com.moyi.app.designsystem.platform.rememberTextClipboard
+import com.moyi.app.feature.onboarding.resources.invite_share_text
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -30,13 +36,21 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun InviteHandoffRoot(
     code: String,
+    link: String,
     onFinish: () -> Unit,
-    viewModel: InviteHandoffViewModel = koinViewModel { parametersOf(code) },
+    viewModel: InviteHandoffViewModel = koinViewModel { parametersOf(code, link) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val clipboard = rememberTextClipboard()
+    val shareSheet = rememberShareSheet()
+    val shareTemplate = Res.string.invite_share_text
+    val scope = rememberCoroutineScope()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             InviteHandoffEvent.Finish -> onFinish()
+            is InviteHandoffEvent.CopyCode -> clipboard.copy(event.code)
+            // One whole sentence with both placeholders, never concatenated (copy.md).
+            is InviteHandoffEvent.Share -> scope.launch { shareSheet.share(getString(shareTemplate, event.link, event.code)) }
         }
     }
     InviteHandoffScreen(state = state, onAction = viewModel::onAction)
@@ -81,19 +95,21 @@ fun InviteHandoffScreen(
 @Preview
 @Composable
 private fun InviteHandoffSentPreview() {
-    MoyiTheme(darkTheme = true) { InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD"), onAction = {}) }
+    MoyiTheme(darkTheme = true) { InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD", link = PREVIEW_LINK), onAction = {}) }
 }
 
 @Preview
 @Composable
 private fun InviteHandoffCopiedPreview() {
     MoyiTheme(darkTheme = true) {
-        InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD", copied = true), onAction = {})
+        InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD", link = PREVIEW_LINK, copied = true), onAction = {})
     }
 }
 
 @Preview
 @Composable
 private fun InviteHandoffLightPreview() {
-    MoyiTheme(darkTheme = false) { InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD"), onAction = {}) }
+    MoyiTheme(darkTheme = false) { InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD", link = PREVIEW_LINK), onAction = {}) }
 }
+
+private const val PREVIEW_LINK = "https://getmoyi.app/i/K7Q2PD"

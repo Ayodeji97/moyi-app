@@ -11,19 +11,23 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class InviteHandoffViewModelTest : MainDispatcherTest() {
-    private val viewModel = InviteHandoffViewModel("K7Q2PD")
+    private val viewModel = InviteHandoffViewModel(INVITE.code, INVITE.link)
 
     @Test
-    fun copyShowsCopied() {
+    fun copyPutsTheCodeOnTheClipboardAndShowsCopied() = runTest {
         assertFalse(viewModel.state.value.copied)
-        viewModel.onAction(InviteHandoffAction.OnCopyClick)
+        viewModel.events.test {
+            viewModel.onAction(InviteHandoffAction.OnCopyClick)
+            assertEquals(InviteHandoffEvent.CopyCode("K7Q2PD"), awaitItem())
+        }
         assertTrue(viewModel.state.value.copied)
     }
 
     @Test
-    fun shareNavigatesNowhere() = runTest {
+    fun shareOpensTheSheetWithTheLinkAndCodeAndNavigatesNowhere() = runTest {
         viewModel.events.test {
             viewModel.onAction(InviteHandoffAction.OnShareClick)
+            assertEquals(InviteHandoffEvent.Share(link = INVITE.link, code = INVITE.code), awaitItem())
             expectNoEvents()
         }
     }

@@ -4,11 +4,11 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
-// Onboarding: the promise, relationship type, create bond, the invite handoff,
-// and the joiner's code, confirm and cannot-be-used screens. PR #7 builds the
-// UI only: every ViewModel holds fake state, and each real call is a
-// `TODO(logic)` naming its endpoint. Like auth, it may see the domain, never
-// the data layer (the Konsist rule covers every module under shared/feature).
+// Onboarding: the signed-in start, the unverified gate, the promise,
+// relationship type, create bond, the invite handoff, and the joiner's code,
+// confirm and cannot-be-used screens, over the domain's bond and account
+// repositories. Like auth, it may see the domain, never the data layer (the
+// Konsist rule covers every module under shared/feature).
 kotlin {
     sourceSets {
         commonMain.dependencies {
@@ -17,6 +17,8 @@ kotlin {
             implementation(project(":shared:designsystem"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            // The device's IANA time zone, the default anchor zone (states.md §1).
+            implementation(libs.kotlinx.datetime)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)

@@ -45,6 +45,8 @@
     <string name="bond_type_family">My family</string>
     <!-- bond.type.card.hint. Accessibility only: tapping selects and continues. -->
     <string name="bond_type_card_hint">Selects and continues</string>
+    <!-- PROPOSED, and so is its place: Figma draws no way from here to manual code entry (309:42 has a back, so something leads to it). Reader's voice, like "I already have an account". Owner ruling owed. -->
+    <string name="bond_type_have_code">I have an invite code</string>
 
     <!-- ===== Onboarding 5 · create bond (Figma 342:17, 362:1196, 394:1441) ===== -->
 
@@ -62,12 +64,16 @@
     <string name="field_timezone_label">Shared time zone</string>
     <!-- field.timezone.helper, the in-file wording with the city as a placeholder. The highest-stakes string in the product (strings-proposed.md). %1$s is the time zone's city, e.g. Lagos. -->
     <string name="field_timezone_helper">Your day starts and ends on %1$s time, for both of you, even when either of you travels.</string>
+    <!-- PROPOSED. The device reports a zone the backend refuses (UTC, GMT, Etc/...: only a region zone such as Africa/Lagos is accepted) and the picker is not built yet. -->
+    <string name="field_timezone_error_unsupported">Your phone has no city set for its time zone. Choose one in your phone's settings, then come back.</string>
     <!-- bond.create.action. -->
     <string name="bond_create_action">Create bond</string>
     <!-- PROPOSED. The button while the bond is being created (PrimaryAction Sending, states.md §1c). -->
     <string name="bond_create_action_sending">Creating your bond</string>
-    <!-- The sign-up precedent (Figma 394:240, states.md §1c), for create bond's failed state 394:1441. -->
+    <!-- The sign-up precedent (Figma 394:240, states.md §1c), for create bond's failed state 394:1441. Also any request in onboarding that never reached the server. -->
     <string name="bond_create_error">That didn't go through. Your details are still here.</string>
+    <!-- PROPOSED. 409 BOND_LIMIT_REACHED on create (FR-025: three open bonds). The server's detail, reworded without a dash. -->
+    <string name="bond_create_error_limit">You are already in three bonds. Leave one before starting another.</string>
 
     <!-- ===== Onboarding 6 · invite handoff (Figma 342:48, 394:1468) ===== -->
 
@@ -79,6 +85,8 @@
     <string name="invite_action">Share invite</string>
     <!-- invite.later. The single exit, to Today. -->
     <string name="invite_later">Continue</string>
+    <!-- PROPOSED. What the share sheet sends. %1$s is {link}, %2$s is {code}. Not in the corpus. -->
+    <string name="invite_share_text">Join me on Moyi. Open %1$s or enter the code %2$s in the app.</string>
 
     <!-- ===== Join (Figma 308:4, 309:42, 310:14, 310:23) ===== -->
 
@@ -126,4 +134,31 @@
     <string name="join_failed_line">Ask them to send you a new one.</string>
     <!-- join.failed.action (in file). -->
     <string name="join_failed_action">Enter a different code</string>
+    <!-- PROPOSED. 409 BOND_LIMIT_REACHED on accept (FR-025). A fact about the caller's own account, so it may be said (doc 06 §3.3). -->
+    <string name="join_error_limit">You are already in three bonds. Leave one before joining another.</string>
+
+    <!-- ===== Shared failures ===== -->
+
+    <!-- states.md §10 "Generic error", its two lines as one (auth_error_generic's words). Anything the client cannot explain more precisely. -->
+    <string name="onboarding_error_generic">That didn't work. Nothing was lost. Try again in a moment.</string>
+    <!-- PROPOSED, auth_error_rate_limited's words. A 429 (the invite lookup allows ten an hour). States when, never why. -->
+    <string name="onboarding_error_rate_limited">This is paused for a short while. Try again in a few minutes.</string>
+    <!-- Generic error (Figma 384:341, states.md §10): a StateBlock in place of a screen that could not load. -->
+    <string name="generic_error_heading">That didn't work.</string>
+    <string name="generic_error_line">Nothing was lost. Try again in a moment.</string>
+    <!-- auth_try_again's words (states.md §1c "Try again"). -->
+    <string name="generic_error_action">Try again</string>
+
+    <!-- ===== Account 5 · unverified gate (Figma 345:46, states.md §1b) ===== -->
+
+    <!-- PROPOSED. The eyebrow; Figma's text was not read. The register screen's "New account". -->
+    <string name="gate_eyebrow">New account</string>
+    <!-- gate.heading (strings-proposed.md §4a). -->
+    <string name="gate_heading">Verify your email first</string>
+    <!-- gate.line. %1$s is {email}. -->
+    <string name="gate_line">You can sign in, but creating or joining a bond needs a verified address. We sent a link to %1$s.</string>
+    <!-- verify.resend: states.md §1b, "one resend affordance". -->
+    <string name="gate_resend">Send it again</string>
+    <!-- verify.resent. Replaces the resend link for a minute, so a second tap is not a silent no-op. -->
+    <string name="gate_resent">Sent again. You can ask for another in a minute.</string>
 </resources>

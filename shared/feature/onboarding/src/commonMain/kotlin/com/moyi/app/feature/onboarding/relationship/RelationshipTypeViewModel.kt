@@ -29,6 +29,7 @@ class RelationshipTypeViewModel : ViewModel() {
                 viewModelScope.launch { _events.send(RelationshipTypeEvent.NavigateToCreateBond(action.type)) }
             }
             RelationshipTypeAction.OnBackClick -> viewModelScope.launch { _events.send(RelationshipTypeEvent.NavigateBack) }
+            RelationshipTypeAction.OnHaveCodeClick -> viewModelScope.launch { _events.send(RelationshipTypeEvent.NavigateToJoin) }
         }
     }
 }
