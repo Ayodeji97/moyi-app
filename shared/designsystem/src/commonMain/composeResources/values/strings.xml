@@ -12,4 +12,10 @@
     <string name="ds_invite_copy">Copy code</string>
     <!-- PROPOSED. InviteCode's copy control, Copied (tokens.md §4: Copied is not optional). Announced politely. -->
     <string name="ds_invite_copied">Copied</string>
+    <!-- tokens.md §6: spoken name of the composer's photo button (icon only). -->
+    <string name="ds_compose_add_photo">Add a photo</string>
+    <!-- tokens.md §6: spoken name of the composer's voice-note button (icon only). -->
+    <string name="ds_compose_record_voice">Record a voice note</string>
+    <!-- PROPOSED. Spoken name of the composer prompt's dismiss button (icon only). -->
+    <string name="ds_compose_dismiss_prompt">Hide the prompt</string>
 </resources>

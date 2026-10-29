@@ -362,6 +362,8 @@ Where the code departs from a literal reading of the sections above, and why.
 
 - **Scaffold bottom padding with the keyboard up.** At rest the action block sits 24 inside
   `WindowInsets.safeDrawing` (D6, as ruled). While the soft keyboard is visible
-  (`WindowInsets.ime` bottom > 0) the bottom padding is **0**, so the action block sits flush on
-  the keyboard, as the keyboard-up frame draws it (362:1105: action ends at 544, keyboard starts
-  at 544). `safeDrawing` already contains the IME inset, so nothing else changes.
+  (`WindowInsets.ime` bottom > 0) the bottom padding is **16** (`MoyiDimens.Scaffold.KeyboardGap`),
+  so the last control ends 16 above the keyboard, as the keyboard-up frames draw it: 362:1105 and
+  362:1284 put the secondary link at 480 to 528 and the keyboard from 544. `safeDrawing` already
+  contains the IME inset, so nothing else changes. *(Corrected in PR #8: this said 0, flush on the
+  keyboard, reading the 472 to 544 action frame's end as the control's; the control ends at 528.)*

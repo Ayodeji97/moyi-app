@@ -52,6 +52,12 @@ fun TextLink(
     style: TextLinkStyle = TextLinkStyle.Label,
     centered: Boolean = false,
     enabled: Boolean = true,
+    /**
+     * `danger` instead of `ink`, for a link that starts a destructive flow ("Delete
+     * what you wrote", states.md §6 2026-09-07). The underline stays, so colour is
+     * never the only cue (NFR-104).
+     */
+    destructive: Boolean = false,
 ) {
     val target = MoyiDimens.TextLink.MinTarget
     val type = MoyiTheme.type
@@ -72,7 +78,11 @@ fun TextLink(
             // text is uppercased, the text it contributes to the merge is not.
             modifier = Modifier.clearAndSetSemantics { this.text = AnnotatedString(text) },
             style = (if (isLabel) type.label else type.body).copy(textDecoration = TextDecoration.Underline),
-            color = if (enabled) MoyiTheme.colors.ink else MoyiTheme.colors.inkMuted,
+            color = when {
+                !enabled -> MoyiTheme.colors.inkMuted
+                destructive -> MoyiTheme.colors.danger
+                else -> MoyiTheme.colors.ink
+            },
             textAlign = if (centered) TextAlign.Center else TextAlign.Start,
         )
     }
@@ -92,5 +102,6 @@ private fun TextLinkSamples() {
         TextLink("I forgot my password", onClick = {}, modifier = Modifier.fillMaxWidth())
         TextLink("Create an account", onClick = {}, centered = true, modifier = Modifier.fillMaxWidth())
         TextLink("Privacy Policy", onClick = {}, style = TextLinkStyle.Body)
+        TextLink("Delete what you wrote", onClick = {}, destructive = true, modifier = Modifier.fillMaxWidth())
     }
 }
