@@ -17,15 +17,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.ComposeField
+import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
+import com.moyi.app.designsystem.platform.NoArrowBackHandler
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.write_announce_editing
 import com.moyi.app.feature.today.resources.write_counter
+import com.moyi.app.feature.today.resources.write_discard_confirm
+import com.moyi.app.feature.today.resources.write_discard_keep
+import com.moyi.app.feature.today.resources.write_discard_title
+import com.moyi.app.feature.today.resources.write_discard_title_editing
 import com.moyi.app.feature.today.resources.write_queued
 import com.moyi.app.feature.today.resources.write_save
 import com.moyi.app.feature.today.resources.write_save_failed
@@ -37,25 +43,32 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/**
+ * Write is a task (D10): Android Back asks to close it, exactly as the X does,
+ * and the iOS edge swipe does nothing (no arrow, D3). While the discard question
+ * is up, the dialog takes Back itself (Android: Keep writing).
+ */
 @Composable
 fun WriteRoot(
     editing: Boolean,
-    onNavigateBack: () -> Unit,
+    onClose: () -> Unit,
     debugTools: Boolean,
     viewModel: WriteViewModel = koinViewModel { parametersOf(editing) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            WriteEvent.NavigateBack -> onNavigateBack()
+            WriteEvent.Close -> onClose()
         }
     }
+    NoArrowBackHandler { viewModel.onAction(WriteAction.OnCloseClick) }
     WriteScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
 }
 
 /**
- * The composer with the keyboard up (Figma 181:3): the header with back only, no
- * title (0 to 72); the ComposeField from y 96, filling the space to the action;
+ * The composer with the keyboard up (Figma 181:3): the header with the task's
+ * close only (D10: an X on Android, Cancel on iOS, where 181:3 draws a back
+ * arrow), no title (0 to 72); the ComposeField from y 96, filling the space to the action;
  * the action block riding on the keyboard. In save failed (384:229) the error line
  * sits between the field and the action, 8 above the button, and the field gives
  * up the room.
@@ -74,7 +87,7 @@ fun WriteScreen(
 
     val editingAnnounce = stringResource(Res.string.write_announce_editing)
     MoyiScaffold(
-        onBack = { onAction(WriteAction.OnBackClick) },
+        onClose = { onAction(WriteAction.OnCloseClick) },
         scrollContent = false,
         action = {
             if (state.submit == WriteSubmit.Failed) {
@@ -118,6 +131,16 @@ fun WriteScreen(
         // scaffold's 16 plus these 8.
         Spacer(Modifier.height(MoyiTheme.spacing.sm))
     }
+    if (state.confirmingDiscard) {
+        ConfirmDialog(
+            title = stringResource(if (state.editing) Res.string.write_discard_title_editing else Res.string.write_discard_title),
+            confirmLabel = stringResource(Res.string.write_discard_confirm),
+            dismissLabel = stringResource(Res.string.write_discard_keep),
+            onConfirm = { onAction(WriteAction.OnDiscardConfirm) },
+            onDismiss = { onAction(WriteAction.OnDiscardDismiss) },
+            destructive = true,
+        )
+    }
 }
 
 private fun actionLabel(state: WriteState) = when {
@@ -154,5 +177,7 @@ private const val PREVIEW_TEXT = "The way you sat on the phone with me until I f
 @Preview @Composable private fun WriteEditingPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, prompt = null, editing = true))
 
 @Preview @Composable private fun WriteSaveFailedPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, submit = WriteSubmit.Failed))
+
+@Preview @Composable private fun WriteDiscardPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, confirmingDiscard = true))
 
 @Preview @Composable private fun WriteQueuedPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, submit = WriteSubmit.Queued))

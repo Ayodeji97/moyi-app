@@ -57,10 +57,123 @@ class WriteViewModelTest : MainDispatcherTest() {
         vm.events.test {
             vm.onAction(WriteAction.OnTextChange("You made the tea."))
             vm.onAction(WriteAction.OnSubmit)
-            assertEquals(WriteEvent.NavigateBack, awaitItem())
+            assertEquals(WriteEvent.Close, awaitItem())
         }
         assertEquals(TodayStatus.Waiting, loop.day.value.status)
         assertEquals("You made the tea.", loop.day.value.myEntry)
+    }
+
+    // ---- Closing the task (D10) ----
+
+    @Test
+    fun closingWithNothingTypedClosesSilently() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnCloseClick)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+        assertFalse(vm.state.value.confirmingDiscard)
+    }
+
+    @Test
+    fun closingWithOnlySpacesClosesSilently() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("   "))
+            vm.onAction(WriteAction.OnCloseClick)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+    }
+
+    @Test
+    fun closingWithWordsTypedAsksFirstAndDoesNotClose() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("You made the tea."))
+            vm.onAction(WriteAction.OnCloseClick)
+            assertTrue(vm.state.value.confirmingDiscard)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun keepWritingClosesTheQuestionAndKeepsTheWords() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("You made the tea."))
+            vm.onAction(WriteAction.OnCloseClick)
+            vm.onAction(WriteAction.OnDiscardDismiss)
+            assertFalse(vm.state.value.confirmingDiscard)
+            assertEquals("You made the tea.", vm.state.value.text)
+            expectNoEvents()
+        }
+        assertEquals(TodayStatus.NotWritten, loop.day.value.status)
+    }
+
+    @Test
+    fun discardClosesAndSendsNothing() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("You made the tea."))
+            vm.onAction(WriteAction.OnCloseClick)
+            vm.onAction(WriteAction.OnDiscardConfirm)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+        assertFalse(vm.state.value.confirmingDiscard)
+        assertEquals(TodayStatus.NotWritten, loop.day.value.status)
+    }
+
+    @Test
+    fun aSecondCloseWhileAskingDoesNotCloseUnderTheQuestion() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("You made the tea."))
+            vm.onAction(WriteAction.OnCloseClick)
+            vm.onAction(WriteAction.OnCloseClick)
+            assertTrue(vm.state.value.confirmingDiscard)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun editingAndClosingWithNoChangeClosesSilently() = runTest {
+        loop.setMyEntry("Already written.", TodayStatus.Waiting)
+        val vm = viewModel(editing = true)
+        vm.events.test {
+            vm.onAction(WriteAction.OnCloseClick)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+    }
+
+    @Test
+    fun editingAndClosingWithAChangeAsksFirst() {
+        loop.setMyEntry("Already written.", TodayStatus.Waiting)
+        val vm = viewModel(editing = true)
+        vm.onAction(WriteAction.OnTextChange("Already written, and more."))
+        vm.onAction(WriteAction.OnCloseClick)
+        assertTrue(vm.state.value.confirmingDiscard)
+    }
+
+    @Test
+    fun closingWhileSendingWaitsForTheSend() = runTest {
+        val vm = viewModel()
+        repeat(3) { vm.onAction(WriteAction.OnDebugCycle) } // 419:193 sending
+        vm.events.test {
+            vm.onAction(WriteAction.OnCloseClick)
+            assertFalse(vm.state.value.confirmingDiscard)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun closingAfterAFailedSaveAsksFirstAndOnceQueuedDoesNot() {
+        val vm = viewModel()
+        repeat(5) { vm.onAction(WriteAction.OnDebugCycle) } // 384:229 save failed: the words are unsent
+        vm.onAction(WriteAction.OnCloseClick)
+        assertTrue(vm.state.value.confirmingDiscard)
+        vm.onAction(WriteAction.OnDiscardDismiss)
+        vm.onAction(WriteAction.OnDebugCycle) // queued: the device has the entry
+        assertFalse(vm.state.value.wouldLoseWords)
     }
 
     @Test

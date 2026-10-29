@@ -29,6 +29,13 @@ data class WriteState(
     /** Editing before the reveal: the same composer, the action reads Save (states.md §4). */
     val editing: Boolean = false,
     val submit: WriteSubmit = WriteSubmit.Idle,
+    /**
+     * The words the composer opened with: empty for a new entry, what I wrote when
+     * editing. Closing loses nothing while the text is still this.
+     */
+    val originalText: String = "",
+    /** The discard question is showing (D10): closing would lose typed words. */
+    val confirmingDiscard: Boolean = false,
 ) {
     /**
      * FR-041 counts user-perceived characters (grapheme clusters): a family emoji is one.
@@ -44,6 +51,17 @@ data class WriteState(
 
     /** Over 500: the entry is invalid; the counter turns `danger` and the action is disabled. */
     val overLimit: Boolean get() = characterCount > MAX_CHARACTERS
+
+    /**
+     * Whether closing now would lose words (D10), so it asks first. Not when nothing
+     * was typed, when only spaces were, when an edit changed nothing, or once the
+     * device has accepted the entry (Queued).
+     *
+     * TODO(logic): once drafts are saved locally (doc 13 §5), closing still asks: the
+     *  owner's D10 makes discarding a choice, and Discard deletes the draft too.
+     */
+    val wouldLoseWords: Boolean
+        get() = text.isNotBlank() && text != originalText && submit != WriteSubmit.Queued
 
     /** 1 to 500, with at least one non-space character (FR-041). */
     val canSubmit: Boolean get() = text.isNotBlank() && !overLimit
@@ -63,7 +81,17 @@ sealed interface WriteAction {
 
     /** Send, Save, or Try again: whichever the action reads. */
     data object OnSubmit : WriteAction
-    data object OnBackClick : WriteAction
+    /**
+     * Close the task (D10): the X on Android, Cancel on iOS, Android Back, or a
+     * swipe down on the iOS sheet. Asks first when [WriteState.wouldLoseWords].
+     */
+    data object OnCloseClick : WriteAction
+
+    /** The discard question's destructive answer: close and lose the words. */
+    data object OnDiscardConfirm : WriteAction
+
+    /** The discard question's other answer (or Android Back over it): stay, words intact. */
+    data object OnDiscardDismiss : WriteAction
     data object OnAddPhotoClick : WriteAction
     data object OnRecordVoiceClick : WriteAction
 
@@ -72,6 +100,6 @@ sealed interface WriteAction {
 }
 
 sealed interface WriteEvent {
-    /** Back to Today: after a send or save, or on back. */
-    data object NavigateBack : WriteEvent
+    /** Close, back to Today: after a send or save, or a close that loses nothing or was confirmed. */
+    data object Close : WriteEvent
 }

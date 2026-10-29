@@ -75,19 +75,23 @@
     <string name="write_counter">%1$d / %2$d</string>
     <!-- states.md §4 announce for Edit before reveal. -->
     <string name="write_announce_editing">Editing today's entry</string>
+    <!-- PROPOSED (D10, owner approval 2026-10-29; no copy exists for it). Closing the composer with words typed asks first, in the platform dialog. Parallels "Delete what you wrote?". -->
+    <string name="write_discard_title">Discard what you wrote?</string>
+    <!-- PROPOSED (D10). The same question when editing before the reveal: only the changes would be lost, what was sent stays. -->
+    <string name="write_discard_title_editing">Discard your changes?</string>
+    <!-- PROPOSED (D10). The dialog's destructive answer. -->
+    <string name="write_discard_confirm">Discard</string>
+    <!-- PROPOSED (D10). The dialog's other answer: back to the composer, words intact. -->
+    <string name="write_discard_keep">Keep writing</string>
 
-    <!-- ===== Delete after reveal (Figma 420:64) ===== -->
+    <!-- ===== Delete after reveal: the platform's confirm dialog (D11; Figma 420:64 drew a full screen) ===== -->
 
-    <!-- PROPOSED. The eyebrow (420:65), label style. -->
-    <string name="delete_eyebrow">Your entry</string>
-    <!-- PROPOSED. The heading (420:67). -->
+    <!-- PROPOSED. The dialog's title (420:67's heading). -->
     <string name="delete_heading">Delete what you wrote?</string>
-    <!-- states.md Appendix, the drawn copy. Never a read receipt. %1$s = partnerName. -->
+    <!-- states.md Appendix, the drawn copy, now the dialog's message. Never a read receipt. %1$s = partnerName. -->
     <string name="delete_line">The day is open, so deleting leaves a mark where your entry was. It cannot be undone, and what %1$s wrote stays.</string>
-    <!-- PROPOSED. The danger PrimaryAction (420:73). -->
+    <!-- PROPOSED. The dialog's destructive answer (420:73). -->
     <string name="delete_confirm">Delete</string>
-    <!-- PROPOSED. Delete while in flight. -->
-    <string name="delete_deleting">Deleting</string>
     <!-- copy.md warmth audit: bare "Cancel" dismisses a dialog (420:76, 57 wide). -->
     <string name="delete_cancel">Cancel</string>
 </resources>

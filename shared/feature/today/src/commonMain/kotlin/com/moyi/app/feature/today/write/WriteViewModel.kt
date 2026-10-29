@@ -30,7 +30,7 @@ class WriteViewModel(
 
     private val _state = MutableStateFlow(
         if (editing) {
-            WriteState(text = loop.day.value.myEntry, prompt = null, editing = true)
+            loop.day.value.myEntry.let { mine -> WriteState(text = mine, prompt = null, editing = true, originalText = mine) }
         } else {
             // TODO(logic): restore today's local draft first (doc 13 §5: drafts are local-first,
             //  in SQLDelight, and survive a crash or force-quit), and take the prompt from
@@ -59,10 +59,13 @@ class WriteViewModel(
                 _state.update { it.copy(prompt = null) }
             }
             WriteAction.OnSubmit -> submit()
-            WriteAction.OnBackClick -> {
-                // TODO(logic): the draft is already saved locally, so back loses nothing.
-                viewModelScope.launch { _events.send(WriteEvent.NavigateBack) }
+            WriteAction.OnCloseClick -> requestClose()
+            WriteAction.OnDiscardConfirm -> {
+                // TODO(logic): delete today's local draft (doc 13 §5) before closing.
+                _state.update { it.copy(confirmingDiscard = false) }
+                close()
             }
+            WriteAction.OnDiscardDismiss -> _state.update { it.copy(confirmingDiscard = false) }
             WriteAction.OnAddPhotoClick -> {
                 // TODO(logic): pick a photo and send its id as `imageMediaId` (POST and PATCH both take it).
                 //  Optional (NFR-103). The contract has no media upload endpoint yet, so there is no id to send.
@@ -95,8 +98,25 @@ class WriteViewModel(
             delay(fakeLatency)
             loop.setMyEntry(current.text, TodayStatus.Waiting)
             _state.update { it.copy(submit = WriteSubmit.Idle) }
-            _events.send(WriteEvent.NavigateBack)
+            _events.send(WriteEvent.Close)
         }
+    }
+
+    /**
+     * D10: closing asks first only when it would lose words. While the words are
+     * being sent, closing waits: the send decides, and it closes on its own.
+     */
+    private fun requestClose() {
+        val current = _state.value
+        when {
+            current.submit == WriteSubmit.Sending || current.confirmingDiscard -> Unit
+            current.wouldLoseWords -> _state.update { it.copy(confirmingDiscard = true) }
+            else -> close()
+        }
+    }
+
+    private fun close() {
+        viewModelScope.launch { _events.send(WriteEvent.Close) }
     }
 
     /** Typing after a failure or while queued keeps the state honest: the words changed. */
@@ -113,7 +133,7 @@ class WriteViewModel(
             1 -> WriteState(text = sampleOf(PAST_400))
             2 -> WriteState(text = sampleOf(OVER_LIMIT))
             3 -> WriteState(text = FakeCopy.MY_ENTRY, submit = WriteSubmit.Sending)
-            4 -> WriteState(text = FakeCopy.MY_ENTRY, prompt = null, editing = true)
+            4 -> WriteState(text = FakeCopy.MY_ENTRY, prompt = null, editing = true, originalText = FakeCopy.MY_ENTRY)
             5 -> WriteState(text = FakeCopy.MY_ENTRY, submit = WriteSubmit.Failed)
             6 -> WriteState(text = FakeCopy.MY_ENTRY, submit = WriteSubmit.Queued)
             else -> WriteState()

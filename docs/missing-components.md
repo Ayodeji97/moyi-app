@@ -199,8 +199,11 @@ Each is marked PROPOSED in `shared/feature/today/.../strings.xml`; none is appro
 | `today_edit` | Edit what you wrote | parallels the established "Delete what you wrote" |
 | `today_tombstone_line` | You deleted what you wrote. | the one body line on the tombstone (420:59) |
 | `today_nav_archive` / `today_nav_settings` | Archive / Bond settings | spoken names of the nav icons |
-| `delete_eyebrow` / `delete_heading` | Your entry / Delete what you wrote? | 420:65 and 420:67, copy never read |
-| `delete_confirm` / `delete_deleting` | Delete / Deleting | the danger PrimaryAction |
+| `delete_heading` | Delete what you wrote? | the delete dialog's title (420:67; the full screen became a dialog, D11) |
+| `delete_confirm` | Delete | the delete dialog's destructive answer |
+| `write_discard_title` / `write_discard_title_editing` | Discard what you wrote? / Discard your changes? | the composer's discard dialog (D10) |
+| `write_discard_confirm` / `write_discard_keep` | Discard / Keep writing | its two answers (D10) |
+| `ds_close` | Close | spoken name of the X that closes a task on Android (D10) |
 | `ds_compose_dismiss_prompt` | Hide the prompt | spoken name of the composer's X |
 
 Two corpus lines were adapted, not invented: the waiting line is copy.md's sentence split at
