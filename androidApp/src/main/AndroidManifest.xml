@@ -12,9 +12,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- adjustResize: the window keeps its size and Compose reads the keyboard as an
+             inset (MoyiScaffold's safeDrawing), so the action rides on the keyboard.
+             Without it Android may pan the whole window up when a field takes focus,
+             pushing the header off the top (found on the composer, PR #8). -->
         <activity
             android:exported="true"
-            android:name=".MainActivity">
+            android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

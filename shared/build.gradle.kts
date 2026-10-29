@@ -43,6 +43,7 @@ kotlin {
             implementation(project(":shared:data:repository"))
             implementation(project(":shared:feature:auth"))
             implementation(project(":shared:feature:onboarding"))
+            implementation(project(":shared:feature:today"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.kermit)
@@ -70,7 +71,7 @@ kotlin {
 //
 // The allowed values are this one list, so a UI PR adds its screen in one line.
 // Any other value fails the build.
-val uiPreviewScreens = listOf("", "onboarding")
+val uiPreviewScreens = listOf("", "onboarding", "today")
 
 // Only the command line counts: the -P switches of THIS invocation. Never
 // providers.gradleProperty, which also reads gradle.properties and

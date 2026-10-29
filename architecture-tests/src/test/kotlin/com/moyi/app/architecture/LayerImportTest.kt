@@ -27,7 +27,7 @@ class LayerImportTest {
     /**
      * The rule above reads `shared/feature` as a directory, so a new feature
      * module is covered without editing it. This proves it: every module under
-     * `shared/feature` (onboarding included) contributes files to the scope.
+     * `shared/feature` (auth, onboarding and today) contributes files to the scope.
      * A module whose sources sat somewhere the scope cannot see would fail here.
      */
     @Test
@@ -35,7 +35,7 @@ class LayerImportTest {
         val scope = ImportRules.scope("shared/feature")
         val modules = File(repoRoot, "shared/feature").listFiles { f -> File(f, "build.gradle.kts").exists() }
             .orEmpty().map { it.name }.sorted()
-        assertTrue("onboarding" in modules && "auth" in modules, "Expected auth and onboarding under shared/feature, found $modules")
+        assertTrue(listOf("auth", "onboarding", "today").all { it in modules }, "Expected auth, onboarding and today under shared/feature, found $modules")
 
         val uncovered = modules.filter { module -> scope.files.none { "/shared/feature/$module/src/" in it.path } }
         assertTrue(uncovered.isEmpty(), "Feature modules with no files in the import rule's scope: $uncovered")
