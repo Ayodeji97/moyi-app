@@ -27,7 +27,7 @@ built), **ruling owed** (needs the owner), **checklist** (applies to a screen no
 
 | # | Question | Notes |
 |---|---|---|
-| R1 | **Consent control: checkbox or switch?** | Figma draws a square checkbox; iOS has no native checkbox and uses a switch. The box works on both. Separately, on an iPhone 17 at rest the consent row sits just below the fold with no scroll cue (PR #6 device run). |
+| R1 | **Consent below the fold on iOS.** Add a scroll cue, or leave it? | On an iPhone 17 at rest the consent row sits just below the fold with no scroll cue (PR #6 device run). The control itself is settled: a checkbox on both platforms, as Figma draws it (owner, 2026-10-29). |
 | R2 | **The proposed string** "That password is too long. Use 128 characters or fewer." | From PR #6 (`register_password_error_long`). |
 
 ## Checklist for screens not yet built
