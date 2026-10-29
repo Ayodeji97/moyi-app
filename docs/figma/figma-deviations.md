@@ -27,13 +27,13 @@ built), **ruling owed** (needs the owner), **checklist** (applies to a screen no
 
 | # | Question | Notes |
 |---|---|---|
-| R1 | **Consent below the fold on iOS.** Add a scroll cue, or leave it? | On an iPhone 17 at rest the consent row sits just below the fold with no scroll cue (PR #6 device run). The control itself is settled: a checkbox on both platforms, as Figma draws it (owner, 2026-10-29). |
 | R2 | **The proposed string** "That password is too long. Use 128 characters or fewer." | From PR #6 (`register_password_error_long`). |
 
 ## Rulings made
 
 | # | Ruling | Notes |
 |---|---|---|
+| R1 | **Add a scroll cue when content continues below the pinned action block** (owner, 2026-10-29). The consent control stays a checkbox on both platforms, as Figma draws it. | Found on sign up: on an iPhone 17 at rest the consent row sits just below the fold with nothing to say the content scrolls (PR #6 device run). Proposed form: a short fade at the bottom edge of the scrolling content, in `surface`, shown only while more content is below, built once in `MoyiScaffold` so every scrolling screen gets it. It is a small addition to the design system, so its exact look is confirmed with the owner before it ships. Not built yet. |
 | R3 | **Screen capture: not blocked, for now** (owner, 2026-10-29). | No `FLAG_SECURE` on any screen, and no app-switcher cover on iOS. People may screenshot their entries and reveals. Revisit as its own decision if it is wanted later; the option then is `FLAG_SECURE` scoped to the entry screens (write, Today with the partner's words, reveal, Archive) on Android and covering the content when backgrounded on iOS. Consequence accepted: on Android 17, system Content Capture can read those screens. |
 | R4 | **Assistants and agents: only harmless actions** (owner, 2026-10-29). | Actions such as "open today's entry" and "remind me to write" may be exposed later through Android AppFunctions and iOS App Intents. Entry text, a partner's words and bond details are never exposed. Nothing is built yet (P9). |
 | R5 | **No navigation bar, tab bar or rail**, at any width (existing decision; the owner asked about it 2026-10-29 and the recommendation is to keep it). | Already decided in `states.md` §3 and the design system's notes: Today is home, with Archive and Bond settings one tap away from its `nav` row. A persistent bar would advertise destinations for an app whose point is one entry a day. Liquid Glass (P8) is not a reason to add one. |
