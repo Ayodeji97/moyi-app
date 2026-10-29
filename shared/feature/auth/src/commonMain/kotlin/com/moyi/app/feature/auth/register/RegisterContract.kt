@@ -2,6 +2,7 @@ package com.moyi.app.feature.auth.register
 
 import androidx.compose.runtime.Immutable
 import com.moyi.app.feature.auth.common.FieldInput
+import com.moyi.app.feature.auth.common.LegalDocument
 import com.moyi.app.feature.auth.common.RegisterField
 import com.moyi.app.feature.auth.common.SubmitStatus
 
@@ -30,8 +31,8 @@ sealed interface RegisterAction {
     data object OnHaveAccountClick : RegisterAction
     data object OnBackClick : RegisterAction
 
-    /** Terms or Privacy Policy. No destination until the legal URLs exist (owed). */
-    data object OnLegalLinkClick : RegisterAction
+    /** Terms or Privacy Policy: opens in the in-app browser when its URL is configured. */
+    data class OnLegalLinkClick(val document: LegalDocument) : RegisterAction
 }
 
 sealed interface RegisterEvent {
@@ -39,4 +40,7 @@ sealed interface RegisterEvent {
     data class NavigateToVerify(val email: String) : RegisterEvent
     data object NavigateToLogin : RegisterEvent
     data object NavigateBack : RegisterEvent
+
+    /** Open a legal page in the in-app browser (D8). */
+    data class OpenLegalPage(val url: String) : RegisterEvent
 }

@@ -28,7 +28,7 @@ import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.presentation.UiText
-import com.moyi.app.feature.auth.common.AuthHeader
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.common.onBlur
@@ -107,7 +107,7 @@ fun LoginScreen(
             )
         },
     ) {
-        AuthHeader(stringResource(Res.string.login_eyebrow), stringResource(Res.string.login_heading))
+        ScreenHeader(stringResource(Res.string.login_eyebrow), stringResource(Res.string.login_heading))
         if (state.sessionEnded) {
             // No frame exists for this (auth-placement-spec §7); placed like verify's line, 16 under the heading.
             Spacer(Modifier.height(spacing.md))

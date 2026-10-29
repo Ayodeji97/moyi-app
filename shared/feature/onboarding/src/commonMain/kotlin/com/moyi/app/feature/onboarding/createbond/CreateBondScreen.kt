@@ -19,7 +19,7 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
-import com.moyi.app.feature.onboarding.common.OnboardingHeader
+import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.bond_create_action
@@ -53,8 +53,8 @@ fun CreateBondRoot(
 }
 
 /**
- * Onboarding 5 (Figma 342:17; spec §3.3). Eyebrow, heading at 171 with no
- * line under it, then the bond name (228) and the shared time zone (367),
+ * Onboarding 5 (Figma 342:17; spec §3.3). Back, then the heading with no
+ * line under it (at 96: no eyebrow under a back target, figma-deviations.md D1), then the bond name (228) and the shared time zone (367),
  * 24 apart. The action block holds only "Create bond", at 772.
  *
  * Failed (394:1441): the error sits 8 above the button, inside the action
@@ -86,7 +86,7 @@ fun CreateBondScreen(
             )
         },
     ) {
-        OnboardingHeader(
+        ScreenHeader(
             eyebrow = stringResource(Res.string.onboarding_eyebrow_new_bond),
             heading = stringResource(Res.string.bond_create_heading),
         )

@@ -8,6 +8,7 @@ import com.moyi.app.feature.auth.common.AuthErrorMapper
 import com.moyi.app.feature.auth.common.AuthValidation
 import com.moyi.app.feature.auth.common.DeviceLocale
 import com.moyi.app.feature.auth.common.FieldInput
+import com.moyi.app.feature.auth.common.LegalLinks
 import com.moyi.app.feature.auth.common.RegisterField
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.designsystem.presentation.UiText
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 
 class RegisterViewModel(
     private val authRepository: AuthRepository,
+    private val legalLinks: LegalLinks,
     private val deviceLocale: DeviceLocale,
 ) : ViewModel() {
     private val _state = MutableStateFlow(RegisterState())
@@ -40,9 +42,10 @@ class RegisterViewModel(
             RegisterAction.OnSubmit -> submit()
             RegisterAction.OnHaveAccountClick -> send(RegisterEvent.NavigateToLogin)
             RegisterAction.OnBackClick -> send(RegisterEvent.NavigateBack)
-            // Terms and Privacy Policy have no published URL yet; owed with the
-            // marketing site's legal pages (docs/missing-components.md).
-            RegisterAction.OnLegalLinkClick -> Unit
+            // No published page yet means no URL: the link then does nothing
+            // (owed with the site's legal pages, docs/missing-components.md).
+            is RegisterAction.OnLegalLinkClick ->
+                legalLinks.urlFor(action.document)?.let { send(RegisterEvent.OpenLegalPage(it)) }
         }
     }
 

@@ -8,6 +8,8 @@ import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.FakeAuthRepository
 import com.moyi.app.feature.auth.MainDispatcherTest
 import com.moyi.app.feature.auth.apiError
+import com.moyi.app.feature.auth.common.LegalDocument
+import com.moyi.app.feature.auth.common.LegalLinks
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.auth_email_error
@@ -28,13 +30,30 @@ import kotlin.test.assertTrue
 
 class RegisterViewModelTest : MainDispatcherTest() {
     private val repo = FakeAuthRepository()
-    private val viewModel = RegisterViewModel(repo) { "en-GB" }
+    private val legalLinks = LegalLinks(terms = "https://example.test/terms", privacy = null)
+    private val viewModel = RegisterViewModel(repo, legalLinks) { "en-GB" }
 
     private fun fillValidForm(consent: Boolean = true) {
         viewModel.onAction(RegisterAction.OnNameChange("Amara"))
         viewModel.onAction(RegisterAction.OnEmailChange(" amara@example.com "))
         viewModel.onAction(RegisterAction.OnPasswordChange("correct horse"))
         viewModel.onAction(RegisterAction.OnConsentChange(consent))
+    }
+
+    @Test
+    fun aConfiguredLegalLinkOpensItsPage() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Terms))
+            assertEquals(RegisterEvent.OpenLegalPage("https://example.test/terms"), awaitItem())
+        }
+    }
+
+    @Test
+    fun anUnpublishedLegalLinkDoesNothing() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Privacy))
+            expectNoEvents()
+        }
     }
 
     @Test
