@@ -1,25 +1,26 @@
 package com.moyi.app.feature.onboarding.promise
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.EntryCard
+import com.moyi.app.designsystem.component.EntryCardVariant
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.TextLink
+import com.moyi.app.designsystem.component.TextLinkStyle
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.feature.onboarding.resources.Res
@@ -27,9 +28,12 @@ import com.moyi.app.feature.onboarding.resources.promise_action
 import com.moyi.app.feature.onboarding.resources.promise_have_account
 import com.moyi.app.feature.onboarding.resources.promise_line
 import com.moyi.app.feature.onboarding.resources.promise_reciprocity
-import com.moyi.app.feature.onboarding.resources.promise_sample_a11y
-import com.moyi.app.feature.onboarding.resources.promise_sample_entry
+import com.moyi.app.feature.onboarding.resources.promise_sample_entry_a
+import com.moyi.app.feature.onboarding.resources.promise_sample_entry_b
+import com.moyi.app.feature.onboarding.resources.promise_sample_from_a
+import com.moyi.app.feature.onboarding.resources.promise_sample_from_b
 import com.moyi.app.feature.onboarding.resources.promise_sample_label
+import com.moyi.app.feature.onboarding.resources.promise_samples_a11y
 import org.jetbrains.compose.resources.stringResource
 
 /** The promise has no state, so no ViewModel: two taps, both navigation. */
@@ -42,11 +46,15 @@ fun PromiseRoot(
 }
 
 /**
- * Onboarding 1 · the promise (Figma 358:45; spec §3.1). A root screen: no
- * back, no eyebrow. The content starts 48 down, so the canonical sentence
- * sits at 72; the line 16 under it; the sample entry 24 under that. The
- * action block holds "Begin" (to sign up) and "I already have an account"
- * (to sign in), 24 apart.
+ * Onboarding 1 · the promise (Figma 358:45; spec §3.1; owner ruling
+ * 2026-10-30, variant C). A root screen: no back, no eyebrow.
+ *
+ * The block (heading, line, two sample entries) is centred in the room above
+ * the action block ([MoyiScaffold]'s `contentArrangement`), so on a tall phone
+ * it does not hang from the top with an empty middle; when it is too tall for
+ * the room (a small phone, 200 % text) it top-aligns and scrolls. "Begin"
+ * keeps its hug width (Figma 99:34); "I already have an account" is set in
+ * sentence case ([TextLinkStyle.Body]) on this screen only.
  */
 @Composable
 fun PromiseScreen(
@@ -55,18 +63,19 @@ fun PromiseScreen(
 ) {
     val spacing = MoyiTheme.spacing
     MoyiScaffold(
+        contentArrangement = Arrangement.Center,
         action = {
             PrimaryAction(stringResource(Res.string.promise_action), onClick = onBegin)
             Spacer(Modifier.height(spacing.lg))
             TextLink(
                 stringResource(Res.string.promise_have_account),
                 onClick = onHaveAccount,
+                style = TextLinkStyle.Body,
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),
             )
         },
     ) {
-        Spacer(Modifier.height(spacing.xxl))
         MoyiText(
             stringResource(Res.string.promise_reciprocity),
             role = TextRole.Title,
@@ -75,37 +84,41 @@ fun PromiseScreen(
         Spacer(Modifier.height(spacing.md))
         MoyiText(stringResource(Res.string.promise_line), tone = TextTone.Muted)
         Spacer(Modifier.height(spacing.lg))
-        SampleEntry()
+        SampleEntries()
     }
 }
 
 /**
- * The sample entry, set in `entry` type: typography, not an illustration
- * (states.md §1). Announced as an example, never as a real entry.
- *
- * A local stand-in drawn with EntryCard's surface and padding, because
- * `EntryCard` is PR #8's component.
- * TODO(ui): replace with `EntryCard` (own variant) once PR #8 lands.
+ * Two sample entries, one from each person, under an "An example" label:
+ * typography, not an illustration (states.md §1). The pair is one stop for a
+ * screen reader, announced as examples so no one takes them for real entries
+ * (states.md §1 row 1); the cards' own merged semantics are replaced.
  */
 @Composable
-private fun SampleEntry() {
-    val colors = MoyiTheme.colors
-    val shapes = MoyiTheme.shapes
-    val entry = stringResource(Res.string.promise_sample_entry)
-    val spoken = stringResource(Res.string.promise_sample_a11y, entry)
+private fun SampleEntries() {
+    val spacing = MoyiTheme.spacing
+    val fromA = stringResource(Res.string.promise_sample_from_a)
+    val entryA = stringResource(Res.string.promise_sample_entry_a)
+    val fromB = stringResource(Res.string.promise_sample_from_b)
+    val entryB = stringResource(Res.string.promise_sample_entry_b)
+    val spoken = stringResource(Res.string.promise_samples_a11y, fromA, entryA, fromB, entryB)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shapes.radius)
-            .background(colors.surfaceRaised)
-            .border(shapes.hairline, colors.outline, shapes.radius)
-            .padding(MoyiTheme.spacing.lg)
+            .testTag(PromiseTags.SAMPLES)
             .clearAndSetSemantics { contentDescription = spoken },
     ) {
-        MoyiText(stringResource(Res.string.promise_sample_label), role = TextRole.Label)
-        Spacer(Modifier.height(MoyiTheme.spacing.md))
-        MoyiText(entry, role = TextRole.Entry)
+        MoyiText(stringResource(Res.string.promise_sample_label), role = TextRole.Label, tone = TextTone.Muted)
+        Spacer(Modifier.height(spacing.md))
+        EntryCard(fromA, entryA, variant = EntryCardVariant.Partner)
+        Spacer(Modifier.height(spacing.md))
+        EntryCard(fromB, entryB, variant = EntryCardVariant.Partner)
     }
+}
+
+/** Test tags for the promise screen's UI tests. */
+internal object PromiseTags {
+    const val SAMPLES = "promise.samples"
 }
 
 @Preview

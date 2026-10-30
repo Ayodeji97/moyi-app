@@ -1,0 +1,171 @@
+"""Generates Moyi's app icon, the "o-dot" mark (variant V1, "open gap"), for iOS and Android.
+
+See README.md beside this file for the geometry and where it comes from. Run from the
+repository root:
+
+    python3 tools/icon/make_icon.py [store_out_dir]
+
+Needs only the Python standard library, rsvg-convert and ImageMagick (`magick`). It writes
+into the repository:
+  iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/   icon-any.png, icon-dark.png, icon-tinted.png
+  androidApp/src/main/res/drawable/                   ic_launcher_foreground.xml
+  androidApp/src/main/res/drawable-v31/               splash_mark.xml
+  androidApp/src/main/res/mipmap-<density>/           ic_launcher.png, ic_launcher_round.png (API 24-25)
+and, when store_out_dir is given, the store listing images there (never committed):
+  app-store-1024.png, play-store-512.png
+"""
+import os
+import subprocess
+import sys
+import tempfile
+
+# ---------------------------------------------------------------- the mark (160-unit canvas)
+RING_CX, RING_CY, RING_R, RING_STROKE = 80.0, 58.0, 36.0, 13.0
+DOT_R = 15.0
+GAP = 9.0  # ring outer edge to dot top
+DOT_CY = RING_CY + RING_R + RING_STROKE / 2 + GAP + DOT_R  # 124.5
+
+TOP = RING_CY - RING_R - RING_STROKE / 2  # 15.5
+BOTTOM = DOT_CY + DOT_R  # 139.5
+MARK_H = BOTTOM - TOP  # 124
+MID_X, MID_Y = RING_CX, (TOP + BOTTOM) / 2  # centre of the bounding box
+
+# ---------------------------------------------------------------- Rosewood (tokens.md §1)
+SURFACE_DARK, INK_DARK = "#171313", "#F8EFE9"
+SURFACE_LIGHT, INK_LIGHT = "#FFF9F5", "#2A2020"
+
+IOS_MARK_RATIO = 0.625  # mark height / tile side
+ANDROID_CANVAS, ANDROID_MARK = 108.0, 48.0  # adaptive icon canvas and mark height, dp
+ANDROID_VISIBLE = 72.0  # the part of the 108 dp canvas a launcher mask can show
+SPLASH_CANVAS = 288.0  # Android 12 splash icon without background: 288 dp, fits a 192 dp circle
+SPLASH_MARK = SPLASH_CANVAS * ANDROID_MARK / ANDROID_CANVAS  # same proportion as the launcher: 128 dp
+
+ROOT = os.getcwd()
+IOS_DIR = os.path.join(ROOT, "iosApp/iosApp/Assets.xcassets/AppIcon.appiconset")
+RES = os.path.join(ROOT, "androidApp/src/main/res")
+LEGACY = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+
+
+def placed(scale, cx, cy):
+    """(offset x, offset y, scale) that puts the mark's box centre at (cx, cy)."""
+    return cx - MID_X * scale, cy - MID_Y * scale, scale
+
+
+def svg_mark(ink, scale, cx, cy):
+    tx, ty, s = placed(scale, cx, cy)
+    return (f'<g transform="translate({tx:.4f} {ty:.4f}) scale({s:.6f})">'
+            f'<circle cx="{RING_CX}" cy="{RING_CY}" r="{RING_R}" fill="none" stroke="{ink}" stroke-width="{RING_STROKE}"/>'
+            f'<circle cx="{RING_CX}" cy="{DOT_CY}" r="{DOT_R}" fill="{ink}"/></g>')
+
+
+def svg(side, body, background=None, clip=None):
+    bg = f'<rect width="{side}" height="{side}" fill="{background}"/>' if background else ""
+    inner = bg + body
+    if clip:
+        inner = f'<clipPath id="c">{clip}</clipPath><g clip-path="url(#c)">{inner}</g>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="{side}" height="{side}" viewBox="0 0 {side} {side}">{inner}</svg>'
+
+
+def render(svg_text, out, px, opaque=False):
+    with tempfile.NamedTemporaryFile("w", suffix=".svg", delete=False) as f:
+        f.write(svg_text)
+    subprocess.run(["rsvg-convert", "-w", str(px), "-h", str(px), "-o", out, f.name], check=True)
+    os.unlink(f.name)
+    # The App Store refuses an icon with an alpha channel; drop it where the tile is opaque.
+    # No date chunks, so a rerun with the same geometry leaves the files byte-identical.
+    if opaque:
+        subprocess.run(["magick", out, "-background", "black", "-alpha", "remove", "-alpha", "off",
+                        "-define", "png:exclude-chunks=date,time", out], check=True)
+
+
+def tile(side, surface, ink):
+    return svg(side, svg_mark(ink, side * IOS_MARK_RATIO / MARK_H, side / 2, side / 2), background=surface)
+
+
+def ios():
+    side = 1024
+    # Any: the dark tile. The app is dark-first, so the icon is too, in either system mode.
+    render(tile(side, SURFACE_DARK, INK_DARK), os.path.join(IOS_DIR, "icon-any.png"), side, opaque=True)
+    # Dark: the mark alone on transparency; iOS 18 draws its own dark background behind it.
+    render(svg(side, svg_mark(INK_DARK, side * IOS_MARK_RATIO / MARK_H, side / 2, side / 2)),
+           os.path.join(IOS_DIR, "icon-dark.png"), side)
+    # Tinted: authored greyscale, white mark on black; the system maps luminance to the tint.
+    render(tile(side, "#000000", "#FFFFFF"), os.path.join(IOS_DIR, "icon-tinted.png"), side, opaque=True)
+
+
+def vector(canvas, mark_h, fill, comment, root_extra=""):
+    """An Android vector drawable: the ring as a stroked circle, the dot as a filled one."""
+    tx, ty, s = placed(mark_h / MARK_H, canvas / 2, canvas / 2)
+    cx = tx + RING_CX * s
+    ry, rr, rs = ty + RING_CY * s, RING_R * s, RING_STROKE * s
+    dy, dr = ty + DOT_CY * s, DOT_R * s
+
+    def circle(x, y, r):
+        return f"M{x - r:.4f},{y:.4f}a{r:.4f},{r:.4f} 0 1,0 {2 * r:.4f},0a{r:.4f},{r:.4f} 0 1,0 {-2 * r:.4f},0"
+
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by tools/icon/make_icon.py; do not edit by hand. {comment} -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"{root_extra}
+    android:width="{canvas:g}dp"
+    android:height="{canvas:g}dp"
+    android:viewportWidth="{canvas:g}"
+    android:viewportHeight="{canvas:g}">
+    <path
+        android:pathData="{circle(cx, ry, rr)}"
+        android:strokeColor="{fill}"
+        android:strokeWidth="{rs:.4f}" />
+    <path
+        android:pathData="{circle(cx, dy, dr)}"
+        android:fillColor="{fill}" />
+</vector>
+"""
+
+
+def android():
+    drawable = os.path.join(RES, "drawable")
+    os.makedirs(drawable, exist_ok=True)
+    with open(os.path.join(drawable, "ic_launcher_foreground.xml"), "w") as f:
+        f.write(vector(ANDROID_CANVAS, ANDROID_MARK, INK_DARK,
+                       "The adaptive icon's foreground and monochrome layer: the mark, 48 dp high, "
+                       "centred in the 108 dp canvas, inside the 66 dp safe zone."))
+    # drawable-v31: only the API 31+ theme uses it, and at 288 dp it is past the size lint
+    # allows a vector that older devices might rasterise.
+    drawable_v31 = os.path.join(RES, "drawable-v31")
+    os.makedirs(drawable_v31, exist_ok=True)
+    with open(os.path.join(drawable_v31, "splash_mark.xml"), "w") as f:
+        f.write(vector(SPLASH_CANVAS, SPLASH_MARK, "@color/ink",
+                       "The Android 12+ splash icon: the mark in ink on surface (both follow the "
+                       "system mode), 128 dp high in the 288 dp canvas, inside the 192 dp circle. "
+                       "The splash API sizes it at 288 dp, past lint's 200 dp vector limit; that "
+                       "limit is about rasterising for old devices, and this is API 31+ only.",
+                       root_extra='\n    xmlns:tools="http://schemas.android.com/tools"\n    tools:ignore="VectorRaster"'))
+    # Before API 26 there is no adaptive icon: the launcher shows these PNGs. They are the
+    # adaptive icon as a launcher would mask it, the visible 72 of 108 dp, square and round.
+    for density, px in LEGACY.items():
+        folder = os.path.join(RES, f"mipmap-{density}")
+        os.makedirs(folder, exist_ok=True)
+        side = 1024
+        scale = side * ANDROID_MARK / ANDROID_VISIBLE / MARK_H
+        body = svg_mark(INK_DARK, scale, side / 2, side / 2)
+        render(svg(side, body, SURFACE_DARK, clip=f'<rect width="{side}" height="{side}" rx="{side * 0.18}"/>'),
+               os.path.join(folder, "ic_launcher.png"), px)
+        render(svg(side, body, SURFACE_DARK, clip=f'<circle cx="{side / 2}" cy="{side / 2}" r="{side / 2}"/>'),
+               os.path.join(folder, "ic_launcher_round.png"), px)
+
+
+def stores(out):
+    os.makedirs(out, exist_ok=True)
+    render(tile(1024, SURFACE_DARK, INK_DARK), os.path.join(out, "app-store-1024.png"), 1024, opaque=True)
+    # Play masks the 512 square itself (rounded corners), like the adaptive icon's visible area.
+    side = 512
+    scale = side * ANDROID_MARK / ANDROID_VISIBLE / MARK_H
+    render(svg(side, svg_mark(INK_DARK, scale, side / 2, side / 2), SURFACE_DARK),
+           os.path.join(out, "play-store-512.png"), side, opaque=True)
+
+
+if __name__ == "__main__":
+    ios()
+    android()
+    if len(sys.argv) > 1:
+        stores(sys.argv[1])
+    print(f"mark {MARK_H:g} x {2 * (RING_R + RING_STROKE / 2):g} units; dot centre y {DOT_CY:g}; gap {GAP:g}")

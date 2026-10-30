@@ -35,6 +35,7 @@ Following Android's navigation principles and Apple's Human Interface Guidelines
 | D10 | **Write is a task, not a pushed screen.** Close it with a close (X) control on Android (full-screen dialog style) and Cancel on iOS (sheet style), not a back arrow. If text has been typed, closing asks to discard it first, in the platform's own dialog. | Both platforms present a self-contained task as dismissible; Apple reserves Back for steps in a flow. Today back drops the typed words without asking. Owner approval 2026-10-29. | Yes (181:3 draws a back arrow) | owed |
 | D11 | **Deleting an entry confirms in the platform's dialog**: an alert with a destructive Delete on iOS, a Material dialog on Android, instead of the full Delete screen. Applies C2. | A destructive confirmation is a dialog on both platforms. Owner approval 2026-10-29. | Yes (420:64 draws a full screen) | owed |
 | D12 | **Back during the reveal settles to Today.** The reveal replaces Today in the back stack, so Android back during it currently closes the app. | Back must never exit from a moment the person is inside. iOS already settles to Today on its own. Owner approval 2026-10-29. | No (behaviour) | owed |
+| D13 | **The promise, variant C** (owner ruling 2026-10-30). The block is centred in the room above the actions (top-aligned and scrolling when too tall); two sample `EntryCard`s (Partner) under "An example" in place of one; the heading is "Write before you read." alone; "I already have an account" is sentence case (`TextLinkStyle.Body`) on this screen only. | On a tall phone the top-aligned block left the middle empty; two entries show the exchange, not one diary line. | Yes (358:45 draws one card, top-aligned, label-case link) | done (first-impression PR); sentence-case links elsewhere: ruling owed |
 
 ## Rulings owed by the owner
 
@@ -62,7 +63,7 @@ Each applies when the screen that needs it is built; listed so no one has to rem
 | C3 | **Pull to refresh** with each platform's own indicator. | Today |
 | C4 | **Haptics**: a light one on iOS when an entry is sent and at the reveal; sparing on Android. | Today, reveal |
 | C5 | **Notification permission asked once, at a meaningful moment** (after pairing), not at launch: iOS allows one prompt. | Pairing, Today |
-| C6 | **App icon and splash**: Android adaptive icon and the Android 12 splash API; an iOS launch screen. The icon itself does not exist yet and blocks both stores (`missing-components.md` §9). | App shell |
+| C6 | **App icon and splash**: Android adaptive icon and the Android 12 splash API; an iOS launch screen. Done (first-impression PR). The icon is the o-dot mark, V1 "open gap" (owner, 2026-10-30; `tools/icon/README.md`). iOS draws the wordmark on `surface` (`UILaunchScreen`). Android draws the mark on `surface`. | App shell |
 | C7 | **Share card** (R3): a "Share" action that renders an entry as a designed card (Rosewood type and colour, the Moyi name and getmoyi.app at the foot, sized for a status) through the native share sheet. Your own entry: one tap. Your partner's words: only if they allow it, a per-person "let my partner share my entries" switch, off by default. Copy and card design need the owner. | Reveal, Archive |
 
 ## System details (one pass)

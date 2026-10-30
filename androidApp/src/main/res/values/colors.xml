@@ -1,0 +1,10 @@
+<resources>
+    <!-- Rosewood `surface` (tokens.md §1), light. The window and the launch splash are
+         painted in it before Compose draws its first frame, so a cold start shows no
+         white (or black) flash. Dark is in values-night. -->
+    <color name="surface">#FFF9F5</color>
+    <!-- Rosewood `ink`, light: the splash mark (drawable/splash_mark.xml). -->
+    <color name="ink">#2A2020</color>
+    <!-- The adaptive icon's background: dark `surface` in both modes (tools/icon/README.md). -->
+    <color name="ic_launcher_background">#171313</color>
+</resources>
