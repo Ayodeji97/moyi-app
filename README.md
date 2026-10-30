@@ -137,6 +137,19 @@ Real devices:
   the phone. `Info.plist` allows local networking (`NSAllowsLocalNetworking`) and carries
   the prompt's text (`NSLocalNetworkUsageDescription`).
 
+**Signing for a real iPhone.** Create `iosApp/Configuration/Local.xcconfig` (git-ignored)
+with one line, your Team ID from developer.apple.com, Account, Membership details (or
+Xcode, Settings, Accounts):
+
+```
+TEAM_ID=ABCDE12345
+```
+
+`Config.xcconfig` includes it if present, so the ID never enters the repository. A free
+personal team is enough to run on your own phone. The bundle identifier becomes
+`com.moyi.app.Moyi<TEAM_ID>`, so the app installs as yours. Without the file, simulator
+builds still work with ad hoc signing (`docs/session.md`).
+
 ## Legal page URLs
 
 Sign up's **Terms** and **Privacy Policy** links open in the in-app browser (Chrome Custom
