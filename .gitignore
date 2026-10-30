@@ -3,6 +3,8 @@
 .gradle
 **/build/
 xcuserdata
+# The iOS Team ID stays on each Mac (iosApp/Configuration/Config.xcconfig)
+iosApp/Configuration/Local.xcconfig
 !src/**/build/
 local.properties
 .idea
