@@ -55,10 +55,9 @@ earlier top-aligned build and no longer match. Figma has not been redrawn.
 | "I already have an account", from bottom (772) | 72 | 72 | 72 | yes |
 | Its text width | 218 | (SF) | 219.3 | yes |
 
-**Sample card height, open.** Figma's sample `EntryCard` is 144; ours is 24 + label 19 + 16 +
-one `entry` line 47.6 + 24 = 130. The `EntryCard` page (63:2) was not read, so the internal
-gap or padding that makes 144 is unknown. The card is a local stand-in until PR #8's
-`EntryCard` lands (`TODO(ui)` in `PromiseScreen.kt`), which should settle it.
+**Sample card height, resolved.** The local stand-in is gone: the samples are the design
+system's `EntryCard` (Partner) since the variant C build, so the card's height is whatever
+`EntryCard` measures. Figma's 144 against our earlier 130 is no longer tracked here.
 
 ## Onboarding 4 · relationship type (341:24, SELECTED 359:79)
 
