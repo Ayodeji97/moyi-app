@@ -13,7 +13,7 @@
 
     <!-- promise.reciprocity. Owner ruling 2026-10-30: the heading is the first sentence alone. The
          design system's canonical sentence (strings-proposed.md §6, states.md) still has the
-         longer form and is owed an update by the owner. join_confirm_line_reciprocity keeps it. -->
+         longer form and is owed an update by the owner. join_confirm_line_reciprocity matches it. -->
     <string name="promise_reciprocity">Write before you read.</string>
     <!-- promise.line (strings-proposed.md §4a, in file). -->
     <string name="promise_line">Once a day you each write one thing you appreciate about the other. Nothing else.</string>
@@ -122,8 +122,8 @@
     <string name="field_code_error_length">That code is shorter than six characters. Check it against the one they sent you.</string>
     <!-- join.confirm.heading (in file). %1$s is {inviterName}, %2$s is {bondName}. -->
     <string name="join_confirm_heading">%1$s invited you to %2$s.</string>
-    <!-- join.confirm.line.reciprocity. Canonical, the same sentence as the promise. -->
-    <string name="join_confirm_line_reciprocity">Write before you read. Your day opens when you both have.</string>
+    <!-- join.confirm.line.reciprocity. The same sentence as the promise heading (owner ruling 2026-10-30). -->
+    <string name="join_confirm_line_reciprocity">Write before you read.</string>
     <!-- join.confirm.line.couple (in file). -->
     <string name="join_confirm_line_couple">The prompts will be about the two of you.</string>
     <!-- join.confirm.line.friends (strings-proposed.md §3, proposal). -->

@@ -20,7 +20,6 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.TextLink
-import com.moyi.app.designsystem.component.TextLinkStyle
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.feature.onboarding.resources.Res
@@ -53,8 +52,8 @@ fun PromiseRoot(
  * the action block ([MoyiScaffold]'s `contentArrangement`), so on a tall phone
  * it does not hang from the top with an empty middle; when it is too tall for
  * the room (a small phone, 200 % text) it top-aligns and scrolls. "Begin"
- * keeps its hug width (Figma 99:34); "I already have an account" is set in
- * sentence case ([TextLinkStyle.Body]) on this screen only.
+ * keeps its hug width (Figma 99:34); "I already have an account" is in
+ * sentence case, like every [TextLink] (figma-deviations.md D14).
  */
 @Composable
 fun PromiseScreen(
@@ -70,7 +69,6 @@ fun PromiseScreen(
             TextLink(
                 stringResource(Res.string.promise_have_account),
                 onClick = onHaveAccount,
-                style = TextLinkStyle.Body,
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),
             )

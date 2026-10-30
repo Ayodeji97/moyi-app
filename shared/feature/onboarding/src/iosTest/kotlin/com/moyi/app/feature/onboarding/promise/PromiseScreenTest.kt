@@ -70,8 +70,7 @@ class PromiseScreenTest {
     @Test
     fun eachActionGoesOnce() = runComposeUiTest {
         promise()
-        // The link's casing is not visible here: TextLink speaks the words as written in
-        // either style, so sentence case is checked on the device screenshots instead.
+        // TextLink draws and speaks the words as written (TextLinkTest checks the casing).
         onNodeWithText("I already have an account").performClick()
         assertEquals(1, haveAccounts)
         onNodeWithText("Begin").performClick()

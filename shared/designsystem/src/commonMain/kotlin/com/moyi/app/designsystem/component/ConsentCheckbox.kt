@@ -37,8 +37,8 @@ import com.moyi.app.designsystem.icon.MoyiIcons
  * - **Checked is not drawn in Figma.** Here it fills with `ink` and draws the
  *   Lucide check in `surface`, so the states differ by shape as well as
  *   colour. On `docs/missing-components.md` for the owner.
- * - Figma puts "Terms" and "Privacy Policy" as separate `TextLink`s
- *   (`TextLinkStyle.Body`) on their own row, so they never toggle consent.
+ * - Figma puts "Terms" and "Privacy Policy" as separate `TextLink`s on
+ *   their own row, so they never toggle consent.
  */
 @Composable
 fun ConsentCheckbox(

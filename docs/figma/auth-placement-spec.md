@@ -308,7 +308,7 @@ The auth screens follow Detail **without the header title**. They put an eyebrow
 | Field to field gap | **24** (bottom of the helper, or of the box if the helper is hidden, to the next label) |
 | PrimaryAction | **176 × 48 min**, radius 12, x 107 (centred), **y 700** when a link follows (sign in, verify) and **y 708** on sign up |
 | Action to secondary link | 24 (sign in, verify), **16** (sign up) |
-| Secondary link | full-width 48 target, label metrics, ink, underlined, text centred |
+| Secondary link | full-width 48 target, label metrics, ink, underlined, text centred. **As built: `body`, sentence case** (figma-deviations.md D14) |
 | Inline form error | centred body in danger, one action-gap above the PrimaryAction (16 on sign up) |
 
 ---
@@ -316,7 +316,7 @@ The auth screens follow Detail **without the header title**. They put an eyebrow
 ## 6. Disagreements (Figma vs the written system, and Figma vs itself)
 
 - **D1 — Field Disabled stroke.** The Field component description and tokens.md (§4 / §7b) both say Disabled uses `outline`. **All five Disabled variants bind `outlineStrong`.** Pick one before the code is verified.
-- **D2 — Unbound text styles.** The secondary links ("I already have an account", "Send it again", "I forgot my password", "Create an account", "Use a different address") use literal 13 / 18.2 / 1.43 / Medium / uppercase. The legal links use literal 16 / 24. tokens.md §3 and §4 claim every node binds and there is no unstyled text. The colours are bound (`ink`) and the metrics match `label` and `body`, so build them with the `label` and `body` tokens.
+- **D2 — Unbound text styles.** The secondary links ("I already have an account", "Send it again", "I forgot my password", "Create an account", "Use a different address") use literal 13 / 18.2 / 1.43 / Medium / uppercase. The legal links use literal 16 / 24. tokens.md §3 and §4 claim every node binds and there is no unstyled text. The colours are bound (`ink`) and the metrics match `label` and `body`, so build them with the `label` and `body` tokens. **Superseded for the secondary links on 2026-10-30** (figma-deviations.md D14): every `TextLink` is `body`, in sentence case; the uppercase `label` setting is Figma only.
 - **D3 — Rhythm.** tokens.md §3 says "24 between blocks, 16 inside a block". Sign up's action column uses **16** between the consent, legal links, button and secondary link. Sign in and verify use **24** between the button and the link. The checkbox is radius 0, while tokens.md allows 12 or full only.
 - **D4 — Sign up's button state.**
   - Sign up IDLE draws PrimaryAction as **State=Disabled**, which implies it is disabled until consent is checked. No written rule says so.
