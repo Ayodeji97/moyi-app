@@ -72,8 +72,10 @@ def render(svg_text, out, px, opaque=False):
     subprocess.run(["rsvg-convert", "-w", str(px), "-h", str(px), "-o", out, f.name], check=True)
     os.unlink(f.name)
     # The App Store refuses an icon with an alpha channel; drop it where the tile is opaque.
+    # No date chunks, so a rerun with the same geometry leaves the files byte-identical.
     if opaque:
-        subprocess.run(["magick", out, "-background", "black", "-alpha", "remove", "-alpha", "off", out], check=True)
+        subprocess.run(["magick", out, "-background", "black", "-alpha", "remove", "-alpha", "off",
+                        "-define", "png:exclude-chunks=date,time", out], check=True)
 
 
 def tile(side, surface, ink):
