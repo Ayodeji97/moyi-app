@@ -25,11 +25,12 @@ import kotlin.test.assertTrue
  * not from semantics, so a link that spoke one casing and drew another would fail here.
  */
 class TextLinkTest {
-    private fun ComposeUiTest.link(text: String) = setContent {
-        MoyiTheme(darkTheme = true) {
-            TextLink(text, onClick = {}, modifier = Modifier.fillMaxWidth())
+    private fun ComposeUiTest.link(text: String, modifier: Modifier = Modifier.fillMaxWidth()) =
+        setContent {
+            MoyiTheme(darkTheme = true) {
+                TextLink(text, onClick = {}, modifier = modifier)
+            }
         }
-    }
 
     private fun ComposeUiTest.layoutOf(text: String): TextLayoutResult {
         val results = mutableListOf<TextLayoutResult>()
@@ -57,6 +58,17 @@ class TextLinkTest {
         link("Use a different address")
         val bounds = onNodeWithText("Use a different address").fetchSemanticsNode().boundsInRoot
         val height = with(density) { bounds.height.toDp() }
+        assertTrue(height >= 48.dp, "target is $height tall")
+    }
+
+    /** A word narrower than 48 still gets a 48 x 48 target: width is checked, not only height. */
+    @Test
+    fun aShortLinkIsStill48Wide() = runComposeUiTest {
+        link("Go", modifier = Modifier)
+        val bounds = onNodeWithText("Go").fetchSemanticsNode().boundsInRoot
+        val width = with(density) { bounds.width.toDp() }
+        val height = with(density) { bounds.height.toDp() }
+        assertTrue(width >= 48.dp, "target is $width wide")
         assertTrue(height >= 48.dp, "target is $height tall")
     }
 }
