@@ -140,6 +140,9 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
   plus the icon. It is the blocking brand asset for both stores.
 - **Here:** the wizard's default green Android icon and a light system splash, seen during the
   PR #5 screenshots. It shows a white splash before a dark app.
+- **Since the first-impression PR:** the window and the API 31+ splash background are `surface`
+  per mode (`Theme.Moyi`), so the white flash is gone; the icon is still the wizard's. iOS has its
+  launch screen (the wordmark on `surface`). The icon remains owed.
 
 ## Conflicts found inside the design system
 

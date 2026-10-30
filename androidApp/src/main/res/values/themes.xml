@@ -1,0 +1,12 @@
+<resources>
+    <!-- The platform theme under the light system setting; values-night swaps the parent
+         so the system bars and the splash read as dark under the dark setting. Compose
+         draws everything else, so this theme only has to paint the window. -->
+    <style name="Base.Theme.Moyi" parent="@android:style/Theme.Material.Light.NoActionBar" />
+
+    <!-- The app theme. Before API 31 the system's starting window is this window's
+         background, so `surface` is the whole launch frame (states.md §0). -->
+    <style name="Theme.Moyi" parent="Base.Theme.Moyi">
+        <item name="android:windowBackground">@color/surface</item>
+    </style>
+</resources>

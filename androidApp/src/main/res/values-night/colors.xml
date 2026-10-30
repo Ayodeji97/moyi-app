@@ -1,0 +1,4 @@
+<resources>
+    <!-- Rosewood `surface` (tokens.md §1), dark. -->
+    <color name="surface">#171313</color>
+</resources>

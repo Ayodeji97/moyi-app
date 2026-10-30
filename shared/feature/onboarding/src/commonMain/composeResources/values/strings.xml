@@ -11,20 +11,28 @@
 
     <!-- ===== Onboarding 1 · the promise (Figma 358:45) ===== -->
 
-    <!-- promise.reciprocity. DECIDED and canonical (strings-proposed.md §6). Never paraphrase. -->
-    <string name="promise_reciprocity">Write before you read. Your day opens when you both have.</string>
+    <!-- promise.reciprocity. Owner ruling 2026-10-30: the heading is the first sentence alone. The
+         design system's canonical sentence (strings-proposed.md §6, states.md) still has the
+         longer form and is owed an update by the owner. join_confirm_line_reciprocity keeps it. -->
+    <string name="promise_reciprocity">Write before you read.</string>
     <!-- promise.line (strings-proposed.md §4a, in file). -->
     <string name="promise_line">Once a day you each write one thing you appreciate about the other. Nothing else.</string>
     <!-- promise.action (strings-proposed.md §4a). Leads to sign up. -->
     <string name="promise_action">Begin</string>
     <!-- Same words as register_have_account (Figma 359:3), reader's voice. Key owed (spec §4: signin.existing). Leads to sign in. -->
     <string name="promise_have_account">I already have an account</string>
-    <!-- PROPOSED. The sample entry card's author label: it says this is an example, not a real entry (states.md §1). -->
+    <!-- PROPOSED. The label over the two sample entries: it says these are examples, not real entries (states.md §1). Drawn uppercase (label style). -->
     <string name="promise_sample_label">An example</string>
-    <!-- PROPOSED. The sample entry, set in entry type. Short enough for one line at 34. -->
-    <string name="promise_sample_entry">You waited up.</string>
-    <!-- PROPOSED. Spoken for the sample card, so it is announced as an example (states.md §1). %1$s is the sample entry. -->
-    <string name="promise_sample_a11y">An example entry: %1$s</string>
+    <!-- Owner-approved 2026-10-30. The first sample card's author label (EntryCard Partner). -->
+    <string name="promise_sample_from_a">From Amara</string>
+    <!-- Owner-approved 2026-10-30. The first sample entry, set in entry type. -->
+    <string name="promise_sample_entry_a">You waited up.</string>
+    <!-- Owner-approved 2026-10-30. The second sample card's author label. -->
+    <string name="promise_sample_from_b">From Tunde</string>
+    <!-- Owner-approved 2026-10-30. The second sample entry. -->
+    <string name="promise_sample_entry_b">You made the tea before I asked.</string>
+    <!-- PROPOSED. Spoken for the pair as one stop, so the samples are announced as examples, not real entries (states.md §1). %1$s is promise_sample_from_a, %2$s promise_sample_entry_a, %3$s promise_sample_from_b, %4$s promise_sample_entry_b. -->
+    <string name="promise_samples_a11y">Two example entries, not real ones. %1$s: %2$s %3$s: %4$s</string>
 
     <!-- ===== Shared by the creator's screens ===== -->
 

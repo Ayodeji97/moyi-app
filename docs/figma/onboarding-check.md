@@ -40,6 +40,10 @@ name into "Amara And Tunde" (now Sentences).
 
 ## Onboarding 1 · the promise (358:45)
 
+**Superseded by the owner's variant C ruling (2026-10-30, `figma-deviations.md` D13):** the block is
+now centred above the actions and holds two sample cards, so the y values below describe the
+earlier top-aligned build and no longer match. Figma has not been redrawn.
+
 | Element | Figma | iOS | Android | Match |
 |---|---|---|---|---|
 | Heading (reciprocity), y / h | 72 / 65 | 72 / 65.3 | 72 / 65.3 | yes |

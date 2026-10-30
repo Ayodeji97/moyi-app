@@ -1,0 +1,6 @@
+<resources>
+    <!-- Rosewood `surface` (tokens.md §1), light. The window and the launch splash are
+         painted in it before Compose draws its first frame, so a cold start shows no
+         white (or black) flash. Dark is in values-night. -->
+    <color name="surface">#FFF9F5</color>
+</resources>

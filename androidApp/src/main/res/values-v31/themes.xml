@@ -1,0 +1,9 @@
+<resources>
+    <!-- API 31+: the system SplashScreen draws a background colour and a centred icon,
+         nothing else (states.md §0: Android cannot render the wordmark). The background
+         is `surface`. The icon stays the launcher icon until the app icon exists. -->
+    <style name="Theme.Moyi" parent="Base.Theme.Moyi">
+        <item name="android:windowBackground">@color/surface</item>
+        <item name="android:windowSplashScreenBackground">@color/surface</item>
+    </style>
+</resources>

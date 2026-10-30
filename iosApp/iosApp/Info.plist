@@ -9,6 +9,18 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- The launch screen (states.md §0): the wordmark on `surface`, nothing else, no
+	     motion. Both are asset-catalog entries with a dark appearance, so the system
+	     picks the pair for the current mode. Replaces the empty screen that
+	     INFOPLIST_KEY_UILaunchScreen_Generation used to generate (now NO). The wordmark
+	     PDFs are drawn by scripts/render-wordmark.swift. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchWordmark</string>
+	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Moyi connects to a development server on your local network.</string>
 </dict>
