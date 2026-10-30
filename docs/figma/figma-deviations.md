@@ -63,7 +63,7 @@ Each applies when the screen that needs it is built; listed so no one has to rem
 | C3 | **Pull to refresh** with each platform's own indicator. | Today |
 | C4 | **Haptics**: a light one on iOS when an entry is sent and at the reveal; sparing on Android. | Today, reveal |
 | C5 | **Notification permission asked once, at a meaningful moment** (after pairing), not at launch: iOS allows one prompt. | Pairing, Today |
-| C6 | **App icon and splash**: Android adaptive icon and the Android 12 splash API; an iOS launch screen. The icon itself does not exist yet and blocks both stores (`missing-components.md` §9). Splash part done (first-impression PR): iOS draws the wordmark on `surface` (`UILaunchScreen`); Android paints `surface` behind the launcher icon. Icon owed. | App shell |
+| C6 | **App icon and splash**: Android adaptive icon and the Android 12 splash API; an iOS launch screen. The icon itself does not exist yet and blocks both stores (`missing-components.md` §9). Done (first-impression PR). The icon is the o-dot mark, V1 "open gap" (owner, 2026-10-30; `tools/icon/README.md`). iOS draws the wordmark on `surface` (`UILaunchScreen`). Android draws the mark on `surface`. | App shell |
 | C7 | **Share card** (R3): a "Share" action that renders an entry as a designed card (Rosewood type and colour, the Moyi name and getmoyi.app at the foot, sized for a status) through the native share sheet. Your own entry: one tap. Your partner's words: only if they allow it, a per-person "let my partner share my entries" switch, off by default. Copy and card design need the owner. | Reveal, Archive |
 
 ## System details (one pass)
