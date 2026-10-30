@@ -11,25 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.text
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiDimens
-
-/** The two text settings Figma uses for links (`docs/figma/auth-placement-spec.md` D2). */
-enum class TextLinkStyle {
-    /** Secondary actions ("I forgot my password"): `label` metrics, uppercase. The default. */
-    Label,
-
-    /** Links set in a body line, such as "Terms" and "Privacy Policy". */
-    Body,
-}
 
 /**
  * A secondary action: `ink` with an underline (`tokens.md` §1).
@@ -43,13 +29,18 @@ enum class TextLinkStyle {
  * (pass `Modifier.fillMaxWidth()`), with its text centred in the action
  * block ([centered]) or start-aligned under a form ("I forgot my
  * password"). The target is never smaller than 48 x 48.
+ *
+ * **One text setting: `body`, in the words as written** (sentence case,
+ * owner ruling 2026-10-30, `docs/figma/figma-deviations.md` D14). Figma
+ * draws secondary links in `label` metrics, uppercase; the app does not.
+ * There is deliberately no style parameter, so a link cannot drift back to
+ * uppercase: what is drawn is what is spoken.
  */
 @Composable
 fun TextLink(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    style: TextLinkStyle = TextLinkStyle.Label,
     centered: Boolean = false,
     enabled: Boolean = true,
     /**
@@ -60,8 +51,6 @@ fun TextLink(
     destructive: Boolean = false,
 ) {
     val target = MoyiDimens.TextLink.MinTarget
-    val type = MoyiTheme.type
-    val isLabel = style == TextLinkStyle.Label
     Box(
         modifier = modifier
             .heightIn(min = target)
@@ -73,11 +62,8 @@ fun TextLink(
         contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart,
     ) {
         Text(
-            text = if (isLabel) text.toUpperCase(Locale.current) else text,
-            // Spoken in its written casing, not letter by letter: the drawn
-            // text is uppercased, the text it contributes to the merge is not.
-            modifier = Modifier.clearAndSetSemantics { this.text = AnnotatedString(text) },
-            style = (if (isLabel) type.label else type.body).copy(textDecoration = TextDecoration.Underline),
+            text = text,
+            style = MoyiTheme.type.body.copy(textDecoration = TextDecoration.Underline),
             color = when {
                 !enabled -> MoyiTheme.colors.inkMuted
                 destructive -> MoyiTheme.colors.danger
@@ -101,7 +87,7 @@ private fun TextLinkSamples() {
     Column {
         TextLink("I forgot my password", onClick = {}, modifier = Modifier.fillMaxWidth())
         TextLink("Create an account", onClick = {}, centered = true, modifier = Modifier.fillMaxWidth())
-        TextLink("Privacy Policy", onClick = {}, style = TextLinkStyle.Body)
+        TextLink("Privacy Policy", onClick = {})
         TextLink("Delete what you wrote", onClick = {}, destructive = true, modifier = Modifier.fillMaxWidth())
     }
 }

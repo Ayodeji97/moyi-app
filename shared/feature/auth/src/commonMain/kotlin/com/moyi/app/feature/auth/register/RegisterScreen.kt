@@ -26,7 +26,6 @@ import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.TextLink
-import com.moyi.app.designsystem.component.TextLinkStyle
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.designsystem.component.ScreenHeader
@@ -178,12 +177,10 @@ fun RegisterScreen(
             TextLink(
                 stringResource(Res.string.register_terms),
                 onClick = { onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Terms)) },
-                style = TextLinkStyle.Body,
             )
             TextLink(
                 stringResource(Res.string.register_privacy),
                 onClick = { onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Privacy)) },
-                style = TextLinkStyle.Body,
             )
         }
     }
