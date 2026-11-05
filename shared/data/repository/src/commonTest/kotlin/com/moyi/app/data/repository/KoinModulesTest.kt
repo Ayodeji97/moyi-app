@@ -8,6 +8,7 @@ import com.moyi.app.data.session.SecureTokenStore
 import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.session.sessionModule
 import com.moyi.app.data.testing.InMemoryTokenStore
+import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
@@ -37,6 +38,7 @@ class KoinModulesTest {
             koin.get<AccountRepository>()
             koin.get<BondRepository>()
             koin.get<TodayRepository>()
+            koin.get<ArchiveRepository>()
             koin.get<PublicHttpClient>()
             koin.get<AuthedHttpClient>()
             assertSame(koin.get<SessionManager>(), koin.get<BearerTokenSource>())
