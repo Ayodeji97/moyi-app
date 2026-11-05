@@ -14,6 +14,7 @@ import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 
 /** A revealed day: mine and theirs, both in full. */
@@ -54,6 +55,34 @@ class FakeArchiveRepository : ArchiveRepository {
             return Result.Failure(DataError.Network.NoInternet)
         }
         return (if (favourites) favouritePages else pages)[cursor]?.let { Result.Success(it) } ?: Result.Failure(NOT_FOUND)
+    }
+
+    /** Search pages, by (query, cursor). A query with no page answers an empty last page. */
+    val searchPages = mutableMapOf<Pair<String, String?>, ArchivePage>()
+
+    /** Every `search` call as (query, cursor), in the order made. */
+    val searches = mutableListOf<Pair<String, String?>>()
+
+    /** Holds the answer to a query until completed, so answers can be made to arrive out of order. */
+    val searchGates = mutableMapOf<String, CompletableDeferred<Unit>>()
+
+    /** The queries whose call was cancelled while waiting for its answer. */
+    val cancelledSearches = mutableListOf<String>()
+    var failNextSearch = false
+
+    override suspend fun search(bondId: String, query: String, cursor: String?): Result<ArchivePage, DataError.Network> {
+        searches += query to cursor
+        try {
+            searchGates[query]?.await()
+        } catch (cancelled: CancellationException) {
+            cancelledSearches += query
+            throw cancelled
+        }
+        if (failNextSearch) {
+            failNextSearch = false
+            return Result.Failure(DataError.Network.NoInternet)
+        }
+        return Result.Success(searchPages[query to cursor] ?: ArchivePage(emptyList(), null))
     }
 
     override suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network> {

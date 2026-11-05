@@ -224,6 +224,62 @@ class ArchiveRepositoryTest {
         )
     }
 
+    @Test
+    fun searchSendsQAndTheLimitAndReadsTheFeedsDayShape() = runTest {
+        val fixture = Fixture {
+            respondJson(pageJson("S2", dayJson("2026-09-14", "REVEALED", entryJson("e1", "REVEALED", "Mine."), entryJson("e2", "REVEALED", "Theirs."))))
+        }
+
+        val result = fixture.archive.search("b1", "café au lait")
+
+        assertEquals(HttpMethod.Get, fixture.request.method)
+        assertEquals("/api/v1/bonds/b1/search", fixture.request.url.encodedPath)
+        assertEquals("café au lait", fixture.request.url.parameters["q"])
+        assertEquals("20", fixture.request.url.parameters["limit"])
+        assertNull(fixture.request.url.parameters["cursor"])
+        assertEquals(
+            Result.Success(
+                ArchivePage(
+                    listOf(ArchiveDay("2026-09-14", BondDayStatus.REVEALED, MyEntry("e1", "Mine.", EntryStatus.REVEALED), PartnerEntry.Revealed("e2", "Theirs."))),
+                    nextCursor = "S2",
+                ),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun theNextSearchPagePassesTheCursorBackUnchangedWithTheSameQ() = runTest {
+        val fixture = Fixture { respondJson(pageJson(null)) }
+
+        val result = fixture.archive.search("b1", "tea", cursor = "Hk+/=1")
+
+        assertEquals("tea", fixture.request.url.parameters["q"])
+        assertEquals("Hk+/=1", fixture.request.url.parameters["cursor"])
+        assertEquals(Result.Success(ArchivePage(emptyList(), null)), result)
+    }
+
+    @Test
+    fun aSearchTheServerRefusesIsItsProblem() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.UnprocessableEntity, "VALIDATION_FAILED") }
+
+        val result = fixture.archive.search("b1", "tea")
+
+        assertTrue(result is Result.Failure && (result.error as DataError.Network.Api).problem.status == 422, "$result")
+    }
+
+    @Test
+    fun aLockedPartnerEntryInAResultCarriesNoWords() = runTest {
+        // The server matched on my own entry; theirs is still locked, and stays wordless.
+        val fixture = Fixture {
+            respondJson(pageJson(null, dayJson("2026-09-13", "PENDING_REVEAL", entryJson("e3", "SUBMITTED", "Tea."), LOCKED)))
+        }
+
+        val day = (fixture.archive.search("b1", "tea") as Result.Success).data.days.single()
+
+        assertEquals(PartnerEntry.Locked, day.partnerEntry)
+    }
+
     private fun pageJson(nextCursor: String?, vararg days: String): String =
         """{"items":[${days.joinToString(",")}],"nextCursor":${nextCursor?.let { "\"$it\"" } ?: "null"}}"""
 
