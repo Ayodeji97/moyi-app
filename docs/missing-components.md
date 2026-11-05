@@ -59,9 +59,18 @@ Recorded in PR #5 (design system), 2026-10-27.
 - **Today:** a recorded gap. `states.md` §1c: "the *session revoked* state `13` names ... has no
   frame and no copy". The API's fallback sentence is "This sign-in was used from two places at
   once, so it has been ended. Sign in again to continue." Only that sign-in is ended.
-- **Here:** PR #6 routes to sign-in and shows a muted line 16 under the heading, flagged as
-  owed: "You have been signed out. Sign in again to continue." (`login_session_ended`,
-  proposed). It shows for `ReuseDetected` and `Invalid`, not for a sign-out the person asked for.
+- **Here (session-ended PR, 2026-11-05):** built as its own root screen, `SessionEndedScreen`,
+  for `ReuseDetected` only. Shape from auth-placement-spec §7: eyebrow "Account", heading, one
+  muted line 16 under it, PrimaryAction "Sign in" pinned at the bottom, no back. "Sign in"
+  replaces the stack with sign in. Copy approved by the owner 2026-11-05: heading "This sign-in
+  has ended", line "It was used from two places at once, so we ended it to keep your entries
+  safe. Anything else you are signed in on is unaffected. We have emailed you about it."
+- **`Invalid` is not this screen.** `REFRESH_TOKEN_INVALID` (expired, revoked by a password reset,
+  or not kept) has no "two places" story, so it keeps PR #6's neutral line on sign in: "You have
+  been signed out. Sign in again to continue." (`login_session_ended`, proposed). A sign-out the
+  person asked for shows nothing. The mapping is `routeAfterSessionEnd`.
+- **Owed upstream:** `states.md` §1c still calls this a gap, and doc 13 says "routes to sign-in
+  with an explanation". Both live outside this repository; Figma has no frame.
 
 ### 5. Sign-up name field
 

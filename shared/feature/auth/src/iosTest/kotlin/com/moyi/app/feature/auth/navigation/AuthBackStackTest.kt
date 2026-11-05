@@ -55,4 +55,16 @@ class AuthBackStackTest {
 
         assertEquals(listOf("PromiseStandIn"), nav.stack())
     }
+
+    @Test
+    fun signInFromSessionEndedLeavesOnlySignIn() {
+        val nav = controllerAtPromise()
+        nav.navigate(SessionEndedRoute) { popUpTo(nav.graph.id) { inclusive = true } }
+        assertEquals(listOf("SessionEndedRoute"), nav.stack())
+
+        nav.signInAfterSessionEnded()
+
+        assertEquals(listOf("LoginRoute"), nav.stack())
+        assertEquals(LoginRoute(), nav.currentBackStackEntry!!.toRoute<LoginRoute>())
+    }
 }

@@ -10,7 +10,7 @@ data class LoginState(
     val email: FieldInput = FieldInput(),
     val password: FieldInput = FieldInput(),
     val submit: SubmitStatus = SubmitStatus.Idle,
-    /** Arrived here because the server ended the session (SessionEvent.Ended). Copy owed; see strings.xml. */
+    /** Arrived here because the server no longer accepts the stored sign-in (SessionEndReason.Invalid). */
     val sessionEnded: Boolean = false,
 )
 
