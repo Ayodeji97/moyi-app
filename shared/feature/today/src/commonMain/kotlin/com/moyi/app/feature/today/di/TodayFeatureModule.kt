@@ -1,5 +1,8 @@
 package com.moyi.app.feature.today.di
 
+import com.moyi.app.feature.today.archive.ArchiveDayViewModel
+import com.moyi.app.feature.today.archive.ArchiveFeed
+import com.moyi.app.feature.today.archive.ArchiveViewModel
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.feature.today.common.RevealLedger
@@ -21,4 +24,8 @@ val todayFeatureModule = module {
     viewModel { TodayViewModel(get(), get()) }
     viewModel { (editing: Boolean) -> WriteViewModel(editing, get()) }
     viewModel { RevealViewModel(get()) }
+    // The Archive: one feed shared by the list and the day view, over the domain's ArchiveRepository.
+    single { ArchiveFeed(get(), get()) }
+    viewModel { ArchiveViewModel(get()) }
+    viewModel { (date: String) -> ArchiveDayViewModel(date, get(), get(), get(), get()) }
 }

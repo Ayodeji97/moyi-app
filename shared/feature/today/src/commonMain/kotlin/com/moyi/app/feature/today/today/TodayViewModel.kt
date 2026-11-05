@@ -72,9 +72,7 @@ class TodayViewModel(
             }
             TodayAction.OnDeleteConfirm -> deleteAfterReveal()
             TodayAction.OnDeleteDismiss -> ui.update { it.copy(confirming = false) }
-            TodayAction.OnArchiveClick -> {
-                // TODO(logic): navigate to Archive (GET /api/v1/bonds/{bondId}/days), not built yet.
-            }
+            TodayAction.OnArchiveClick -> send(TodayEvent.NavigateToArchive)
             TodayAction.OnSettingsClick -> send(TodayEvent.NavigateToSettings)
             TodayAction.OnShareInviteClick -> {
                 // TODO(logic): open the OS share sheet with the invite link. POST /api/v1/bonds/{bondId}/invites

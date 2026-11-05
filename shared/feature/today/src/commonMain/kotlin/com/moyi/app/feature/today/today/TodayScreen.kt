@@ -79,6 +79,7 @@ fun TodayRoot(
     onNavigateToWrite: (editing: Boolean) -> Unit,
     onNavigateToReveal: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToArchive: () -> Unit,
     onNoOpenBond: () -> Unit,
     debugTools: Boolean,
     viewModel: TodayViewModel = koinViewModel(),
@@ -92,6 +93,7 @@ fun TodayRoot(
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)
             TodayEvent.NavigateToReveal -> onNavigateToReveal()
             TodayEvent.NavigateToSettings -> onNavigateToSettings()
+            TodayEvent.NavigateToArchive -> onNavigateToArchive()
             TodayEvent.NavigateToStart -> onNoOpenBond()
         }
     }

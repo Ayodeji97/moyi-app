@@ -70,6 +70,16 @@
     <!-- states.md §10 "Generic error", its two lines as one (onboarding_error_generic's words): a delete that did not go through, under the entry that is still there. -->
     <string name="today_action_failed">That didn't work. Nothing was lost. Try again in a moment.</string>
 
+    <!-- ===== Archive (Figma section 425:317). Its cards and day view reuse Today's author
+    labels, tombstone line, delete copy and Generic error above. ===== -->
+
+    <!-- FIGMA NODE NAME on 265:13 (the empty frame; 223:4 on the list carries the same title). The Archive's title. -->
+    <string name="archive_title">Your days</string>
+    <!-- copy.md table "Empty archive" and states.md §6 Empty, the heading. -->
+    <string name="archive_empty_heading">This is where your days will collect.</string>
+    <!-- states.md §6 Empty, the second line (copy.md warmth audit, 2026-09-04). -->
+    <string name="archive_empty_line">Your first one is still ahead.</string>
+
     <!-- ===== Write, the composer (Figma 181:3 and siblings) ===== -->
 
     <!-- PROPOSED (the spec's gap: "Send label not in the corpus"). The composer's PrimaryAction. -->
