@@ -2,24 +2,27 @@ package com.moyi.app.feature.today
 
 import app.cash.turbine.test
 import com.moyi.app.feature.today.common.FakeCopy
-import com.moyi.app.feature.today.common.FakeDailyLoop
 import com.moyi.app.feature.today.common.TodayStatus
+import com.moyi.app.feature.today.common.WriteResult
 import com.moyi.app.feature.today.write.WriteAction
 import com.moyi.app.feature.today.write.WriteEvent
 import com.moyi.app.feature.today.write.WriteState
 import com.moyi.app.feature.today.write.WriteSubmit
 import com.moyi.app.feature.today.write.WriteViewModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Duration
 
 class WriteViewModelTest : MainDispatcherTest() {
-    private val loop = FakeDailyLoop()
-    private fun viewModel(editing: Boolean = false) = WriteViewModel(editing, loop, fakeLatency = Duration.ZERO)
+    private val loop = FakeDailyLoop().apply { show(dayView(TodayStatus.NotWritten, myEntry = null)) }
+    private var keys = 0
+    private fun viewModel(editing: Boolean = false) = WriteViewModel(editing, loop, newIdempotencyKey = { "key-${++keys}" })
+
+    private fun written(text: String) = loop.show(dayView(TodayStatus.Waiting, myEntry = text))
 
     @Test
     fun typingUpdatesTheTextAndTheCounterAppearsOnlyPast400() {
@@ -52,15 +55,79 @@ class WriteViewModelTest : MainDispatcherTest() {
     }
 
     @Test
-    fun sendingMovesTodayToWaitingWithTheWordsAndGoesBack() = runTest {
+    fun sendingSendsTheWordsWithTodaysPromptAndCloses() = runTest {
         val vm = viewModel()
+        assertEquals(PROMPT.text, vm.state.value.prompt)
         vm.events.test {
             vm.onAction(WriteAction.OnTextChange("You made the tea."))
             vm.onAction(WriteAction.OnSubmit)
             assertEquals(WriteEvent.Close, awaitItem())
         }
-        assertEquals(TodayStatus.Waiting, loop.day.value.status)
-        assertEquals("You made the tea.", loop.day.value.myEntry)
+        assertEquals(listOf(FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1")), loop.submits)
+    }
+
+    @Test
+    fun aDismissedPromptIsNotSentWithTheEntry() = runTest {
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnDismissPrompt)
+        vm.onAction(WriteAction.OnTextChange("You made the tea."))
+        vm.onAction(WriteAction.OnSubmit)
+        assertNull(loop.submits.single().promptId)
+    }
+
+    @Test
+    fun whileSendingTheActionSaysSoAndASecondTapSendsNothing() {
+        val gate = CompletableDeferred<Unit>()
+        loop.gate = gate
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnTextChange("You made the tea."))
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(WriteSubmit.Sending, vm.state.value.submit)
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(1, loop.submits.size)
+        gate.complete(Unit)
+    }
+
+    @Test
+    fun aFailedSendKeepsTheWordsAndDoesNotClose() = runTest {
+        loop.submitResult = WriteResult.Failed
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("You made the tea."))
+            vm.onAction(WriteAction.OnSubmit)
+            expectNoEvents()
+        }
+        assertEquals(WriteSubmit.Failed, vm.state.value.submit)
+        assertEquals("You made the tea.", vm.state.value.text)
+    }
+
+    @Test
+    fun tryAgainWithTheSameWordsIsTheSameSendSoItReusesTheKey() {
+        // A lost answer must not become two entries: the server replays a repeated key (doc 06 §1).
+        loop.submitResult = WriteResult.Failed
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnTextChange("You made the tea."))
+        vm.onAction(WriteAction.OnSubmit)
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(listOf("key-1", "key-1"), loop.submits.map { it.key })
+
+        // Different words are a different send.
+        vm.onAction(WriteAction.OnTextChange("You made the tea, twice."))
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals("key-2", loop.submits.last().key)
+    }
+
+    @Test
+    fun savingAnEditSendsAnEditNotASecondEntry() = runTest {
+        written("Already written.")
+        val vm = viewModel(editing = true)
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("Already written, and more."))
+            vm.onAction(WriteAction.OnSubmit)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+        assertEquals(listOf(FakeDailyLoop.Edit("Already written, and more.", "key-1")), loop.edits)
+        assertTrue(loop.submits.isEmpty())
     }
 
     // ---- Closing the task (D10) ----
@@ -107,7 +174,7 @@ class WriteViewModelTest : MainDispatcherTest() {
             assertEquals("You made the tea.", vm.state.value.text)
             expectNoEvents()
         }
-        assertEquals(TodayStatus.NotWritten, loop.day.value.status)
+        assertTrue(loop.submits.isEmpty())
     }
 
     @Test
@@ -120,7 +187,7 @@ class WriteViewModelTest : MainDispatcherTest() {
             assertEquals(WriteEvent.Close, awaitItem())
         }
         assertFalse(vm.state.value.confirmingDiscard)
-        assertEquals(TodayStatus.NotWritten, loop.day.value.status)
+        assertTrue(loop.submits.isEmpty())
     }
 
     @Test
@@ -137,7 +204,7 @@ class WriteViewModelTest : MainDispatcherTest() {
 
     @Test
     fun editingAndClosingWithNoChangeClosesSilently() = runTest {
-        loop.setMyEntry("Already written.", TodayStatus.Waiting)
+        written("Already written.")
         val vm = viewModel(editing = true)
         vm.events.test {
             vm.onAction(WriteAction.OnCloseClick)
@@ -147,7 +214,7 @@ class WriteViewModelTest : MainDispatcherTest() {
 
     @Test
     fun editingAndClosingWithAChangeAsksFirst() {
-        loop.setMyEntry("Already written.", TodayStatus.Waiting)
+        written("Already written.")
         val vm = viewModel(editing = true)
         vm.onAction(WriteAction.OnTextChange("Already written, and more."))
         vm.onAction(WriteAction.OnCloseClick)
@@ -191,7 +258,7 @@ class WriteViewModelTest : MainDispatcherTest() {
 
     @Test
     fun editingDownToOnlySpacesClosesSilently() = runTest {
-        loop.setMyEntry("Already written.", TodayStatus.Waiting)
+        written("Already written.")
         val vm = viewModel(editing = true)
         vm.events.test {
             vm.onAction(WriteAction.OnTextChange("   "))
@@ -208,12 +275,12 @@ class WriteViewModelTest : MainDispatcherTest() {
             expectNoEvents()
         }
         assertEquals(WriteSubmit.Idle, vm.state.value.submit)
-        assertEquals(TodayStatus.NotWritten, loop.day.value.status)
+        assertTrue(loop.submits.isEmpty())
     }
 
     @Test
     fun editingStartsFromWhatIWroteWithNoPrompt() {
-        loop.setMyEntry("Already written.", TodayStatus.Waiting)
+        written("Already written.")
         val vm = viewModel(editing = true)
         assertEquals("Already written.", vm.state.value.text)
         assertTrue(vm.state.value.editing)
@@ -252,7 +319,7 @@ class WriteViewModelTest : MainDispatcherTest() {
         assertTrue(seen[3].editing) // 419:291
         assertEquals(WriteSubmit.Failed, seen[4].submit) // 384:229
         assertEquals(WriteSubmit.Queued, seen[5].submit)
-        assertEquals(WriteState(), seen[6]) // back to 181:3
+        assertEquals(WriteState(prompt = FakeCopy.PROMPT), seen[6]) // back to 181:3
     }
 
     @Test

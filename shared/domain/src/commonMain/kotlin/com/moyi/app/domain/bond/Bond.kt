@@ -4,8 +4,8 @@ package com.moyi.app.domain.bond
  * A bond as the app needs it. Built from the server's `BondResponse` by the
  * data layer; nothing here knows the wire format.
  *
- * Only what onboarding routes on is modelled so far: the daily loop adds what
- * it needs when it is wired.
+ * What onboarding routes on, plus the one thing Today needs: the other member's
+ * name ([partnerName]).
  */
 data class Bond(
     val id: String,
@@ -14,6 +14,12 @@ data class Bond(
     val status: BondStatus,
     /** The live invite, while there is one (any member sees it, FR-022). */
     val invite: Invite?,
+    /**
+     * The other member's display name, from the bond's `members` (not `me`). Null
+     * while nobody has joined, and when the server's member list does not say who
+     * the caller is. A member who has left is still named: their words stay.
+     */
+    val partnerName: String? = null,
 ) {
     /**
      * Open: the person is in it and it has not ended. A bond waiting for the

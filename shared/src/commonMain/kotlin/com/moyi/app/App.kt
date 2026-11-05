@@ -50,7 +50,7 @@ import org.koin.compose.viewmodel.koinViewModel
  *   A sign-out or an ended session still lands on sign in (below).
  * - **UI preview** (debug builds only), chosen before the session is known:
  *   `-PmoyiUiPreview=onboarding` opens a preview index (see `UiPreviewIndex`);
- *   `-PmoyiUiPreview=today` opens Today on fake data with no backend.
+ *   `-PmoyiUiPreview=today` opens Today on a preview day (PreviewDailyLoop), no backend.
  *
  * The start destination is chosen once, when the state first leaves Unknown.
  * Later changes are navigation: a sign-in navigates from the screen, and a
@@ -119,6 +119,8 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
             // TODO(logic): Bond settings is not built. Until it is, the settings target opens
             // the auth placeholder, which is where sign-out lives.
             onOpenSettings = { navController.navigate(HomePlaceholderRoute) },
+            // Left or ended on the other phone: the signed-in start asks the server again.
+            onNoOpenBond = { navController.resetTo(SignedInStartRoute) },
             debugTools = UiPreview.today,
         )
         onboardingGraph(
