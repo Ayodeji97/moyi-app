@@ -144,6 +144,25 @@ object MoyiDimens {
     }
 
     /** Today's `nav` row (Figma 159:2: 358 × 48 at y 24; daily-loop spec §2). */
+    /**
+     * tokens.md §4 row 9, `Chip` (Archive's filters): a 48 pt target wrapping a 40 pt
+     * visible pill. Padding and gap are read from Figma's filters row (440:1475: All days
+     * 100 wide, 8 between chips); the component page itself was not read.
+     */
+    object Chip {
+        val Target = TouchTarget
+        val PillHeight = 40.dp
+        val PaddingHorizontal = 16.dp
+        val Stroke = 1.dp
+        val Gap = 8.dp
+    }
+
+    /** tokens.md §4 row 10, `FavouriteToggle`: a 48 pt row, a 24 px glyph, then the label. */
+    object FavouriteToggle {
+        val Target = TouchTarget
+        val Gap = 8.dp
+    }
+
     object NavRow {
         /** Figma 159:3 / 429:1352: 48 tall, the targets 48 × 48. */
         val Height = TouchTarget

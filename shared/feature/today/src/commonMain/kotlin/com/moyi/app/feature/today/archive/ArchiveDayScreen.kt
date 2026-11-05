@@ -1,7 +1,9 @@
 package com.moyi.app.feature.today.archive
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +18,7 @@ import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.EntryCard
 import com.moyi.app.designsystem.component.EntryCardVariant
+import com.moyi.app.designsystem.component.FavouriteToggle
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.StateBlock
@@ -62,8 +65,10 @@ fun ArchiveDayRoot(
  * 481-character entry runs to about 2.1 screens). Then "Delete what you wrote" on my
  * live entry of a revealed day, in `danger` with its underline.
  *
- * Owed and not drawn: the FavouriteToggle under each entry (664:1939) and the
- * Report link in the header (617:1835; the backend has no report endpoint).
+ * Under each revealed entry, mine and theirs, **my** FavouriteToggle (664:1939).
+ *
+ * Owed and not drawn: the Report link in the header (617:1835; the backend has no
+ * report endpoint).
  */
 @Composable
 fun ArchiveDayScreen(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
@@ -93,14 +98,26 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
         // TODO(#17): the partner's words are protected from screen capture there (R3);
         //  this EntryCard gains it when #17 merges.
         day.partnerEntry?.let { words ->
-            EntryCard(
-                authorLabel = stringResource(Res.string.today_author_partner, state.partnerName.orEmpty()),
-                text = words,
-                variant = EntryCardVariant.Partner,
-            )
+            EntryWithMark(
+                marked = day.myMarkOnTheirs,
+                failed = state.markFailed == FavouriteTarget.Theirs,
+                onToggle = { onAction(ArchiveDayAction.OnFavouriteClick(FavouriteTarget.Theirs)) },
+            ) {
+                EntryCard(
+                    authorLabel = stringResource(Res.string.today_author_partner, state.partnerName.orEmpty()),
+                    text = words,
+                    variant = EntryCardVariant.Partner,
+                )
+            }
         }
         if (day.myEntry != null) {
-            EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry)
+            EntryWithMark(
+                marked = day.myMarkOnMine,
+                failed = state.markFailed == FavouriteTarget.Mine,
+                onToggle = { onAction(ArchiveDayAction.OnFavouriteClick(FavouriteTarget.Mine)) },
+            ) {
+                EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry)
+            }
         } else if (day.myTombstone) {
             // states.md Appendix: the tombstone is labelled "From you", never the partner.
             EntryCard(
@@ -137,6 +154,26 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
     }
 }
 
+/**
+ * One entry and, under it, **my** FavouriteToggle (438:1503: the card, then the toggle 8
+ * under it, start-aligned). [marked] null is the toggle **absent** (states.md §6: before
+ * the reveal it is not there at all, not disabled). A failed toggle is already back as
+ * it was; the Generic failure line under it says so.
+ */
+@Composable
+private fun EntryWithMark(
+    marked: Boolean?,
+    failed: Boolean,
+    onToggle: () -> Unit,
+    entry: @Composable () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.sm)) {
+        entry()
+        if (marked != null) FavouriteToggle(marked = marked, onToggle = onToggle)
+        if (failed) InlineError(stringResource(Res.string.today_action_failed))
+    }
+}
+
 // ---- Previews ----
 
 private fun previewDay(tombstone: Boolean = false) = ArchiveDayState(
@@ -150,6 +187,9 @@ private fun previewDay(tombstone: Boolean = false) = ArchiveDayState(
         myEntryId = "e1",
         partnerEntry = FakeCopy.PARTNER_ENTRY,
         canDelete = !tombstone,
+        partnerEntryId = "t1",
+        myMarkOnMine = false.takeUnless { tombstone },
+        myMarkOnTheirs = true,
     ),
 )
 

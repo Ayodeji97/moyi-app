@@ -19,7 +19,12 @@ data class ArchiveDayState(
     val deleting: Boolean = false,
     /** A delete did not go through: the entry is still there, and the Generic error line says so. */
     val actionFailed: Boolean = false,
+    /** A favourite toggle did not go through: it is back as it was, and the line under it says so. */
+    val markFailed: FavouriteTarget? = null,
 )
+
+/** Which entry's FavouriteToggle: the one under my entry, or under the partner's. */
+enum class FavouriteTarget { Mine, Theirs }
 
 sealed interface ArchiveDayAction {
     data object OnBackClick : ArchiveDayAction
@@ -27,6 +32,9 @@ sealed interface ArchiveDayAction {
     data object OnDeleteClick : ArchiveDayAction
     data object OnDeleteConfirm : ArchiveDayAction
     data object OnDeleteDismiss : ArchiveDayAction
+
+    /** The FavouriteToggle under [target]: marks it if I have not, unmarks it if I have. */
+    data class OnFavouriteClick(val target: FavouriteTarget) : ArchiveDayAction
 }
 
 sealed interface ArchiveDayEvent {

@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -28,6 +31,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.Chip
+import com.moyi.app.designsystem.component.ChipRow
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
@@ -36,6 +41,7 @@ import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.feature.today.common.FakeCopy
@@ -44,7 +50,13 @@ import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.common.monthAndYear
 import com.moyi.app.feature.today.common.weekdayAndDay
 import com.moyi.app.feature.today.resources.Res
+import com.moyi.app.feature.today.resources.archive_day_favourited
 import com.moyi.app.feature.today.resources.archive_empty_heading
+import com.moyi.app.feature.today.resources.archive_favourites_empty_heading
+import com.moyi.app.feature.today.resources.archive_favourites_empty_line
+import com.moyi.app.feature.today.resources.archive_favourites_empty_privacy
+import com.moyi.app.feature.today.resources.archive_filter_all
+import com.moyi.app.feature.today.resources.archive_filter_favourites
 import com.moyi.app.feature.today.resources.archive_empty_line
 import com.moyi.app.feature.today.resources.archive_title
 import com.moyi.app.feature.today.resources.today_action_failed
@@ -82,10 +94,12 @@ fun ArchiveRoot(
  * The Archive (Figma 223:3, empty 223:25). The back target at y 24, the title
  * "Your days" at 96 (24 under the back, as on every screen with one), then the list.
  *
+ * Then the All days / Favourites chips (when there is anything to filter) and the list.
+ *
  * Owed and **not drawn** (docs/figma/archive-check.md): the month row with "Jump to",
- * the All days / Favourites / Search chips, the favourite bookmarks and the "Your
- * streak" link. Without the navigation block the list starts at 168, not Figma's 336,
- * and each month is named by a heading in the list instead of by the month row.
+ * the Search chip and the "Your streak" link. Without the month row the chips start at
+ * 168 and the list at 240, not Figma's 264 and 336, and each month is named by a
+ * heading in the list instead of by the month row.
  *
  * @param debugTools `-PmoyiUiPreview=today` only: a long press on the title steps list, empty, error.
  */
@@ -95,7 +109,9 @@ fun ArchiveScreen(
     onAction: (ArchiveAction) -> Unit,
     debugTools: Boolean = false,
 ) {
-    if (state.load == ArchiveLoad.Loading) {
+    // The bare surface on the way in; once a chip has been chosen, the chrome stays and
+    // only the list area waits (still no spinner).
+    if (state.load == ArchiveLoad.Loading && !state.showFilters) {
         Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
         return
     }
@@ -109,11 +125,58 @@ fun ArchiveScreen(
                 .debugLongPress(if (debugTools) ({ onAction(ArchiveAction.OnDebugCycle) }) else null),
         )
         Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        if (state.showFilters) {
+            Filters(state.filter, onSelect = { onAction(ArchiveAction.OnFilterClick(it)) })
+            Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        }
         when {
+            state.load == ArchiveLoad.Loading -> Spacer(Modifier.fillMaxWidth().weight(1f))
             state.load == ArchiveLoad.Failed -> Failed(onRetry = { onAction(ArchiveAction.OnRetryClick) })
+            state.isEmpty && state.filter == ArchiveFilter.Favourites -> NoFavourites()
             state.isEmpty -> Empty(onWrite = { onAction(ArchiveAction.OnWriteClick) })
             else -> DayList(state, onAction)
         }
+    }
+}
+
+/**
+ * Figma's filters row (440:1475): All days and Favourites, 8 apart. The third chip,
+ * Search, is the next slice's and is not drawn. Figma puts the row under the month
+ * jump (owed), so it sits where the month row would start, 24 under the title.
+ */
+@Composable
+private fun Filters(selected: ArchiveFilter, onSelect: (ArchiveFilter) -> Unit) {
+    ChipRow(Modifier.fillMaxWidth()) {
+        Chip(
+            text = stringResource(Res.string.archive_filter_all),
+            selected = selected == ArchiveFilter.AllDays,
+            onClick = { onSelect(ArchiveFilter.AllDays) },
+        )
+        Chip(
+            text = stringResource(Res.string.archive_filter_favourites),
+            selected = selected == ArchiveFilter.Favourites,
+            onClick = { onSelect(ArchiveFilter.Favourites) },
+        )
+    }
+}
+
+/**
+ * Favourites, empty (Figma 440:1570). Quiet, top-aligned where the list would start,
+ * and it **states the privacy fact** (states.md §6): the StateBlock's heading and line,
+ * then "Only you can see your favourites." at the StateBlock's own inset.
+ */
+@Composable
+private fun ColumnScope.NoFavourites() {
+    Column(Modifier.fillMaxWidth().weight(1f)) {
+        StateBlock(
+            heading = stringResource(Res.string.archive_favourites_empty_heading),
+            line = stringResource(Res.string.archive_favourites_empty_line),
+        )
+        MoyiText(
+            text = stringResource(Res.string.archive_favourites_empty_privacy),
+            tone = TextTone.Muted,
+            modifier = Modifier.padding(horizontal = MoyiDimens.StateBlock.Padding),
+        )
     }
 }
 
@@ -208,7 +271,9 @@ private fun MonthHeading(month: LocalDate) {
  * hairline and radius 12, padding 16; the day ("Tuesday 2") in `label`, then up to
  * two blocks 16 apart, each an author label over the words in `title` (tokens.md §2:
  * "also the preview-entry size in Archive"), **cut to two lines with an ellipsis**.
- * No chevron (states.md §6). The whole card opens the day view.
+ * No chevron (states.md §6). The whole card opens the day view. A small filled
+ * bookmark on the trailing edge of the date row when the day holds **my** favourite
+ * (440:1510, 24 x 24).
  *
  * The partner's block is drawn only when the day holds their words; a locked entry is
  * not even named. My deleted entry is its tombstone, "From you", as on Today.
@@ -231,7 +296,19 @@ private fun DayCard(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit)
             // One stop for a screen reader: the day, then each entry.
             .semantics(mergeDescendants = true) {},
     ) {
-        MoyiText(text = dayName, role = TextRole.Label)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            MoyiText(text = dayName, role = TextRole.Label, modifier = Modifier.weight(1f))
+            // states.md §6: the only thing ever on a card's trailing edge, and only for
+            // a day holding an entry *I* favourited. The partner's marks are never drawn.
+            if (day.holdsMyFavourite) {
+                Icon(
+                    imageVector = MoyiIcons.BookmarkFilled,
+                    contentDescription = stringResource(Res.string.archive_day_favourited),
+                    tint = colors.ink,
+                    modifier = Modifier.size(MoyiDimens.IconGlyph),
+                )
+            }
+        }
         day.partnerEntry?.let { words ->
             Spacer(Modifier.height(MoyiTheme.spacing.md))
             CardEntry(stringResource(Res.string.today_author_partner, partnerName), words)
@@ -265,7 +342,10 @@ private const val LOAD_AHEAD = 3
 
 private fun previewDays(): List<ArchiveMonth> {
     val days = listOf(
-        ArchiveDayUi(FakeCopy.DATE, FakeCopy.MY_ENTRY, false, "e1", FakeCopy.PARTNER_ENTRY, canDelete = true),
+        ArchiveDayUi(
+            FakeCopy.DATE, FakeCopy.MY_ENTRY, false, "e1", FakeCopy.PARTNER_ENTRY, canDelete = true,
+            partnerEntryId = "t1", myMarkOnMine = false, myMarkOnTheirs = true,
+        ),
         ArchiveDayUi(FakeCopy.SOLO_DATE, null, true, "e2", FakeCopy.PARTNER_ENTRY, canDelete = false),
         ArchiveDayUi(LocalDate(2025, 8, 30), FakeCopy.MY_ENTRY, false, "e3", null, canDelete = false),
     )
@@ -276,7 +356,18 @@ private fun previewDays(): List<ArchiveMonth> {
 @Composable
 private fun ArchiveListPreview() {
     MoyiTheme(darkTheme = true) {
-        ArchiveScreen(ArchiveState(load = ArchiveLoad.Ready, months = previewDays(), partnerName = FakeCopy.PARTNER_NAME), onAction = {})
+        ArchiveScreen(
+            ArchiveState(load = ArchiveLoad.Ready, months = previewDays(), partnerName = FakeCopy.PARTNER_NAME, showFilters = true),
+            onAction = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ArchiveFavouritesEmptyPreview() {
+    MoyiTheme(darkTheme = false) {
+        ArchiveScreen(ArchiveState(load = ArchiveLoad.Ready, filter = ArchiveFilter.Favourites, showFilters = true), onAction = {})
     }
 }
 

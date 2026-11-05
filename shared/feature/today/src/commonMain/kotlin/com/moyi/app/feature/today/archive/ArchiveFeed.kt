@@ -3,6 +3,8 @@ package com.moyi.app.feature.today.archive
 import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.today.EntryStatus
+import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.PartnerVisible
@@ -43,22 +45,27 @@ class ArchiveFeed(
     private val mutex = Mutex()
     private var generation = 0
 
-    /** The newest page, replacing whatever was loaded. A failure is [FeedLoad.Failed] (nothing to keep). */
-    suspend fun loadFirst() {
-        _state.value = FeedState(load = FeedLoad.Loading)
+    /**
+     * The newest page, replacing whatever was loaded. A failure is [FeedLoad.Failed]
+     * (nothing to keep). With [favourites], only the days holding an entry I favourited
+     * (`favourites=true`); every later page of this load asks the same way.
+     */
+    suspend fun loadFirst(favourites: Boolean = false) {
+        _state.value = FeedState(load = FeedLoad.Loading, favourites = favourites)
         mutex.withLock {
             val startedIn = generation
             val bond = (loop.state.value as? DailyLoopState.Ready)?.day
             if (bond == null) {
-                _state.value = FeedState(load = FeedLoad.Failed)
+                _state.value = FeedState(load = FeedLoad.Failed, favourites = favourites)
                 return
             }
-            val answer = archive.days(bond.bondId)
-            if (startedIn != generation) return
+            val answer = archive.days(bond.bondId, favourites = favourites)
+            if (startedIn != generation || _state.value.favourites != favourites) return
             _state.value = when (answer) {
-                is Result.Failure -> FeedState(load = FeedLoad.Failed)
+                is Result.Failure -> FeedState(load = FeedLoad.Failed, favourites = favourites)
                 is Result.Success -> FeedState(
                     load = FeedLoad.Ready,
+                    favourites = favourites,
                     bondId = bond.bondId,
                     partnerName = bond.partnerName,
                     days = answer.data.days,
@@ -83,8 +90,8 @@ class ArchiveFeed(
             val current = _state.value
             val cursor = current.nextCursor ?: return
             val bondId = current.bondId ?: return
-            val answer = archive.days(bondId, cursor)
-            if (startedIn != generation) return
+            val answer = archive.days(bondId, cursor, favourites = current.favourites)
+            if (startedIn != generation || _state.value.favourites != current.favourites) return
             _state.update {
                 when (answer) {
                     is Result.Failure -> it.copy(loadingMore = false, pageFailed = true)
@@ -109,6 +116,14 @@ class ArchiveFeed(
         _state.update { feed -> feed.copy(days = feed.days.map { if (it.date == day.date) day else it }) }
     }
 
+    /**
+     * [markedByMe] in place of the marks on the loaded day for [date]: the optimistic
+     * favourite toggle, and its revert. The list redraws from it when you go back.
+     */
+    fun setMarks(date: String, markedByMe: Set<String>) {
+        _state.update { feed -> feed.copy(days = feed.days.map { if (it.date == date) it.copy(markedByMe = markedByMe) else it }) }
+    }
+
     /** Forgets every day: a sign-out, or leaving the Archive. */
     fun clear() {
         generation++
@@ -121,6 +136,8 @@ enum class FeedLoad { Loading, Failed, Ready }
 /** What the feed holds. Its `toString` names no words: [ArchiveDay]'s entries redact theirs. */
 data class FeedState(
     val load: FeedLoad = FeedLoad.Loading,
+    /** Loaded with `favourites=true`: only days holding an entry I favourited. */
+    val favourites: Boolean = false,
     val bondId: String? = null,
     val partnerName: String? = null,
     val days: List<ArchiveDay> = emptyList(),
@@ -149,11 +166,37 @@ data class ArchiveDayUi(
     val partnerEntry: String?,
     /** My live entry on a revealed day: "Delete what you wrote" (with its confirm). */
     val canDelete: Boolean,
+    /** The id of the partner's entry, when its words are held. */
+    val partnerEntryId: String? = null,
+    /**
+     * **My** mark on my own entry: the FavouriteToggle under it. Null when the toggle is
+     * **absent** (states.md §6: absent, not disabled): no live entry, or not revealed.
+     */
+    val myMarkOnMine: Boolean? = null,
+    /** **My** mark on the partner's entry. Null when absent: not revealed to me, or no words. */
+    val myMarkOnTheirs: Boolean? = null,
 ) {
+    /**
+     * The day card's small filled bookmark: the day holds an entry **I** favourited.
+     * There is no field for the partner's favourites: states.md §6 says nothing may
+     * disclose or let you infer them, so the state cannot even hold one.
+     */
+    val holdsMyFavourite: Boolean get() = myMarkOnMine == true || myMarkOnTheirs == true
+
     override fun toString(): String =
         "ArchiveDayUi(date=$date, myEntry=${myEntry?.let { "(redacted)" }}, myTombstone=$myTombstone, " +
-            "myEntryId=$myEntryId, partnerEntry=${partnerEntry?.let { "(redacted)" }}, canDelete=$canDelete)"
+            "myEntryId=$myEntryId, partnerEntry=${partnerEntry?.let { "(redacted)" }}, canDelete=$canDelete, " +
+            "partnerEntryId=$partnerEntryId, myMarkOnMine=$myMarkOnMine, myMarkOnTheirs=$myMarkOnTheirs)"
 }
+
+/**
+ * The days the list draws: every drawable day, or, when the feed was loaded with
+ * `favourites=true`, only those that still hold my favourite. Filtering here as well
+ * as on the server is what drops a day the moment its last mark is removed in the day
+ * view, without asking again.
+ */
+internal fun FeedState.visibleDays(): List<ArchiveDayUi> =
+    days.mapNotNull { it.toArchiveDayUi() }.let { all -> if (favourites) all.filter { it.holdsMyFavourite } else all }
 
 /** Null when there is nothing to draw (no entry of mine, no words of theirs), or the date is not ISO. */
 internal fun ArchiveDay.toArchiveDayUi(): ArchiveDayUi? {
@@ -165,12 +208,26 @@ internal fun ArchiveDay.toArchiveDayUi(): ArchiveDayUi? {
     val tombstone = entry != null && !entry.isLive
     val theirs = partnerEntry.words()?.takeIf { layout in PartnerVisible }
     if (mine == null && !tombstone && theirs == null) return null
+    // states.md §6: only after the reveal, and the contract marks only an entry it shows
+    // as REVEALED; a solo day's unlocked entry is still SUBMITTED, so it has no toggle.
+    val revealed = layout == TodayStatus.Revealed
+    val theirEntry = partnerEntry as? PartnerEntry.Revealed
     return ArchiveDayUi(
         date = date,
         myEntry = mine,
         myTombstone = tombstone,
         myEntryId = entry?.id,
         partnerEntry = theirs,
-        canDelete = layout == TodayStatus.Revealed,
+        canDelete = revealed,
+        partnerEntryId = partnerEntry.idIfWords().takeIf { theirs != null },
+        // Each entry by its own status: theirs stays markable after I deleted mine.
+        myMarkOnMine = entry?.takeIf { mine != null && it.status == EntryStatus.REVEALED }?.let { it.id in markedByMe },
+        myMarkOnTheirs = theirEntry?.takeIf { theirs != null }?.let { it.id in markedByMe },
     )
+}
+
+private fun PartnerEntry?.idIfWords(): String? = when (this) {
+    is PartnerEntry.Revealed -> id
+    is PartnerEntry.Submitted -> id
+    else -> null
 }

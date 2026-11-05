@@ -80,6 +80,22 @@
     <!-- states.md §6 Empty, the second line (copy.md warmth audit, 2026-09-04). -->
     <string name="archive_empty_line">Your first one is still ahead.</string>
 
+    <!-- ===== Archive, Favourites (states.md §6, strings-proposed.md §6a). The toggle's own
+    labels are the design system's (ds_favourite_add, ds_favourite_remove). ===== -->
+
+    <!-- PROPOSED. The first filter chip (Figma chip · All days, 536:1620; node name, not verified characters). Not in strings-proposed.md §6a. -->
+    <string name="archive_filter_all">All days</string>
+    <!-- archive.filter.favourites (strings-proposed.md §6a). The second filter chip. -->
+    <string name="archive_filter_favourites">Favourites</string>
+    <!-- archive.favourites.empty.heading (strings-proposed.md §6a; states.md §6 Favourites, empty). -->
+    <string name="archive_favourites_empty_heading">No favourites yet.</string>
+    <!-- archive.favourites.empty.line (strings-proposed.md §6a). -->
+    <string name="archive_favourites_empty_line">Mark a day and it will be easy to find again.</string>
+    <!-- archive.favourites.empty.privacy (strings-proposed.md §6a): the one place the privacy guarantee is stated. -->
+    <string name="archive_favourites_empty_privacy">Only you can see your favourites.</string>
+    <!-- PROPOSED. Spoken for the day card's small filled bookmark (states.md §6: the caller's own mark only). -->
+    <string name="archive_day_favourited">In your favourites</string>
+
     <!-- ===== Write, the composer (Figma 181:3 and siblings) ===== -->
 
     <!-- PROPOSED (the spec's gap: "Send label not in the corpus"). The composer's PrimaryAction. -->

@@ -22,6 +22,7 @@ import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpMethod
@@ -140,16 +141,99 @@ class ArchiveRepositoryTest {
         assertTrue(fixture.requests.isEmpty())
     }
 
+    // ---- Favourites ----
+
+    @Test
+    fun theUnfilteredListSendsNoFavouritesParameter() = runTest {
+        val fixture = Fixture { respondJson("""{"items":[],"nextCursor":null}""") }
+        fixture.archive.days("b1")
+        assertNull(fixture.request.url.parameters["favourites"])
+    }
+
+    @Test
+    fun theFavouritesFilterAsksWithFavouritesTrueAndAnEmptyPageKeepsItsCursor() = runTest {
+        val fixture = Fixture { respondJson(pageJson("HC9")) }
+
+        val result = fixture.archive.days("b1", cursor = "HC8", favourites = true)
+
+        // The contract's exception: an empty favourites page that is not the end.
+        assertEquals(Result.Success(ArchivePage(emptyList(), "HC9")), result)
+        assertEquals("/api/v1/bonds/b1/days", fixture.request.url.encodedPath)
+        assertEquals("true", fixture.request.url.parameters["favourites"])
+        assertEquals("HC8", fixture.request.url.parameters["cursor"])
+    }
+
+    @Test
+    fun markingIsAPutOnTheEntrysFavourite() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        assertEquals(Result.Success(Unit), fixture.archive.setFavourite("e2", favourite = true))
+        assertEquals(HttpMethod.Put, fixture.request.method)
+        assertEquals("/api/v1/entries/e2/favourite", fixture.request.url.encodedPath)
+    }
+
+    @Test
+    fun unmarkingIsADeleteOnTheEntrysFavourite() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        assertEquals(Result.Success(Unit), fixture.archive.setFavourite("e2", favourite = false))
+        assertEquals(HttpMethod.Delete, fixture.request.method)
+        assertEquals("/api/v1/entries/e2/favourite", fixture.request.url.encodedPath)
+    }
+
+    @Test
+    fun aMarkOnAnUnrevealedEntryIsTheConflictTheServerSent() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.Conflict, "ENTRY_NOT_REVEALED") }
+        val result = fixture.archive.setFavourite("e3", favourite = true)
+        assertTrue(result is Result.Failure && (result.error as DataError.Network.Api).problem.status == 409, "$result")
+    }
+
+    @Test
+    fun myMarksAreReadFromFavouritedOnMineAndTheirsButNeverATombstone() = runTest {
+        val fixture = Fixture {
+            respondJson(
+                pageJson(
+                    null,
+                    dayJson("2026-09-14", "REVEALED", entryJson("e1", "REVEALED", "Mine.", favourited = true), entryJson("e2", "REVEALED", "Theirs.", favourited = true)),
+                    dayJson("2026-09-13", "REVEALED", entryJson("e3", "REVEALED", "Mine."), entryJson("e4", "REVEALED", "Theirs.", favourited = true)),
+                    dayJson("2026-09-12", "EMPTY", entryJson("e5", "DELETED", null, favourited = true), "null"),
+                ),
+            )
+        }
+
+        val days = (fixture.archive.days("b1") as Result.Success).data.days
+
+        assertEquals(listOf(setOf("e1", "e2"), setOf("e4"), emptySet()), days.map { it.markedByMe })
+    }
+
+    @Test
+    fun noFieldTheServerMightAddCanCarryThePartnersFavouriteIntoTheDomain() = runTest {
+        // Privacy (states.md §6): even if a response ever carried someone else's marks, the
+        // only thing read is each entry's own `favourited`, the caller's bookmark.
+        val leaky = entryJson("e1", "REVEALED", "Mine.").dropLast(1) +
+            ""","favouritedByPartner":true,"favouriteCount":2,"favouritedBy":["m2"]}"""
+        val fixture = Fixture { respondJson(pageJson(null, dayJson("2026-09-14", "REVEALED", leaky, entryJson("e2", "REVEALED", "Theirs.")))) }
+
+        val result = fixture.archive.days("b1")
+
+        val day = (result as Result.Success).data.days.single()
+        assertEquals(emptySet(), day.markedByMe)
+        assertEquals(
+            ArchiveDay("2026-09-14", BondDayStatus.REVEALED, MyEntry("e1", "Mine.", EntryStatus.REVEALED), PartnerEntry.Revealed("e2", "Theirs.")),
+            day,
+        )
+    }
+
     private fun pageJson(nextCursor: String?, vararg days: String): String =
         """{"items":[${days.joinToString(",")}],"nextCursor":${nextCursor?.let { "\"$it\"" } ?: "null"}}"""
 
     private fun dayJson(date: String, status: String, myEntry: String, partnerEntry: String): String =
         """{"date":"$date","status":"$status","myEntry":$myEntry,"partnerEntry":$partnerEntry}"""
 
-    private fun entryJson(id: String, status: String, text: String?): String =
+    private fun entryJson(id: String, status: String, text: String?, favourited: Boolean = false): String =
         """{"id":"$id","bondId":"b1","date":"2026-09-14","authorMemberId":"m1","text":${text?.let { "\"$it\"" } ?: "null"},""" +
             """"status":"$status","createdAt":"2026-09-14T19:12:44Z","intendedAt":"2026-09-14T19:12:44Z",""" +
-            """"favourited":false,"reaction":null}"""
+            """"favourited":$favourited,"reaction":null}"""
 
     private companion object {
         const val LOCKED = """{"authorMemberId":"m2","status":"LOCKED"}"""

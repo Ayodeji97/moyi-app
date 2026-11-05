@@ -1,9 +1,16 @@
-# Archive, part 1, against Figma
+# Archive, parts 1 and 2, against Figma
 
 The Archive list, its empty state and the day view as built, measured on a running app and
 compared with the Figma frames in section 425:317. The screens run on preview data in the
 `-PmoyiUiPreview=today` build (`PreviewArchive.kt`); against a backend they use
 `GET /bonds/{bondId}/days` and `GET /bonds/{bondId}/days/{date}`. Measured 2026-11-05.
+
+Part 2 (Favourites) adds the All days / Favourites chips, the FavouriteToggle under each
+revealed entry, the day card's bookmark and the Favourites empty state, against
+`GET …/days?favourites=true` and `PUT` / `DELETE /entries/{entryId}/favourite`. Measured
+2026-11-05 on the same emulator. **No Figma screenshot was read for part 2**: the one
+attempt (440:1462) hit the Starter-plan rate limit, so 440:1462 / 440:1516, 440:1570 /
+440:1621 and 438:1462 / 438:1497 were compared by geometry (`archive.xml`) only.
 
 ## Sources, and what they are worth
 
@@ -37,6 +44,13 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 - **Long-press "Your days"** to step: list, empty, the Generic error, and back to the list.
 - **Tap a day** for the day view. On 2 September, "Delete what you wrote" asks in the
   platform dialog, then leaves the tombstone, in the day view and in the list.
+- **Favourites**: 2 September (Tunde's), 28 August (mine) and 21 August (Tunde's) start
+  marked, so their cards carry the bookmark. **Tap Favourites**: those three, paged as you
+  scroll; the third preview page holds none but has a cursor, and is asked past. Toggling
+  in a day view changes in place and the list follows it when you go back. **Tunde's entry
+  on Wednesday 27 August always fails to mark**: the toggle goes back and the Generic
+  failure line appears under it. In Favourites, a long press on "Your days" shows the
+  Favourites empty state.
 
 ## Results
 
@@ -56,7 +70,32 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 | "FROM YOU" | card y 155 | card y 154.3 | matches |
 | Cards apart | 16 (275 minus 259) | 16 | matches |
 | Chevron | none (states.md §6) | none | matches |
-| "Your streak" link, favourite bookmark | drawn | **not drawn** | owed |
+| "Your streak" link | drawn | **not drawn** | owed |
+| Favourite bookmark (440:1510) | 24 x 24 at card x 302, in the date row | 24 x 24, flush with the card's trailing padding, in the date row | matches; filled, `ink`; only for a day holding **my** mark |
+
+### Archive · favourites (440:1462; light 440:1516)
+
+| Element | Figma | Built | |
+|---|---|---|---|
+| Month jump row | y 168, h 80 | **not drawn** | owed (part 3) |
+| Chips row | y 264, h 48 | y 168, h 48 | **96 higher**: the month row above it is owed |
+| Chip · All days | x 0, 100 x 48 (pill 40) | x 0, 100.2 wide (label 68.2 + 2 x 16), 48 target, 40 pill | matches |
+| Chip · Favourites | x 108, 120 x 48 | x 108, 120 wide | matches (8 apart) |
+| Chip · Search | x 236, 89 x 48 | **not drawn** | the next PR |
+| Chip label | node names "All days", "Favourites" | `label`, so "ALL DAYS", "FAVOURITES" | the widths agree with `label` to the pixel; see "For you to check" in the PR |
+| List | y 336 | y 240 | 96 higher, as the chips |
+| Day cards | DayCard with the bookmark | the same DayCard, filtered to days holding my mark | matches |
+
+### Archive · favourites, empty (440:1570; light 440:1621)
+
+| Element | Figma | Built | |
+|---|---|---|---|
+| Chips | drawn | drawn, Favourites selected | they are the way back |
+| "No favourites yet." | list y 0, x 0, h 33 | list y 24, x 24, h 32.8 | the StateBlock's 24 inset |
+| "Mark a day and it will be easy to find again." | 16 under the heading, one line | 16 under the heading, two lines | the inset narrows it to 302 wide |
+| "Only you can see your favourites." | 32 under the line | 24 under the line, at the StateBlock's inset | StateBlock's bottom padding; muted body |
+
+### Archive · day view, favourites (438:1462; light 438:1497)
 
 ### Archive · empty (223:25)
 
@@ -75,8 +114,11 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 | Date text | "Tuesday 2 September" (node name) | "TUESDAY · 2 SEPTEMBER" | Today's `dayHeader`, as on Today; `label` uppercases it |
 | Report link | x 302, 56 x 48 | **not drawn** | owed: the backend has no report endpoint |
 | Partner EntryCard | y 88 | y 88 | matches |
-| FavouriteToggle under each entry | 48 high, 8 below each card | **not drawn** | owed; everything below moves up 56 per entry |
-| My EntryCard | 16 below the partner's block | 16 below the partner's card | matches (less the toggle) |
+| FavouriteToggle under each entry | 48 high, 8 below each card, x 0; 179 wide (Idle), 231 (Marked) | 48 high, 8 below each card, x 0; 153.5 wide (Idle), 202.3 (Marked) | the label is `body`, sentence case; Figma's widths fit `label` uppercase (see the PR) |
+| Toggle glyph | 24, outline (Idle) / filled (Marked) | 24, Lucide `bookmark`, outline / filled, `ink` | matches |
+| Toggle before the reveal, on a solo day's unlocked entry, on a tombstone | not drawn | absent | matches states.md §6 |
+| A failed toggle | not drawn | back as it was, the Generic failure line under it (`InlineError`) | interpreted |
+| My EntryCard | 16 below the partner's block | 16 below the partner's block | matches |
 | "Delete what you wrote" | full-width 48 target, `danger`, underline | the same TextLink, `danger`, underline | matches |
 | Long entry | scrolls, about 2.1 screens | scrolls | matches |
 
@@ -87,13 +129,18 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 2. **Month headings**: with the month row gone, nothing would say which month a day is in,
    so each month gets a `label` heading in the list. Interpreted, for the owner to check.
 3. **Empty state**: start-aligned (StateBlock) where Figma centres, and no ghost day.
-4. **Day view**: no FavouriteToggle and no Report, so the entries sit 56 closer per entry.
+4. **Day view**: no Report link. The FavouriteToggle is drawn (part 2), its label in
+   sentence-case `body` where Figma's widths imply uppercase `label`.
 5. **D14**: the delete and Try again links are sentence case, as every secondary link is.
+6. **Chips**: 96 higher than Figma (no month row yet); no Search chip.
+7. **Favourites empty**: the StateBlock's 24 inset, so the copy sits 24 in and the line wraps.
 
 ## Owed
 
-- Month row with Jump to (`until`), the All days / Favourites / Search chips, the favourite
-  bookmarks and FavouriteToggle, the "Your streak" link, and Report.
+- Month row with Jump to (`until`), the Search chip, the "Your streak" link, and Report.
+- The live-region announcements "Added to favourites" / "Removed from favourites"
+  (strings-proposed.md §6a): the toggle is a polite live region, so its new label is
+  announced, but the two announcement strings are not used yet.
 - The ghost day in the empty state, once it is a design-system component.
 - **R3, screen capture**: the partner's entries here are not protected on this branch. They
   are when PR #17 merges, because `EntryCard` Partner protects itself there. The DayCard is

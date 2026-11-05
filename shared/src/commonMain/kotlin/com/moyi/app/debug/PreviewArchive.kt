@@ -26,6 +26,13 @@ import kotlin.time.Duration.Companion.milliseconds
  * the newest day carries a long entry (states.md §6's 481-character case) for the day
  * view. Every shape the list draws is in it: revealed, solo with their words, my
  * tombstone, and a day still waiting (its partner entry locked, so it shows mine only).
+ *
+ * **Favourites**: three days start with one of my marks (Tunde's long entry on the
+ * newest day, mine on 28 August, Tunde's on 21 August), so the day cards carry the
+ * bookmark and the Favourites chip has something to show. Its third page holds no
+ * favourite but has a cursor (the contract's empty page), so the asking-past-it can
+ * be watched. Marking Tunde's entry on **Wednesday 27 August** always fails, so the
+ * revert and its line can be seen. Every other toggle succeeds after a moment.
  * Bound over the real repositories only in that build (KoinInit); nothing else sees it.
  */
 internal class PreviewArchiveRepository : ArchiveRepository {
@@ -40,13 +47,41 @@ internal class PreviewArchiveRepository : ArchiveRepository {
             3 -> ArchiveDay(date, BondDayStatus.PENDING_REVEAL, mine.copy(status = EntryStatus.SUBMITTED), PartnerEntry.Locked)
             else -> ArchiveDay(date, BondDayStatus.REVEALED, mine, theirs)
         }
+    }.mapIndexed { offset, day ->
+        when (offset) {
+            0 -> day.copy(markedByMe = setOf("preview-theirs-0"))
+            5 -> day.copy(markedByMe = setOf("preview-mine-5"))
+            12 -> day.copy(markedByMe = setOf("preview-theirs-12"))
+            else -> day
+        }
     }.toMutableList()
 
-    override suspend fun days(bondId: String, cursor: String?): Result<ArchivePage, DataError.Network> {
+    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean): Result<ArchivePage, DataError.Network> {
         delay(PREVIEW_LATENCY)
         val start = cursor?.toIntOrNull() ?: 0
         val end = minOf(start + PAGE_SIZE, days.size)
-        return Result.Success(ArchivePage(days.subList(start, end).toList(), nextCursor = end.takeIf { it < days.size }?.toString()))
+        // As the server: a favourites page reads the same window and keeps what holds a mark,
+        // so a window with none is an empty page that still has a cursor.
+        val window = days.subList(start, end).toList().let { page -> if (favourites) page.filter { it.markedByMe.isNotEmpty() } else page }
+        return Result.Success(ArchivePage(window, nextCursor = end.takeIf { it < days.size }?.toString()))
+    }
+
+    override suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network> {
+        delay(MARK_LATENCY)
+        if (entryId == FAILING_MARK) return Result.Failure(DataError.Network.Unknown)
+        val index = days.indexOfFirst { it.myEntry?.id == entryId || it.partnerEntry.idOf() == entryId }
+        if (index >= 0) {
+            val day = days[index]
+            days[index] = day.copy(markedByMe = if (favourite) day.markedByMe + entryId else day.markedByMe - entryId)
+        }
+        return Result.Success(Unit)
+    }
+
+    private fun PartnerEntry?.idOf(): String? = when (this) {
+        is PartnerEntry.Revealed -> id
+        is PartnerEntry.Submitted -> id
+        is PartnerEntry.Deleted -> id
+        else -> null
     }
 
     override suspend fun day(bondId: String, date: String): Result<ArchiveDay, DataError.Network> =
@@ -63,6 +98,10 @@ internal class PreviewArchiveRepository : ArchiveRepository {
         const val DAY_COUNT = 30
         const val PAGE_SIZE = 8
         val PREVIEW_LATENCY = 800.milliseconds
+        val MARK_LATENCY = 600.milliseconds
+
+        /** Tunde's entry on Wednesday 27 August (offset 6): its toggle always fails. */
+        const val FAILING_MARK = "preview-theirs-6"
 
         val PREVIEW_MINE = listOf(
             FakeCopy.MY_ENTRY,
