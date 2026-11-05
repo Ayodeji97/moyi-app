@@ -47,3 +47,29 @@ internal class SharedHold(private val onFirst: () -> Unit, private val onLast: (
         if (holders == 0) onLast()
     }
 }
+
+/**
+ * One [SharedHold] per [K] (on Android, per window): holders of the same key share
+ * the switch, and the entry is dropped when its last holder leaves. Nothing here
+ * outlives its holders, so a key such as a destroyed activity's window is not kept
+ * alive by this registry. Main thread only.
+ */
+internal class KeyedHolds<K : Any>(
+    private val onFirst: (K) -> Unit,
+    private val onLast: (K) -> Unit,
+) {
+    private val holds = HashMap<K, SharedHold>()
+
+    /** How many keys are held right now. */
+    val size: Int get() = holds.size
+
+    fun acquire(key: K) {
+        holds.getOrPut(key) { SharedHold(onFirst = { onFirst(key) }, onLast = { onLast(key) }) }.acquire()
+    }
+
+    fun release(key: K) {
+        val hold = holds[key] ?: return
+        hold.release()
+        if (hold.holders == 0) holds.remove(key)
+    }
+}
