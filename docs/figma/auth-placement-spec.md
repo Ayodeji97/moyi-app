@@ -55,9 +55,9 @@ Section **Onboarding** 425:3, section **Account** 425:313. Every frame is 390 ×
 | Onboarding 3 · verify email · checking · RETURNING | 394:1422 | 394:1545 | PrimaryAction Sending, per states.md §1c |
 | Account 1 · sign in · IDLE | **344:18** | 362:1708 | |
 | Account 1 · sign in · KEYBOARD UP | 362:1284 | 362:1764 | |
-| Account 2 · forgot password · IDLE | 344:41 | 362:1720 | |
-| Account 3 · reset link sent · NON-DISCLOSING | 345:23 | 362:1729 | |
-| Account 4 · reset password · IDLE | 345:30 | 362:1738 | |
+| Account 2 · forgot password · IDLE | 344:41 | 362:1720 | Built 2026-11-05 (`ForgotPasswordScreen`) |
+| Account 3 · reset link sent · NON-DISCLOSING | 345:23 | 362:1729 | Built 2026-11-05 (`ResetLinkSentScreen`) |
+| Account 4 · reset password · IDLE | 345:30 | 362:1738 | Built 2026-11-05 (`ResetPasswordScreen`), with the paste-code field first (missing-components §6a) |
 | Account 5 · unverified gate · BLOCKED | 345:46 | 362:1746 | Root screen with no back button. Eyebrow sits at y 24 |
 | Account 6 · rate limited · PAUSED | 345:53 | 362:1755 | This is the sign-in error state that exists in Figma |
 | Splash · COLD START | 379:5 | 379:8 | Section "Launch" 425:1854. Wordmark 113×48 at 138.5, 398 |
@@ -208,12 +208,16 @@ Field-level validation (a malformed email) uses the Field Error variant: a 2 px 
   - intro (heading plus a 2-line body) at 171.
   - Field · email (83, helper hidden) at y 292.
   - action (16, 772): PrimaryAction only.
-- **Reset link sent (345:23):** intro at 171. The action holds one secondary link (123 wide), centred at y 772.
+  - Built 2026-11-05: heading and body 16 apart, the field 24 under the body.
+- **Reset link sent (345:23):** intro at 171. The action holds one secondary link (123 wide), centred at y 772. Built 2026-11-05; the link reads "Choose a new password".
 - **Reset password (345:30):**
   - heading at 171.
   - Field · new password (115) at 228.
   - "consequence" body text, 2 lines, at 367.
   - PrimaryAction at y 772.
+  - Built 2026-11-05 with the paste-code field (NEW, not in Figma) 24 under the heading and the
+    password 24 below it, so everything after the heading moves down by one field. The
+    consequence stays 24 under the password, above the action.
 - **Unverified gate (345:46):**
   - No header (Root).
   - eyebrow at y 24, content starting at 59, intro at 107 (heading plus a 3-line body, 72).

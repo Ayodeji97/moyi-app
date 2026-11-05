@@ -26,4 +26,11 @@ class AuthRouteTest {
         val route = LoginRoute(email = email, sessionEnded = true)
         assertEquals(route, Json.decodeFromString<LoginRoute>(Json.encodeToString(route)))
     }
+
+    @Test
+    fun theResetRoutesSurviveTheirSerializers() {
+        assertEquals(ForgotPasswordRoute(email), Json.decodeFromString<ForgotPasswordRoute>(Json.encodeToString(ForgotPasswordRoute(email))))
+        assertEquals(ResetLinkSentRoute(email), Json.decodeFromString<ResetLinkSentRoute>(Json.encodeToString(ResetLinkSentRoute(email))))
+        assertEquals(ResetPasswordRoute(email), Json.decodeFromString<ResetPasswordRoute>(Json.encodeToString(ResetPasswordRoute(email))))
+    }
 }

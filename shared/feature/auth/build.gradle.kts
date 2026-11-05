@@ -29,6 +29,10 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+        // Compose UI tests run on iOS (Skiko), as in the design system: the reset screens.
+        iosTest.dependencies {
+            implementation(libs.compose.uiTest)
+        }
     }
 }
 

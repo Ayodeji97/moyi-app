@@ -8,6 +8,9 @@ import androidx.navigation.toRoute
 import com.moyi.app.feature.auth.home.HomePlaceholderRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
+import com.moyi.app.feature.auth.reset.ForgotPasswordRoot
+import com.moyi.app.feature.auth.reset.ResetLinkSentScreen
+import com.moyi.app.feature.auth.reset.ResetPasswordRoot
 import com.moyi.app.feature.auth.verify.VerifyRoot
 import kotlinx.serialization.Serializable
 
@@ -20,6 +23,22 @@ data object RegisterRoute
 
 @Serializable
 data class VerifyRoute(val email: String)
+
+/** Forgot password. [email] is prefilled from sign in's email field (possibly empty). */
+@Serializable
+data class ForgotPasswordRoute(val email: String = "")
+
+/**
+ * Reset link sent. [email] is carried on to Choose a new password, which signs
+ * in with it; the screen itself never shows it (it must read the same whether
+ * or not the address has an account).
+ */
+@Serializable
+data class ResetLinkSentRoute(val email: String)
+
+/** Choose a new password. [email] is the address the link was asked for, used to sign in after. */
+@Serializable
+data class ResetPasswordRoute(val email: String)
 
 /** TEMPORARY: the signed-in placeholder, until Today exists. */
 @Serializable
@@ -36,6 +55,14 @@ data object HomePlaceholderRoute
  * - Verify → 200 replaces the whole stack with sign in, email prefilled: the
  *   account is done, so back must not return to sign up.
  * - Sign in → success replaces the stack with the placeholder ([onSignedIn]).
+ * - Sign in → "I forgot my password" pushes Forgot password, prefilled with
+ *   sign in's email. Forgot → 202 pushes Reset link sent; Reset link sent →
+ *   "Choose a new password" pushes Choose a new password. Back pops one at a
+ *   time: reset → sent → forgot (which kept its field) → sign in.
+ * - Choose a new password → saved and signed in: [onSignedIn], as sign in.
+ *   Saved but the sign-in failed: the whole stack is replaced with sign in,
+ *   email prefilled, as after verifying: the old password is gone, so back
+ *   must not return into the reset.
  */
 fun NavGraphBuilder.authGraph(
     navController: NavController,
@@ -48,6 +75,7 @@ fun NavGraphBuilder.authGraph(
             sessionEnded = route.sessionEnded,
             onNavigateToHome = onSignedIn,
             onNavigateToRegister = { navController.navigate(RegisterRoute) },
+            onNavigateToForgotPassword = { email -> navController.navigate(ForgotPasswordRoute(email)) },
             onBack = if (navController.previousBackStackEntry != null) ({ navController.navigateUp() }) else null,
         )
     }
@@ -62,11 +90,31 @@ fun NavGraphBuilder.authGraph(
         val route = entry.toRoute<VerifyRoute>()
         VerifyRoot(
             email = route.email,
-            onNavigateToLogin = { email ->
-                navController.navigate(LoginRoute(email = email)) {
-                    popUpTo(navController.graph.id) { inclusive = true }
-                }
-            },
+            onNavigateToLogin = { email -> navController.replaceStackWithLogin(email) },
+            onNavigateBack = { navController.navigateUp() },
+        )
+    }
+    composable<ForgotPasswordRoute> { entry ->
+        val route = entry.toRoute<ForgotPasswordRoute>()
+        ForgotPasswordRoot(
+            initialEmail = route.email,
+            onNavigateToLinkSent = { email -> navController.navigate(ResetLinkSentRoute(email)) },
+            onNavigateBack = { navController.navigateUp() },
+        )
+    }
+    composable<ResetLinkSentRoute> { entry ->
+        val route = entry.toRoute<ResetLinkSentRoute>()
+        ResetLinkSentScreen(
+            onBack = { navController.navigateUp() },
+            onChooseNewPassword = { navController.navigate(ResetPasswordRoute(route.email)) },
+        )
+    }
+    composable<ResetPasswordRoute> { entry ->
+        val route = entry.toRoute<ResetPasswordRoute>()
+        ResetPasswordRoot(
+            email = route.email,
+            onNavigateToHome = onSignedIn,
+            onNavigateToLogin = { email -> navController.replaceStackWithLogin(email) },
             onNavigateBack = { navController.navigateUp() },
         )
     }
@@ -90,5 +138,12 @@ internal fun NavController.backToLogin() {
         navigateUp()
     } else {
         navigate(LoginRoute()) { popUpTo<RegisterRoute> { inclusive = true } }
+    }
+}
+
+/** Sign in, email prefilled, as the only screen: after verifying, or after a reset whose sign-in failed. */
+internal fun NavController.replaceStackWithLogin(email: String) {
+    navigate(LoginRoute(email = email)) {
+        popUpTo(graph.id) { inclusive = true }
     }
 }
