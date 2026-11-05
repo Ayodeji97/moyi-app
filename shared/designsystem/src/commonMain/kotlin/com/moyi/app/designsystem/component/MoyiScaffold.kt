@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -109,6 +110,11 @@ fun MoyiScaffold(
      */
     header: (@Composable () -> Unit)? = null,
     /**
+     * Text beside the back target, in `label` (the Archive day view's date, Figma
+     * 438:1466 at x 48). Only drawn with [onBack]. Not a title: it names the day.
+     */
+    backLabel: String? = null,
+    /**
      * False when the screen lays out and scrolls its content itself, for example
      * to centre it vertically when it fits (Today, Reveal). The content then gets
      * the full remaining height with no scroll from here.
@@ -140,7 +146,14 @@ fun MoyiScaffold(
                 ),
         ) {
             if (onBack != null) {
-                BackAffordance(onBack)
+                if (backLabel == null) {
+                    BackAffordance(onBack)
+                } else {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        BackAffordance(onBack)
+                        MoyiText(text = backLabel, role = TextRole.Label)
+                    }
+                }
                 Spacer(Modifier.height(itemSpacing))
             } else if (onClose != null) {
                 CloseAffordance(onClose)

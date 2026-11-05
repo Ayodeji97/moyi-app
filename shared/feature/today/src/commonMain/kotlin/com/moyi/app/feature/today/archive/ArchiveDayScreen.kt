@@ -1,0 +1,166 @@
+package com.moyi.app.feature.today.archive
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.ConfirmDialog
+import com.moyi.app.designsystem.component.EntryCard
+import com.moyi.app.designsystem.component.EntryCardVariant
+import com.moyi.app.designsystem.component.InlineError
+import com.moyi.app.designsystem.component.MoyiScaffold
+import com.moyi.app.designsystem.component.StateBlock
+import com.moyi.app.designsystem.component.TextLink
+import com.moyi.app.designsystem.presentation.ObserveAsEvents
+import com.moyi.app.feature.today.common.FakeCopy
+import com.moyi.app.feature.today.common.dayHeader
+import com.moyi.app.feature.today.resources.Res
+import com.moyi.app.feature.today.resources.delete_cancel
+import com.moyi.app.feature.today.resources.delete_confirm
+import com.moyi.app.feature.today.resources.delete_heading
+import com.moyi.app.feature.today.resources.delete_line
+import com.moyi.app.feature.today.resources.today_action_failed
+import com.moyi.app.feature.today.resources.today_author_partner
+import com.moyi.app.feature.today.resources.today_author_you
+import com.moyi.app.feature.today.resources.today_delete
+import com.moyi.app.feature.today.resources.today_error_action
+import com.moyi.app.feature.today.resources.today_error_heading
+import com.moyi.app.feature.today.resources.today_error_line
+import com.moyi.app.feature.today.resources.today_tombstone_line
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
+
+@Composable
+fun ArchiveDayRoot(
+    date: String,
+    onBack: () -> Unit,
+    viewModel: ArchiveDayViewModel = koinViewModel { parametersOf(date) },
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            ArchiveDayEvent.NavigateBack -> onBack()
+        }
+    }
+    ArchiveDayScreen(state = state, onAction = viewModel::onAction)
+}
+
+/**
+ * The day view (Figma 438:1462; long entry 243:2). The back target and the day,
+ * "Tuesday · 2 September" as on Today, in one row at y 24; the content from 88:
+ * the partner's entry, then mine, 16 apart, **in full**, scrolling (states.md §6: a
+ * 481-character entry runs to about 2.1 screens). Then "Delete what you wrote" on my
+ * live entry of a revealed day, in `danger` with its underline.
+ *
+ * Owed and not drawn: the FavouriteToggle under each entry (664:1939) and the
+ * Report link in the header (617:1835; the backend has no report endpoint).
+ */
+@Composable
+fun ArchiveDayScreen(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
+    when (state.load) {
+        ArchiveLoad.Loading -> Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
+        ArchiveLoad.Failed -> MoyiScaffold(onBack = { onAction(ArchiveDayAction.OnBackClick) }, scrollContent = false) {
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                StateBlock(
+                    heading = stringResource(Res.string.today_error_heading),
+                    line = stringResource(Res.string.today_error_line),
+                    actionLabel = stringResource(Res.string.today_error_action),
+                    onAction = { onAction(ArchiveDayAction.OnRetryClick) },
+                )
+            }
+        }
+        ArchiveLoad.Ready -> Day(state, onAction)
+    }
+}
+
+@Composable
+private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
+    val day = state.day ?: return
+    MoyiScaffold(
+        onBack = { onAction(ArchiveDayAction.OnBackClick) },
+        backLabel = dayHeader(day.date),
+    ) {
+        // TODO(#17): the partner's words are protected from screen capture there (R3);
+        //  this EntryCard gains it when #17 merges.
+        day.partnerEntry?.let { words ->
+            EntryCard(
+                authorLabel = stringResource(Res.string.today_author_partner, state.partnerName.orEmpty()),
+                text = words,
+                variant = EntryCardVariant.Partner,
+            )
+        }
+        if (day.myEntry != null) {
+            EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry)
+        } else if (day.myTombstone) {
+            // states.md Appendix: the tombstone is labelled "From you", never the partner.
+            EntryCard(
+                authorLabel = stringResource(Res.string.today_author_you),
+                text = stringResource(Res.string.today_tombstone_line),
+                variant = EntryCardVariant.Tombstone,
+            )
+        }
+        if (state.actionFailed) {
+            InlineError(stringResource(Res.string.today_action_failed))
+        }
+        if (day.canDelete) {
+            TextLink(
+                text = stringResource(Res.string.today_delete),
+                onClick = { onAction(ArchiveDayAction.OnDeleteClick) },
+                destructive = true,
+                enabled = !state.deleting,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Spacer(Modifier.height(MoyiTheme.spacing.md))
+    }
+    if (state.confirmingDelete) {
+        // D11, as on Today: the platform's confirm, and the line that is never a read receipt.
+        ConfirmDialog(
+            title = stringResource(Res.string.delete_heading),
+            message = stringResource(Res.string.delete_line, state.partnerName.orEmpty()),
+            confirmLabel = stringResource(Res.string.delete_confirm),
+            dismissLabel = stringResource(Res.string.delete_cancel),
+            onConfirm = { onAction(ArchiveDayAction.OnDeleteConfirm) },
+            onDismiss = { onAction(ArchiveDayAction.OnDeleteDismiss) },
+            destructive = true,
+        )
+    }
+}
+
+// ---- Previews ----
+
+private fun previewDay(tombstone: Boolean = false) = ArchiveDayState(
+    load = ArchiveLoad.Ready,
+    date = FakeCopy.DATE,
+    partnerName = FakeCopy.PARTNER_NAME,
+    day = ArchiveDayUi(
+        date = FakeCopy.DATE,
+        myEntry = FakeCopy.MY_ENTRY.takeUnless { tombstone },
+        myTombstone = tombstone,
+        myEntryId = "e1",
+        partnerEntry = FakeCopy.PARTNER_ENTRY,
+        canDelete = !tombstone,
+    ),
+)
+
+@Preview
+@Composable
+private fun ArchiveDayPreview() {
+    MoyiTheme(darkTheme = true) { ArchiveDayScreen(previewDay(), onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun ArchiveDayTombstonePreview() {
+    MoyiTheme(darkTheme = false) { ArchiveDayScreen(previewDay(tombstone = true), onAction = {}) }
+}

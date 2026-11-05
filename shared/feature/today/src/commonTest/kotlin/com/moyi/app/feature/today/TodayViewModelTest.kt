@@ -99,6 +99,16 @@ class TodayViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun theCalendarTargetOpensTheArchive() = runTest {
+        loop.show(dayView(TodayStatus.NotWritten))
+        collectState()
+        viewModel.events.test {
+            viewModel.onAction(TodayAction.OnArchiveClick)
+            assertEquals(TodayEvent.NavigateToArchive, awaitItem())
+        }
+    }
+
+    @Test
     fun aDayThatOpenedInAnEarlierVisitDoesNotPlayAgain() = runTest {
         ledger.firstShowing("bond-1", DAY)
         collectState()
