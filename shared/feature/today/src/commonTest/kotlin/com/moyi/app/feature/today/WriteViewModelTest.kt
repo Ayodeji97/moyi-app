@@ -118,6 +118,56 @@ class WriteViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun tryAgainWithTheSameWordsAndTheSamePromptReplaysTheSameRequest() {
+        loop.submitResult = WriteResult.Failed
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnTextChange("You made the tea."))
+        vm.onAction(WriteAction.OnSubmit)
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(
+            List(2) { FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1") },
+            loop.submits,
+        )
+    }
+
+    @Test
+    fun dismissingThePromptAfterAFailureMakesTheRetryANewSend() {
+        // The same key with a different body is 422 (contract, Idempotency-Key): a retry that
+        // drops the prompt is a different body, so it needs its own key. After a lost success
+        // that key meets 409 ENTRY_ALREADY_EXISTS, and the loop reloads the day.
+        loop.submitResult = WriteResult.Failed
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnTextChange("You made the tea."))
+        vm.onAction(WriteAction.OnSubmit)
+        vm.onAction(WriteAction.OnDismissPrompt)
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(
+            listOf(
+                FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1"),
+                FakeDailyLoop.Submit("You made the tea.", null, "key-2"),
+            ),
+            loop.submits,
+        )
+
+        // That new send, retried unchanged, keeps its own key.
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(FakeDailyLoop.Submit("You made the tea.", null, "key-2"), loop.submits.last())
+    }
+
+    @Test
+    fun tryAgainWithTheSameEditReusesTheKeyAndAChangedEditDoesNot() {
+        written("Already written.")
+        loop.editResult = WriteResult.Failed
+        val vm = viewModel(editing = true)
+        vm.onAction(WriteAction.OnTextChange("Already written, and more."))
+        vm.onAction(WriteAction.OnSubmit)
+        vm.onAction(WriteAction.OnSubmit)
+        vm.onAction(WriteAction.OnTextChange("Already written, and more again."))
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(listOf("key-1", "key-1", "key-2"), loop.edits.map { it.key })
+    }
+
+    @Test
     fun savingAnEditSendsAnEditNotASecondEntry() = runTest {
         written("Already written.")
         val vm = viewModel(editing = true)

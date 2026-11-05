@@ -54,10 +54,13 @@ class WriteViewModel(
     val events = _events.receiveAsFlow()
 
     /**
-     * The key of the send that has not yet succeeded, and the words it carried. A retry
-     * of the same words is the same send, so it reuses the key: if the first attempt
-     * reached the server and only its answer was lost, the server replays it instead of
-     * writing twice (doc 06 §1). Different words are a different send, with a new key.
+     * The key of the send that has not yet succeeded, and everything it carried: the words
+     * and the prompt id actually sent. A retry of the identical payload is the same send, so
+     * it reuses the key: if the first attempt reached the server and only its answer was
+     * lost, the server replays it instead of writing twice (doc 06 §1). Any change, the words
+     * or a prompt dismissed since, is a different send with a new key, because the contract
+     * answers the same key with a different body with 422. After a lost success that new key
+     * meets 409 ENTRY_ALREADY_EXISTS, and the loop reloads the day, so Today shows the entry.
      */
     private var pending: Pending? = null
 
@@ -105,14 +108,16 @@ class WriteViewModel(
     private fun submit() {
         val current = _state.value
         if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
-        val key = pending?.takeIf { it.text == current.text }?.key ?: newIdempotencyKey()
-        pending = Pending(current.text, key)
+        // An edit (PATCH) sends only the words; a new entry sends the prompt id unless dismissed.
+        val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null })
+        val key = pending?.takeIf { it.payload == payload }?.key ?: newIdempotencyKey()
+        pending = Pending(payload, key)
         _state.update { it.copy(submit = WriteSubmit.Sending) }
         viewModelScope.launch {
             val result = if (current.editing) {
-                loop.edit(current.text, key)
+                loop.edit(payload.text, key)
             } else {
-                loop.submit(current.text, promptId.takeIf { current.prompt != null }, key)
+                loop.submit(payload.text, payload.promptId, key)
             }
             when (result) {
                 WriteResult.Saved -> {
@@ -173,8 +178,17 @@ class WriteViewModel(
         return words.repeat(length / words.length + 1).take(length)
     }
 
-    /** Never prints the words. */
-    private class Pending(val text: String, val key: String)
+    /** The request body a key is bound to. Never prints the words. */
+    private class Payload(val text: String, val promptId: String?) {
+        override fun equals(other: Any?): Boolean =
+            other is Payload && other.text == text && other.promptId == promptId
+
+        override fun hashCode(): Int = 31 * text.hashCode() + promptId.hashCode()
+
+        override fun toString(): String = "Payload(promptId=$promptId)"
+    }
+
+    private class Pending(val payload: Payload, val key: String)
 
     companion object {
         private const val DEBUG_STEPS = 7
