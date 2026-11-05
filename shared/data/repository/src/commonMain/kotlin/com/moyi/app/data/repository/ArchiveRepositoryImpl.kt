@@ -1,13 +1,16 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.apis.DaysControllerApi
+import com.moyi.app.api.apis.FavouritesControllerApi
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
+import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.safeApiCall
+import com.moyi.app.data.network.safeApiCallEmpty
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.ArchiveRepository
@@ -25,9 +28,18 @@ class ArchiveRepositoryImpl(
     config: ApiConfig,
 ) : ArchiveRepository {
     private val daysApi = DaysControllerApi(config.origin, authedClient.client)
+    private val favouritesApi = FavouritesControllerApi(config.origin, authedClient.client)
 
-    override suspend fun days(bondId: String, cursor: String?): Result<ArchivePage, DataError.Network> =
-        safeApiCall { daysApi.days(bondId, limit = PAGE_SIZE, cursor = cursor) }.mapOrSerialization { it.toArchivePage() }
+    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean): Result<ArchivePage, DataError.Network> =
+        safeApiCall {
+            // `favourites` only when asked for: the unfiltered request stays exactly as it was.
+            daysApi.days(bondId, limit = PAGE_SIZE, cursor = cursor, favourites = favourites.takeIf { it })
+        }.mapOrSerialization { it.toArchivePage() }
+
+    override suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network> =
+        safeApiCallEmpty {
+            if (favourite) favouritesApi.favouriteEntry(entryId) else favouritesApi.unfavouriteEntry(entryId)
+        }
 
     override suspend fun day(bondId: String, date: String): Result<ArchiveDay, DataError.Network> {
         // The contract answers 404 DAY_NOT_FOUND for "a value that is not a date"; the

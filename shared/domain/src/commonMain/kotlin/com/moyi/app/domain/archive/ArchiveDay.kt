@@ -22,6 +22,15 @@ data class ArchiveDay(
     val myEntry: MyEntry?,
     /** The other member's, in whatever shape the server let me see. A locked one carries no words. */
     val partnerEntry: PartnerEntry?,
+    /**
+     * The ids of this day's entries that **I** have favourited (FR-093, states.md §6),
+     * mine or theirs, from each entry's `favourited`, which the server only ever sets
+     * for the caller's own bookmarks. A tombstone is never in it.
+     *
+     * **There is deliberately no way to say the partner favourited something**: a
+     * favourite is private to whoever marked it, so nothing here can carry theirs.
+     */
+    val markedByMe: Set<String> = emptySet(),
 )
 
 /**
