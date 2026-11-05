@@ -1,4 +1,4 @@
-# Archive, parts 1 and 2, against Figma
+# Archive, parts 1 to 3, against Figma
 
 The Archive list, its empty state and the day view as built, measured on a running app and
 compared with the Figma frames in section 425:317. The screens run on preview data in the
@@ -11,6 +11,13 @@ revealed entry, the day card's bookmark and the Favourites empty state, against
 2026-11-05 on the same emulator. **No Figma screenshot was read for part 2**: the one
 attempt (440:1462) hit the Starter-plan rate limit, so 440:1462 / 440:1516, 440:1570 /
 440:1621 and 438:1462 / 438:1497 were compared by geometry (`archive.xml`) only.
+
+Part 3 (Search) adds the third chip, the search field in the navigation block's top slot,
+results paged by cursor and the no-results message, against
+`GET …/search?q=…&limit=20&cursor=…`. **No Figma screenshot was read for part 3 either**:
+the one attempt (508:1509) hit the Starter-plan rate limit, so 508:1509 / 511:1740 (RESULTS),
+511:1518 / 511:1777 (KEYBOARD UP) and 511:1691 / 511:1945 (no results) were compared by
+geometry (`archive.xml`) only. The keyboard frames (511:1579, 511:1879) are the OS's.
 
 ## Sources, and what they are worth
 
@@ -52,6 +59,15 @@ August) and a day still waiting with their entry locked (30 August, mine only).
   failure line appears under it. In Favourites, a long press on "Your days" shows the
   Favourites empty state.
 
+- **Search**: tap **Search** (the third chip; absent over an empty archive). The field
+  takes focus and the keyboard comes up over the unfiltered list. Type **flat**: after
+  300 ms of rest and the preview's 800 ms, 13 days, in two pages (scroll to see the second
+  load). Type **umbrella**: "Nothing matched that." with the query kept. Type a word, then
+  another before the first answers: only the last one's results appear. Tap a result,
+  then back: the query and the results are as they were. A long press on "Your days" in
+  Search steps to the empty and failed layouts (the failure is the inline error and Try
+  again under the chips).
+
 ## Results
 
 ### Archive · with entries (223:3)
@@ -85,6 +101,31 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 | Chip label | node names "All days", "Favourites" | `label`, so "ALL DAYS", "FAVOURITES" | the widths agree with `label` to the pixel; see "For you to check" in the PR |
 | List | y 336 | y 240 | 96 higher, as the chips |
 | Day cards | DayCard with the bookmark | the same DayCard, filtered to days holding my mark | matches |
+
+### Archive · search (RESULTS 508:1509 / 511:1740; KEYBOARD UP 511:1518 / 511:1777)
+
+Not yet measured on a device for this part unless the PR's Verified section says so; the
+Figma column is from `archive.xml`, the Built column from the code's own numbers.
+
+| Element | Figma | Built | |
+|---|---|---|---|
+| Navigation block | y 168, h 179: field 115, chips 16 under it | y 168: the field, `spacing.md` (16), the chips | matches |
+| Field · search | 358 x 115 at x 0, label, 56 box, helper | `Field` (Text): `label`, 56 box, the helper in muted `body` | the design-system Field, unchanged |
+| Field label / helper | "Search your days" / "Looks through everything you have both written." | the same, from states.md §6 | matches |
+| Chips | All days x 0 (100), Favourites x 108 (120), Search x 236 (89) | the same Chip, Search third, 8 apart | Search's width not measured |
+| List | y 371 (24 under the chips) | 24 under the chips | matches |
+| Month row | not drawn in search (the field replaces it) | not drawn (owed anyway) | matches |
+| Results | DayCards, the first two lines of each entry, no snippet, no highlight | the same DayCard, month headings as in All days | the open question of states.md §6 is left open |
+| KEYBOARD UP | field in Focus (`ink`, heavier stroke), empty, unfiltered list under it | focused on choosing Search, keyboard raised, unfiltered list | matches |
+
+### Archive · search, no results (511:1691; light 511:1945)
+
+| Element | Figma | Built | |
+|---|---|---|---|
+| Field | keeps the failing query | keeps it | matches |
+| Chips | drawn, Search selected | drawn, Search selected | the way back |
+| "Nothing matched that." | list y 0, x 0, h 33 | list y 24, x 24 | the StateBlock's 24 inset, as Favourites empty |
+| "Try another word, or go back to all days." | 16 under (y 49), h 24 | 16 under, at the StateBlock's inset | as above |
 
 ### Archive · favourites, empty (440:1570; light 440:1621)
 
@@ -132,12 +173,17 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 4. **Day view**: no Report link. The FavouriteToggle is drawn (part 2), its label in
    sentence-case `body` where Figma's widths imply uppercase `label`.
 5. **D14**: the delete and Try again links are sentence case, as every secondary link is.
-6. **Chips**: 96 higher than Figma (no month row yet); no Search chip.
+6. **Chips**: 96 higher than Figma (no month row yet) outside search; in search they sit
+   where Figma draws them, under the field.
 7. **Favourites empty**: the StateBlock's 24 inset, so the copy sits 24 in and the line wraps.
+8. **Search no results**: the same StateBlock inset, where Figma has the message flush at x 0.
+9. **Search failure**: not drawn in Figma; the inline Generic failure line and Try again
+   take the list's place, with the field and chips kept.
 
 ## Owed
 
-- Month row with Jump to (`until`), the Search chip, the "Your streak" link, and Report.
+- Month row with Jump to (`until`), the "Your streak" link, and Report.
+- Search results: a match-centred snippet or a highlight (states.md §6, open).
 - The live-region announcements "Added to favourites" / "Removed from favourites"
   (strings-proposed.md §6a): the toggle is a polite live region, so its new label is
   announced, but the two announcement strings are not used yet.

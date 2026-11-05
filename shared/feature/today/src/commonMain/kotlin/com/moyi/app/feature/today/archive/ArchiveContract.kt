@@ -13,8 +13,11 @@ enum class ArchiveLoad {
     Ready,
 }
 
-/** The Archive's filters (states.md §6). Search, the third chip, is the next slice's. */
-enum class ArchiveFilter { AllDays, Favourites }
+/**
+ * The Archive's filters (states.md §6), in the order of the three routes: All days,
+ * Favourites, and Search, the third, for word recall (FR-091).
+ */
+enum class ArchiveFilter { AllDays, Favourites, Search }
 
 /** One month of days, newest first (states.md §6: month-grouped). */
 @Immutable
@@ -47,8 +50,26 @@ data class ArchiveState(
      * shown once a chip has been chosen, since they are the way back.
      */
     val showFilters: Boolean = false,
+    /**
+     * The Search chip is drawn: the archive is known to hold a day. **Hidden when the
+     * archive is empty** (states.md §6): there is nothing to search.
+     */
+    val showSearch: Boolean = false,
+    /** What is in the search field, as typed. Kept through the day view and back. */
+    val query: String = "",
+    /** The field should take focus and raise the keyboard (once, on choosing Search). */
+    val focusSearch: Boolean = false,
 ) {
     val isEmpty: Boolean get() = load == ArchiveLoad.Ready && months.isEmpty()
+
+    /** A query was searched and nothing matched: the message block replaces the list, the query stays. */
+    val noResults: Boolean get() = isEmpty && filter == ArchiveFilter.Search && query.isNotBlank()
+
+    // The query is the person's own words: never in a log (CLAUDE.md, Code).
+    override fun toString(): String =
+        "ArchiveState(load=$load, months=$months, partnerName=$partnerName, canLoadMore=$canLoadMore, pageFailed=$pageFailed, pages=$pages, " +
+            "filter=$filter, showFilters=$showFilters, showSearch=$showSearch, " +
+            "query=${if (query.isEmpty()) "" else "(redacted)"}, focusSearch=$focusSearch)"
 }
 
 sealed interface ArchiveAction {
@@ -62,8 +83,19 @@ sealed interface ArchiveAction {
     data object OnRetryPageClick : ArchiveAction
     data class OnDayClick(val date: LocalDate) : ArchiveAction
 
-    /** A chip: reloads the list, with `favourites=true` for [ArchiveFilter.Favourites]. */
+    /**
+     * A chip: reloads the list, with `favourites=true` for [ArchiveFilter.Favourites].
+     * [ArchiveFilter.Search] shows the field, focused, over the unfiltered list.
+     */
     data class OnFilterClick(val filter: ArchiveFilter) : ArchiveAction
+
+    /** The search field changed. Searched once it has rested for [SEARCH_DEBOUNCE]. */
+    data class OnQueryChange(val query: String) : ArchiveAction {
+        override fun toString(): String = "OnQueryChange(query=(redacted))"
+    }
+
+    /** The screen has focused the field and raised the keyboard. */
+    data object OnSearchFocused : ArchiveAction
 
     /** The empty state's Write (Figma 223:25's PrimaryAction). */
     data object OnWriteClick : ArchiveAction

@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,14 +27,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Chip
 import com.moyi.app.designsystem.component.ChipRow
+import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
@@ -57,6 +64,11 @@ import com.moyi.app.feature.today.resources.archive_favourites_empty_line
 import com.moyi.app.feature.today.resources.archive_favourites_empty_privacy
 import com.moyi.app.feature.today.resources.archive_filter_all
 import com.moyi.app.feature.today.resources.archive_filter_favourites
+import com.moyi.app.feature.today.resources.archive_filter_search
+import com.moyi.app.feature.today.resources.archive_search_helper
+import com.moyi.app.feature.today.resources.archive_search_label
+import com.moyi.app.feature.today.resources.archive_search_none_heading
+import com.moyi.app.feature.today.resources.archive_search_none_line
 import com.moyi.app.feature.today.resources.archive_empty_line
 import com.moyi.app.feature.today.resources.archive_title
 import com.moyi.app.feature.today.resources.today_action_failed
@@ -94,10 +106,13 @@ fun ArchiveRoot(
  * The Archive (Figma 223:3, empty 223:25). The back target at y 24, the title
  * "Your days" at 96 (24 under the back, as on every screen with one), then the list.
  *
- * Then the All days / Favourites chips (when there is anything to filter) and the list.
+ * Then the All days / Favourites / Search chips (when there is anything to filter) and the list.
+ * With Search chosen (Figma 508:1509, 511:1518, 511:1691), the search field takes the top
+ * of the navigation block, where the month row will be (states.md §6: they swap in the
+ * same slot), and the chips stay under it as the way back.
  *
- * Owed and **not drawn** (docs/figma/archive-check.md): the month row with "Jump to",
- * the Search chip and the "Your streak" link. Without the month row the chips start at
+ * Owed and **not drawn** (docs/figma/archive-check.md): the month row with "Jump to"
+ * and the "Your streak" link. Without the month row the chips start at
  * 168 and the list at 240, not Figma's 264 and 336, and each month is named by a
  * heading in the list instead of by the month row.
  *
@@ -125,13 +140,20 @@ fun ArchiveScreen(
                 .debugLongPress(if (debugTools) ({ onAction(ArchiveAction.OnDebugCycle) }) else null),
         )
         Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        if (state.showFilters && state.filter == ArchiveFilter.Search) {
+            SearchField(state.query, state.focusSearch, onAction)
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+        }
         if (state.showFilters) {
-            Filters(state.filter, onSelect = { onAction(ArchiveAction.OnFilterClick(it)) })
+            Filters(state.filter, state.showSearch, onSelect = { onAction(ArchiveAction.OnFilterClick(it)) })
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
         }
         when {
             state.load == ArchiveLoad.Loading -> Spacer(Modifier.fillMaxWidth().weight(1f))
+            state.load == ArchiveLoad.Failed && state.filter == ArchiveFilter.Search ->
+                SearchFailed(onRetry = { onAction(ArchiveAction.OnRetryClick) })
             state.load == ArchiveLoad.Failed -> Failed(onRetry = { onAction(ArchiveAction.OnRetryClick) })
+            state.noResults -> NoResults()
             state.isEmpty && state.filter == ArchiveFilter.Favourites -> NoFavourites()
             state.isEmpty -> Empty(onWrite = { onAction(ArchiveAction.OnWriteClick) })
             else -> DayList(state, onAction)
@@ -140,12 +162,69 @@ fun ArchiveScreen(
 }
 
 /**
- * Figma's filters row (440:1475): All days and Favourites, 8 apart. The third chip,
- * Search, is the next slice's and is not drawn. Figma puts the row under the month
- * jump (owed), so it sits where the month row would start, 24 under the title.
+ * `Field · Text` with its visible label and helper (states.md §6: placeholder-as-label is
+ * not allowed here either). Figma 508:1561: 358 x 115 at the top of the navigation block,
+ * the chips 16 under it. Choosing Search focuses it and raises the keyboard once; coming
+ * back from a day view keeps the query and does not raise the keyboard again.
  */
 @Composable
-private fun Filters(selected: ArchiveFilter, onSelect: (ArchiveFilter) -> Unit) {
+private fun SearchField(query: String, focus: Boolean, onAction: (ArchiveAction) -> Unit) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(focus) {
+        if (focus) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+            onAction(ArchiveAction.OnSearchFocused)
+        }
+    }
+    Field(
+        value = query,
+        onValueChange = { onAction(ArchiveAction.OnQueryChange(it)) },
+        label = stringResource(Res.string.archive_search_label),
+        helper = stringResource(Res.string.archive_search_helper),
+        modifier = Modifier.focusRequester(focusRequester),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        // The query is already being searched as it rests; the key only puts the keyboard away.
+        keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+    )
+}
+
+/**
+ * No results (Figma 511:1691): the failing query stays in the field, and this message
+ * block replaces the list. No back affordance of its own: the chips are the way back.
+ */
+@Composable
+private fun ColumnScope.NoResults() {
+    Column(Modifier.fillMaxWidth().weight(1f)) {
+        StateBlock(
+            heading = stringResource(Res.string.archive_search_none_heading),
+            line = stringResource(Res.string.archive_search_none_line),
+        )
+    }
+}
+
+/** A search that failed: the field and chips stay, with the Generic failure line and Try again. */
+@Composable
+private fun ColumnScope.SearchFailed(onRetry: () -> Unit) {
+    Column(Modifier.fillMaxWidth().weight(1f)) {
+        InlineError(stringResource(Res.string.today_action_failed))
+        TextLink(
+            text = stringResource(Res.string.today_error_action),
+            onClick = onRetry,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/**
+ * Figma's filters row (440:1475, 508:1522): All days, Favourites and Search, 8 apart.
+ * Search is left out while the archive is empty (states.md §6). Figma puts the row under
+ * the month jump (owed), so it sits where the month row would start, 24 under the title,
+ * or 16 under the search field when Search is chosen.
+ */
+@Composable
+private fun Filters(selected: ArchiveFilter, showSearch: Boolean, onSelect: (ArchiveFilter) -> Unit) {
     ChipRow(Modifier.fillMaxWidth()) {
         Chip(
             text = stringResource(Res.string.archive_filter_all),
@@ -157,6 +236,13 @@ private fun Filters(selected: ArchiveFilter, onSelect: (ArchiveFilter) -> Unit) 
             selected = selected == ArchiveFilter.Favourites,
             onClick = { onSelect(ArchiveFilter.Favourites) },
         )
+        if (showSearch || selected == ArchiveFilter.Search) {
+            Chip(
+                text = stringResource(Res.string.archive_filter_search),
+                selected = selected == ArchiveFilter.Search,
+                onClick = { onSelect(ArchiveFilter.Search) },
+            )
+        }
     }
 }
 
@@ -357,7 +443,7 @@ private fun previewDays(): List<ArchiveMonth> {
 private fun ArchiveListPreview() {
     MoyiTheme(darkTheme = true) {
         ArchiveScreen(
-            ArchiveState(load = ArchiveLoad.Ready, months = previewDays(), partnerName = FakeCopy.PARTNER_NAME, showFilters = true),
+            ArchiveState(load = ArchiveLoad.Ready, months = previewDays(), partnerName = FakeCopy.PARTNER_NAME, showFilters = true, showSearch = true),
             onAction = {},
         )
     }
@@ -383,6 +469,36 @@ private fun ArchiveListLightPreview() {
     MoyiTheme(darkTheme = false) {
         ArchiveScreen(
             ArchiveState(load = ArchiveLoad.Ready, months = previewDays(), partnerName = FakeCopy.PARTNER_NAME, pageFailed = true),
+            onAction = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ArchiveSearchResultsPreview() {
+    MoyiTheme(darkTheme = true) {
+        ArchiveScreen(
+            ArchiveState(
+                load = ArchiveLoad.Ready,
+                months = previewDays(),
+                partnerName = FakeCopy.PARTNER_NAME,
+                filter = ArchiveFilter.Search,
+                showFilters = true,
+                showSearch = true,
+                query = "flat",
+            ),
+            onAction = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ArchiveSearchNoResultsPreview() {
+    MoyiTheme(darkTheme = false) {
+        ArchiveScreen(
+            ArchiveState(load = ArchiveLoad.Ready, filter = ArchiveFilter.Search, showFilters = true, showSearch = true, query = "umbrella"),
             onAction = {},
         )
     }
