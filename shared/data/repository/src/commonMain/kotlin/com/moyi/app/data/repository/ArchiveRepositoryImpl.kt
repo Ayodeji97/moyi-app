@@ -2,6 +2,7 @@ package com.moyi.app.data.repository
 
 import com.moyi.app.api.apis.DaysControllerApi
 import com.moyi.app.api.apis.FavouritesControllerApi
+import com.moyi.app.api.apis.SearchControllerApi
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
@@ -29,12 +30,19 @@ class ArchiveRepositoryImpl(
 ) : ArchiveRepository {
     private val daysApi = DaysControllerApi(config.origin, authedClient.client)
     private val favouritesApi = FavouritesControllerApi(config.origin, authedClient.client)
+    private val searchApi = SearchControllerApi(config.origin, authedClient.client)
 
     override suspend fun days(bondId: String, cursor: String?, favourites: Boolean): Result<ArchivePage, DataError.Network> =
         safeApiCall {
             // `favourites` only when asked for: the unfiltered request stays exactly as it was.
             daysApi.days(bondId, limit = PAGE_SIZE, cursor = cursor, favourites = favourites.takeIf { it })
         }.mapOrSerialization { it.toArchivePage() }
+
+    // The same DaysResponse as the feed, so the same mappers: a search result is read
+    // exactly as a listed day is, and the partner's words exactly as Today reads them.
+    override suspend fun search(bondId: String, query: String, cursor: String?): Result<ArchivePage, DataError.Network> =
+        safeApiCall { searchApi.search(bondId, q = query, limit = PAGE_SIZE, cursor = cursor) }
+            .mapOrSerialization { it.toArchivePage() }
 
     override suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network> =
         safeApiCallEmpty {

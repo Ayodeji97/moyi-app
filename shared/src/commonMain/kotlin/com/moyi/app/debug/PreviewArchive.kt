@@ -33,6 +33,14 @@ import kotlin.time.Duration.Companion.milliseconds
  * favourite but has a cursor (the contract's empty page), so the asking-past-it can
  * be watched. Marking Tunde's entry on **Wednesday 27 August** always fails, so the
  * revert and its line can be seen. Every other toggle succeeds after a moment.
+ *
+ * **Search** answers as the server does, over the same thirty days: a day is found when
+ * one entry I can read in full (mine, or theirs once shown to me) holds every word of the
+ * query, whole words, without case. Tunde's locked words on 30 August are never found:
+ * "flat" matches his entry on every other odd day from 28 August back (13 days, two
+ * pages). 30 August, where his entry is still locked, is never among them.
+ * Eight days a page with a cursor, after the same 800 ms, so a query typed over a slow
+ * answer can be watched replacing it. "flat" has enough results to page.
  * Bound over the real repositories only in that build (KoinInit); nothing else sees it.
  */
 internal class PreviewArchiveRepository : ArchiveRepository {
@@ -65,6 +73,20 @@ internal class PreviewArchiveRepository : ArchiveRepository {
         val window = days.subList(start, end).toList().let { page -> if (favourites) page.filter { it.markedByMe.isNotEmpty() } else page }
         return Result.Success(ArchivePage(window, nextCursor = end.takeIf { it < days.size }?.toString()))
     }
+
+    override suspend fun search(bondId: String, query: String, cursor: String?): Result<ArchivePage, DataError.Network> {
+        delay(PREVIEW_LATENCY)
+        val words = query.wordsOf()
+        val matched = days.filter { day ->
+            listOfNotNull(day.myEntry?.text, (day.partnerEntry as? PartnerEntry.Revealed)?.text, (day.partnerEntry as? PartnerEntry.Submitted)?.text)
+                .any { text -> text.wordsOf().containsAll(words) }
+        }
+        val start = cursor?.toIntOrNull() ?: 0
+        val end = minOf(start + PAGE_SIZE, matched.size)
+        return Result.Success(ArchivePage(matched.subList(minOf(start, end), end).toList(), nextCursor = end.takeIf { it < matched.size }?.toString()))
+    }
+
+    private fun String.wordsOf(): Set<String> = lowercase().split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }.toSet()
 
     override suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network> {
         delay(MARK_LATENCY)

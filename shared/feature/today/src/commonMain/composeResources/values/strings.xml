@@ -87,6 +87,15 @@
     <string name="archive_filter_all">All days</string>
     <!-- archive.filter.favourites (strings-proposed.md §6a). The second filter chip. -->
     <string name="archive_filter_favourites">Favourites</string>
+    <!-- states.md §6, route 3: "Search, demoted to a filter chip". The third filter chip. -->
+    <string name="archive_filter_search">Search</string>
+    <!-- states.md §6 Search row: the field's visible label. -->
+    <string name="archive_search_label">Search your days</string>
+    <!-- states.md §6 Search row: the field's helper. -->
+    <string name="archive_search_helper">Looks through everything you have both written.</string>
+    <!-- states.md §6 No results row: the message block that replaces the list. -->
+    <string name="archive_search_none_heading">Nothing matched that.</string>
+    <string name="archive_search_none_line">Try another word, or go back to all days.</string>
     <!-- archive.favourites.empty.heading (strings-proposed.md §6a; states.md §6 Favourites, empty). -->
     <string name="archive_favourites_empty_heading">No favourites yet.</string>
     <!-- archive.favourites.empty.line (strings-proposed.md §6a). -->

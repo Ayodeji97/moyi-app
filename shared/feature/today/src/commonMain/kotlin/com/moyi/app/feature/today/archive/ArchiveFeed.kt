@@ -50,22 +50,33 @@ class ArchiveFeed(
      * (nothing to keep). With [favourites], only the days holding an entry I favourited
      * (`favourites=true`); every later page of this load asks the same way.
      */
-    suspend fun loadFirst(favourites: Boolean = false) {
-        _state.value = FeedState(load = FeedLoad.Loading, favourites = favourites)
+    suspend fun loadFirst(favourites: Boolean = false) = loadFirst(FeedState(load = FeedLoad.Loading, favourites = favourites))
+
+    /**
+     * The first page of the days matching [query] (`GET …/search`), replacing whatever was
+     * loaded; every later page of this load is of the same search. Nothing is matched
+     * here: the results are only what the server returned, so the partner's words that
+     * are not revealed to me can never be found (they are not on the device either).
+     */
+    suspend fun search(query: String) = loadFirst(FeedState(load = FeedLoad.Loading, query = query))
+
+    private suspend fun loadFirst(asked: FeedState) {
+        _state.value = asked
         mutex.withLock {
             val startedIn = generation
             val bond = (loop.state.value as? DailyLoopState.Ready)?.day
             if (bond == null) {
-                _state.value = FeedState(load = FeedLoad.Failed, favourites = favourites)
+                _state.value = asked.copy(load = FeedLoad.Failed)
                 return
             }
-            val answer = archive.days(bond.bondId, favourites = favourites)
-            if (startedIn != generation || _state.value.favourites != favourites) return
+            val answer = archive.page(bond.bondId, asked, cursor = null)
+            // Stale: the Archive was left, or another load (a newer query, a chip) has
+            // replaced this one while it was on its way. Its answer is dropped.
+            if (startedIn != generation || !_state.value.sameLoadAs(asked)) return
             _state.value = when (answer) {
-                is Result.Failure -> FeedState(load = FeedLoad.Failed, favourites = favourites)
-                is Result.Success -> FeedState(
+                is Result.Failure -> asked.copy(load = FeedLoad.Failed)
+                is Result.Success -> asked.copy(
                     load = FeedLoad.Ready,
-                    favourites = favourites,
                     bondId = bond.bondId,
                     partnerName = bond.partnerName,
                     days = answer.data.days,
@@ -90,8 +101,8 @@ class ArchiveFeed(
             val current = _state.value
             val cursor = current.nextCursor ?: return
             val bondId = current.bondId ?: return
-            val answer = archive.days(bondId, cursor, favourites = current.favourites)
-            if (startedIn != generation || _state.value.favourites != current.favourites) return
+            val answer = archive.page(bondId, current, cursor)
+            if (startedIn != generation || !_state.value.sameLoadAs(current)) return
             _state.update {
                 when (answer) {
                     is Result.Failure -> it.copy(loadingMore = false, pageFailed = true)
@@ -131,13 +142,19 @@ class ArchiveFeed(
     }
 }
 
+/** The filtered list, the search or the plain feed, by what [asked] was loaded with. */
+private suspend fun ArchiveRepository.page(bondId: String, asked: FeedState, cursor: String?) =
+    asked.query?.let { search(bondId, it, cursor) } ?: days(bondId, cursor, favourites = asked.favourites)
+
 enum class FeedLoad { Loading, Failed, Ready }
 
-/** What the feed holds. Its `toString` names no words: [ArchiveDay]'s entries redact theirs. */
+/** What the feed holds. Its `toString` names no words: [ArchiveDay]'s entries redact theirs, and the query is redacted. */
 data class FeedState(
     val load: FeedLoad = FeedLoad.Loading,
     /** Loaded with `favourites=true`: only days holding an entry I favourited. */
     val favourites: Boolean = false,
+    /** Loaded from `GET …/search` with this `q`: only the days the server matched. Null for the feed. */
+    val query: String? = null,
     val bondId: String? = null,
     val partnerName: String? = null,
     val days: List<ArchiveDay> = emptyList(),
@@ -146,7 +163,15 @@ data class FeedState(
     val pageFailed: Boolean = false,
     /** Pages loaded so far: the list asks again near its end each time this moves. */
     val pages: Int = 0,
-)
+) {
+    /** The same list as [other] was asked for: same filter, same query. */
+    fun sameLoadAs(other: FeedState): Boolean = favourites == other.favourites && query == other.query
+
+    // The query is a person's own words: never in a log, like the entries.
+    override fun toString(): String =
+        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, bondId=$bondId, partnerName=$partnerName, " +
+            "days=$days, nextCursor=$nextCursor, loadingMore=$loadingMore, pageFailed=$pageFailed, pages=$pages)"
+}
 
 /**
  * A day as the Archive draws it, **from its entries, never its status** (the

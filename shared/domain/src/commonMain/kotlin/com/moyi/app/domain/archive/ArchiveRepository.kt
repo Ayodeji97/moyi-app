@@ -25,6 +25,23 @@ interface ArchiveRepository {
     ): Result<ArchivePage, DataError.Network>
 
     /**
+     * The days on which an entry the caller can read in full holds every word of [query]
+     * (`GET /bonds/{bondId}/search`, FR-091), newest first, in the same day shape as [days].
+     * Whole words, without case or accents. **The partner's words are matched only once
+     * revealed**: the server decides, and the client never searches anything itself.
+     *
+     * [query] is the trimmed text, 1 to [SEARCH_MAX_LENGTH] characters (`422
+     * VALIDATION_FAILED` otherwise). [cursor] is an earlier page's `nextCursor` of this same
+     * search, unchanged; **only a null cursor is the end**. The contract says the response
+     * is never to be stored, so it is held in memory only, as long as the Archive is open.
+     */
+    suspend fun search(
+        bondId: String,
+        query: String,
+        cursor: String? = null,
+    ): Result<ArchivePage, DataError.Network>
+
+    /**
      * One day, [date] in ISO form. `404 DAY_NOT_FOUND` for every date not in the
      * caller's archive, whatever the reason.
      */
@@ -38,3 +55,10 @@ interface ArchiveRepository {
      */
     suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network>
 }
+
+/**
+ * The contract's cap on `q`: 100 graphemes of the trimmed, NFKC-normalised text. Capping
+ * the field at 100 UTF-16 characters keeps every query under both that and the 1024-octet cap
+ * (a grapheme is at least one character, and 100 characters are at most 300 UTF-8 octets).
+ */
+const val SEARCH_MAX_LENGTH = 100
