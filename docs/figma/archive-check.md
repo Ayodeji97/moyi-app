@@ -104,19 +104,20 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 
 ### Archive · search (RESULTS 508:1509 / 511:1740; KEYBOARD UP 511:1518 / 511:1777)
 
-Not yet measured on a device for this part unless the PR's Verified section says so; the
-Figma column is from `archive.xml`, the Built column from the code's own numbers.
+Measured 2026-11-05 on the same Pixel 9a, `-PmoyiUiPreview=today`, with `uiautomator`.
 
 | Element | Figma | Built | |
 |---|---|---|---|
-| Navigation block | y 168, h 179: field 115, chips 16 under it | y 168: the field, `spacing.md` (16), the chips | matches |
-| Field · search | 358 x 115 at x 0, label, 56 box, helper | `Field` (Text): `label`, 56 box, the helper in muted `body` | the design-system Field, unchanged |
+| Navigation block | y 168, h 179: field 115, chips 16 under it | field y 168, h 114.3; chips' 48 row at y 298.3 | matches (Figma 299) |
+| Field · search | 358 x 115 at x 0, label, 56 box, helper | `Field` (Text): label at y 168, helper at y 258.3 (h 24) | the design-system Field, unchanged |
 | Field label / helper | "Search your days" / "Looks through everything you have both written." | the same, from states.md §6 | matches |
-| Chips | All days x 0 (100), Favourites x 108 (120), Search x 236 (89) | the same Chip, Search third, 8 apart | Search's width not measured |
-| List | y 371 (24 under the chips) | 24 under the chips | matches |
+| Chips | All days x 0 (100), Favourites x 108 (120), Search x 236 (89) | Search at x 236.2, 89.1 wide (label 57.1 + 2 x 16) | matches |
+| List | y 371 (24 under the chips) | first month heading at y 370.3 | matches |
 | Month row | not drawn in search (the field replaces it) | not drawn (owed anyway) | matches |
 | Results | DayCards, the first two lines of each entry, no snippet, no highlight | the same DayCard, month headings as in All days | the open question of states.md §6 is left open |
-| KEYBOARD UP | field in Focus (`ink`, heavier stroke), empty, unfiltered list under it | focused on choosing Search, keyboard raised, unfiltered list | matches |
+| KEYBOARD UP | field in Focus (`ink`, heavier stroke), empty, unfiltered list under it | focused on choosing Search (`focused=true`, `mInputShown=true`), unfiltered list | matches |
+| Paging | not drawn | "flat": 13 days, 28 August to 4 August, the second page loaded on scrolling; 30 August (locked) absent | as the contract |
+| Back from a result | not drawn | the query and results kept; the keyboard is not raised again | as the brief |
 
 ### Archive · search, no results (511:1691; light 511:1945)
 
@@ -124,8 +125,8 @@ Figma column is from `archive.xml`, the Built column from the code's own numbers
 |---|---|---|---|
 | Field | keeps the failing query | keeps it | matches |
 | Chips | drawn, Search selected | drawn, Search selected | the way back |
-| "Nothing matched that." | list y 0, x 0, h 33 | list y 24, x 24 | the StateBlock's 24 inset, as Favourites empty |
-| "Try another word, or go back to all days." | 16 under (y 49), h 24 | 16 under, at the StateBlock's inset | as above |
+| "Nothing matched that." | list y 0, x 0, h 33 | y 394.3 (list y 24), x 24 in the list, h 32.8 | the StateBlock's 24 inset, as Favourites empty |
+| "Try another word, or go back to all days." | 16 under (y 49), h 24 | 15.9 under, h 24 | as above |
 
 ### Archive · favourites, empty (440:1570; light 440:1621)
 
