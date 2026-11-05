@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -31,18 +33,29 @@ class ArchiveViewModel(
     /** DEBUG ONLY: the layout the preview's long press has stepped to, over the real one. */
     private val debugLayout = MutableStateFlow<DebugLayout?>(null)
 
+    /** A chip has been tapped: from then on the chips stay, through loading and failure. */
+    private val filterChosen = MutableStateFlow(false)
+
     init {
         feed.clear()
     }
 
-    val state: StateFlow<ArchiveState> = combine(feed.state, debugLayout, ::toState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(feed.state.value, debugLayout.value))
+    val state: StateFlow<ArchiveState> = combine(feed.state, debugLayout, filterChosen, ::toState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(feed.state.value, debugLayout.value, filterChosen.value))
 
     private val _events = Channel<ArchiveEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
     init {
         viewModelScope.launch { loadFirst() }
+        // Whenever the loaded days draw nothing and the cursor says there is more, ask
+        // for more: after a page that drew nothing, and after the day view removed the
+        // last favourite the Favourites list was showing.
+        viewModelScope.launch {
+            feed.state.map { it.needsAnotherPage() }.distinctUntilChanged().collect { needed ->
+                if (needed) skipUndrawable()
+            }
+        }
     }
 
     fun onAction(action: ArchiveAction) {
@@ -51,6 +64,13 @@ class ArchiveViewModel(
             ArchiveAction.OnRetryClick -> viewModelScope.launch { loadFirst() }
             ArchiveAction.OnLoadMore, ArchiveAction.OnRetryPageClick -> viewModelScope.launch { loadMore() }
             is ArchiveAction.OnDayClick -> send(ArchiveEvent.NavigateToDay(action.date))
+            is ArchiveAction.OnFilterClick -> {
+                val favourites = action.filter == ArchiveFilter.Favourites
+                filterChosen.value = true
+                if (feed.state.value.favourites != favourites || feed.state.value.load == FeedLoad.Failed) {
+                    viewModelScope.launch { loadFirst(favourites) }
+                }
+            }
             ArchiveAction.OnWriteClick -> send(ArchiveEvent.NavigateToWrite)
             ArchiveAction.OnDebugCycle -> debugLayout.value = when (debugLayout.value) {
                 null -> DebugLayout.Empty
@@ -60,47 +80,52 @@ class ArchiveViewModel(
         }
     }
 
-    private suspend fun loadFirst() {
-        feed.loadFirst()
-        skipUndrawable()
+    private suspend fun loadFirst(favourites: Boolean = feed.state.value.favourites) {
+        feed.loadFirst(favourites)
     }
 
     private suspend fun loadMore() {
         feed.loadMore()
-        skipUndrawable()
     }
 
     /**
      * Asks again while nothing loaded can be drawn and the cursor says there is more,
-     * so a page of tombstones-only-for-someone-else is never mistaken for the end.
-     * Bounded: a server that never ends cannot spin the app.
+     * so a page of tombstones-only-for-someone-else is never mistaken for the end. With
+     * `favourites=true` a page can be empty with a cursor (the contract), and is asked past
+     * the same way: only a null cursor is the end. Bounded: a server that never ends cannot spin the app.
      */
     private suspend fun skipUndrawable() {
         repeat(MAX_SILENT_PAGES) {
-            val now = feed.state.value
-            if (now.pageFailed || now.nextCursor == null || now.days.any { it.toArchiveDayUi() != null }) return
+            if (!feed.state.value.needsAnotherPage()) return
             feed.loadMore()
         }
     }
 
-    private fun toState(feed: FeedState, debug: DebugLayout?): ArchiveState {
+    private fun FeedState.needsAnotherPage(): Boolean =
+        load == FeedLoad.Ready && nextCursor != null && !loadingMore && !pageFailed && visibleDays().isEmpty()
+
+    private fun toState(feed: FeedState, debug: DebugLayout?, chosen: Boolean): ArchiveState {
+        val filter = if (feed.favourites) ArchiveFilter.Favourites else ArchiveFilter.AllDays
+        val chrome = chosen || feed.favourites
         when (debug) {
-            DebugLayout.Empty -> return ArchiveState(load = ArchiveLoad.Ready)
-            DebugLayout.Failed -> return ArchiveState(load = ArchiveLoad.Failed)
+            DebugLayout.Empty -> return ArchiveState(load = ArchiveLoad.Ready, filter = filter, showFilters = feed.favourites)
+            DebugLayout.Failed -> return ArchiveState(load = ArchiveLoad.Failed, filter = filter, showFilters = chrome)
             null -> Unit
         }
         return when (feed.load) {
-            FeedLoad.Loading -> ArchiveState(load = ArchiveLoad.Loading)
-            FeedLoad.Failed -> ArchiveState(load = ArchiveLoad.Failed)
+            FeedLoad.Loading -> ArchiveState(load = ArchiveLoad.Loading, filter = filter, showFilters = chrome)
+            FeedLoad.Failed -> ArchiveState(load = ArchiveLoad.Failed, filter = filter, showFilters = chrome)
             FeedLoad.Ready -> {
-                val days = feed.days.mapNotNull { it.toArchiveDayUi() }
+                val days = feed.visibleDays()
                 // Still looking for a first day to draw: not empty yet, so still the surface.
                 if (days.isEmpty() && feed.nextCursor != null && !feed.pageFailed) {
-                    ArchiveState(load = ArchiveLoad.Loading)
+                    ArchiveState(load = ArchiveLoad.Loading, filter = filter, showFilters = chrome)
                 } else if (days.isEmpty() && feed.pageFailed) {
-                    ArchiveState(load = ArchiveLoad.Failed)
+                    ArchiveState(load = ArchiveLoad.Failed, filter = filter, showFilters = chrome)
                 } else {
                     ArchiveState(
+                        filter = filter,
+                        showFilters = chrome || days.isNotEmpty(),
                         load = ArchiveLoad.Ready,
                         months = days
                             .groupBy { it.date.year to it.date.month }

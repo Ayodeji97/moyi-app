@@ -29,6 +29,11 @@ import kotlinx.coroutines.launch
  *   in the day view and in the list. A failure keeps the entry and says so; a 404 (already
  *   gone) reads the day again and says nothing. If the day is the one Today shows, Today
  *   is refreshed, so it shows the tombstone too.
+ * - **Favourites** (states.md §6): a FavouriteToggle under each revealed entry, mine and
+ *   theirs, **absent** before the reveal. **Optimistic**: the mark changes at once, here
+ *   and in the list (the shared feed); a failure puts it back and shows the Generic
+ *   failure line under that toggle. A tap while that entry's call is in flight is
+ *   ignored, so one tap is one call and the calls for an entry can never cross.
  */
 class ArchiveDayViewModel(
     private val date: String,
@@ -46,6 +51,9 @@ class ArchiveDayViewModel(
     /** The day behind [state], kept to build the tombstone from. */
     private var day: ArchiveDay? = null
 
+    /** The entries whose favourite call has not answered yet. */
+    private val marking = mutableSetOf<String>()
+
     init {
         val loaded = feed.find(date)
         if (loaded == null || !show(loaded)) viewModelScope.launch { load() }
@@ -60,6 +68,7 @@ class ArchiveDayViewModel(
             }
             ArchiveDayAction.OnDeleteDismiss -> _state.update { it.copy(confirmingDelete = false) }
             ArchiveDayAction.OnDeleteConfirm -> delete()
+            is ArchiveDayAction.OnFavouriteClick -> toggleFavourite(action.target)
         }
     }
 
@@ -93,7 +102,13 @@ class ArchiveDayViewModel(
         viewModelScope.launch {
             when (val result = entries.deleteEntry(mine.id)) {
                 is Result.Success -> {
-                    val tombstoned = current.copy(myEntry = mine.copy(text = null, status = EntryStatus.DELETED))
+                    // From the latest day, so a favourite toggled meanwhile is kept; the
+                    // tombstone itself is no longer a favourite (it cannot be read).
+                    val latest = day ?: current
+                    val tombstoned = latest.copy(
+                        myEntry = mine.copy(text = null, status = EntryStatus.DELETED),
+                        markedByMe = latest.markedByMe - mine.id,
+                    )
                     show(tombstoned)
                     feed.replace(tombstoned)
                     _state.update { it.copy(deleting = false) }
@@ -107,6 +122,35 @@ class ArchiveDayViewModel(
                 }
             }
         }
+    }
+
+    private fun toggleFavourite(target: FavouriteTarget) {
+        val ui = _state.value.day ?: return
+        val (entryId, marked) = when (target) {
+            FavouriteTarget.Mine -> ui.myEntryId to ui.myMarkOnMine
+            FavouriteTarget.Theirs -> ui.partnerEntryId to ui.myMarkOnTheirs
+        }
+        // Absent toggle (before the reveal, a tombstone): nothing to do. In flight: ignored.
+        if (entryId == null || marked == null || entryId in marking) return
+        marking += entryId
+        setMark(entryId, !marked)
+        _state.update { it.copy(markFailed = null) }
+        viewModelScope.launch {
+            val result = archive.setFavourite(entryId, favourite = !marked)
+            marking -= entryId
+            if (result is Result.Failure) {
+                setMark(entryId, marked)
+                _state.update { it.copy(markFailed = target) }
+            }
+        }
+    }
+
+    /** My mark on [entryId], in the day view and in the list behind it. */
+    private fun setMark(entryId: String, marked: Boolean) {
+        val current = day ?: return
+        val updated = current.copy(markedByMe = if (marked) current.markedByMe + entryId else current.markedByMe - entryId)
+        show(updated)
+        feed.setMarks(updated.date, updated.markedByMe)
     }
 
     private suspend fun refreshTodayIfShowing() {

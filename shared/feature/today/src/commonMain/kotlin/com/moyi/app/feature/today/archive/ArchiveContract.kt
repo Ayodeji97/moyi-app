@@ -13,6 +13,9 @@ enum class ArchiveLoad {
     Ready,
 }
 
+/** The Archive's filters (states.md §6). Search, the third chip, is the next slice's. */
+enum class ArchiveFilter { AllDays, Favourites }
+
 /** One month of days, newest first (states.md §6: month-grouped). */
 @Immutable
 data class ArchiveMonth(
@@ -37,6 +40,13 @@ data class ArchiveState(
     val pageFailed: Boolean = false,
     /** Moves on with every page, so the list asks again near its end (ArchiveScreen). */
     val pages: Int = 0,
+    val filter: ArchiveFilter = ArchiveFilter.AllDays,
+    /**
+     * The All days / Favourites chips are drawn. Hidden over an archive with nothing in
+     * it (states.md §6: an empty filter over an empty list is two emptinesses); always
+     * shown once a chip has been chosen, since they are the way back.
+     */
+    val showFilters: Boolean = false,
 ) {
     val isEmpty: Boolean get() = load == ArchiveLoad.Ready && months.isEmpty()
 }
@@ -51,6 +61,9 @@ sealed interface ArchiveAction {
     /** The Try again under a page that failed. */
     data object OnRetryPageClick : ArchiveAction
     data class OnDayClick(val date: LocalDate) : ArchiveAction
+
+    /** A chip: reloads the list, with `favourites=true` for [ArchiveFilter.Favourites]. */
+    data class OnFilterClick(val filter: ArchiveFilter) : ArchiveAction
 
     /** The empty state's Write (Figma 223:25's PrimaryAction). */
     data object OnWriteClick : ArchiveAction

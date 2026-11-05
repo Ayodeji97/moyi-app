@@ -30,18 +30,36 @@ fun revealedDay(date: String, mine: String = MINE, theirs: String = THEIRS) = Ar
  */
 class FakeArchiveRepository : ArchiveRepository {
     val pages = mutableMapOf<String?, ArchivePage>()
+
+    /** The `favourites=true` pages, by cursor, as [pages]. */
+    val favouritePages = mutableMapOf<String?, ArchivePage>()
+
+    /** Every `days` call as (cursor, favourites). */
+    val requests = mutableListOf<Pair<String?, Boolean>>()
+
+    /** The answer to every favourite call; [markGate] holds it until completed. */
+    var markResult: EmptyResult<DataError.Network> = Result.Success(Unit)
+    var markGate: CompletableDeferred<Unit>? = null
+    val marks = mutableListOf<Pair<String, Boolean>>()
     var failNext = false
     var dayAnswer: Result<ArchiveDay, DataError.Network> = Result.Failure(NOT_FOUND)
     val cursors = mutableListOf<String?>()
     val dayCalls = mutableListOf<String>()
 
-    override suspend fun days(bondId: String, cursor: String?): Result<ArchivePage, DataError.Network> {
+    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean): Result<ArchivePage, DataError.Network> {
         cursors += cursor
+        requests += cursor to favourites
         if (failNext) {
             failNext = false
             return Result.Failure(DataError.Network.NoInternet)
         }
-        return pages[cursor]?.let { Result.Success(it) } ?: Result.Failure(NOT_FOUND)
+        return (if (favourites) favouritePages else pages)[cursor]?.let { Result.Success(it) } ?: Result.Failure(NOT_FOUND)
+    }
+
+    override suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network> {
+        marks += entryId to favourite
+        markGate?.await()
+        return markResult
     }
 
     override suspend fun day(bondId: String, date: String): Result<ArchiveDay, DataError.Network> {
