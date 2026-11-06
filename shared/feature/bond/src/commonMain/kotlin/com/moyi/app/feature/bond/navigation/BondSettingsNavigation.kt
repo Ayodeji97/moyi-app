@@ -14,13 +14,17 @@ import androidx.navigation.toRoute
 import com.moyi.app.designsystem.platform.rememberShareSheet
 import com.moyi.app.designsystem.platform.rememberTextClipboard
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
+import com.moyi.app.feature.bond.ending.BondArchivedScreen
+import com.moyi.app.feature.bond.settings.BlockScreen
 import com.moyi.app.feature.bond.settings.BondNameScreen
 import com.moyi.app.feature.bond.settings.BondSettingsAction
 import com.moyi.app.feature.bond.settings.BondSettingsEvent
 import com.moyi.app.feature.bond.settings.BondSettingsScreen
 import com.moyi.app.feature.bond.settings.BondSettingsViewModel
 import com.moyi.app.feature.bond.settings.BondTypeScreen
+import com.moyi.app.feature.bond.settings.CloseBoxScreen
 import com.moyi.app.feature.bond.settings.InviteScreen
+import com.moyi.app.feature.bond.settings.LeaveScreen
 import com.moyi.app.feature.bond.settings.TimeZoneScreen
 import com.moyi.app.feature.bond.settings.ZonePickerScreen
 import com.moyi.app.feature.onboarding.resources.invite_share_text
@@ -53,6 +57,22 @@ internal data object ZonePickerRoute
 @Serializable
 internal data object InviteRoute
 
+@Serializable
+internal data object LeaveRoute
+
+@Serializable
+internal data object BlockRoute
+
+@Serializable
+internal data object CloseBoxRoute
+
+/**
+ * Bond · archived, the signed-in start's answer when the person's bond has ended and they
+ * are in no open one. [partnerName] is the other member's, for the line; null when unknown.
+ */
+@Serializable
+data class BondArchivedRoute(val partnerName: String? = null)
+
 /**
  * Bond settings. Back stack, from Today:
  *
@@ -67,10 +87,14 @@ internal data object InviteRoute
  *   (nobody has joined), returns to the root.
  * - Bond settings → Invite (push). Share opens the OS sheet and goes nowhere; cancelling
  *   or creating an invite changes the screen in place.
- * - The reveal time picker and the leave confirmation are dialogs over the root: no
- *   destination.
- * - Leaving, or finding the bond ended, calls [onBondEnded]: the shell sends the person
- *   to the signed-in start, as Today does when it finds no open bond. Signing out needs
+ * - The reveal time picker is a dialog over the root: no destination.
+ * - Bond settings → Leave, → Block and leave (push): full confirm screens, as Figma draws
+ *   them, because each carries FR-029a's withdraw row. Back and Cancel return to the root.
+ * - Bond settings → Close the box (push), one destination whose content follows the bond
+ *   (ask, asked, agree, cooling off). Asking stays on it; withdrawing, declining or
+ *   calling it off returns to the root.
+ * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
+ *   person to the signed-in start, which shows the archived bond. Signing out needs
  *   nothing here; the shell routes on the session ending.
  */
 fun NavGraphBuilder.bondSettingsGraph(
@@ -106,6 +130,24 @@ fun NavGraphBuilder.bondSettingsGraph(
             SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 InviteScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
+            }
+        }
+        composable<LeaveRoute> { entry ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                LeaveScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
+            }
+        }
+        composable<BlockRoute> { entry ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                BlockScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
+            }
+        }
+        composable<CloseBoxRoute> { entry ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                CloseBoxScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<BondTypeRoute> { entry ->
@@ -145,6 +187,9 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenZonePicker -> navController.navigate(ZonePickerRoute) { launchSingleTop = true }
             BondSettingsEvent.ZonePicked -> navController.popBackStack(TimeZoneRoute, inclusive = false)
             BondSettingsEvent.OpenInvite -> navController.navigate(InviteRoute) { launchSingleTop = true }
+            BondSettingsEvent.OpenLeave -> navController.navigate(LeaveRoute) { launchSingleTop = true }
+            BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
+            BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
             is BondSettingsEvent.ShareInvite -> scope.launch {
@@ -158,4 +203,15 @@ private fun SettingsDestination(
 private fun NavController.closeEditor(viewModel: BondSettingsViewModel) {
     viewModel.onAction(BondSettingsAction.OnEditorClosed)
     popBackStack(BondSettingsRoute, inclusive = false)
+}
+
+/**
+ * Bond · archived ([BondArchivedRoute]). A root with no back (SKILL.md); the shell makes it
+ * the only screen. [onStartNewBond] pushes onboarding over it, so back from there returns.
+ */
+fun NavGraphBuilder.bondArchivedDestination(onStartNewBond: () -> Unit) {
+    composable<BondArchivedRoute> { entry ->
+        val route = entry.toRoute<BondArchivedRoute>()
+        BondArchivedScreen(partnerName = route.partnerName, onStartNewBond = onStartNewBond)
+    }
 }

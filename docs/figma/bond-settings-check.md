@@ -69,7 +69,7 @@ days (in place) and Sign out (in place) have none.
 | Figma row | Why |
 |---|---|
 | Your reminder 396:25 | Needs `/members/me/notifications`, which is not in `contracts/openapi.json` yet (a syncContract PR) |
-| Block and leave 617:1833 | Later PR |
+| Block and leave 617:1833 | Built in the ending PR: see `ending-check.md` |
 | Account 575:1782 | Its screen (help, delete your account) is not built; **Sign out** takes its place in the same group |
 
 ## Bond name (661:1909)
@@ -98,7 +98,8 @@ The line drops "You can change it later" (false here). A tap saves and returns t
   locale formatting is owed.
 - **Leave** is the platform dialog (C2): title "Leave this bond?", the line, Leave (danger)
   and Cancel. Figma's full screen 398:21 is replaced by it, which also leaves out FR-029a's
-  withdraw checkbox (398:53): see the PR's "For you to check".
+  withdraw checkbox (398:53): see the PR's "For you to check". *Superseded by the ending PR:
+  leave is the full screen again, with the checkbox (figma-deviations D30, `ending-check.md`).*
 
 ## Walked on the emulator
 

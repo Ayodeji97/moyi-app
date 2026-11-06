@@ -18,7 +18,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
-import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
@@ -45,10 +44,6 @@ import com.moyi.app.feature.bond.resources.settings_invite_value_none
 import com.moyi.app.feature.bond.resources.settings_row_timezone
 import com.moyi.app.feature.bond.resources.settings_group_you
 import com.moyi.app.feature.bond.resources.settings_heading
-import com.moyi.app.feature.bond.resources.settings_leave_confirm
-import com.moyi.app.feature.bond.resources.settings_leave_line
-import com.moyi.app.feature.bond.resources.settings_leave_title
-import com.moyi.app.feature.bond.resources.settings_leaving
 import com.moyi.app.feature.bond.resources.settings_load_error_action
 import com.moyi.app.feature.bond.resources.settings_load_error_heading
 import com.moyi.app.feature.bond.resources.settings_load_error_line
@@ -58,6 +53,10 @@ import com.moyi.app.feature.bond.resources.settings_name_saving
 import com.moyi.app.feature.bond.resources.settings_picker_confirm
 import com.moyi.app.feature.bond.resources.settings_reveal_none
 import com.moyi.app.feature.bond.resources.settings_row_leave
+import com.moyi.app.feature.bond.resources.settings_row_block
+import com.moyi.app.feature.bond.resources.settings_row_close_box
+import com.moyi.app.feature.bond.resources.settings_close_box_value_asked
+import com.moyi.app.feature.bond.resources.settings_close_box_value_closing
 import com.moyi.app.feature.bond.resources.settings_row_name
 import com.moyi.app.feature.bond.resources.settings_row_rest_days
 import com.moyi.app.feature.bond.resources.settings_row_reveal
@@ -85,9 +84,13 @@ import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
  *
  * Drawn here: This bond (relationship type, bond name), The day (shared time zone, reveal
  * time, rest days), Just you (sign out, in place of Account), Invite (only while the bond
- * waits for its second member or holds a live code), Ending (leave). Left out on purpose,
- * with no dead row (docs/figma/bond-settings-check.md): your reminder
- * (`/members/me/notifications` is not in the contract copy yet), and Block and leave.
+ * waits for its second member or holds a live code), Ending (leave, block and leave while
+ * the other member is known, and close the box, which the root does not draw). Left out
+ * on purpose, with no dead row (docs/figma/bond-settings-check.md): your reminder
+ * (`/members/me/notifications` is not in the contract copy yet).
+ *
+ * During the close-the-box cooling-off the bond takes no other write, so the rows that
+ * change it are disabled; Sign out and the Ending rows stay.
  *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, under
  * the back target, so the way out stays.
@@ -126,6 +129,8 @@ private fun SettingsRoot(
     val spacing = MoyiTheme.spacing
     val saving = stringResource(Res.string.settings_saving)
     val busy = state.saving != null || state.signingOut
+    // The cooling-off takes no other write (states.md §9): its rows stay, and stay still.
+    val frozen = busy || settings.coolingOff
     val error = state.error
     val errorText = error?.message?.asString()
     fun errorFor(field: SettingsField): String? = errorText?.takeIf { error.field == field }
@@ -140,14 +145,14 @@ private fun SettingsRoot(
                     label = stringResource(Res.string.settings_row_type),
                     value = stringResource(RelationshipType.of(settings.type).label),
                     kind = RowKind.Navigates,
-                    enabled = !busy,
+                    enabled = !frozen,
                     onClick = { onAction(BondSettingsAction.OnTypeClick) },
                 )
                 SettingsRow(
                     label = stringResource(Res.string.settings_row_name),
                     value = settings.name,
                     kind = RowKind.Navigates,
-                    enabled = !busy,
+                    enabled = !frozen,
                     onClick = { onAction(BondSettingsAction.OnNameClick) },
                 )
             }
@@ -156,7 +161,7 @@ private fun SettingsRoot(
                     label = stringResource(Res.string.settings_row_timezone),
                     value = cityOf(settings.anchorTimezone),
                     kind = RowKind.Navigates,
-                    enabled = !busy,
+                    enabled = !frozen,
                     onClick = { onAction(BondSettingsAction.OnTimeZoneClick) },
                 )
                 SettingsRow(
@@ -166,7 +171,7 @@ private fun SettingsRoot(
                         else -> settings.revealTime?.toString() ?: stringResource(Res.string.settings_reveal_none)
                     },
                     kind = RowKind.Opens,
-                    enabled = !busy,
+                    enabled = !frozen,
                     error = errorFor(SettingsField.RevealTime),
                     onClick = { onAction(BondSettingsAction.OnRevealTimeClick) },
                 )
@@ -176,7 +181,7 @@ private fun SettingsRoot(
                     value = if (state.saving == SettingsField.RestDays) saving else restDays,
                     checked = settings.restDays,
                     hint = stringResource(Res.string.settings_toggle_hint),
-                    enabled = !busy,
+                    enabled = !frozen,
                     error = errorFor(SettingsField.RestDays),
                     onToggle = { onAction(BondSettingsAction.OnRestDaysToggle) },
                 )
@@ -197,19 +202,42 @@ private fun SettingsRoot(
                         label = stringResource(Res.string.settings_invite_heading),
                         value = stringResource(if (settings.invite != null) Res.string.settings_invite_value_active else Res.string.settings_invite_value_none),
                         kind = RowKind.Navigates,
-                        enabled = !busy,
+                        enabled = !frozen,
                         onClick = { onAction(BondSettingsAction.OnInviteClick) },
                     )
                 }
             }
             SettingsGroup(stringResource(Res.string.settings_group_ending)) {
                 SettingsRow(
-                    label = stringResource(if (state.leaving) Res.string.settings_leaving else Res.string.settings_row_leave),
+                    label = stringResource(Res.string.settings_row_leave),
                     kind = RowKind.Navigates,
                     destructive = true,
                     enabled = !busy,
-                    error = errorFor(SettingsField.Leave),
                     onClick = { onAction(BondSettingsAction.OnLeaveClick) },
+                )
+                // Only while the other member is known: the confirm names them (`26` §3.1).
+                if (settings.partnerName != null) {
+                    SettingsRow(
+                        label = stringResource(Res.string.settings_row_block),
+                        kind = RowKind.Navigates,
+                        destructive = true,
+                        enabled = !busy,
+                        onClick = { onAction(BondSettingsAction.OnBlockClick) },
+                    )
+                }
+                SettingsRow(
+                    label = stringResource(Res.string.settings_row_close_box),
+                    value = when {
+                        settings.coolingOff -> settings.deletionScheduledFor?.let {
+                            stringResource(Res.string.settings_close_box_value_closing, localDayAndMonth(it))
+                        }
+                        settings.pendingDeletion != null -> stringResource(Res.string.settings_close_box_value_asked)
+                        else -> null
+                    },
+                    kind = RowKind.Navigates,
+                    destructive = true,
+                    enabled = !busy,
+                    onClick = { onAction(BondSettingsAction.OnCloseBoxClick) },
                 )
             }
         }
@@ -225,17 +253,6 @@ private fun SettingsRoot(
             dismissLabel = stringResource(Res.string.settings_cancel),
             onConfirm = { hour, minute -> onAction(BondSettingsAction.OnRevealTimePicked(hour, minute)) },
             onDismiss = { onAction(BondSettingsAction.OnRevealTimeDismiss) },
-        )
-    }
-    if (state.confirmingLeave) {
-        ConfirmDialog(
-            title = stringResource(Res.string.settings_leave_title),
-            message = stringResource(Res.string.settings_leave_line),
-            confirmLabel = stringResource(Res.string.settings_leave_confirm),
-            dismissLabel = stringResource(Res.string.settings_cancel),
-            destructive = true,
-            onConfirm = { onAction(BondSettingsAction.OnLeaveConfirm) },
-            onDismiss = { onAction(BondSettingsAction.OnLeaveDismiss) },
         )
     }
 }
