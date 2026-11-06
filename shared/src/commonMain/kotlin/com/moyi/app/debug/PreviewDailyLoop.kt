@@ -1,6 +1,7 @@
 package com.moyi.app.debug
 
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.today.Prompt
 import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.DailyLoop
@@ -99,4 +100,6 @@ internal val previewTodayModule: Module = module {
     single { PreviewArchiveRepository() }
     single<ArchiveRepository> { get<PreviewArchiveRepository>() }
     single<TodayRepository> { PreviewTodayRepository(get()) }
+    // The Streak screen's four drawn states and a failure, in turn (PreviewStreak.kt).
+    single<StreakRepository> { PreviewStreakRepository() }
 }

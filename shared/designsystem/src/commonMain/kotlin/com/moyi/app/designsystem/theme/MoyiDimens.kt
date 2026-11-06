@@ -101,6 +101,19 @@ object MoyiDimens {
      * its native 350 width. The page (72:2) was not read, so the inside is **Interpreted**:
      * padding 24, heading 33, 16, line 24, 16, action 48, padding 24 = 185.
      */
+    /**
+     * tokens.md §4 component 4. Figma 227:3: a calendar cell is a 48 x 48 instance, the key's
+     * swatch 20 x 20 (267:102). The page that draws each state was not read (no screenshot,
+     * rate limit), so the strokes are **Interpreted**: the 2 pt emphasis stroke `Field` uses
+     * for a shape that must carry meaning, and a 4 on 4 dash for the rest day's ring.
+     */
+    object DayCell {
+        val Size = TouchTarget
+        val KeySize = 20.dp
+        val Stroke = 2.dp
+        val Dash = 4.dp
+    }
+
     object StateBlock {
         val NativeWidth = 350.dp
         val Padding = 24.dp

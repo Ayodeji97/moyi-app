@@ -155,4 +155,48 @@
     <string name="delete_confirm">Delete</string>
     <!-- copy.md warmth audit: bare "Cancel" dismisses a dialog (420:76, 57 wide). -->
     <string name="delete_cancel">Cancel</string>
+
+    <!-- ===== Streak (states.md §7; Figma 227:3, 401:70, 401:160, 401:250) ===== -->
+
+    <!-- states.md §3: "a *Your streak* link beside its title". Figma 430:1435 draws it in label metrics; sentence case per D14. -->
+    <string name="archive_streak_link">Your streak</string>
+    <!-- FIGMA NODE NAME 267:30. The screen's title. -->
+    <string name="streak_title">Days you both showed up</string>
+    <!-- FIGMA NODE NAME 267:33. Over the current run's number. -->
+    <string name="streak_now">Now</string>
+    <!-- FIGMA NODE NAME 267:36. Over the longest run's number. Always shown, also after a break (states.md §7). -->
+    <string name="streak_longest">Longest</string>
+    <!-- FIGMA NODE NAME 267:38. Over the calendar: a rolling window, never a month. -->
+    <string name="streak_window">The last four weeks</string>
+    <!-- FIGMA NODE NAMES 267:104, 267:108, 267:116, 267:112. The key. -->
+    <string name="streak_key_complete">Both wrote</string>
+    <string name="streak_key_rest">Rest day</string>
+    <string name="streak_key_today">Today</string>
+    <string name="streak_key_none">No entry (left blank)</string>
+    <!-- PROPOSED. What a screen reader hears for each cell. %1$s = the day and month ("2 September"). -->
+    <string name="streak_cell_complete">%1$s, both wrote</string>
+    <string name="streak_cell_rest">%1$s, rest day</string>
+    <string name="streak_cell_today">%1$s, today</string>
+    <string name="streak_cell_none">%1$s, no entry</string>
+    <!-- FIGMA NODE NAME 267:117 for other ("Two rest days left. ..."), with the number as digits. one is PROPOSED. -->
+    <plurals name="streak_rest_days_left">
+        <item quantity="one">One rest day left. It is used automatically when a day slips by.</item>
+        <item quantity="other">%1$d rest days left. They are used automatically when a day slips by.</item>
+    </plurals>
+    <!-- PROPOSED. No rest day banked, Strict mode off. -->
+    <string name="streak_rest_days_none">No rest days left.</string>
+    <!-- FIGMA NODE NAME 401:129 for one. other is PROPOSED, with the number as digits. -->
+    <plurals name="streak_rest_day_used">
+        <item quantity="one">Yesterday slipped by. We used a rest day. One left.</item>
+        <item quantity="other">Yesterday slipped by. We used a rest day. %1$d left.</item>
+    </plurals>
+    <!-- PROPOSED. Yesterday used the last rest day. -->
+    <string name="streak_rest_day_used_none">Yesterday slipped by. We used a rest day. None left.</string>
+    <!-- PROPOSED. Figma 401:219 reads "Your streak ended at 21 days. That is 21 days of showing up. No rest days were left."
+         The contract does not send the length of the run that ended (states.md §7a, gap), so the number is left out. -->
+    <string name="streak_ended">Your streak ended. No rest days were left.</string>
+    <!-- PROPOSED. The same, in Strict mode: no rest day could have covered it. -->
+    <string name="streak_ended_strict">Your streak ended. Rest days are off.</string>
+    <!-- FIGMA NODE NAME 401:309. Strict mode, stated plainly. -->
+    <string name="streak_strict">Rest days are off.</string>
 </resources>

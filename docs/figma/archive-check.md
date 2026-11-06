@@ -100,7 +100,7 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 | "FROM YOU" | card y 155 | card y 154.3 | matches |
 | Cards apart | 16 (275 minus 259) | 16 | matches |
 | Chevron | none (states.md §6) | none | matches |
-| "Your streak" link | drawn | **not drawn** | owed |
+| "Your streak" link (430:1435) | 100 x 48 at x 258 in the title row | a TextLink on the trailing side of the title row, sentence case (D14) | opens the Streak screen (`docs/figma/streak-check.md`) |
 | Favourite bookmark (440:1510) | 24 x 24 at card x 302, in the date row | 24 x 24, flush with the card's trailing padding, in the date row | matches; filled, `ink`; only for a day holding **my** mark |
 
 ### Archive · favourites (440:1462; light 440:1516)
@@ -228,20 +228,19 @@ The Archive is built (parts 1 to 4). What is still owed, in one place:
    backend's newer contract; this repository's `contracts/openapi.json` predates it, so it
    needs `./gradlew syncContract` (its own PR, since that diff is the API changing), then the
    link and its flow.
-2. **"Your streak"** link in the title row (430:1435, 100 x 48), and the Streak screen it opens.
-3. **R3, screen capture**: the partner's entries are not protected on this branch. When PR #17
+2. **R3, screen capture**: the partner's entries are not protected on this branch. When PR #17
    merges, `EntryCard` Partner protects itself; the `DayCard` here is drawn without EntryCard,
    so it needs the same protection added then (`TODO(#17)` in `ArchiveScreen.kt`).
-4. **The month picker**, if the owner wants one drawn (missing-components §16), and how far
+3. **The month picker**, if the owner wants one drawn (missing-components §16), and how far
    back it reaches: today only to the oldest day loaded (the bond's `createdAt` or a server
    list of months would let it reach the start).
-5. **Month row height**: states.md's 56 or Figma's 80 (missing-components §17).
-6. **Search results**: a match-centred snippet or a highlight (states.md §6, open).
-7. **Favourite announcements**: "Added to favourites" / "Removed from favourites"
+4. **Month row height**: states.md's 56 or Figma's 80 (missing-components §17).
+5. **Search results**: a match-centred snippet or a highlight (states.md §6, open).
+6. **Favourite announcements**: "Added to favourites" / "Removed from favourites"
    (strings-proposed.md §6a) are not used yet; the toggle's new label is announced instead.
-8. **The ghost day** in the empty state, once it is a design-system component.
-9. **A cache and `If-None-Match`** for the list, the day and search (doc 13 §5), with SQLDelight.
-10. **Figma screenshots**: none of parts 2 to 4 was compared with a screenshot (rate limit);
+7. **The ghost day** in the empty state, once it is a design-system component.
+8. **A cache and `If-None-Match`** for the list, the day and search (doc 13 §5), with SQLDelight.
+9. **Figma screenshots**: none of parts 2 to 4 was compared with a screenshot (rate limit);
     every frame since 223:3 and 223:25 was compared by geometry only.
-11. **iOS on a simulator**: the framework and the Xcode app were built for every part, but the
+10. **iOS on a simulator**: the framework and the Xcode app were built for every part, but the
     Archive has not been run on an iOS simulator.

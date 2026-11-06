@@ -141,6 +141,9 @@ sealed interface ArchiveAction {
     /** The empty state's Write (Figma 223:25's PrimaryAction). */
     data object OnWriteClick : ArchiveAction
 
+    /** "Your streak" in the title row (Figma 430:1435). */
+    data object OnStreakClick : ArchiveAction
+
     /** DEBUG ONLY (`-PmoyiUiPreview=today`): list, then empty, then the error, then the list. */
     data object OnDebugCycle : ArchiveAction
 }
@@ -149,4 +152,5 @@ sealed interface ArchiveEvent {
     data object NavigateBack : ArchiveEvent
     data class NavigateToDay(val date: LocalDate) : ArchiveEvent
     data object NavigateToWrite : ArchiveEvent
+    data object NavigateToStreak : ArchiveEvent
 }
