@@ -269,7 +269,8 @@ fun CloseBoxScreen(
             CloseBoxStep.CoolingOff -> stringResource(Res.string.close_box_cooling_line)
         }
         ScreenHeader(eyebrow = heading, heading = heading)
-        Spacer(Modifier.height(spacing.lg))
+        // 16, not 24: 399:46 to 399:47 (and 399:1531 to 399:1532) are drawn 16 apart.
+        Spacer(Modifier.height(spacing.md))
         MoyiText(line, tone = TextTone.Muted)
     }
 }
