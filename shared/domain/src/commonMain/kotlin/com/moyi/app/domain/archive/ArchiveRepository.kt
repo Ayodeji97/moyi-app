@@ -17,11 +17,16 @@ interface ArchiveRepository {
      * With [favourites], only the days holding an entry the caller has favourited and
      * can still read. Such a page can be **empty with a cursor** (the server reads at
      * most about a thousand days per request): only a null cursor is the end.
+     *
+     * With [until] (an ISO date, `YYYY-MM-DD`), the list starts at that date or the
+     * nearest earlier day: the month jump (states.md §6, route 1). With [cursor] as well,
+     * both apply, so every later page of a jump is asked with the same [until].
      */
     suspend fun days(
         bondId: String,
         cursor: String? = null,
         favourites: Boolean = false,
+        until: String? = null,
     ): Result<ArchivePage, DataError.Network>
 
     /**

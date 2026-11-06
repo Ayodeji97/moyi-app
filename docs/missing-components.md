@@ -225,3 +225,32 @@ pushes the revealed cards 24 above 159:19. Owner call.
 
 The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 `TODO(motion)`), pending Figma 180:21. The design system has no motion tokens yet.
+
+## Archive (PR for Archive, part 4: month jump)
+
+### 16. The month picker
+
+- **Today:** `states.md` §6 says month jump is route 1 and "Tapping opens a month picker", and
+  draws the 56 pt row (Figma 257:9) with "Jump to". **No picker is drawn**: there is no picker
+  frame in the Archive section (425:317), no row for one in `tokens.md` §4, and `SKILL.md` says
+  nothing about it. `strings-proposed.md` §8 records "Jump to" as deliberately unwired.
+- **Here:** no component of ours. The most conservative option: the platform's **simple
+  dialog**, Material 3's `AlertDialog` in Rosewood (as `ConfirmDialog` on Android), titled
+  "Jump to a month" (PROPOSED), a list of months newest first, each a 48 dp row in `body`, and
+  Cancel. Tapping a month chooses it and closes the dialog. **The same Compose dialog on iOS**:
+  the iOS month and year wheel (`UIDatePicker` in `.yearAndMonth`, iOS 17.4+) would need a
+  hosting sheet with Done and Cancel that the design system does not draw either.
+- **Which months:** from the current Bond-day's month (never a later one) back to the month of
+  the oldest day the Archive has loaded so far. The client knows of no earlier day: the
+  contract has no "oldest day" or "months with days", and the bond's `createdAt` is not
+  carried into the app. So the picker grows as you scroll or jump further back.
+- **The open questions:** (1) a drawn picker, or keep the platform dialog; (2) on iOS, the
+  wheel in a sheet instead; (3) how far back it should reach: the bond's start
+  (`BondResponse.createdAt`, one more call) or a server-side list of months.
+
+### 17. The month row is 56 in `states.md`, 80 in Figma
+
+- `states.md` §6 sizes it twice ("the 56 pt month-jump row"; the field "costs 59 pt" against
+  it). Figma's frame 257:9 is 80 tall (the glyph at y 28, the 48 target at y 16). **Built 56**
+  (the design system wins), so the chips sit at 240 and the list at 312, 24 above Figma's 264
+  and 336. One of the two needs correcting.

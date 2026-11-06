@@ -59,6 +59,24 @@ data class ArchiveState(
     val query: String = "",
     /** The field should take focus and raise the keyboard (once, on choosing Search). */
     val focusSearch: Boolean = false,
+    /**
+     * The month row (states.md §6, route 1) is drawn: on All days and Favourites over an
+     * archive that holds a day. **Absent in Search**: the field takes its slot (they swap).
+     */
+    val showMonthRow: Boolean = false,
+    /** The month the row names: the topmost visible day group's, as the first of that month. */
+    val visibleMonth: LocalDate? = null,
+    /** The picker is open. */
+    val showMonthPicker: Boolean = false,
+    /**
+     * The months the picker offers, newest first, as the first of each: from the current
+     * Bond-day's month (never a later one) back to the month of the oldest day loaded so far.
+     */
+    val pickerMonths: List<LocalDate> = emptyList(),
+    /** The list was jumped to a month: "Back to the newest days" is offered. */
+    val jumped: Boolean = false,
+    /** The list should scroll to its top (once, after a jump or the way back from one). */
+    val scrollToTop: Boolean = false,
 ) {
     val isEmpty: Boolean get() = load == ArchiveLoad.Ready && months.isEmpty()
 
@@ -69,7 +87,9 @@ data class ArchiveState(
     override fun toString(): String =
         "ArchiveState(load=$load, months=$months, partnerName=$partnerName, canLoadMore=$canLoadMore, pageFailed=$pageFailed, pages=$pages, " +
             "filter=$filter, showFilters=$showFilters, showSearch=$showSearch, " +
-            "query=${if (query.isEmpty()) "" else "(redacted)"}, focusSearch=$focusSearch)"
+            "query=${if (query.isEmpty()) "" else "(redacted)"}, focusSearch=$focusSearch, " +
+            "showMonthRow=$showMonthRow, visibleMonth=$visibleMonth, showMonthPicker=$showMonthPicker, " +
+            "pickerMonths=$pickerMonths, jumped=$jumped, scrollToTop=$scrollToTop)"
 }
 
 sealed interface ArchiveAction {
@@ -96,6 +116,27 @@ sealed interface ArchiveAction {
 
     /** The screen has focused the field and raised the keyboard. */
     data object OnSearchFocused : ArchiveAction
+
+    /** The month row's "Jump to": opens the month picker. */
+    data object OnJumpClick : ArchiveAction
+
+    /** The picker was closed without a choice. */
+    data object OnMonthPickerDismiss : ArchiveAction
+
+    /**
+     * A month chosen in the picker ([month] is any day in it): the list reloads with `until`
+     * = its last day, in the current filter, and scrolls to the top.
+     */
+    data class OnMonthChosen(val month: LocalDate) : ArchiveAction
+
+    /** "Back to the newest days": the list as it was before any jump. */
+    data object OnNewestClick : ArchiveAction
+
+    /** The topmost visible day group is now in [month] (any day in it). */
+    data class OnVisibleMonthChange(val month: LocalDate) : ArchiveAction
+
+    /** The screen has scrolled the list to its top. */
+    data object OnScrolledToTop : ArchiveAction
 
     /** The empty state's Write (Figma 223:25's PrimaryAction). */
     data object OnWriteClick : ArchiveAction

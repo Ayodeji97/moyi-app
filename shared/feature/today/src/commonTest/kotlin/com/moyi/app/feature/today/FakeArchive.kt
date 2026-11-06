@@ -38,6 +38,12 @@ class FakeArchiveRepository : ArchiveRepository {
     /** Every `days` call as (cursor, favourites). */
     val requests = mutableListOf<Pair<String?, Boolean>>()
 
+    /** The `until` of every `days` call, in the order made. */
+    val untils = mutableListOf<String?>()
+
+    /** The pages of a month jump, by (until, cursor); [favouritePages]/[pages] when there is no until. */
+    val untilPages = mutableMapOf<Pair<String, String?>, ArchivePage>()
+
     /** The answer to every favourite call; [markGate] holds it until completed. */
     var markResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var markGate: CompletableDeferred<Unit>? = null
@@ -47,13 +53,15 @@ class FakeArchiveRepository : ArchiveRepository {
     val cursors = mutableListOf<String?>()
     val dayCalls = mutableListOf<String>()
 
-    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean): Result<ArchivePage, DataError.Network> {
+    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean, until: String?): Result<ArchivePage, DataError.Network> {
         cursors += cursor
         requests += cursor to favourites
+        untils += until
         if (failNext) {
             failNext = false
             return Result.Failure(DataError.Network.NoInternet)
         }
+        if (until != null) return untilPages[until to cursor]?.let { Result.Success(it) } ?: Result.Failure(NOT_FOUND)
         return (if (favourites) favouritePages else pages)[cursor]?.let { Result.Success(it) } ?: Result.Failure(NOT_FOUND)
     }
 
