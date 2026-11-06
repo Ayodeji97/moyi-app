@@ -12,6 +12,8 @@ kotlin {
             // The relationship-type cards and their labels: states.md §1a keeps the card in
             // onboarding until a third use appears, and Bond settings is the second.
             implementation(project(":shared:feature:onboarding"))
+            // The platform's list of zone ids for the time-zone picker, and the invite's expiry date.
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.androidx.navigation.compose)

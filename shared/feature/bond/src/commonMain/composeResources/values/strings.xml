@@ -83,4 +83,82 @@
     <string name="settings_load_error_heading">That didn't work.</string>
     <string name="settings_load_error_line">Nothing was lost. Try again in a moment.</string>
     <string name="settings_load_error_action">Try again</string>
+    <!-- ===== The shared time zone (FR-027; Figma 397:22, 397:67, 397:102; states.md §8) ===== -->
+
+    <!-- field.timezone.label (strings-proposed.md), the row's name on the root (396:19). -->
+    <string name="settings_row_timezone">Shared time zone</string>
+    <!-- PROPOSED. Propose's heading (397:28), one line. -->
+    <string name="settings_tz_heading">Change the time zone</string>
+    <!-- PROPOSED. states.md §8's constraints paragraph (397:63): the other member must agree, from the next Bond-day, never backwards, at most once every 30 days. -->
+    <string name="settings_tz_rules">You both have to agree. It takes effect from your next day, never backwards, and it can change at most once every 30 days.</string>
+    <!-- PROPOSED. The same paragraph on a bond nobody has joined: doc 06 applies the change at once, as there is nobody to agree. -->
+    <string name="settings_tz_rules_alone">Nobody has joined yet, so it changes now, from your next day. After that it can change at most once every 30 days.</string>
+    <!-- PROPOSED. Propose's PrimaryAction (397:65). -->
+    <string name="settings_tz_propose">Propose change</string>
+    <!-- PROPOSED. Its Sending label. -->
+    <string name="settings_tz_proposing">Proposing</string>
+    <!-- PROPOSED. Proposed's heading (397:73): the zone asked for. %1$s is its city, e.g. London. -->
+    <string name="settings_tz_proposed_heading">%1$s time</string>
+    <!-- states.md §8, the pending state's sentence (397:98). %1$s is the other member's display name. -->
+    <string name="settings_tz_proposed_line">Proposed. It changes once %1$s agrees, and lapses in seven days if not.</string>
+    <!-- PROPOSED. The same with no name known. -->
+    <string name="settings_tz_proposed_line_unnamed">Proposed. It changes once the other person agrees, and lapses in seven days if not.</string>
+    <!-- PROPOSED, after copy.md's rule for withdrawing a named pending thing ("Cancel this invite"). Proposed's secondary (397:100). -->
+    <string name="settings_tz_withdraw">Cancel this proposal</string>
+    <!-- PROPOSED. The secondary while its DELETE is in flight. -->
+    <string name="settings_tz_withdrawing">Cancelling</string>
+    <!-- PROPOSED. Confirm's heading (397:108), two lines. %1$s is the other member's display name, %2$s the proposed zone's city. -->
+    <string name="settings_tz_confirm_heading">%1$s proposed %2$s time</string>
+    <!-- PROPOSED. The same with no name known. %1$s is the proposed zone's city. -->
+    <string name="settings_tz_confirm_heading_unnamed">%1$s time was proposed</string>
+    <!-- PROPOSED. Confirm's line (397:133): the consequence, from the next Bond-day, never backwards, and the 30 days. %1$s is the proposed zone's city. -->
+    <string name="settings_tz_confirm_line">If you agree, your day starts and ends on %1$s time for both of you, from your next day, never backwards. It then stays for at least 30 days.</string>
+    <!-- PROPOSED. Confirm's PrimaryAction (397:135) and its Sending label. -->
+    <string name="settings_tz_agree">Agree</string>
+    <string name="settings_tz_agreeing">Agreeing</string>
+    <!-- PROPOSED. Confirm's secondary (397:137): the same DELETE, from the other side. -->
+    <string name="settings_tz_decline">Decline</string>
+    <string name="settings_tz_declining">Declining</string>
+    <!-- PROPOSED. 409 TIMEZONE_CHANGE_TOO_SOON. states.md §8 wants the date; the contract carries it only in prose (docs/backend-contract-gaps.md, row 15), so it is not shown. -->
+    <string name="settings_tz_error_too_soon">The shared time zone changed less than 30 days ago, so it cannot change again yet.</string>
+    <!-- PROPOSED. 422 on the zone: not a region zone. -->
+    <string name="settings_tz_error_unsupported">That time zone cannot be used. Choose a city.</string>
+    <!-- field.timezone.error (strings-proposed.md, in file): the zone list did not load; reopening the field retries. -->
+    <string name="settings_tz_list_error">We could not load time zones. Your choice is still here. Open it again to retry.</string>
+    <!-- PROPOSED. The zone list's heading (no frame: docs/missing-components.md §19). -->
+    <string name="settings_tz_picker_heading">Choose a city</string>
+    <!-- PROPOSED. The zone list's search field. -->
+    <string name="settings_tz_search_label">Search cities</string>
+    <!-- PROPOSED. Nothing matches the search. -->
+    <string name="settings_tz_search_empty">No city matches that.</string>
+    <!-- PROPOSED. Spoken hint on a city row. -->
+    <string name="settings_tz_pick_hint">Chooses this city</string>
+
+    <!-- ===== The invite (states.md §2; strings-proposed.md §6b; Figma 416:44, 416:97) ===== -->
+
+    <!-- settings.group.invite (strings-proposed.md §8, in file, not decided). -->
+    <string name="settings_group_invite">Invite</string>
+    <!-- settings.invite.heading (strings-proposed.md §6b): the row and the screen. -->
+    <string name="settings_invite_heading">Invite</string>
+    <!-- PROPOSED. The row's value (415:315) with a live invite, and with none. -->
+    <string name="settings_invite_value_active">Active</string>
+    <string name="settings_invite_value_none">None</string>
+    <!-- settings.invite.line (strings-proposed.md §6b). %1$s is the day it expires, day first then the month, e.g. 13 November. -->
+    <string name="settings_invite_line">Send this only to the person you want in it. It works once and expires on %1$s.</string>
+    <!-- PROPOSED. The same when the server gave no expiry. -->
+    <string name="settings_invite_line_undated">Send this only to the person you want in it. It works once.</string>
+    <!-- settings.invite.share. -->
+    <string name="settings_invite_share">Share invite</string>
+    <!-- settings.invite.cancel (copy.md warmth audit: the UI says cancel, the domain says revoke). -->
+    <string name="settings_invite_cancel">Cancel this invite</string>
+    <!-- PROPOSED. The secondary while its DELETE is in flight. -->
+    <string name="settings_invite_cancelling">Cancelling</string>
+    <!-- settings.invite.none.heading, .line and .create (strings-proposed.md §6b). -->
+    <string name="settings_invite_none_heading">No active invite</string>
+    <string name="settings_invite_none_line">The old invite no longer works. Anyone who still has it cannot use it. A new one replaces any invite that is still out there.</string>
+    <string name="settings_invite_create">Create a new invite</string>
+    <!-- PROPOSED. Its Sending label. -->
+    <string name="settings_invite_creating">Creating an invite</string>
+    <!-- PROPOSED. 409 BOND_FULL: the second member joined while the screen was open. -->
+    <string name="settings_invite_error_full">Someone has joined, so this bond needs no invite now.</string>
 </resources>

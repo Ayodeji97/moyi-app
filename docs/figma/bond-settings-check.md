@@ -55,7 +55,9 @@ error: that is expected there, and proves the route.
 | row · Leave this bond 396:32 | 963 * | 660 | 657.9 | match |
 
 \* Rows below a left-out row move up by 56 each (one row) or by 147 (the Invite group, 91,
-plus the reminder row, 56). The expected column already subtracts them.
+plus the reminder row, 56). The expected column already subtracts them. **Part 2 adds the
+Shared time zone row and the Invite group back: see the root table in "Part 2" below,
+which supersedes these numbers.**
 
 Rows are 56 tall with their text 24 at 16, as 396:13 draws. Values sit at the end, `body`.
 The underline follows `tokens.md` §1: Relationship type and Bond name values are underlined
@@ -66,9 +68,7 @@ days (in place) and Sign out (in place) have none.
 
 | Figma row | Why |
 |---|---|
-| Shared time zone 396:19 | FR-027's three-step flow (397:22, 397:67, 397:102) is a later PR |
 | Your reminder 396:25 | Needs `/members/me/notifications`, which is not in `contracts/openapi.json` yet (a syncContract PR) |
-| Invite group 562:1678, row 415:313 | Its screens (416:*) are a later PR |
 | Block and leave 617:1833 | Later PR |
 | Account 575:1782 | Its screen (help, delete your account) is not built; **Sign out** takes its place in the same group |
 
@@ -106,3 +106,78 @@ Today → gear → root; Rest days On → Off in place; Reveal time → picker �
 Bond name → edit → Save → back on the root with the new name; Relationship type → My close
 friend → back on the root; Leave → dialog → Leave → signed-in start; Back from the root →
 Today. Not walked: a failure, a conflict, sign out (the ViewModel tests cover them), and iOS.
+
+## Part 2: the shared time zone and the invite
+
+Measured 2026-11-06 on the same emulator and preview build, light theme only (dark was not
+screenshotted this time). The one screenshot allowed (397:22) was again refused by the
+Starter plan's MCP limit: geometry from the metadata dump, words from `states.md` §2, §8,
+`strings-proposed.md` §6b, or PROPOSED. Expected is Figma − 75 (D1), less any left-out
+row above it (the reminder row, 56).
+
+### Root (396:3), rows added
+
+| Node | Figma y | Expected | Built y | |
+|---|---|---|---|---|
+| row · Shared time zone, label 396:20 | 450 | 375 | 373.3 | match |
+| row · Reveal time 396:23 | 506 | 431 | 429.3 | match |
+| row · Rest days 396:29 | 562 | 487 | 485.3 | match |
+| group · just you heading 562:1676 | 626 | 551 | 549.3 | match |
+| row · Sign out (Account 575:1782) | 733 | 602 * | 599.6 | 2.4 high |
+| group · invite heading 562:1679 | 797 | 666 * | 663.6 | 2.4 high |
+| row · Invite 415:314 | 848 | 717 * | 713.9 | 3.1 high |
+
+\* Minus the reminder row (56). The drift below the left-out reminder row is the 1.7 per
+group heading that part 1 already showed (18.3 built against 19 drawn), now across one
+more group; not corrected here. The Invite group shows only while the bond waits for its
+second member or holds a live code (the preview's ACTIVE bond holds one, so it shows).
+Its value is Active or None (PROPOSED).
+
+### Time zone: Propose (397:22), Proposed (397:67), Confirm (397:102)
+
+| Node | Figma y | Expected | Built y | |
+|---|---|---|---|---|
+| heading 397:28 / 397:73 / 397:108 | 171 | 96 | 96.0 | match |
+| Propose · Field 397:53 (box) | 228 (instance top) | 153 | box 179, label above it | match: the box sits under its label as `Field` draws it |
+| Propose · rules 397:63 | 364 | 289 | 315.0 | 26 low: the helper is two lines here (the in-file wording with the city), one in Figma |
+| Propose · PrimaryAction 397:65 | 772 | 772 | label 785.5 | match |
+| Proposed · line 397:98 | 228 | 153 | 152.8 | match |
+| Proposed · secondary 397:100 | 786.5 | 786.5 | 785.5 | match |
+| Confirm · line 397:133 | 260 | 185 | 152.8 | 32 high: the heading is one line here ("Tunde proposed London time"), two in Figma (65) |
+| Confirm · PrimaryAction 397:135 | 700 | 700 | label 713.5 | match |
+| Confirm · secondary 397:137 | 786.5 | 786.5 | 785.5 | match |
+
+The city list (no frame; `missing-components.md` §19) is the heading "Choose a city", a
+search `Field`, and one settings row per city with its IANA id as the value.
+
+### Invite: Active (416:44), Revoked (416:97)
+
+| Node | Figma y | Expected | Built y | |
+|---|---|---|---|---|
+| heading 416:50 / 416:103 | 171 | 96 | 96.0 | match |
+| Active · line 416:78 | 228 | 153 | 152.8 | match |
+| Active · InviteCode 416:79 | 300 | 225 | caption 248.8 (padding 24) | match |
+| Active · PrimaryAction 416:93 | 700 | 700 | label 713.5 | match |
+| Active · secondary 416:95 | 786.5 | 786.5 | 785.5 | match |
+| Revoked · line 416:131 | 228 | 153 | 152.8 | match |
+| Revoked · PrimaryAction 416:133 | 772 | 772 | label 785.5 | match |
+
+### Walked on the emulator (preview build)
+
+- Root → Shared time zone (Lagos) → **Confirm** ("Tunde proposed London time") → Decline →
+  root, still Lagos.
+- Root → **Propose** → zone field → city list → search "lond" → London → Propose with
+  London → Propose change → **Proposed** ("London time", the states.md sentence with
+  Tunde) → Cancel this proposal → root, Lagos.
+- Restarted → Confirm → Agree → root reads London → Propose → Tokyo → Propose change →
+  "The shared time zone changed less than 30 days ago, so it cannot change again yet." 8
+  above the action, Tokyo kept.
+- Root → Invite (Active) → Copy code → Copied → Cancel this invite → **Revoked** → Create a
+  new invite → Active with a new code (M4XR9T) → Share invite: the Android sheet with "Join
+  me on Moyi. Open https://getmoyi.app/i/M4XR9T or enter the code M4XR9T in the app."; Back
+  closes it and the screen stays where it was.
+- Today, stepped to Partner not joined → Share the invite again → the same sheet with the
+  **same** live code (M4XR9T, none issued); Back closes it, Today unchanged.
+
+Not walked: Proposing and Agreeing as Sending (too quick to catch in a dump at 800 ms), a
+404 or 409 on a device (the ViewModel tests cover them), dark theme, and iOS.

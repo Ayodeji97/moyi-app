@@ -67,6 +67,8 @@ internal fun SettingsRow(
     destructive: Boolean = false,
     enabled: Boolean = true,
     error: String? = null,
+    /** What a tap does, spoken by assistive technology when the label alone does not say it. */
+    onClickLabel: String? = null,
 ) {
     val colors = MoyiTheme.colors
     val underline = kind == RowKind.Navigates
@@ -75,7 +77,7 @@ internal fun SettingsRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                .clickable(enabled = enabled, onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
                 .padding(vertical = MoyiTheme.spacing.md),
             horizontalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.md),
             verticalAlignment = Alignment.CenterVertically,

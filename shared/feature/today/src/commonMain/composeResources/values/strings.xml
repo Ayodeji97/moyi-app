@@ -43,6 +43,8 @@
     <string name="today_announce_partner_not_joined">Written. Waiting for your partner to join</string>
     <!-- states.md §8. Opens the OS share sheet; navigates nowhere. -->
     <string name="today_share_invite_again">Share the invite again</string>
+    <!-- onboarding's invite_share_text, word for word: the text the OS share sheet carries. %1$s is the invite link, %2$s the code. Repeated here because feature/today does not see onboarding's resources. -->
+    <string name="today_invite_share_text">Join me on Moyi. Open %1$s or enter the code %2$s in the app.</string>
     <!-- FIGMA NODE NAME on 188:507. A solo day, either way round. -->
     <string name="today_solo_line">This day closed with one entry.</string>
     <!-- states.md §3 announce for Solo day, either way round (you wrote, or they did). -->

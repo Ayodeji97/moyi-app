@@ -17,6 +17,8 @@ import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondSettingsChange
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
+import com.moyi.app.domain.bond.Invite
+import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.TimeOfDay
 import io.ktor.client.engine.mock.MockEngine
@@ -37,6 +39,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.time.Instant
 
 /**
  * [BondSettingsRepositoryImpl] against a MockEngine through the real authed client:
@@ -187,9 +190,103 @@ class BondSettingsRepositoryTest {
     private fun MockRequestHandleScope.respondBond(body: String, etag: String): HttpResponseData =
         respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.ETag to listOf(etag)))
 
-    private fun bondJson(revealTime: String = "null"): String =
+    private fun bondJson(
+        revealTime: String = "null",
+        pending: String = "null",
+        invite: String = "null",
+        members: String = "[]",
+        status: String = "ACTIVE",
+    ): String =
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
-            """"strictMode":false,"status":"ACTIVE","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
-            """"deletionScheduledFor":null,"members":[],"me":{"memberId":"m1","role":"OWNER"},"invite":null,""" +
-            """"pendingTimezoneChange":null,"pendingDeletionRequest":null}"""
+            """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
+            """"deletionScheduledFor":null,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":null}"""
+
+    private fun pendingJson(proposedBy: String): String =
+        """{"id":"p1","proposedTimezone":"Europe/London","proposedByMemberId":"$proposedBy",""" +
+            """"proposedAt":"2026-11-01T10:00:00Z","expiresAt":"2026-11-08T10:00:00Z"}"""
+
+    // ----- the shared time zone (FR-027) and the invite, read with the settings -----
+
+    @Test
+    fun aProposalByTheCallerIsTheirsToCancelAndNotToAgreeTo() = runTest {
+        val fixture = Fixture { respondBond(bondJson(pending = pendingJson(proposedBy = "m1")), etag = "\"7\"") }
+
+        val pending = assertIs<Result.Success<BondSettings>>(fixture.repo.settings("b1")).data.pendingTimezone
+
+        assertEquals(PendingTimezoneChange("p1", "Europe/London", proposedByMe = true, Instant.parse("2026-11-08T10:00:00Z")), pending)
+    }
+
+    @Test
+    fun aProposalByTheOtherMemberIsTheCallersToAnswer() = runTest {
+        val members = """[{"id":"m1","displayName":"Amara","role":"OWNER"},{"id":"m2","displayName":"Tunde","role":"MEMBER"}]"""
+        val fixture = Fixture { respondBond(bondJson(pending = pendingJson(proposedBy = "m2"), members = members), etag = "\"7\"") }
+
+        val settings = assertIs<Result.Success<BondSettings>>(fixture.repo.settings("b1")).data
+
+        assertEquals(false, settings.pendingTimezone?.proposedByMe)
+        assertEquals("Tunde", settings.partnerName)
+    }
+
+    @Test
+    fun theLiveInviteComesWithTheSettings() = runTest {
+        val invite = """{"id":"i1","code":"K7Q2PD","link":"https://getmoyi.app/i/K7Q2PD","expiresAt":"2026-11-08T10:00:00Z"}"""
+        val fixture = Fixture { respondBond(bondJson(invite = invite, status = "PENDING_MEMBER"), etag = "\"7\"") }
+
+        val settings = assertIs<Result.Success<BondSettings>>(fixture.repo.settings("b1")).data
+
+        assertEquals(Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD", Instant.parse("2026-11-08T10:00:00Z")), settings.invite)
+        assertEquals(true, settings.waitingForPartner)
+    }
+
+    @Test
+    fun proposingIsAPatchOfTheZoneAloneWithNoConditionAndKeepsTheNewVersion() = runTest {
+        val fixture = Fixture { respondBond(bondJson(pending = pendingJson(proposedBy = "m1")), etag = "\"9\"") }
+
+        val result = fixture.repo.proposeTimezone("b1", "Europe/London")
+
+        val request = fixture.requests.single()
+        assertEquals(HttpMethod.Patch, request.method)
+        assertEquals("/api/v1/bonds/b1/timezone", request.url.encodedPath)
+        assertNull(request.headers[HttpHeaders.IfMatch], "ADR-0030: the two-party routes take no If-Match")
+        assertEquals("""{"anchorTimezone":"Europe/London"}""", assertIs<TextContent>(request.body).text)
+        val saved = assertIs<Result.Success<BondSettings>>(result).data
+        assertEquals("\"9\"", saved.version)
+        assertEquals("Europe/London", saved.pendingTimezone?.timezone)
+    }
+
+    @Test
+    fun aSecondChangeInsideThirtyDaysReachesTheCallerByItsCode() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.Conflict, "TIMEZONE_CHANGE_TOO_SOON") }
+
+        val result = fixture.repo.proposeTimezone("b1", "Europe/London")
+
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON))), result)
+    }
+
+    @Test
+    fun confirmingNamesTheProposal() = runTest {
+        val fixture = Fixture { respondBond(bondJson(), etag = "\"10\"") }
+
+        val result = fixture.repo.confirmTimezone("b1", "p1")
+
+        val request = fixture.requests.single()
+        assertEquals(HttpMethod.Post, request.method)
+        assertEquals("/api/v1/bonds/b1/timezone/confirm", request.url.encodedPath)
+        assertEquals("""{"proposalId":"p1"}""", assertIs<TextContent>(request.body).text)
+        assertEquals("\"10\"", assertIs<Result.Success<BondSettings>>(result).data.version)
+    }
+
+    @Test
+    fun cancellingIsADeleteAndNothingWaitingIsANotFound() = runTest {
+        var answer = 0
+        val fixture = Fixture {
+            if (answer++ == 0) respond("", HttpStatusCode.NoContent) else respondProblem(HttpStatusCode.NotFound, "NOT_FOUND")
+        }
+
+        assertEquals(Result.Success(Unit), fixture.repo.cancelTimezoneChange("b1"))
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(404, ApiErrorCode.NOT_FOUND))), fixture.repo.cancelTimezoneChange("b1"))
+        assertEquals(HttpMethod.Delete, fixture.requests.first().method)
+        assertEquals("/api/v1/bonds/b1/timezone", fixture.requests.first().url.encodedPath)
+    }
 }
