@@ -5,9 +5,11 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.feature.auth.home.HomePlaceholderRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
+import com.moyi.app.feature.auth.sessionended.SessionEndedScreen
 import com.moyi.app.feature.auth.verify.VerifyRoot
 import kotlinx.serialization.Serializable
 
@@ -17,6 +19,24 @@ data class LoginRoute(val email: String = "", val sessionEnded: Boolean = false)
 
 @Serializable
 data object RegisterRoute
+
+/** Why the person was signed out, after `TOKEN_REUSE_DETECTED`. A root: nothing to go back to. */
+@Serializable
+data object SessionEndedRoute
+
+/**
+ * Where the app goes when the session ends, by why it ended:
+ *
+ * - [SessionEndReason.ReuseDetected]: the session-ended screen, which says what happened.
+ * - [SessionEndReason.Invalid]: sign in, with the neutral line. The token expired, was
+ *   revoked by a password reset, or could not be kept; "used from two places" would be false.
+ * - [SessionEndReason.SignedOut]: sign in, plain. The person asked for it.
+ */
+fun routeAfterSessionEnd(reason: SessionEndReason): Any = when (reason) {
+    SessionEndReason.ReuseDetected -> SessionEndedRoute
+    SessionEndReason.Invalid -> LoginRoute(sessionEnded = true)
+    SessionEndReason.SignedOut -> LoginRoute()
+}
 
 @Serializable
 data class VerifyRoute(val email: String)
@@ -36,6 +56,7 @@ data object HomePlaceholderRoute
  * - Verify → 200 replaces the whole stack with sign in, email prefilled: the
  *   account is done, so back must not return to sign up.
  * - Sign in → success replaces the stack with the placeholder ([onSignedIn]).
+ * - Session ended → "Sign in" replaces the stack with sign in.
  */
 fun NavGraphBuilder.authGraph(
     navController: NavController,
@@ -70,6 +91,9 @@ fun NavGraphBuilder.authGraph(
             onNavigateBack = { navController.navigateUp() },
         )
     }
+    composable<SessionEndedRoute> {
+        SessionEndedScreen(onSignIn = { navController.signInAfterSessionEnded() })
+    }
     composable<HomePlaceholderRoute> {
         HomePlaceholderRoot()
     }
@@ -91,4 +115,9 @@ internal fun NavController.backToLogin() {
     } else {
         navigate(LoginRoute()) { popUpTo<RegisterRoute> { inclusive = true } }
     }
+}
+
+/** Sign in replaces the session-ended screen: back from sign in must not return to the notice. */
+internal fun NavController.signInAfterSessionEnded() {
+    navigate(LoginRoute()) { popUpTo(graph.id) { inclusive = true } }
 }

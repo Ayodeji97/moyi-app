@@ -114,8 +114,15 @@
     <string name="login_error_credentials">That email and password do not match. Check both and try again.</string>
     <!-- ratelimit.line plus a PROPOSED "when" (states.md §1b: states when to try again). The server does not send Retry-After to this layer yet. -->
     <string name="login_error_rate_limited">Sign in is paused for a short while. Your account is fine. Try again in a few minutes.</string>
-    <!-- PROPOSED, owed: the session-ended state has no frame and no approved copy (states.md §1c gap). Shown on sign in after the server ended the session. -->
+    <!-- PROPOSED. Shown on sign in when the server no longer accepts the stored sign-in (REFRESH_TOKEN_INVALID: expired, revoked by a password reset, or not kept). Neutral on purpose: the cause is not known. -->
     <string name="login_session_ended">You have been signed out. Sign in again to continue.</string>
+
+    <!-- ===== Session ended (TOKEN_REUSE_DETECTED, ADR-0021; no Figma frame, auth-placement-spec §7) ===== -->
+
+    <!-- Owner approved 2026-11-05. -->
+    <string name="session_ended_heading">This sign-in has ended</string>
+    <!-- Owner approved 2026-11-05. True per ADR-0021 §4: only this sign-in family is revoked, other devices are untouched, and the person is emailed. -->
+    <string name="session_ended_line">It was used from two places at once, so we ended it to keep your entries safe. Anything else you are signed in on is unaffected. We have emailed you about it.</string>
 
     <!-- ===== Signed-in placeholder (TEMPORARY, until Today is built) ===== -->
 
