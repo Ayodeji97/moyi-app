@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Registration, verification, sign-in and sign-out (doc 06 §3.1).
+ * Registration, verification, password reset, sign-in and sign-out (doc 06 §3.1).
  *
  * Failures are [DataError]s. A refusal carries the server's code in
  * [DataError.Network.Api]: a wrong password is `401 INVALID_CREDENTIALS`, an
@@ -35,6 +35,22 @@ interface AuthRepository {
 
     /** Always succeeds on a reachable server, whether or not the address is known (doc 06 §3.1). */
     suspend fun resendVerification(email: String): EmptyResult<DataError.Network>
+
+    /**
+     * Asks for a password-reset link. Like [resendVerification], it succeeds
+     * on a reachable server whether or not the address has an account (`202`
+     * always, doc 06 §3.1), so a success says nothing about the address.
+     */
+    suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network>
+
+    /**
+     * Sets a new password from a reset token. Signs nobody in: every session
+     * on every device is revoked, and the caller signs in afterwards. Refusals:
+     * `422 PASSWORD_RESET_TOKEN_INVALID`, `410 PASSWORD_RESET_TOKEN_EXPIRED`
+     * (expired or already used), or a `422` field violation on `password`,
+     * which does not spend the token.
+     */
+    suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network>
 
     /**
      * Signs in and keeps the session on this device. [DataError.Local] if the

@@ -6,9 +6,9 @@ import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.composable
 import androidx.navigation.createGraph
 import androidx.navigation.toRoute
-import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.serialization.Serializable
 
 /**
  * The back stack the auth exits leave, on a real NavHostController with the
@@ -54,5 +54,55 @@ class AuthBackStackTest {
         nav.backFromRegister()
 
         assertEquals(listOf("PromiseStandIn"), nav.stack())
+    }
+
+    @Test
+    fun signInFromSessionEndedLeavesOnlySignIn() {
+        val nav = controllerAtPromise()
+        nav.navigate(SessionEndedRoute) { popUpTo(nav.graph.id) { inclusive = true } }
+        assertEquals(listOf("SessionEndedRoute"), nav.stack())
+
+        nav.signInAfterSessionEnded()
+
+        assertEquals(listOf("LoginRoute"), nav.stack())
+        assertEquals(LoginRoute(), nav.currentBackStackEntry!!.toRoute<LoginRoute>())
+    }
+
+    private fun controllerAtLogin(): NavHostController = NavHostController().apply {
+        navigatorProvider.addNavigator(ComposeNavigator())
+        graph = createGraph(startDestination = LoginRoute()) {
+            authGraph(this@apply, onSignedIn = {})
+        }
+    }
+
+    @Test
+    fun theResetScreensPushInOrderAndBackPopsOneAtATime() {
+        val nav = controllerAtLogin()
+        nav.navigate(ForgotPasswordRoute(email = "a+b@example.com"))
+        nav.navigate(ResetLinkSentRoute(email = "a+b@example.com"))
+        nav.navigate(ResetPasswordRoute(email = "a+b@example.com"))
+        assertEquals(listOf("LoginRoute", "ForgotPasswordRoute", "ResetLinkSentRoute", "ResetPasswordRoute"), nav.stack())
+        assertEquals(ResetPasswordRoute("a+b@example.com"), nav.currentBackStackEntry!!.toRoute<ResetPasswordRoute>())
+
+        nav.navigateUp()
+        assertEquals(listOf("LoginRoute", "ForgotPasswordRoute", "ResetLinkSentRoute"), nav.stack())
+        nav.navigateUp()
+        assertEquals(listOf("LoginRoute", "ForgotPasswordRoute"), nav.stack())
+        assertEquals(ForgotPasswordRoute("a+b@example.com"), nav.currentBackStackEntry!!.toRoute<ForgotPasswordRoute>())
+        nav.navigateUp()
+        assertEquals(listOf("LoginRoute"), nav.stack())
+    }
+
+    @Test
+    fun aResetWhoseSignInFailedLeavesOnlySignInWithTheEmail() {
+        val nav = controllerAtLogin()
+        nav.navigate(ForgotPasswordRoute(email = "amara@example.com"))
+        nav.navigate(ResetLinkSentRoute(email = "amara@example.com"))
+        nav.navigate(ResetPasswordRoute(email = "amara@example.com"))
+
+        nav.replaceStackWithLogin("amara@example.com")
+
+        assertEquals(listOf("LoginRoute"), nav.stack())
+        assertEquals(LoginRoute(email = "amara@example.com"), nav.currentBackStackEntry!!.toRoute<LoginRoute>())
     }
 }
