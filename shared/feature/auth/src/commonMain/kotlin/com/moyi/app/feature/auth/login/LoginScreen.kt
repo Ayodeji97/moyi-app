@@ -55,6 +55,7 @@ fun LoginRoot(
     sessionEnded: Boolean,
     onNavigateToHome: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: (email: String) -> Unit,
     onBack: (() -> Unit)?,
     viewModel: LoginViewModel = koinViewModel { parametersOf(initialEmail, sessionEnded) },
 ) {
@@ -63,6 +64,7 @@ fun LoginRoot(
         when (event) {
             LoginEvent.NavigateToHome -> onNavigateToHome()
             LoginEvent.NavigateToRegister -> onNavigateToRegister()
+            is LoginEvent.NavigateToForgotPassword -> onNavigateToForgotPassword(event.email)
         }
     }
     LoginScreen(state = state, onAction = viewModel::onAction, onBack = onBack)

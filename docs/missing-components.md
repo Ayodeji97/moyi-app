@@ -92,6 +92,19 @@ Recorded in PR #5 (design system), 2026-10-27.
   from the email first." and "That code does not match. Copy it again from the email."
   In the expired state the field is hidden. Decide whether it ships or is debug-only.
 
+### 6a. Reset-password paste-code field
+
+- **Today:** not in Figma. Choose a new password (345:30) draws only the new password, the
+  consequence line and "Save and sign in"; the token is meant to arrive by deep link from the
+  reset email, which this app does not handle yet.
+- **Here:** the password-reset PR adds the same stand-in as §6: a `Field` `Text` first in the
+  form, with verify's label, helper and errors ("Code from the email", "Paste the code from the
+  link we sent, or the whole link.", "Paste the code from the email first.", "That code does not
+  match. Copy it again from the email."). The reset link carries the token as `?token=` too
+  (backend `VerificationEmailComposer.linkFor`, read only), so `extractVerificationToken` is
+  reused unchanged. An expired or used link shows a new proposed error under the field. Decide
+  with §6 whether it ships or is debug-only; when deep links land, both go.
+
 ### 7. 18+ and Terms consent control
 
 - **Today:** `states.md` §1 puts "18+ confirmation, Terms and Privacy consent (FR-011)" on Sign up,
@@ -134,10 +147,22 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 | `home_greeting` / `home_line` | Hello, {name} / You are signed in. The rest of Moyi is on its way. | Temporary placeholder |
 | `home_sign_out` / `_sending` | Sign out / Signing out | Temporary placeholder |
 
+### 7c. Every string the password-reset PR proposed
+
+In the same `strings.xml`, marked `PROPOSED`. The rest of the three screens' copy is
+`strings-proposed.md` (`reset.*`) or reused from sign in, sign up and verify.
+
+| Key | String | Why it exists |
+|---|---|---|
+| `reset_request_action` | Send the link | Forgot password's PrimaryAction; `strings-proposed.md` has no key for it |
+| `reset_request_action_sending` | Sending the link | Its Sending label (states.md §1c) |
+| `reset_action_sending` | Saving | "Save and sign in" while saving and signing in |
+| `reset_token_error_expired` | That link has expired. Go back and ask for a new one. | `410 PASSWORD_RESET_TOKEN_EXPIRED` under the paste field (§6a) |
+
 ### 7b. Destinations PR #6 draws but cannot reach yet
 
 - **Terms** and **Privacy Policy** on sign up: no published URL, so the links do nothing.
-- **I forgot my password** on sign in: password reset is a later PR; the link does nothing.
+- **I forgot my password** on sign in: reached since the password-reset PR (2026-11-05).
 - **Sign in is the root** while the promise screen (Onboarding 1) is unbuilt, so it has no
   back control and its eyebrow sits at the top of the content (as the unverified gate does).
 

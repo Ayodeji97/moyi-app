@@ -22,7 +22,7 @@ sealed interface LoginAction {
     data class OnFieldBlur(val field: LoginField) : LoginAction
     data object OnSubmit : LoginAction
 
-    /** No destination yet: password reset is a later PR. */
+    /** Opens Forgot password with whatever is in the email field. */
     data object OnForgotPasswordClick : LoginAction
     data object OnCreateAccountClick : LoginAction
 }
@@ -31,4 +31,7 @@ sealed interface LoginEvent {
     /** Signed in: the session is SignedIn and stored. */
     data object NavigateToHome : LoginEvent
     data object NavigateToRegister : LoginEvent
+
+    /** Forgot password, prefilled with [email] as typed here (possibly empty). */
+    data class NavigateToForgotPassword(val email: String) : LoginEvent
 }

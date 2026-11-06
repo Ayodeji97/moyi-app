@@ -47,9 +47,10 @@ class LoginViewModel(
                 }
             }
             LoginAction.OnSubmit -> submit()
-            // Password reset (forgot / link sent / new password) is a later PR;
-            // until then this link goes nowhere.
-            LoginAction.OnForgotPasswordClick -> Unit
+            LoginAction.OnForgotPasswordClick -> {
+                val email = _state.value.email.value.trim()
+                viewModelScope.launch { _events.send(LoginEvent.NavigateToForgotPassword(email)) }
+            }
             LoginAction.OnCreateAccountClick -> viewModelScope.launch { _events.send(LoginEvent.NavigateToRegister) }
         }
     }

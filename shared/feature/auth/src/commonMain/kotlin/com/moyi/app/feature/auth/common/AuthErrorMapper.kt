@@ -16,6 +16,7 @@ import com.moyi.app.feature.auth.resources.register_name_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_breached
 import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
+import com.moyi.app.feature.auth.resources.reset_token_error_expired
 import com.moyi.app.feature.auth.resources.verify_token_error_invalid
 
 /** The register request's fields, as the server names them in `errors[].field`. */
@@ -35,7 +36,7 @@ enum class RegisterField(val wireName: String) {
  */
 object AuthErrorMapper {
 
-    /** A form-level failure on register, verify or resend. */
+    /** A form-level failure on register, verify, resend, or either password-reset request. */
     fun formFailure(error: DataError): SubmitStatus.Failed = when {
         error.isOffline() -> SubmitStatus.Failed(UiText.Resource(Res.string.auth_error_offline), offerRetry = true)
         error.code() == ApiErrorCode.RATE_LIMITED ->
@@ -90,6 +91,35 @@ object AuthErrorMapper {
 
     /** 410 VERIFICATION_TOKEN_EXPIRED: expired or already used (doc 06 §3.1). */
     fun isVerificationExpired(error: DataError): Boolean = error.code() == ApiErrorCode.VERIFICATION_TOKEN_EXPIRED
+
+    /**
+     * The reset-password refusal that belongs under the paste field, or null.
+     *
+     * - `422 PASSWORD_RESET_TOKEN_INVALID`, or a field violation on `token`
+     *   (blank or over 256 characters): the code does not match, as on verify.
+     * - `410 PASSWORD_RESET_TOKEN_EXPIRED`: expired or already used. Matched on
+     *   the code, since the contract declares no 410 (backend-contract-gaps.md #15).
+     */
+    fun resetTokenError(error: DataError): UiText? {
+        val problem = (error as? DataError.Network.Api)?.problem ?: return null
+        return when {
+            problem.code == ApiErrorCode.PASSWORD_RESET_TOKEN_EXPIRED -> UiText.Resource(Res.string.reset_token_error_expired)
+            problem.code == ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID ||
+                problem.fieldErrors.any { it.field == RESET_TOKEN_FIELD } -> UiText.Resource(Res.string.verify_token_error_invalid)
+            else -> null
+        }
+    }
+
+    /**
+     * A reset-password 422 on the new password, in register's words: the
+     * server checks the same rules (VALID_PASSWORD, NOT_BREACHED) on the same
+     * field name. Null when the password was not the problem.
+     */
+    fun resetPasswordError(error: DataError, submittedPassword: String): UiText? =
+        registerFieldErrors(error, submittedPassword)[RegisterField.Password]
+
+    /** The reset request's token field, as the server names it in `errors[].field`. */
+    private const val RESET_TOKEN_FIELD = "token"
 
     private fun registerFieldMessage(field: RegisterField, violation: FieldError, submittedPassword: String): UiText = when (field) {
         RegisterField.Name -> UiText.Resource(
