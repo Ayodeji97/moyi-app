@@ -1,4 +1,4 @@
-# Archive, parts 1 to 3, against Figma
+# Archive, parts 1 to 4, against Figma
 
 The Archive list, its empty state and the day view as built, measured on a running app and
 compared with the Figma frames in section 425:317. The screens run on preview data in the
@@ -18,6 +18,13 @@ results paged by cursor and the no-results message, against
 the one attempt (508:1509) hit the Starter-plan rate limit, so 508:1509 / 511:1740 (RESULTS),
 511:1518 / 511:1777 (KEYBOARD UP) and 511:1691 / 511:1945 (no results) were compared by
 geometry (`archive.xml`) only. The keyboard frames (511:1579, 511:1879) are the OS's.
+
+Part 4 (Month jump) adds the month row (257:9, light 281:757) on All days and Favourites, the
+month picker, and "Back to the newest days", against `GET …/days?until=YYYY-MM-DD` (with
+`cursor` and `favourites=true` as they apply). Measured 2026-11-06 on the same emulator. **No
+Figma screenshot was read for part 4**: the dump has no picker frame anywhere in section
+425:317 (no node named picker, wheel or month list), so the one screenshot allowed was not
+spent; 257:9 and 281:757 were compared by geometry only.
 
 ## Sources, and what they are worth
 
@@ -67,6 +74,13 @@ August) and a day still waiting with their entry locked (30 August, mine only).
   then back: the query and the results are as they were. A long press on "Your days" in
   Search steps to the empty and failed layouts (the failure is the inline error and Try
   again under the chips).
+- **Month jump**: the archive now runs from 2 September back to 19 April 2025 (the thirty days,
+  then one day in four). The row names the month at the top of the list and follows it as you
+  scroll. **Jump to** opens the picker: September and August at first, because the picker
+  reaches back only to the oldest day loaded; scroll down and it grows to April. Choose
+  **June 2025**: the list starts at Monday 30 June, scrolled to the top, with "Back to the
+  newest days" under the chips. In **Favourites**, choose **May 2025**: Thursday 29 May, the
+  older favourite. Search swaps the row for the field.
 
 ## Results
 
@@ -76,10 +90,10 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 |---|---|---|---|
 | Back target | y 24, 48 x 48 | y 24, 48 x 48 | matches |
 | Title "Your days" | y 96, h 48 | y 96, h 48 | matches |
-| Navigation block (month row, chips) | y 168 to 312 | **not drawn** | owed |
-| List | y 336 | y 168 | **168 higher**: the navigation block above it is owed |
-| Month heading "SEPTEMBER 2025" | none (the month row names it) | y 168, `label`, a heading | **added**, see below |
-| DayCard | 358 x 259, padding 16 | 369 x 258.3 at y 202 | matches (width is the device's) |
+| Navigation block (month row, chips) | y 168 to 312 (row 80, 16, chips 48) | y 168 to 288 (row 56, 16, chips 48) | **24 shorter**: states.md's 56 row, see part 4 |
+| List | y 336 | y 312 | **24 higher**, as above |
+| Month heading "SEPTEMBER 2025" | none (the month row names it) | y 312, `label`, a heading | **kept**, see below |
+| DayCard | 358 x 259, padding 16 | 369 x 258.3 at y 346 | matches (width is the device's) |
 | Date "TUESDAY 2" | card y 16 | card y 16 | matches |
 | "FROM TUNDE" | card y 51 | card y 50.3 | matches |
 | Entry text | card y 74, two lines, h 65 | card y 72.8, two lines, ellipsis | matches |
@@ -93,13 +107,13 @@ August) and a day still waiting with their entry locked (30 August, mine only).
 
 | Element | Figma | Built | |
 |---|---|---|---|
-| Month jump row | y 168, h 80 | **not drawn** | owed (part 3) |
-| Chips row | y 264, h 48 | y 168, h 48 | **96 higher**: the month row above it is owed |
+| Month jump row | y 168, h 80 | y 168, h 56 | states.md's 56 (part 4) |
+| Chips row | y 264, h 48 | y 240, h 48 | **24 higher**: the shorter row |
 | Chip · All days | x 0, 100 x 48 (pill 40) | x 0, 100.2 wide (label 68.2 + 2 x 16), 48 target, 40 pill | matches |
 | Chip · Favourites | x 108, 120 x 48 | x 108, 120 wide | matches (8 apart) |
-| Chip · Search | x 236, 89 x 48 | **not drawn** | the next PR |
+| Chip · Search | x 236, 89 x 48 | x 236.2, 89.1 | matches (part 3) |
 | Chip label | node names "All days", "Favourites" | `label`, so "ALL DAYS", "FAVOURITES" | the widths agree with `label` to the pixel; see "For you to check" in the PR |
-| List | y 336 | y 240 | 96 higher, as the chips |
+| List | y 336 | y 312 | 24 higher, as the chips |
 | Day cards | DayCard with the bookmark | the same DayCard, filtered to days holding my mark | matches |
 
 ### Archive · search (RESULTS 508:1509 / 511:1740; KEYBOARD UP 511:1518 / 511:1777)
@@ -113,7 +127,7 @@ Measured 2026-11-05 on the same Pixel 9a, `-PmoyiUiPreview=today`, with `uiautom
 | Field label / helper | "Search your days" / "Looks through everything you have both written." | the same, from states.md §6 | matches |
 | Chips | All days x 0 (100), Favourites x 108 (120), Search x 236 (89) | Search at x 236.2, 89.1 wide (label 57.1 + 2 x 16) | matches |
 | List | y 371 (24 under the chips) | first month heading at y 370.3 | matches |
-| Month row | not drawn in search (the field replaces it) | not drawn (owed anyway) | matches |
+| Month row | not drawn in search (the field replaces it) | absent; the field takes its slot | matches (part 4) |
 | Results | DayCards, the first two lines of each entry, no snippet, no highlight | the same DayCard, month headings as in All days | the open question of states.md §6 is left open |
 | KEYBOARD UP | field in Focus (`ink`, heavier stroke), empty, unfiltered list under it | focused on choosing Search (`focused=true`, `mInputShown=true`), unfiltered list | matches |
 | Paging | not drawn | "flat": 13 days, 28 August to 4 August, the second page loaded on scrolling; 30 August (locked) absent | as the contract |
@@ -127,6 +141,27 @@ Measured 2026-11-05 on the same Pixel 9a, `-PmoyiUiPreview=today`, with `uiautom
 | Chips | drawn, Search selected | drawn, Search selected | the way back |
 | "Nothing matched that." | list y 0, x 0, h 33 | y 394.3 (list y 24), x 24 in the list, h 32.8 | the StateBlock's 24 inset, as Favourites empty |
 | "Try another word, or go back to all days." | 16 under (y 49), h 24 | 15.9 under, h 24 | as above |
+
+### Archive · month jump (257:9 in 223:3; light 281:757 in 281:754)
+
+Measured 2026-11-06, Pixel 9a, `-PmoyiUiPreview=today`, with `uiautomator`.
+
+| Element | Figma | Built | |
+|---|---|---|---|
+| Row | x 0, y 168, 358 x **80** | x 0, y 168, 379.4 x **56**, `outline` hairline, radius 12 | **states.md §6's 56** (the design system wins); Figma's 80 is for the owner (missing-components §17) |
+| Calendar glyph | x 16, 24 x 24, centred | x 16, 24 x 24, centred, `ink` | matches |
+| "September 2026" | x 48, 222 x 24 | x 48, `body` (24 high), one line | matches |
+| "Jump to" | 64 x 48 target at x 278, label metrics, ending 16 from the edge | `TextLink`, `body` sentence case (D14), ending 16 from the edge | D14 |
+| Screen reader | not drawn | one stop: "Showing September 2025. Jump to a month.", a button | interpreted |
+| Gap to the chips | 16 | 16 (chips at 240) | matches |
+| Row follows the scroll | not drawn | "September 2025", then "May 2025" after scrolling down twelve screens | as the brief |
+| The picker | **not drawn** (no frame in 425:317) | Material 3 `AlertDialog` in Rosewood, "Jump to a month", one 48 row per month newest first, Cancel | platform dialog (missing-components §16) |
+| Months offered | not drawn | September and August at first; September to April 2025 after scrolling to the end | no month after the Bond-day, none before the oldest loaded |
+| After a jump (June 2025) | not drawn | the list from Monday 30 June, at its top; the row "June 2025" | `until=2025-06-30` |
+| "Back to the newest days" | not drawn | `TextLink` under the chips, y 312, 48; the list 16 under it (y 376) | interpreted; PROPOSED copy |
+| Favourites, May 2025 | not drawn | Thursday 29 May (the older favourite), Favourites still selected | `until` and `favourites=true` |
+| Back from a day view after a jump | not drawn | the list where it was, not scrolled to the top again | as the brief |
+| Search | the field replaces the row | the field at 168, chips at 298.3 | matches (part 3) |
 
 ### Archive · favourites, empty (440:1570; light 440:1621)
 
@@ -166,31 +201,47 @@ Measured 2026-11-05 on the same Pixel 9a, `-PmoyiUiPreview=today`, with `uiautom
 
 ## Deviations, in short
 
-1. **Positions above the list**: the month row and the chips are owed, so the list starts
-   168 higher than Figma draws it.
-2. **Month headings**: with the month row gone, nothing would say which month a day is in,
-   so each month gets a `label` heading in the list. Interpreted, for the owner to check.
+1. **Positions above the list**: the month row is states.md's 56, not Figma's 80, so the
+   chips and the list sit 24 higher than Figma draws them (240 and 312, not 264 and 336).
+2. **Month headings** stay in the list: the row names only the month at the top, and Search
+   has no row. Figma draws none. Interpreted, for the owner to check.
 3. **Empty state**: start-aligned (StateBlock) where Figma centres, and no ghost day.
 4. **Day view**: no Report link. The FavouriteToggle is drawn (part 2), its label in
    sentence-case `body` where Figma's widths imply uppercase `label`.
 5. **D14**: the delete and Try again links are sentence case, as every secondary link is.
-6. **Chips**: 96 higher than Figma (no month row yet) outside search; in search they sit
-   where Figma draws them, under the field.
+6. **Chips**: 24 higher than Figma outside search (the 56 row); in search they sit where
+   Figma draws them, under the field.
 7. **Favourites empty**: the StateBlock's 24 inset, so the copy sits 24 in and the line wraps.
 8. **Search no results**: the same StateBlock inset, where Figma has the message flush at x 0.
 9. **Search failure**: not drawn in Figma; the inline Generic failure line and Try again
    take the list's place, with the field and chips kept.
+10. **Month picker**: not drawn anywhere; the platform's simple dialog (Material 3), the same
+    Compose dialog on iOS. It reaches back only to the oldest day loaded.
+11. **"Back to the newest days"**: not drawn; a TextLink under the chips after a jump.
+12. **"Jump to"** is sentence-case `body` (D14) where Figma draws label metrics.
 
 ## Owed
 
-- Month row with Jump to (`until`), the "Your streak" link, and Report.
-- Search results: a match-centred snippet or a highlight (states.md §6, open).
-- The live-region announcements "Added to favourites" / "Removed from favourites"
-  (strings-proposed.md §6a): the toggle is a polite live region, so its new label is
-  announced, but the two announcement strings are not used yet.
-- The ghost day in the empty state, once it is a design-system component.
-- **R3, screen capture**: the partner's entries here are not protected on this branch. They
-  are when PR #17 merges, because `EntryCard` Partner protects itself there. The DayCard is
-  drawn in this feature, not with EntryCard, so it needs the same protection added then.
-- A cache and `If-None-Match` for both calls (doc 13 §5), with SQLDelight.
-- iOS was built (framework and Xcode app) but not run on a simulator for this check.
+The Archive is built (parts 1 to 4). What is still owed, in one place:
+
+1. **Report** on the day view (Figma 438:1462, x 302, 56 x 48). The endpoint exists in the
+   backend's newer contract; this repository's `contracts/openapi.json` predates it, so it
+   needs `./gradlew syncContract` (its own PR, since that diff is the API changing), then the
+   link and its flow.
+2. **"Your streak"** link in the title row (430:1435, 100 x 48), and the Streak screen it opens.
+3. **R3, screen capture**: the partner's entries are not protected on this branch. When PR #17
+   merges, `EntryCard` Partner protects itself; the `DayCard` here is drawn without EntryCard,
+   so it needs the same protection added then (`TODO(#17)` in `ArchiveScreen.kt`).
+4. **The month picker**, if the owner wants one drawn (missing-components §16), and how far
+   back it reaches: today only to the oldest day loaded (the bond's `createdAt` or a server
+   list of months would let it reach the start).
+5. **Month row height**: states.md's 56 or Figma's 80 (missing-components §17).
+6. **Search results**: a match-centred snippet or a highlight (states.md §6, open).
+7. **Favourite announcements**: "Added to favourites" / "Removed from favourites"
+   (strings-proposed.md §6a) are not used yet; the toggle's new label is announced instead.
+8. **The ghost day** in the empty state, once it is a design-system component.
+9. **A cache and `If-None-Match`** for the list, the day and search (doc 13 §5), with SQLDelight.
+10. **Figma screenshots**: none of parts 2 to 4 was compared with a screenshot (rate limit);
+    every frame since 223:3 and 223:25 was compared by geometry only.
+11. **iOS on a simulator**: the framework and the Xcode app were built for every part, but the
+    Archive has not been run on an iOS simulator.
