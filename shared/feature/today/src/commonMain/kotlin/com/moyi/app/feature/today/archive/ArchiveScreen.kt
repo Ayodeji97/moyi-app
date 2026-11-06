@@ -86,6 +86,7 @@ import com.moyi.app.feature.today.resources.archive_month_newest
 import com.moyi.app.feature.today.resources.archive_month_picker_title
 import com.moyi.app.feature.today.resources.archive_month_row_description
 import com.moyi.app.feature.today.resources.delete_cancel
+import com.moyi.app.feature.today.resources.archive_streak_link
 import com.moyi.app.feature.today.resources.archive_title
 import com.moyi.app.feature.today.resources.today_action_failed
 import com.moyi.app.feature.today.resources.today_author_partner
@@ -106,6 +107,7 @@ fun ArchiveRoot(
     onBack: () -> Unit,
     onOpenDay: (date: LocalDate) -> Unit,
     onWrite: () -> Unit,
+    onOpenStreak: () -> Unit,
     debugTools: Boolean,
     viewModel: ArchiveViewModel = koinViewModel(),
 ) {
@@ -115,6 +117,7 @@ fun ArchiveRoot(
             ArchiveEvent.NavigateBack -> onBack()
             is ArchiveEvent.NavigateToDay -> onOpenDay(event.date)
             ArchiveEvent.NavigateToWrite -> onWrite()
+            ArchiveEvent.NavigateToStreak -> onOpenStreak()
         }
     }
     ArchiveScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
@@ -134,7 +137,7 @@ fun ArchiveRoot(
  * states.md's 56 tall, where Figma draws 80, so the chips are at 240 and the list at 312,
  * 24 above Figma's 264 and 336. Month headings stay in the list.
  *
- * Owed and **not drawn** (docs/figma/archive-check.md): the "Your streak" link.
+ * "Your streak" in the title row opens the Streak screen.
  *
  * @param debugTools `-PmoyiUiPreview=today` only: a long press on the title steps list, empty, error.
  */
@@ -152,13 +155,20 @@ fun ArchiveScreen(
     }
     MoyiScaffold(onBack = { onAction(ArchiveAction.OnBackClick) }, scrollContent = false) {
         Spacer(Modifier.height(MoyiTheme.spacing.lg - MoyiDimens.Scaffold.ItemSpacing))
-        ScreenTitle(
-            text = stringResource(Res.string.archive_title),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(MoyiDimens.TouchTarget)
-                .debugLongPress(if (debugTools) ({ onAction(ArchiveAction.OnDebugCycle) }) else null),
-        )
+        // The title row (Figma 430:1434): the title, and "Your streak" on the trailing side
+        // (430:1435, a 48 target), sentence case per D14 where Figma draws label metrics.
+        Row(Modifier.fillMaxWidth().height(MoyiDimens.TouchTarget), verticalAlignment = Alignment.CenterVertically) {
+            ScreenTitle(
+                text = stringResource(Res.string.archive_title),
+                modifier = Modifier
+                    .weight(1f)
+                    .debugLongPress(if (debugTools) ({ onAction(ArchiveAction.OnDebugCycle) }) else null),
+            )
+            TextLink(
+                text = stringResource(Res.string.archive_streak_link),
+                onClick = { onAction(ArchiveAction.OnStreakClick) },
+            )
+        }
         Spacer(Modifier.height(MoyiTheme.spacing.lg))
         // The field and the month row share the navigation block's top slot (states.md §6).
         if (state.showFilters && state.filter == ArchiveFilter.Search) {

@@ -164,6 +164,7 @@ class ArchiveViewModel(
             }
             ArchiveAction.OnSearchFocused -> search.update { it.copy(focus = false) }
             ArchiveAction.OnWriteClick -> send(ArchiveEvent.NavigateToWrite)
+            ArchiveAction.OnStreakClick -> send(ArchiveEvent.NavigateToStreak)
             ArchiveAction.OnDebugCycle -> debugLayout.value = when (debugLayout.value) {
                 null -> DebugLayout.Empty
                 DebugLayout.Empty -> DebugLayout.Failed

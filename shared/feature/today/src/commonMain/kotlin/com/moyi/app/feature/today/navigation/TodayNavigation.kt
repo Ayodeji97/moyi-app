@@ -12,6 +12,7 @@ import com.moyi.app.designsystem.platform.taskExitTransition
 import com.moyi.app.feature.today.archive.ArchiveDayRoot
 import com.moyi.app.feature.today.archive.ArchiveRoot
 import com.moyi.app.feature.today.reveal.RevealRoot
+import com.moyi.app.feature.today.streak.StreakRoot
 import com.moyi.app.feature.today.today.TodayRoot
 import com.moyi.app.feature.today.write.WriteRoot
 import kotlinx.serialization.Serializable
@@ -36,6 +37,10 @@ data object ArchiveRoute
 @Serializable
 data class ArchiveDayRoute(val date: String)
 
+/** The Streak screen, from the Archive's "Your streak". Back returns to the Archive. */
+@Serializable
+data object StreakRoute
+
 /**
  * The daily loop. Back stack, from Today:
  *
@@ -51,6 +56,7 @@ data class ArchiveDayRoute(val date: String)
  * - Today → Archive (push), from the calendar target → a day (push), from a card. Back
  *   (the arrow, Android Back, the iOS edge swipe) goes one step down each time. The
  *   empty Archive's Write opens the composer over it; Write closing lands on Today.
+ * - Archive → Streak (push), from "Your streak". Back returns to the Archive.
  * - Settings leaves the feature through a callback; the shell decides where.
  *
  * Every transition is instant (the NavHost sets none), with one exception: on iOS,
@@ -105,8 +111,12 @@ fun NavGraphBuilder.todayGraph(
             onBack = { navController.backToToday() },
             onOpenDay = { date -> navController.navigate(ArchiveDayRoute(date.toString())) { launchSingleTop = true } },
             onWrite = { navController.navigate(WriteRoute()) },
+            onOpenStreak = { navController.navigate(StreakRoute) { launchSingleTop = true } },
             debugTools = debugTools,
         )
+    }
+    composable<StreakRoute> {
+        StreakRoot(onBack = { navController.popBackStack() }, debugTools = debugTools)
     }
     composable<ArchiveDayRoute> { entry ->
         ArchiveDayRoot(
