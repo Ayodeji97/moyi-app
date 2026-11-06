@@ -105,6 +105,17 @@
     <!-- PROPOSED. Spoken for the day card's small filled bookmark (states.md §6: the caller's own mark only). -->
     <string name="archive_day_favourited">In your favourites</string>
 
+    <!-- ===== Archive, month jump (states.md §6, route 1: "Tapping opens a month picker"). ===== -->
+
+    <!-- FIGMA NODE NAME on 257:17 / 281:760 (the month row's trailing link), sentence case per D14. -->
+    <string name="archive_month_jump">Jump to</string>
+    <!-- PROPOSED. The month row as one screen-reader stop. %1$s = the month and year, "September 2026". -->
+    <string name="archive_month_row_description">Showing %1$s. Jump to a month.</string>
+    <!-- PROPOSED. The month picker's title (no frame draws a picker). -->
+    <string name="archive_month_picker_title">Jump to a month</string>
+    <!-- PROPOSED. Under the chips after a jump: back to the newest days. Sentence case per D14. -->
+    <string name="archive_month_newest">Back to the newest days</string>
+
     <!-- ===== Write, the composer (Figma 181:3 and siblings) ===== -->
 
     <!-- PROPOSED (the spec's gap: "Send label not in the corpus"). The composer's PrimaryAction. -->

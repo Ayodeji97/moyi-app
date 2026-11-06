@@ -41,6 +41,12 @@ import kotlin.time.Duration.Companion.milliseconds
  * pages). 30 August, where his entry is still locked, is never among them.
  * Eight days a page with a cursor, after the same 800 ms, so a query typed over a slow
  * answer can be watched replacing it. "flat" has enough results to page.
+ *
+ * **Month jump**: before the thirty, 27 older days, one in every four, from 1 August back to
+ * 19 April 2025, so the list spans six months. `until` starts a page at that date or the
+ * nearest earlier day, as the server does; with a cursor both apply. One older day (29 May,
+ * Tunde's entry) holds my mark, so Favourites can jump too. Their words hold neither "flat"
+ * nor "team", so search finds what it did.
  * Bound over the real repositories only in that build (KoinInit); nothing else sees it.
  */
 internal class PreviewArchiveRepository : ArchiveRepository {
@@ -62,11 +68,23 @@ internal class PreviewArchiveRepository : ArchiveRepository {
             12 -> day.copy(markedByMe = setOf("preview-theirs-12"))
             else -> day
         }
-    }.toMutableList()
+    }.plus(
+        // The older months, one day in every four, so the month jump has somewhere to go.
+        (0 until OLDER_COUNT).map { n ->
+            val offset = DAY_COUNT + 2 + n * 4
+            val date = FakeCopy.DATE.minus(DatePeriod(days = offset)).toString()
+            val mine = MyEntry("preview-mine-$offset", PREVIEW_MINE[n % PREVIEW_MINE.size], EntryStatus.REVEALED)
+            val theirs = PartnerEntry.Revealed("preview-theirs-$offset", PREVIEW_OLDER[n % PREVIEW_OLDER.size])
+            ArchiveDay(date, BondDayStatus.REVEALED, mine, theirs, markedByMe = if (n == OLDER_FAVOURITE) setOf(theirs.id) else emptySet())
+        },
+    ).toMutableList()
 
-    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean): Result<ArchivePage, DataError.Network> {
+    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean, until: String?): Result<ArchivePage, DataError.Network> {
         delay(PREVIEW_LATENCY)
-        val start = cursor?.toIntOrNull() ?: 0
+        // As the server: `until` starts the list at that date or the nearest earlier day, and
+        // with a cursor both apply (the cursor here is an index into the whole list, past it).
+        val from = until?.let { limit -> days.indexOfFirst { it.date <= limit }.takeIf { it >= 0 } ?: days.size } ?: 0
+        val start = maxOf(cursor?.toIntOrNull() ?: 0, from)
         val end = minOf(start + PAGE_SIZE, days.size)
         // As the server: a favourites page reads the same window and keeps what holds a mark,
         // so a window with none is an empty page that still has a cursor.
@@ -118,6 +136,12 @@ internal class PreviewArchiveRepository : ArchiveRepository {
 
     private companion object {
         const val DAY_COUNT = 30
+
+        /** Older days, one every four days before the thirty: back to mid-April 2025. */
+        const val OLDER_COUNT = 27
+
+        /** The older day holding one of my marks (Tunde's), so Favourites can jump too: 29 May 2025. */
+        const val OLDER_FAVOURITE = 16
         const val PAGE_SIZE = 8
         val PREVIEW_LATENCY = 800.milliseconds
         val MARK_LATENCY = 600.milliseconds
@@ -129,6 +153,12 @@ internal class PreviewArchiveRepository : ArchiveRepository {
             FakeCopy.MY_ENTRY,
             "I love how you remember the little things.",
             "You never once made me feel late, even when I was very late.",
+        )
+        /** Tunde's words on the older days: neither "flat" nor "team", so search finds what it did. */
+        val PREVIEW_OLDER = listOf(
+            "Thank you for the soup when I could not taste anything.",
+            "You let me have the window seat the whole way.",
+            "The garden looks like yours now, and I like that.",
         )
         val PREVIEW_THEIRS = listOf(
             "You always make the distance feel smaller. Even on the hard days, I feel like we are on the same team.",

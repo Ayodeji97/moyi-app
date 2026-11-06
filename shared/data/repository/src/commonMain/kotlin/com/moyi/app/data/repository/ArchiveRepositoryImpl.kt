@@ -32,11 +32,20 @@ class ArchiveRepositoryImpl(
     private val favouritesApi = FavouritesControllerApi(config.origin, authedClient.client)
     private val searchApi = SearchControllerApi(config.origin, authedClient.client)
 
-    override suspend fun days(bondId: String, cursor: String?, favourites: Boolean): Result<ArchivePage, DataError.Network> =
-        safeApiCall {
-            // `favourites` only when asked for: the unfiltered request stays exactly as it was.
-            daysApi.days(bondId, limit = PAGE_SIZE, cursor = cursor, favourites = favourites.takeIf { it })
+    override suspend fun days(
+        bondId: String,
+        cursor: String?,
+        favourites: Boolean,
+        until: String?,
+    ): Result<ArchivePage, DataError.Network> {
+        // The domain holds dates as ISO text; the generated call takes a LocalDate. Only the
+        // month jump builds one (from a LocalDate), so a value that does not parse is a bug.
+        val untilDate = until?.let { runCatching { LocalDate.parse(it) }.getOrNull() ?: return Result.Failure(DataError.Network.Serialization) }
+        return safeApiCall {
+            // `favourites` and `until` only when asked for: the unfiltered request stays exactly as it was.
+            daysApi.days(bondId, limit = PAGE_SIZE, cursor = cursor, until = untilDate, favourites = favourites.takeIf { it })
         }.mapOrSerialization { it.toArchivePage() }
+    }
 
     // The same DaysResponse as the feed, so the same mappers: a search result is read
     // exactly as a listed day is, and the partner's words exactly as Today reads them.

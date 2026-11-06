@@ -18,6 +18,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -47,6 +51,14 @@ val SEARCH_DEBOUNCE: Duration = 300.milliseconds
  *   not for the query it now holds, so a stale response never overwrites a newer one.
  *   The chips leave search; clearing the field returns to the unfiltered list.
  *
+ * - **Month jump** (states.md §6, route 1): the row names the month of the topmost visible
+ *   day group. Choosing a month reloads the list with `until` = its last day, in the
+ *   current filter (`favourites=true` too), and scrolls to the top; later pages pass the
+ *   cursor with the same `until`. The picker offers no month after the current Bond-day
+ *   and none before the oldest day loaded so far (the client knows of no earlier one).
+ *   Choosing the Bond-day's own month, or "Back to the newest days", is the newest list.
+ *   A chip, or Search, starts from the newest days again.
+ *
  * It owns the feed's lifetime: cleared on the way in and on the way out (onCleared),
  * so no one's days outlive the Archive that showed them.
  */
@@ -66,6 +78,9 @@ class ArchiveViewModel(
     /** Whether the unfiltered archive holds a day: the Search chip is hidden when it does not. */
     private val archiveHasDays = MutableStateFlow(false)
 
+    /** The month row: what is in view, the picker, the oldest day seen, and a pending scroll. */
+    private val monthJump = MutableStateFlow(MonthJump())
+
     /** Sends the field's query while Search is chosen; cancelled on leaving it. */
     private var searchJob: Job? = null
 
@@ -73,11 +88,13 @@ class ArchiveViewModel(
         feed.clear()
     }
 
-    val state: StateFlow<ArchiveState> = combine(feed.state, debugLayout, filterChosen, search, archiveHasDays, ::toState)
-        .stateIn(
+    val state: StateFlow<ArchiveState> =
+        combine(feed.state, debugLayout, filterChosen, search, combine(archiveHasDays, monthJump, ::Pair)) { feed, debug, chosen, input, (hasDays, jump) ->
+            toState(feed, debug, chosen, input, hasDays, jump)
+        }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, archiveHasDays.value),
+            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, archiveHasDays.value, monthJump.value),
         )
 
     private val _events = Channel<ArchiveEvent>(Channel.BUFFERED)
@@ -97,11 +114,18 @@ class ArchiveViewModel(
         // whether the archive is empty.
         viewModelScope.launch {
             feed.state.collect { feed ->
-                if (feed.load != FeedLoad.Ready || feed.favourites || feed.query != null) return@collect
+                if (feed.load != FeedLoad.Ready || feed.favourites || feed.query != null || feed.until != null) return@collect
                 when {
                     feed.visibleDays().isNotEmpty() -> archiveHasDays.value = true
                     feed.nextCursor == null && !feed.pageFailed -> archiveHasDays.value = false
                 }
+            }
+        }
+        // The oldest day the server has shown in this Archive: the picker reaches back to its month.
+        viewModelScope.launch {
+            feed.state.collect { feed ->
+                val oldest = feed.days.mapNotNull { runCatching { LocalDate.parse(it.date) }.getOrNull() }.minOrNull() ?: return@collect
+                monthJump.update { jump -> if (jump.oldestSeen == null || oldest < jump.oldestSeen) jump.copy(oldestSeen = oldest) else jump }
             }
         }
     }
@@ -110,7 +134,8 @@ class ArchiveViewModel(
         when (action) {
             ArchiveAction.OnBackClick -> send(ArchiveEvent.NavigateBack)
             ArchiveAction.OnRetryClick -> viewModelScope.launch {
-                feed.state.value.query?.let { feed.search(it) } ?: loadFirst()
+                val current = feed.state.value
+                current.query?.let { feed.search(it) } ?: loadFirst(current.favourites, current.until)
             }
             ArchiveAction.OnLoadMore, ArchiveAction.OnRetryPageClick -> viewModelScope.launch { loadMore() }
             is ArchiveAction.OnDayClick -> send(ArchiveEvent.NavigateToDay(action.date))
@@ -124,9 +149,16 @@ class ArchiveViewModel(
                 val favourites = action.filter == ArchiveFilter.Favourites
                 val current = feed.state.value
                 if (current.favourites != favourites || current.query != null || current.load == FeedLoad.Failed) {
-                    viewModelScope.launch { loadFirst(favourites) }
+                    monthJump.update { it.copy(visible = null) }
+                    viewModelScope.launch { loadFirst(favourites, until = null) }
                 }
             }
+            ArchiveAction.OnJumpClick -> if (!search.value.active) monthJump.update { it.copy(pickerOpen = true) }
+            ArchiveAction.OnMonthPickerDismiss -> monthJump.update { it.copy(pickerOpen = false) }
+            is ArchiveAction.OnMonthChosen -> chooseMonth(action.month.firstOfMonth())
+            ArchiveAction.OnNewestClick -> jumpTo(until = null)
+            is ArchiveAction.OnVisibleMonthChange -> monthJump.update { it.copy(visible = action.month.firstOfMonth()) }
+            ArchiveAction.OnScrolledToTop -> monthJump.update { it.copy(scrollToTop = false) }
             is ArchiveAction.OnQueryChange -> if (search.value.active) {
                 search.update { it.copy(query = action.query.take(SEARCH_MAX_LENGTH)) }
             }
@@ -159,6 +191,32 @@ class ArchiveViewModel(
         }
     }
 
+    /**
+     * Only a month the picker offers: none after the current Bond-day's, none before the
+     * oldest day loaded. The Bond-day's own month is the newest list, with no `until`.
+     */
+    private fun chooseMonth(month: LocalDate) {
+        monthJump.update { it.copy(pickerOpen = false) }
+        if (month !in pickerMonths(monthJump.value)) return
+        val newest = feed.bondDay?.firstOfMonth()
+        jumpTo(until = if (month == newest) null else month.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1)))
+    }
+
+    /** Reloads the list from [until] (null: the newest days), in the current filter, and scrolls it to the top. */
+    private fun jumpTo(until: LocalDate?) {
+        filterChosen.value = true
+        monthJump.update { it.copy(visible = null, scrollToTop = true) }
+        val favourites = feed.state.value.favourites
+        viewModelScope.launch { loadFirst(favourites, until) }
+    }
+
+    /** Newest first, as the first of each month: the Bond-day's month back to the oldest seen. */
+    private fun pickerMonths(jump: MonthJump): List<LocalDate> {
+        val newest = (feed.bondDay ?: return emptyList()).firstOfMonth()
+        val oldest = jump.oldestSeen?.firstOfMonth()?.takeIf { it <= newest } ?: newest
+        return generateSequence(newest) { it.minus(DatePeriod(months = 1)) }.takeWhile { it >= oldest }.toList()
+    }
+
     private fun stopSearch() {
         searchJob?.cancel()
         searchJob = null
@@ -168,11 +226,13 @@ class ArchiveViewModel(
     /** Below the minimum: the unfiltered list, loaded again only if it is not what the feed holds. */
     private suspend fun showUnfiltered() {
         val current = feed.state.value
-        if (current.query != null || current.favourites || current.load == FeedLoad.Failed) loadFirst(favourites = false)
+        if (current.query != null || current.favourites || current.until != null || current.load == FeedLoad.Failed) {
+            loadFirst(favourites = false, until = null)
+        }
     }
 
-    private suspend fun loadFirst(favourites: Boolean = feed.state.value.favourites) {
-        feed.loadFirst(favourites)
+    private suspend fun loadFirst(favourites: Boolean = feed.state.value.favourites, until: LocalDate? = feed.state.value.until) {
+        feed.loadFirst(favourites, until)
     }
 
     private suspend fun loadMore() {
@@ -195,9 +255,21 @@ class ArchiveViewModel(
     private fun FeedState.needsAnotherPage(): Boolean =
         load == FeedLoad.Ready && nextCursor != null && !loadingMore && !pageFailed && visibleDays().isEmpty()
 
-    private fun toState(feed: FeedState, debug: DebugLayout?, chosen: Boolean, input: SearchInput, hasDays: Boolean): ArchiveState {
+    private fun toState(feed: FeedState, debug: DebugLayout?, chosen: Boolean, input: SearchInput, hasDays: Boolean, jump: MonthJump): ArchiveState {
         val base = baseState(feed, debug, chosen || input.active)
+        val months = base.months.map { it.month.firstOfMonth() }
+        // The row says what is at the top of the list: what the screen reported, while it is
+        // still in the list, else the first group, else (nothing drawn yet) the month jumped to,
+        // else the Bond-day's month.
+        val visible = jump.visible?.takeIf { it in months } ?: months.firstOrNull() ?: feed.until?.firstOfMonth() ?: this.feed.bondDay?.firstOfMonth()
+        val monthRow = base.showFilters && !input.active && hasDays && visible != null
         return base.copy(
+            showMonthRow = monthRow,
+            visibleMonth = visible.takeIf { monthRow },
+            showMonthPicker = monthRow && jump.pickerOpen,
+            pickerMonths = if (monthRow) pickerMonths(jump) else emptyList(),
+            jumped = monthRow && feed.until != null,
+            scrollToTop = jump.scrollToTop,
             filter = when {
                 input.active -> ArchiveFilter.Search
                 feed.favourites -> ArchiveFilter.Favourites
@@ -257,6 +329,13 @@ class ArchiveViewModel(
 
     private enum class DebugLayout { Empty, Failed }
 
+    private data class MonthJump(
+        val visible: LocalDate? = null,
+        val pickerOpen: Boolean = false,
+        val oldestSeen: LocalDate? = null,
+        val scrollToTop: Boolean = false,
+    )
+
     private data class SearchInput(val active: Boolean = false, val query: String = "", val focus: Boolean = false) {
         override fun toString(): String = "SearchInput(active=$active, focus=$focus)"
     }
@@ -265,3 +344,5 @@ class ArchiveViewModel(
         const val MAX_SILENT_PAGES = 10
     }
 }
+
+private fun LocalDate.firstOfMonth(): LocalDate = LocalDate(year, month, 1)

@@ -50,7 +50,11 @@ class ArchiveFeed(
      * (nothing to keep). With [favourites], only the days holding an entry I favourited
      * (`favourites=true`); every later page of this load asks the same way.
      */
-    suspend fun loadFirst(favourites: Boolean = false) = loadFirst(FeedState(load = FeedLoad.Loading, favourites = favourites))
+    suspend fun loadFirst(favourites: Boolean = false, until: LocalDate? = null) =
+        loadFirst(FeedState(load = FeedLoad.Loading, favourites = favourites, until = until))
+
+    /** The current Bond-day, the newest a month jump may reach (no month after it). Null without a day. */
+    val bondDay: LocalDate? get() = (loop.state.value as? DailyLoopState.Ready)?.day?.date
 
     /**
      * The first page of the days matching [query] (`GET …/search`), replacing whatever was
@@ -142,9 +146,13 @@ class ArchiveFeed(
     }
 }
 
-/** The filtered list, the search or the plain feed, by what [asked] was loaded with. */
+/**
+ * The filtered list, the search or the plain feed, by what [asked] was loaded with. A month
+ * jump's `until` goes with every page of it, the cursor too (the contract: both apply).
+ */
 private suspend fun ArchiveRepository.page(bondId: String, asked: FeedState, cursor: String?) =
-    asked.query?.let { search(bondId, it, cursor) } ?: days(bondId, cursor, favourites = asked.favourites)
+    asked.query?.let { search(bondId, it, cursor) }
+        ?: days(bondId, cursor, favourites = asked.favourites, until = asked.until?.toString())
 
 enum class FeedLoad { Loading, Failed, Ready }
 
@@ -155,6 +163,8 @@ data class FeedState(
     val favourites: Boolean = false,
     /** Loaded from `GET …/search` with this `q`: only the days the server matched. Null for the feed. */
     val query: String? = null,
+    /** Loaded from a month jump: the list starts at this date or the nearest earlier day. Null for the newest. */
+    val until: LocalDate? = null,
     val bondId: String? = null,
     val partnerName: String? = null,
     val days: List<ArchiveDay> = emptyList(),
@@ -164,12 +174,12 @@ data class FeedState(
     /** Pages loaded so far: the list asks again near its end each time this moves. */
     val pages: Int = 0,
 ) {
-    /** The same list as [other] was asked for: same filter, same query. */
-    fun sameLoadAs(other: FeedState): Boolean = favourites == other.favourites && query == other.query
+    /** The same list as [other] was asked for: same filter, same query, same month jump. */
+    fun sameLoadAs(other: FeedState): Boolean = favourites == other.favourites && query == other.query && until == other.until
 
     // The query is a person's own words: never in a log, like the entries.
     override fun toString(): String =
-        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, bondId=$bondId, partnerName=$partnerName, " +
+        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, bondId=$bondId, partnerName=$partnerName, " +
             "days=$days, nextCursor=$nextCursor, loadingMore=$loadingMore, pageFailed=$pageFailed, pages=$pages)"
 }
 

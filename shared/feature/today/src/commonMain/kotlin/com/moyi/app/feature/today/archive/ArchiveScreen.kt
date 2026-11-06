@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,22 +21,31 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Chip
@@ -70,6 +81,11 @@ import com.moyi.app.feature.today.resources.archive_search_label
 import com.moyi.app.feature.today.resources.archive_search_none_heading
 import com.moyi.app.feature.today.resources.archive_search_none_line
 import com.moyi.app.feature.today.resources.archive_empty_line
+import com.moyi.app.feature.today.resources.archive_month_jump
+import com.moyi.app.feature.today.resources.archive_month_newest
+import com.moyi.app.feature.today.resources.archive_month_picker_title
+import com.moyi.app.feature.today.resources.archive_month_row_description
+import com.moyi.app.feature.today.resources.delete_cancel
 import com.moyi.app.feature.today.resources.archive_title
 import com.moyi.app.feature.today.resources.today_action_failed
 import com.moyi.app.feature.today.resources.today_author_partner
@@ -79,6 +95,8 @@ import com.moyi.app.feature.today.resources.today_error_heading
 import com.moyi.app.feature.today.resources.today_error_line
 import com.moyi.app.feature.today.resources.today_tombstone_line
 import com.moyi.app.feature.today.resources.today_write_action
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -111,10 +129,12 @@ fun ArchiveRoot(
  * of the navigation block, where the month row will be (states.md §6: they swap in the
  * same slot), and the chips stay under it as the way back.
  *
- * Owed and **not drawn** (docs/figma/archive-check.md): the month row with "Jump to"
- * and the "Your streak" link. Without the month row the chips start at
- * 168 and the list at 240, not Figma's 264 and 336, and each month is named by a
- * heading in the list instead of by the month row.
+ * On All days and Favourites the month row (states.md §6, route 1) takes that slot: it
+ * names the month at the top of the list, and "Jump to" opens the month picker. It is
+ * states.md's 56 tall, where Figma draws 80, so the chips are at 240 and the list at 312,
+ * 24 above Figma's 264 and 336. Month headings stay in the list.
+ *
+ * Owed and **not drawn** (docs/figma/archive-check.md): the "Your streak" link.
  *
  * @param debugTools `-PmoyiUiPreview=today` only: a long press on the title steps list, empty, error.
  */
@@ -140,13 +160,32 @@ fun ArchiveScreen(
                 .debugLongPress(if (debugTools) ({ onAction(ArchiveAction.OnDebugCycle) }) else null),
         )
         Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        // The field and the month row share the navigation block's top slot (states.md §6).
         if (state.showFilters && state.filter == ArchiveFilter.Search) {
             SearchField(state.query, state.focusSearch, onAction)
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+        } else if (state.showMonthRow && state.visibleMonth != null) {
+            MonthRow(state.visibleMonth, onJump = { onAction(ArchiveAction.OnJumpClick) })
             Spacer(Modifier.height(MoyiTheme.spacing.md))
         }
         if (state.showFilters) {
             Filters(state.filter, state.showSearch, onSelect = { onAction(ArchiveAction.OnFilterClick(it)) })
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        }
+        if (state.jumped) {
+            TextLink(
+                text = stringResource(Res.string.archive_month_newest),
+                onClick = { onAction(ArchiveAction.OnNewestClick) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+        }
+        if (state.showMonthPicker) {
+            MonthPicker(
+                months = state.pickerMonths,
+                onPick = { onAction(ArchiveAction.OnMonthChosen(it)) },
+                onDismiss = { onAction(ArchiveAction.OnMonthPickerDismiss) },
+            )
         }
         when {
             state.load == ArchiveLoad.Loading -> Spacer(Modifier.fillMaxWidth().weight(1f))
@@ -159,6 +198,76 @@ fun ArchiveScreen(
             else -> DayList(state, onAction)
         }
     }
+}
+
+/**
+ * The month row (Figma 257:9, light 281:757): the calendar glyph at x 16, the month at 48
+ * in `body`, and "Jump to" (a TextLink, sentence case per D14) on the trailing side, in a
+ * row with the `outline` hairline. **56 tall, as states.md §6 sizes it**; Figma's frame is 80.
+ *
+ * One stop for a screen reader: "Showing September 2026. Jump to a month.", a button that
+ * opens the picker. The link inside is the touch target.
+ */
+@Composable
+private fun MonthRow(month: LocalDate, onJump: () -> Unit) {
+    val colors = MoyiTheme.colors
+    val name = remember(month) { monthAndYear(month) }
+    val description = stringResource(Res.string.archive_month_row_description, name)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(MonthRowHeight)
+            .border(MoyiDimens.EntryCard.Stroke, colors.outline, MoyiTheme.shapes.radius)
+            .padding(horizontal = MoyiTheme.spacing.md)
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+                onClick { onJump(); true }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(MoyiIcons.Calendar, contentDescription = null, tint = colors.ink, modifier = Modifier.size(MoyiDimens.IconGlyph))
+        Spacer(Modifier.width(MoyiTheme.spacing.sm))
+        MoyiText(text = name, modifier = Modifier.weight(1f), maxLines = 1, ellipsis = true)
+        TextLink(text = stringResource(Res.string.archive_month_jump), onClick = onJump)
+    }
+}
+
+/**
+ * The month picker. **The design system draws none** (docs/missing-components.md §16), so
+ * this is the platform's simple dialog, not a component of ours: Material 3's `AlertDialog`
+ * in Rosewood (MoyiTheme maps its roles to the tokens), a list of months, newest first, and
+ * Cancel. Tapping a month chooses it and closes the dialog. The same Compose dialog on iOS.
+ */
+@Composable
+private fun MonthPicker(months: List<LocalDate>, onPick: (LocalDate) -> Unit, onDismiss: () -> Unit) {
+    val colors = MoyiTheme.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.delete_cancel), color = colors.ink) }
+        },
+        title = { Text(stringResource(Res.string.archive_month_picker_title)) },
+        text = {
+            LazyColumn {
+                items(months, key = { it.toString() }) { month ->
+                    val name = remember(month) { monthAndYear(month) }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = MoyiDimens.TouchTarget)
+                            .clickable(role = Role.Button) { onPick(month) },
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(name, style = MoyiTheme.type.body, color = colors.ink)
+                    }
+                }
+            }
+        },
+        containerColor = colors.surfaceRaised,
+        titleContentColor = colors.ink,
+        textContentColor = colors.ink,
+    )
 }
 
 /**
@@ -219,9 +328,8 @@ private fun ColumnScope.SearchFailed(onRetry: () -> Unit) {
 
 /**
  * Figma's filters row (440:1475, 508:1522): All days, Favourites and Search, 8 apart.
- * Search is left out while the archive is empty (states.md §6). Figma puts the row under
- * the month jump (owed), so it sits where the month row would start, 24 under the title,
- * or 16 under the search field when Search is chosen.
+ * Search is left out while the archive is empty (states.md §6). 16 under the month row,
+ * or under the search field when Search is chosen (they share the slot above).
  */
 @Composable
 private fun Filters(selected: ArchiveFilter, showSearch: Boolean, onSelect: (ArchiveFilter) -> Unit) {
@@ -313,6 +421,23 @@ private fun ColumnScope.DayList(state: ArchiveState, onAction: (ArchiveAction) -
     LaunchedEffect(nearEnd, state.canLoadMore, state.pages) {
         if (nearEnd && state.canLoadMore) onAction(ArchiveAction.OnLoadMore)
     }
+    // The month of each item, in the list's order, so the row can name the topmost one's.
+    val itemMonths = remember(state.months) {
+        state.months.flatMap { month -> List(month.days.size + 1) { month.month } }
+    }
+    LaunchedEffect(itemMonths) {
+        snapshotFlow { itemMonths.getOrNull(listState.firstVisibleItemIndex) }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect { onAction(ArchiveAction.OnVisibleMonthChange(it)) }
+    }
+    // After a jump, or the way back from one: the top of the new list, once.
+    LaunchedEffect(state.scrollToTop) {
+        if (state.scrollToTop) {
+            listState.scrollToItem(0)
+            onAction(ArchiveAction.OnScrolledToTop)
+        }
+    }
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxWidth().weight(1f),
@@ -343,8 +468,8 @@ private fun ColumnScope.DayList(state: ArchiveState, onAction: (ArchiveAction) -
 
 /**
  * The month a group of days belongs to, "September 2026", in `label` and announced
- * as a heading. Interpreted: Figma names the month only in the month-jump row, which
- * is owed; this keeps the grouping visible without it.
+ * as a heading. Interpreted: Figma names the month only in the month row; this keeps
+ * the grouping visible further down the list, and in Search, where there is no row.
  */
 @Composable
 private fun MonthHeading(month: LocalDate) {
@@ -421,6 +546,9 @@ private fun CardEntry(author: String, words: String) {
     MoyiText(text = words, role = TextRole.Title, maxLines = 2, ellipsis = true)
 }
 
+/** states.md §6: "the 56 pt month-jump row" (Figma's frame 257:9 is 80; see archive-check.md). */
+private val MonthRowHeight = 56.dp
+
 /** Ask for the next page this many items before the end. Not a design value. */
 private const val LOAD_AHEAD = 3
 
@@ -443,7 +571,35 @@ private fun previewDays(): List<ArchiveMonth> {
 private fun ArchiveListPreview() {
     MoyiTheme(darkTheme = true) {
         ArchiveScreen(
-            ArchiveState(load = ArchiveLoad.Ready, months = previewDays(), partnerName = FakeCopy.PARTNER_NAME, showFilters = true, showSearch = true),
+            ArchiveState(
+                load = ArchiveLoad.Ready,
+                months = previewDays(),
+                partnerName = FakeCopy.PARTNER_NAME,
+                showFilters = true,
+                showSearch = true,
+                showMonthRow = true,
+                visibleMonth = LocalDate(2025, 9, 1),
+            ),
+            onAction = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ArchiveJumpedPreview() {
+    MoyiTheme(darkTheme = false) {
+        ArchiveScreen(
+            ArchiveState(
+                load = ArchiveLoad.Ready,
+                months = previewDays().drop(1),
+                partnerName = FakeCopy.PARTNER_NAME,
+                showFilters = true,
+                showSearch = true,
+                showMonthRow = true,
+                visibleMonth = LocalDate(2025, 8, 1),
+                jumped = true,
+            ),
             onAction = {},
         )
     }

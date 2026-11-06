@@ -151,6 +151,31 @@ class ArchiveRepositoryTest {
     }
 
     @Test
+    fun aMonthJumpSendsUntilAndKeepsItWithTheCursorAndTheFilter() = runTest {
+        val fixture = Fixture { respondJson(pageJson(null)) }
+
+        fixture.archive.days("b1", until = "2026-08-31")
+        fixture.archive.days("b1", cursor = "HJ2", favourites = true, until = "2026-08-31")
+
+        val (first, next) = fixture.requests
+        assertEquals("/api/v1/bonds/b1/days", first.url.encodedPath)
+        assertEquals("2026-08-31", first.url.parameters["until"])
+        assertNull(first.url.parameters["cursor"])
+        assertNull(first.url.parameters["favourites"])
+        // The contract: with `cursor` as well, both apply.
+        assertEquals("2026-08-31", next.url.parameters["until"])
+        assertEquals("HJ2", next.url.parameters["cursor"])
+        assertEquals("true", next.url.parameters["favourites"])
+    }
+
+    @Test
+    fun theNewestListSendsNoUntil() = runTest {
+        val fixture = Fixture { respondJson(pageJson(null)) }
+        fixture.archive.days("b1")
+        assertNull(fixture.request.url.parameters["until"])
+    }
+
+    @Test
     fun theFavouritesFilterAsksWithFavouritesTrueAndAnEmptyPageKeepsItsCursor() = runTest {
         val fixture = Fixture { respondJson(pageJson("HC9")) }
 
