@@ -71,7 +71,7 @@ class ResetScreensTest {
     }
 
     private companion object {
-        const val NON_DISCLOSURE = "If that address has an account, a link is on its way. It expires in an hour."
+        const val NON_DISCLOSURE = "If that address has an account, we sent it a link. Open the email, copy the link and paste it in Moyi. It works for an hour."
         const val CONSEQUENCE = "This signs you out everywhere else. You will need to sign in again on your other devices."
     }
 }

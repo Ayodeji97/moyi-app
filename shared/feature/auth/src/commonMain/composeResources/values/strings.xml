@@ -138,8 +138,8 @@
     <string name="reset_request_action">Send the link</string>
     <!-- PROPOSED. The action while the request is in flight (states.md §1c). -->
     <string name="reset_request_action_sending">Sending the link</string>
-    <!-- reset.sent.line. MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
-    <string name="reset_sent_line">If that address has an account, a link is on its way. It expires in an hour.</string>
+    <!-- reset.sent.line. Owner ruling 2026-11-06, PR 30 smoke test: a screen where the person must act says what to do next. The emailed link points at the website, so the real flow is paste it into Moyi. Interim until the backend sends a short code (docs/backend-contract-gaps.md). MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
+    <string name="reset_sent_line">If that address has an account, we sent it a link. Open the email, copy the link and paste it in Moyi. It works for an hour.</string>
     <!-- reset.new.heading. The Reset password heading (345:30), and the link on Reset link sent that opens it. -->
     <string name="reset_new_heading">Choose a new password</string>
     <!-- reset.consequence. Placed before the action (states.md §1b: announce the consequence before the action). -->

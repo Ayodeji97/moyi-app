@@ -25,8 +25,8 @@
     <string name="today_author_partner">From %1$s</string>
     <!-- copy.md table "Waiting", split at its full stop into the note's heading and line. -->
     <string name="today_waiting_heading">Written.</string>
-    <!-- copy.md table "Waiting", the second sentence. %1$s = partnerName. -->
-    <string name="today_waiting_line">You'll see %1$s's when it's ready.</string>
+    <!-- Owner ruling 2026-11-06, PR 30 smoke test: replaces copy.md's "You'll see {name}'s when it's ready", which did not say that yours is kept or what happens next. copy.md (parent repo) still to be updated by the owner. %1$s = partnerName. -->
+    <string name="today_waiting_line">Yours is saved. When %1$s writes theirs, you'll both see each other's.</string>
     <!-- states.md §3 announce for Written, waiting. -->
     <string name="today_announce_waiting">Written. Your partner's entry is not open yet</string>
     <!-- PROPOSED. Edit before reveal (states.md §4: free, no warning). Parallels "Delete what you wrote". -->
