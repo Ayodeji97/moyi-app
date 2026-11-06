@@ -31,8 +31,18 @@ data class BondSettings(
     val invite: Invite? = null,
     /** The other member's display name; null while nobody has joined. */
     val partnerName: String? = null,
+    /** One member asked to close the box and the other has not yet (FR-028), or null. */
+    val pendingDeletion: PendingDeletionRequest? = null,
+    /**
+     * When the box closes for good: set once both members have asked, which starts the
+     * 30-day cooling-off ([BondStatus.PENDING_DELETION]). Null otherwise.
+     */
+    val deletionScheduledFor: Instant? = null,
 ) {
     val restDays: Boolean get() = !strictMode
+
+    /** Both asked: the box closes on [deletionScheduledFor] unless either calls it off (states.md §9). */
+    val coolingOff: Boolean get() = status == BondStatus.PENDING_DELETION || deletionScheduledFor != null
 
     /** Nobody has joined yet: a proposed zone applies at once, as there is nobody to agree (doc 06). */
     val waitingForPartner: Boolean get() = status == BondStatus.PENDING_MEMBER
@@ -47,6 +57,17 @@ data class PendingTimezoneChange(
     val id: String,
     val timezone: String,
     val proposedByMe: Boolean,
+    val expiresAt: Instant? = null,
+)
+
+/**
+ * A request to close the box that waits for the other member (FR-028, ADR-0030). The
+ * second member's own request is the agreement; [requestedByMe] decides which screen
+ * shows, so the one who asked is never offered "agree" to their own request.
+ */
+data class PendingDeletionRequest(
+    val requestedByMe: Boolean,
+    /** When the ask lapses if the other member does not ask too. */
     val expiresAt: Instant? = null,
 )
 
@@ -115,9 +136,31 @@ interface BondSettingsRepository {
 
     /**
      * Leaves the bond (`POST /bonds/{id}/leave`): it ends for both, at once (states.md §9).
-     * The caller's entries are kept: FR-029a's offer to withdraw them is not built.
+     * [withdrawEntries] (FR-029a) erases every entry the caller wrote in it, for both
+     * members, for good. Always sent explicitly: absent means the opposite on [block].
+     * `409 BOND_ARCHIVED` when it had already ended; nothing is withdrawn then.
      */
-    suspend fun leave(bondId: String): EmptyResult<DataError.Network>
+    suspend fun leave(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network>
+
+    /**
+     * Blocks the other member and ends the bond (`POST /bonds/{id}/block`, FR-029): the
+     * same `204` as [leave], and the two accounts cannot be paired again. Accepted on a bond
+     * that has already ended. [withdrawEntries] as for [leave], always sent explicitly.
+     */
+    suspend fun block(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network>
+
+    /**
+     * `POST /bonds/{id}/deletion-request` (FR-028): the first member's call asks, the other
+     * member's call agrees and starts the 30-day cooling-off. Answers with the bond, which
+     * says which of the two happened. `409 BOND_ARCHIVED` on any bond that has ended.
+     */
+    suspend fun requestDeletion(bondId: String): Result<BondSettings, DataError.Network>
+
+    /**
+     * `DELETE /bonds/{id}/deletion-request`: either member withdraws the ask, or calls off a
+     * cooling-off already running. `404` when nothing was pending.
+     */
+    suspend fun cancelDeletion(bondId: String): EmptyResult<DataError.Network>
 
     /**
      * `PATCH /bonds/{id}/timezone`: proposes [timezone] (an IANA id). No `If-Match`. While

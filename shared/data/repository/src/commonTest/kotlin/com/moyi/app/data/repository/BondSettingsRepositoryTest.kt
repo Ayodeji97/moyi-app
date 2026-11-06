@@ -18,6 +18,7 @@ import com.moyi.app.domain.bond.BondSettingsChange
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
+import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.TimeOfDay
@@ -39,6 +40,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /**
@@ -147,7 +149,7 @@ class BondSettingsRepositoryTest {
     fun leaveKeepsTheCallersEntriesAndSaysSoExplicitly() = runTest {
         val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
 
-        val result = fixture.repo.leave("b1")
+        val result = fixture.repo.leave("b1", withdrawEntries = false)
 
         assertEquals(Result.Success(Unit), result)
         val request = fixture.requests.single()
@@ -159,7 +161,81 @@ class BondSettingsRepositoryTest {
     @Test
     fun leavingABondThatAlreadyEndedIsBondArchived() = runTest {
         val fixture = Fixture { respondProblem(HttpStatusCode.Conflict, "BOND_ARCHIVED") }
-        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.BOND_ARCHIVED))), fixture.repo.leave("b1"))
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.BOND_ARCHIVED))), fixture.repo.leave("b1", withdrawEntries = false))
+    }
+
+    @Test
+    fun leaveSendsAWithdrawalWhenAskedFor() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        assertEquals(Result.Success(Unit), fixture.repo.leave("b1", withdrawEntries = true))
+        assertEquals("""{"withdrawEntries":true}""", assertIs<TextContent>(fixture.requests.single().body).text)
+    }
+
+    @Test
+    fun blockPostsToItsOwnRouteWithTheChoiceAlwaysExplicit() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        assertEquals(Result.Success(Unit), fixture.repo.block("b1", withdrawEntries = true))
+        assertEquals(Result.Success(Unit), fixture.repo.block("b1", withdrawEntries = false))
+
+        val (withdraw, keep) = fixture.requests
+        assertEquals(HttpMethod.Post, withdraw.method)
+        assertEquals("/api/v1/bonds/b1/block", withdraw.url.encodedPath)
+        assertEquals("""{"withdrawEntries":true}""", assertIs<TextContent>(withdraw.body).text)
+        // An absent value withdraws on this route (doc 06), so keeping must be said out loud.
+        assertEquals("""{"withdrawEntries":false}""", assertIs<TextContent>(keep.body).text)
+    }
+
+    @Test
+    fun aFailedBlockReachesTheCallerByItsStatus() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.NotFound, "NOT_FOUND") }
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(404, ApiErrorCode.NOT_FOUND))), fixture.repo.block("b1", withdrawEntries = true))
+    }
+
+    @Test
+    fun theFirstAskToCloseTheBoxIsAPendingRequestByTheCaller() = runTest {
+        val pending = """{"requestedByMemberId":"m1","requestedAt":"2026-11-06T10:00:00Z","expiresAt":"2026-11-13T10:00:00Z"}"""
+        val fixture = Fixture { respondBond(bondJson(pendingDeletion = pending), etag = "\"9\"", status = HttpStatusCode.Accepted) }
+
+        val result = assertIs<Result.Success<BondSettings>>(fixture.repo.requestDeletion("b1")).data
+
+        val request = fixture.requests.single()
+        assertEquals(HttpMethod.Post, request.method)
+        assertEquals("/api/v1/bonds/b1/deletion-request", request.url.encodedPath)
+        assertEquals(PendingDeletionRequest(requestedByMe = true, expiresAt = Instant.parse("2026-11-13T10:00:00Z")), result.pendingDeletion)
+        assertNull(result.deletionScheduledFor)
+        assertEquals("\"9\"", result.version)
+    }
+
+    @Test
+    fun theOtherMembersAskIsTheirsAndBothAskingCarriesTheDate() = runTest {
+        val theirs = """{"requestedByMemberId":"m2","requestedAt":"2026-11-06T10:00:00Z","expiresAt":"2026-11-13T10:00:00Z"}"""
+        val asked = Fixture { respondBond(bondJson(pendingDeletion = theirs), etag = "\"9\"") }
+        assertEquals(false, assertIs<Result.Success<BondSettings>>(asked.repo.settings("b1")).data.pendingDeletion?.requestedByMe)
+
+        val cooling = Fixture {
+            respondBond(bondJson(status = "PENDING_DELETION", deletionScheduledFor = "\"2026-12-06T10:00:00Z\""), etag = "\"10\"", status = HttpStatusCode.Accepted)
+        }
+        val settings = assertIs<Result.Success<BondSettings>>(cooling.repo.requestDeletion("b1")).data
+        assertEquals(BondStatus.PENDING_DELETION, settings.status)
+        assertEquals(Instant.parse("2026-12-06T10:00:00Z"), settings.deletionScheduledFor)
+        assertTrue(settings.coolingOff)
+    }
+
+    @Test
+    fun askingOnAnEndedBondIsBondArchived() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.Conflict, "BOND_ARCHIVED") }
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.BOND_ARCHIVED))), fixture.repo.requestDeletion("b1"))
+    }
+
+    @Test
+    fun cancellingTheBoxClosingIsADelete() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        assertEquals(Result.Success(Unit), fixture.repo.cancelDeletion("b1"))
+        assertEquals(HttpMethod.Delete, fixture.requests.single().method)
+        assertEquals("/api/v1/bonds/b1/deletion-request", fixture.requests.single().url.encodedPath)
     }
 
     @Test
@@ -187,8 +263,8 @@ class BondSettingsRepositoryTest {
         assertEquals(Result.Success(MemberSettings(TimeOfDay(7, 30), "Europe/London")), result)
     }
 
-    private fun MockRequestHandleScope.respondBond(body: String, etag: String): HttpResponseData =
-        respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.ETag to listOf(etag)))
+    private fun MockRequestHandleScope.respondBond(body: String, etag: String, status: HttpStatusCode = HttpStatusCode.OK): HttpResponseData =
+        respond(body, status, headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.ETag to listOf(etag)))
 
     private fun bondJson(
         revealTime: String = "null",
@@ -196,11 +272,13 @@ class BondSettingsRepositoryTest {
         invite: String = "null",
         members: String = "[]",
         status: String = "ACTIVE",
+        deletionScheduledFor: String = "null",
+        pendingDeletion: String = "null",
     ): String =
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
-            """"deletionScheduledFor":null,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":null}"""
+            """"deletionScheduledFor":$deletionScheduledFor,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion}"""
 
     private fun pendingJson(proposedBy: String): String =
         """{"id":"p1","proposedTimezone":"Europe/London","proposedByMemberId":"$proposedBy",""" +

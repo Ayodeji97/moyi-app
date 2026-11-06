@@ -1,5 +1,6 @@
 package com.moyi.app.data.repository
 
+import com.moyi.app.api.apis.BondDeletionControllerApi
 import com.moyi.app.api.apis.BondMemberSettingsControllerApi
 import com.moyi.app.api.apis.BondTimezoneControllerApi
 import com.moyi.app.api.apis.BondsControllerApi
@@ -24,6 +25,7 @@ import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.MemberSettings
+import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
 
@@ -44,6 +46,7 @@ class BondSettingsRepositoryImpl(
     private val bondsApi = BondsControllerApi(config.origin, authedClient.client)
     private val memberSettingsApi = BondMemberSettingsControllerApi(config.origin, authedClient.client)
     private val timezoneApi = BondTimezoneControllerApi(config.origin, authedClient.client)
+    private val deletionApi = BondDeletionControllerApi(config.origin, authedClient.client)
 
     override suspend fun settings(bondId: String): Result<BondSettings, DataError.Network> =
         safeApiCallWithETag { bondsApi.getBond(bondId) }.mapOrSerialization { (body, etag) -> body.toSettings(etag) }
@@ -60,10 +63,21 @@ class BondSettingsRepositoryImpl(
             .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
     }
 
-    // An explicit false, not an empty body: what is kept should not depend on a default
-    // (the same body on the block route means the opposite, doc 06 §3.3).
-    override suspend fun leave(bondId: String): EmptyResult<DataError.Network> =
-        safeApiCallEmpty { bondsApi.leaveBond(bondId, EndBondRequest(withdrawEntries = false)) }
+    // Always an explicit true or false, never an empty body: the two routes read an absent
+    // value in opposite ways (keep on leave, withdraw on block, doc 06 §3.3), and the owner
+    // ruled that block is to require it (2026-10-21). What is erased must never hang on a default.
+    override suspend fun leave(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { bondsApi.leaveBond(bondId, EndBondRequest(withdrawEntries = withdrawEntries)) }
+
+    override suspend fun block(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { bondsApi.blockBond(bondId, EndBondRequest(withdrawEntries = withdrawEntries)) }
+
+    // A 202 that carries the bond and its new ETag, as every bond response does.
+    override suspend fun requestDeletion(bondId: String): Result<BondSettings, DataError.Network> =
+        safeApiCallWithETag { deletionApi.requestBondDeletion(bondId) }.mapOrSerialization { (body, etag) -> body.toSettings(etag) }
+
+    override suspend fun cancelDeletion(bondId: String): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { deletionApi.cancelBondDeletion(bondId) }
 
     // The two-party flow takes no If-Match (ADR-0030), but its 200s carry the new ETag,
     // which the next PATCH /bonds/{id} needs.
@@ -116,6 +130,15 @@ internal fun BondResponse.toSettings(etag: String?): BondSettings? = BondSetting
     },
     invite = invite?.toInvite(),
     partnerName = partnerName(members, me?.memberId),
+    pendingDeletion = pendingDeletionRequest?.let { pending ->
+        PendingDeletionRequest(
+            // As with the zone: without the caller's member id, treat it as theirs, so the
+            // screen offers only withdrawing it, never agreeing to what may be their own ask.
+            requestedByMe = me?.memberId == null || pending.requestedByMemberId == me?.memberId,
+            expiresAt = pending.expiresAt,
+        )
+    },
+    deletionScheduledFor = deletionScheduledFor,
 )
 
 private fun MemberSettingsResponse.toDomain(): MemberSettings? = MemberSettings(
