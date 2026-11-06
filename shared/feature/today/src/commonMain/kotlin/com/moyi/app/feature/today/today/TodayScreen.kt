@@ -78,7 +78,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun TodayRoot(
     onNavigateToWrite: (editing: Boolean) -> Unit,
     onNavigateToReveal: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToSettings: (bondId: String) -> Unit,
     onNoOpenBond: () -> Unit,
     debugTools: Boolean,
     viewModel: TodayViewModel = koinViewModel(),
@@ -91,7 +91,7 @@ fun TodayRoot(
         when (event) {
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)
             TodayEvent.NavigateToReveal -> onNavigateToReveal()
-            TodayEvent.NavigateToSettings -> onNavigateToSettings()
+            is TodayEvent.NavigateToSettings -> onNavigateToSettings(event.bondId)
             TodayEvent.NavigateToStart -> onNoOpenBond()
         }
     }

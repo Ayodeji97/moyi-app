@@ -29,6 +29,14 @@ import kotlinx.serialization.SerializationException
 suspend fun <T : Any> safeApiCall(call: suspend () -> HttpResponse<T>): Result<T, DataError.Network> =
     execute(call) { response -> Result.Success(response.body()) }
 
+/**
+ * [safeApiCall] that also returns the response's `ETag`, or null when there is none.
+ * A Bond's `ETag` is its row version (doc 06 §1), sent back as `If-Match` on a change.
+ * Read from Ktor's headers, which ignore case, not the generated client's map, which does not.
+ */
+suspend fun <T : Any> safeApiCallWithETag(call: suspend () -> HttpResponse<T>): Result<Pair<T, String?>, DataError.Network> =
+    execute(call) { response -> Result.Success(response.body() to response.response.headers[HttpHeaders.ETag]) }
+
 /** For endpoints that answer with an empty body (`201`, `202`, `204`): only the status counts. */
 suspend fun safeApiCallEmpty(call: suspend () -> HttpResponse<*>): EmptyResult<DataError.Network> =
     execute(call) { Result.Success(Unit) }

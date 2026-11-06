@@ -122,8 +122,8 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 | `login_error_rate_limited` | Sign in is paused for a short while. Your account is fine. Try again in a few minutes. | `ratelimit.line` plus a "when" (states.md §1b); the full-screen 345:53 is not built |
 | `auth_error_rate_limited` | This is paused for a short while. Try again in a few minutes. | 429 on register, verify, resend |
 | `login_session_ended` | You have been signed out. Sign in again to continue. | Session ended (§4) |
-| `home_greeting` / `home_line` | Hello, {name} / You are signed in. The rest of Moyi is on its way. | Temporary placeholder |
-| `home_sign_out` / `_sending` | Sign out / Signing out | Temporary placeholder |
+| `home_greeting` / `home_line` | Hello, {name} / You are signed in. The rest of Moyi is on its way. | Temporary placeholder; removed with it in the Bond settings PR |
+| `home_sign_out` / `_sending` | Sign out / Signing out | Temporary placeholder; the words moved to Bond settings (`settings_row_sign_out`, `settings_signing_out`) |
 
 ### 7b. Destinations PR #6 draws but cannot reach yet
 
@@ -225,3 +225,37 @@ pushes the revealed cards 24 above 159:19. Owner call.
 
 The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 `TODO(motion)`), pending Figma 180:21. The design system has no motion tokens yet.
+
+## Bond settings, part 1
+
+### 16. The OS time picker (reveal time; later, your reminder)
+
+- **Today:** `states.md` §8: Reveal time and Your reminder "open an **OS time picker**. No
+  in-app screen". The app had no platform time picker.
+- **Here:** `TimeOfDayPicker` (designsystem): Material 3's `TimePicker` dial in an
+  `AlertDialog`, on **both** platforms, in Rosewood through `MoyiTheme`'s Material roles.
+  On Android that is close to the platform's own picker; on iOS it is not (the native one is
+  a `UIDatePicker` in time mode, as a wheel or a compact popover).
+- **The open question:** whether iOS gets `UIDatePicker` (an `expect`/`actual`, as
+  `ConfirmDialog` does), and whether the dial's colours need their own check in light.
+  The picker has no way to clear a reveal time back to "when you have both written"; no
+  screen offers it yet.
+
+### 17. The settings row
+
+- **Today:** Figma draws the Bond settings rows as loose frames (396:13 and its siblings:
+  label and value, `body`, 56 tall), not one of the ten components, and `tokens.md` §1 sets
+  their rule: an underline only where the row navigates.
+- **Here:** `SettingsRow` and `SettingsToggleRow`, local to `feature/bond`, the smallest
+  version inside the tokens: 16 above and below a 24 line, the whole row the target, the value
+  underlined when the row navigates (the label when it has no value), `danger` with the
+  underline kept for Leave this bond. Rest days is a switch to assistive technology.
+- **The open question:** whether rows become a design-system component (Account and the
+  later settings screens will want them too).
+
+### 18. The ETag conflict state
+
+- **Today:** `states.md` §8 names it, "This changed while you were looking at it.", and says
+  it is worth drawing; there is no frame.
+- **Here:** the screen reloads and shows the line as the inline error at the row or editor
+  that was saved, with the person's input kept. Needs a frame and the owner's wording.
