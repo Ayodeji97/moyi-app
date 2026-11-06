@@ -70,6 +70,52 @@
     <!-- states.md §10 "Generic error", its two lines as one (onboarding_error_generic's words): a delete that did not go through, under the entry that is still there. -->
     <string name="today_action_failed">That didn't work. Nothing was lost. Try again in a moment.</string>
 
+    <!-- ===== Archive (Figma section 425:317). Its cards and day view reuse Today's author
+    labels, tombstone line, delete copy and Generic error above. ===== -->
+
+    <!-- FIGMA NODE NAME on 265:13 (the empty frame; 223:4 on the list carries the same title). The Archive's title. -->
+    <string name="archive_title">Your days</string>
+    <!-- copy.md table "Empty archive" and states.md §6 Empty, the heading. -->
+    <string name="archive_empty_heading">This is where your days will collect.</string>
+    <!-- states.md §6 Empty, the second line (copy.md warmth audit, 2026-09-04). -->
+    <string name="archive_empty_line">Your first one is still ahead.</string>
+
+    <!-- ===== Archive, Favourites (states.md §6, strings-proposed.md §6a). The toggle's own
+    labels are the design system's (ds_favourite_add, ds_favourite_remove). ===== -->
+
+    <!-- PROPOSED. The first filter chip (Figma chip · All days, 536:1620; node name, not verified characters). Not in strings-proposed.md §6a. -->
+    <string name="archive_filter_all">All days</string>
+    <!-- archive.filter.favourites (strings-proposed.md §6a). The second filter chip. -->
+    <string name="archive_filter_favourites">Favourites</string>
+    <!-- states.md §6, route 3: "Search, demoted to a filter chip". The third filter chip. -->
+    <string name="archive_filter_search">Search</string>
+    <!-- states.md §6 Search row: the field's visible label. -->
+    <string name="archive_search_label">Search your days</string>
+    <!-- states.md §6 Search row: the field's helper. -->
+    <string name="archive_search_helper">Looks through everything you have both written.</string>
+    <!-- states.md §6 No results row: the message block that replaces the list. -->
+    <string name="archive_search_none_heading">Nothing matched that.</string>
+    <string name="archive_search_none_line">Try another word, or go back to all days.</string>
+    <!-- archive.favourites.empty.heading (strings-proposed.md §6a; states.md §6 Favourites, empty). -->
+    <string name="archive_favourites_empty_heading">No favourites yet.</string>
+    <!-- archive.favourites.empty.line (strings-proposed.md §6a). -->
+    <string name="archive_favourites_empty_line">Mark a day and it will be easy to find again.</string>
+    <!-- archive.favourites.empty.privacy (strings-proposed.md §6a): the one place the privacy guarantee is stated. -->
+    <string name="archive_favourites_empty_privacy">Only you can see your favourites.</string>
+    <!-- PROPOSED. Spoken for the day card's small filled bookmark (states.md §6: the caller's own mark only). -->
+    <string name="archive_day_favourited">In your favourites</string>
+
+    <!-- ===== Archive, month jump (states.md §6, route 1: "Tapping opens a month picker"). ===== -->
+
+    <!-- FIGMA NODE NAME on 257:17 / 281:760 (the month row's trailing link), sentence case per D14. -->
+    <string name="archive_month_jump">Jump to</string>
+    <!-- PROPOSED. The month row as one screen-reader stop. %1$s = the month and year, "September 2026". -->
+    <string name="archive_month_row_description">Showing %1$s. Jump to a month.</string>
+    <!-- PROPOSED. The month picker's title (no frame draws a picker). -->
+    <string name="archive_month_picker_title">Jump to a month</string>
+    <!-- PROPOSED. Under the chips after a jump: back to the newest days. Sentence case per D14. -->
+    <string name="archive_month_newest">Back to the newest days</string>
+
     <!-- ===== Write, the composer (Figma 181:3 and siblings) ===== -->
 
     <!-- PROPOSED (the spec's gap: "Send label not in the corpus"). The composer's PrimaryAction. -->
@@ -109,4 +155,48 @@
     <string name="delete_confirm">Delete</string>
     <!-- copy.md warmth audit: bare "Cancel" dismisses a dialog (420:76, 57 wide). -->
     <string name="delete_cancel">Cancel</string>
+
+    <!-- ===== Streak (states.md §7; Figma 227:3, 401:70, 401:160, 401:250) ===== -->
+
+    <!-- states.md §3: "a *Your streak* link beside its title". Figma 430:1435 draws it in label metrics; sentence case per D14. -->
+    <string name="archive_streak_link">Your streak</string>
+    <!-- FIGMA NODE NAME 267:30. The screen's title. -->
+    <string name="streak_title">Days you both showed up</string>
+    <!-- FIGMA NODE NAME 267:33. Over the current run's number. -->
+    <string name="streak_now">Now</string>
+    <!-- FIGMA NODE NAME 267:36. Over the longest run's number. Always shown, also after a break (states.md §7). -->
+    <string name="streak_longest">Longest</string>
+    <!-- FIGMA NODE NAME 267:38. Over the calendar: a rolling window, never a month. -->
+    <string name="streak_window">The last four weeks</string>
+    <!-- FIGMA NODE NAMES 267:104, 267:108, 267:116, 267:112. The key. -->
+    <string name="streak_key_complete">Both wrote</string>
+    <string name="streak_key_rest">Rest day</string>
+    <string name="streak_key_today">Today</string>
+    <string name="streak_key_none">No entry (left blank)</string>
+    <!-- PROPOSED. What a screen reader hears for each cell. %1$s = the day and month ("2 September"). -->
+    <string name="streak_cell_complete">%1$s, both wrote</string>
+    <string name="streak_cell_rest">%1$s, rest day</string>
+    <string name="streak_cell_today">%1$s, today</string>
+    <string name="streak_cell_none">%1$s, no entry</string>
+    <!-- FIGMA NODE NAME 267:117 for other ("Two rest days left. ..."), with the number as digits. one is PROPOSED. -->
+    <plurals name="streak_rest_days_left">
+        <item quantity="one">One rest day left. It is used automatically when a day slips by.</item>
+        <item quantity="other">%1$d rest days left. They are used automatically when a day slips by.</item>
+    </plurals>
+    <!-- PROPOSED. No rest day banked, Strict mode off. -->
+    <string name="streak_rest_days_none">No rest days left.</string>
+    <!-- FIGMA NODE NAME 401:129 for one. other is PROPOSED, with the number as digits. -->
+    <plurals name="streak_rest_day_used">
+        <item quantity="one">Yesterday slipped by. We used a rest day. One left.</item>
+        <item quantity="other">Yesterday slipped by. We used a rest day. %1$d left.</item>
+    </plurals>
+    <!-- PROPOSED. Yesterday used the last rest day. -->
+    <string name="streak_rest_day_used_none">Yesterday slipped by. We used a rest day. None left.</string>
+    <!-- PROPOSED. Figma 401:219 reads "Your streak ended at 21 days. That is 21 days of showing up. No rest days were left."
+         The contract does not send the length of the run that ended (states.md §7a, gap), so the number is left out. -->
+    <string name="streak_ended">Your streak ended. No rest days were left.</string>
+    <!-- PROPOSED. The same, in Strict mode: no rest day could have covered it. -->
+    <string name="streak_ended_strict">Your streak ended. Rest days are off.</string>
+    <!-- FIGMA NODE NAME 401:309. Strict mode, stated plainly. -->
+    <string name="streak_strict">Rest days are off.</string>
 </resources>

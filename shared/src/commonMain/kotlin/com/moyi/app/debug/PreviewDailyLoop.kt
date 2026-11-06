@@ -1,6 +1,9 @@
 package com.moyi.app.debug
 
+import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.today.Prompt
+import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DayView
@@ -19,7 +22,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * DEBUG ONLY. The day the Today preview runs on (`-PmoyiUiPreview=today`), so every
- * drawn layout can be reached and screenshotted with no backend and no session. Bound
+ * drawn layout (and the Archive, from the calendar target) can be reached and screenshotted with no backend and no session. Bound
  * over the real loop only in that build (KoinInit); nothing else ever sees it.
  *
  * It holds a layout, not a server's day, because one layout (Queued) has no server
@@ -93,4 +96,10 @@ private val PreviewLatency: Duration = 800.milliseconds
 /** Loaded after [appModules] in the today preview build, so its binding replaces the real loop. */
 internal val previewTodayModule: Module = module {
     single<DailyLoop> { PreviewDailyLoop() }
+    // The Archive's days, and the delete its day view sends (PreviewArchive.kt).
+    single { PreviewArchiveRepository() }
+    single<ArchiveRepository> { get<PreviewArchiveRepository>() }
+    single<TodayRepository> { PreviewTodayRepository(get()) }
+    // The Streak screen's four drawn states and a failure, in turn (PreviewStreak.kt).
+    single<StreakRepository> { PreviewStreakRepository() }
 }

@@ -78,7 +78,7 @@ internal val PartnerVisible: Set<TodayStatus> = setOf(TodayStatus.Revealed, Toda
 private val NamesThePartner = setOf(TodayStatus.Waiting, TodayStatus.Revealed, TodayStatus.Tombstone, TodayStatus.SoloTheyWrote)
 
 /** The partner's words, when the shape carries any: a locked, removed or deleted entry has none. */
-private fun PartnerEntry?.words(): String? = when (this) {
+internal fun PartnerEntry?.words(): String? = when (this) {
     is PartnerEntry.Submitted -> text
     is PartnerEntry.Revealed -> text
     is PartnerEntry.Deleted, PartnerEntry.Locked, PartnerEntry.Removed, null -> null

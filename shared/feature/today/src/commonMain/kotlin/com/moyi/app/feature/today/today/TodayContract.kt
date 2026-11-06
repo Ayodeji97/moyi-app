@@ -82,6 +82,7 @@ sealed interface TodayEvent {
     data class NavigateToWrite(val editing: Boolean) : TodayEvent
     data object NavigateToReveal : TodayEvent
     data object NavigateToSettings : TodayEvent
+    data object NavigateToArchive : TodayEvent
 
     /** No open bond any more: the shell asks the signed-in start where this person belongs. */
     data object NavigateToStart : TodayEvent

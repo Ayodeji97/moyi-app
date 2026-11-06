@@ -154,6 +154,40 @@ object MoyiIcons {
         )
     }
 
+    /**
+     * The FavouriteToggle's Idle glyph and nothing else (states.md §6: a bookmark, never a
+     * star or a heart). lucide `bookmark`, stroke only.
+     */
+    val Bookmark: ImageVector by lazy { lucide("Bookmark", BOOKMARK_PATH) }
+
+    /**
+     * `Icon/bookmark-filled` (tokens.md §6): the one glyph that carries a fill. The same
+     * path as [Bookmark], filled and stroked, so Marked differs from Idle by **shape**,
+     * not colour (NFR-104). FavouriteToggle Marked, and the DayCard's mark.
+     */
+    val BookmarkFilled: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "BookmarkFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            addPath(
+                pathData = addPathNodes(BOOKMARK_PATH),
+                fill = SolidColor(Color.Black),
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }.build()
+    }
+
+    /** lucide-static v1.40.0 `bookmark`, verbatim. */
+    private const val BOOKMARK_PATH =
+        "M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z"
+
     private fun lucide(name: String, vararg paths: String, autoMirror: Boolean = false): ImageVector =
         ImageVector.Builder(
             name = name,

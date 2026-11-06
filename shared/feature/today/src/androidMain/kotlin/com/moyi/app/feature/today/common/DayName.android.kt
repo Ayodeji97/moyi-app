@@ -15,6 +15,11 @@ internal actual fun weekdayName(date: LocalDate): String = format("EEEE", date)
 
 internal actual fun dayAndMonth(date: LocalDate): String = format("d MMMM", date)
 
+internal actual fun weekdayAndDay(date: LocalDate): String = format("EEEE d", date)
+
+// LLLL: the standalone month name, the form a month takes on its own (Polish, Russian).
+internal actual fun monthAndYear(date: LocalDate): String = format("LLLL yyyy", date)
+
 private val utc: TimeZone = TimeZone.getTimeZone("UTC")
 
 private fun format(pattern: String, date: LocalDate): String =
