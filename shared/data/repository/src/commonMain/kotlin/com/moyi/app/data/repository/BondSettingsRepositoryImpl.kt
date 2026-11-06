@@ -1,8 +1,11 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.apis.BondMemberSettingsControllerApi
+import com.moyi.app.api.apis.BondTimezoneControllerApi
 import com.moyi.app.api.apis.BondsControllerApi
 import com.moyi.app.api.models.BondResponse
+import com.moyi.app.api.models.ChangeTimezoneRequest
+import com.moyi.app.api.models.ConfirmTimezoneRequest
 import com.moyi.app.api.models.EndBondRequest
 import com.moyi.app.api.models.MemberSettingsRequest
 import com.moyi.app.api.models.MemberSettingsResponse
@@ -21,6 +24,7 @@ import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.MemberSettings
+import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
 
 /**
@@ -39,6 +43,7 @@ class BondSettingsRepositoryImpl(
 ) : BondSettingsRepository {
     private val bondsApi = BondsControllerApi(config.origin, authedClient.client)
     private val memberSettingsApi = BondMemberSettingsControllerApi(config.origin, authedClient.client)
+    private val timezoneApi = BondTimezoneControllerApi(config.origin, authedClient.client)
 
     override suspend fun settings(bondId: String): Result<BondSettings, DataError.Network> =
         safeApiCallWithETag { bondsApi.getBond(bondId) }.mapOrSerialization { (body, etag) -> body.toSettings(etag) }
@@ -59,6 +64,19 @@ class BondSettingsRepositoryImpl(
     // (the same body on the block route means the opposite, doc 06 §3.3).
     override suspend fun leave(bondId: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { bondsApi.leaveBond(bondId, EndBondRequest(withdrawEntries = false)) }
+
+    // The two-party flow takes no If-Match (ADR-0030), but its 200s carry the new ETag,
+    // which the next PATCH /bonds/{id} needs.
+    override suspend fun proposeTimezone(bondId: String, timezone: String): Result<BondSettings, DataError.Network> =
+        safeApiCallWithETag { timezoneApi.proposeBondTimezone(bondId, ChangeTimezoneRequest(anchorTimezone = timezone)) }
+            .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
+
+    override suspend fun confirmTimezone(bondId: String, proposalId: String): Result<BondSettings, DataError.Network> =
+        safeApiCallWithETag { timezoneApi.confirmBondTimezone(bondId, ConfirmTimezoneRequest(proposalId = proposalId)) }
+            .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
+
+    override suspend fun cancelTimezoneChange(bondId: String): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { timezoneApi.cancelBondTimezoneChange(bondId) }
 
     override suspend fun memberSettings(bondId: String): Result<MemberSettings, DataError.Network> =
         safeApiCall { memberSettingsApi.getMemberSettings(bondId) }.mapOrSerialization { it.toDomain() }
@@ -85,6 +103,19 @@ internal fun BondResponse.toSettings(etag: String?): BondSettings? = BondSetting
     revealTime = revealTimeLocal?.let { TimeOfDay.parse(it) ?: return null },
     strictMode = strictMode ?: return null,
     version = etag ?: return null,
+    pendingTimezone = pendingTimezoneChange?.let { pending ->
+        PendingTimezoneChange(
+            id = pending.id ?: return null,
+            timezone = pending.proposedTimezone ?: return null,
+            // Without the caller's member id the app cannot tell who proposed it. It then
+            // offers only Cancel, which either member may do; never Agree, which the
+            // proposer may not (BR-6), so a wrong guess cannot be the one that agrees.
+            proposedByMe = me?.memberId == null || pending.proposedByMemberId == me?.memberId,
+            expiresAt = pending.expiresAt,
+        )
+    },
+    invite = invite?.toInvite(),
+    partnerName = partnerName(members, me?.memberId),
 )
 
 private fun MemberSettingsResponse.toDomain(): MemberSettings? = MemberSettings(

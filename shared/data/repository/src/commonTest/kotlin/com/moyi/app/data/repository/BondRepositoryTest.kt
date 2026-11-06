@@ -40,6 +40,7 @@ import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -80,7 +81,7 @@ class BondRepositoryTest {
         assertEquals(
             Result.Success(
                 listOf(
-                    Bond("b1", "Amara and Tunde", BondType.COUPLE, BondStatus.PENDING_MEMBER, Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD")),
+                    Bond("b1", "Amara and Tunde", BondType.COUPLE, BondStatus.PENDING_MEMBER, Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD", Instant.parse("2026-11-05T10:00:00Z"))),
                     Bond("b2", "Amara and Tunde", BondType.COUPLE, BondStatus.ARCHIVED, null),
                 ),
             ),
@@ -144,7 +145,7 @@ class BondRepositoryTest {
         val fixture = Fixture {
             respondJson("""{"id":"i2","code":"M3N4P5","link":"https://getmoyi.app/i/M3N4P5","expiresAt":"2026-11-05T12:00:00Z"}""", HttpStatusCode.Created)
         }
-        assertEquals(Result.Success(Invite("i2", "M3N4P5", "https://getmoyi.app/i/M3N4P5")), fixture.bonds.createInvite("b1"))
+        assertEquals(Result.Success(Invite("i2", "M3N4P5", "https://getmoyi.app/i/M3N4P5", Instant.parse("2026-11-05T12:00:00Z"))), fixture.bonds.createInvite("b1"))
         assertEquals(HttpMethod.Post, fixture.requests.single().method)
         assertEquals("/api/v1/bonds/b1/invites", fixture.requests.single().url.encodedPath)
     }
