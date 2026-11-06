@@ -5,7 +5,6 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import com.moyi.app.feature.auth.home.HomePlaceholderRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
 import com.moyi.app.feature.auth.verify.VerifyRoot
@@ -21,10 +20,6 @@ data object RegisterRoute
 @Serializable
 data class VerifyRoute(val email: String)
 
-/** TEMPORARY: the signed-in placeholder, until Today exists. */
-@Serializable
-data object HomePlaceholderRoute
-
 /**
  * The auth screens. Back stack, from the start destination (sign in):
  *
@@ -35,7 +30,7 @@ data object HomePlaceholderRoute
  *   pops to Register, whose ViewModel kept the fields.
  * - Verify → 200 replaces the whole stack with sign in, email prefilled: the
  *   account is done, so back must not return to sign up.
- * - Sign in → success replaces the stack with the placeholder ([onSignedIn]).
+ * - Sign in → success replaces the stack with the signed-in start ([onSignedIn]).
  */
 fun NavGraphBuilder.authGraph(
     navController: NavController,
@@ -69,9 +64,6 @@ fun NavGraphBuilder.authGraph(
             },
             onNavigateBack = { navController.navigateUp() },
         )
-    }
-    composable<HomePlaceholderRoute> {
-        HomePlaceholderRoot()
     }
 }
 

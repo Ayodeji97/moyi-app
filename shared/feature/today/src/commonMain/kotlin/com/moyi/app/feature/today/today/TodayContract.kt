@@ -81,7 +81,8 @@ sealed interface TodayAction {
 sealed interface TodayEvent {
     data class NavigateToWrite(val editing: Boolean) : TodayEvent
     data object NavigateToReveal : TodayEvent
-    data object NavigateToSettings : TodayEvent
+    /** Bond settings, for the bond this day belongs to. */
+    data class NavigateToSettings(val bondId: String) : TodayEvent
 
     /** No open bond any more: the shell asks the signed-in start where this person belongs. */
     data object NavigateToStart : TodayEvent

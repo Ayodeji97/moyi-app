@@ -116,15 +116,4 @@
     <string name="login_error_rate_limited">Sign in is paused for a short while. Your account is fine. Try again in a few minutes.</string>
     <!-- PROPOSED, owed: the session-ended state has no frame and no approved copy (states.md §1c gap). Shown on sign in after the server ended the session. -->
     <string name="login_session_ended">You have been signed out. Sign in again to continue.</string>
-
-    <!-- ===== Signed-in placeholder (TEMPORARY, until Today is built) ===== -->
-
-    <!-- PROPOSED, temporary. %1$s is {name}, the person's displayName. -->
-    <string name="home_greeting">Hello, %1$s</string>
-    <!-- PROPOSED, temporary. -->
-    <string name="home_line">You are signed in. The rest of Moyi is on its way.</string>
-    <!-- PROPOSED, temporary. -->
-    <string name="home_sign_out">Sign out</string>
-    <!-- PROPOSED, temporary. -->
-    <string name="home_sign_out_sending">Signing out</string>
 </resources>

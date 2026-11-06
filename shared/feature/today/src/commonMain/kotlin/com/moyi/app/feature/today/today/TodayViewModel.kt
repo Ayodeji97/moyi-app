@@ -75,7 +75,8 @@ class TodayViewModel(
             TodayAction.OnArchiveClick -> {
                 // TODO(logic): navigate to Archive (GET /api/v1/bonds/{bondId}/days), not built yet.
             }
-            TodayAction.OnSettingsClick -> send(TodayEvent.NavigateToSettings)
+            // The target is drawn only on a loaded day, so there is always a bond to open.
+            TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
             TodayAction.OnShareInviteClick -> {
                 // TODO(logic): open the OS share sheet with the invite link. POST /api/v1/bonds/{bondId}/invites
                 //  (no body, 201) issues a new invite and revokes any outstanding one (doc 06); 409 is

@@ -1,0 +1,86 @@
+<resources>
+    <!--
+    Bond settings' copy. Each string says where it comes from:
+      copy.md / states.md / strings-proposed.md: the design system's corpus.
+      PROPOSED: written for this screen, not in the corpus; needs the owner's approval.
+    Figma's text was not read for this section (the MCP was rate-limited), so no string here is
+    taken from the canvas. Relationship labels, the bond name label, helper and its errors are
+    onboarding's (feature/onboarding), not repeated here.
+    -->
+
+    <!-- PROPOSED. The root's heading; today_nav_settings' words, the spoken name of the target that opens it. -->
+    <string name="settings_heading">Bond settings</string>
+
+    <!-- settings.group.bond (strings-proposed.md §8, in file, not decided). -->
+    <string name="settings_group_bond">This bond</string>
+    <!-- settings.group.day (strings-proposed.md §8, in file, not decided). -->
+    <string name="settings_group_day">The day · both of you</string>
+    <!-- settings.group.you, the weakest of the three wordings strings-proposed.md §8 offers ("Just you"): the privacy claim is the owner's to word. -->
+    <string name="settings_group_you">Just you</string>
+    <!-- settings.group.ending (strings-proposed.md §8, in file, not decided). -->
+    <string name="settings_group_ending">Ending</string>
+
+    <!-- The row names states.md §8 gives. -->
+    <string name="settings_row_type">Relationship type</string>
+    <!-- copy.md: "Bond name", never "Name". -->
+    <string name="settings_row_name">Bond name</string>
+    <string name="settings_row_reveal">Reveal time</string>
+    <!-- states.md §8: strict mode is shown as Rest days, because "strict mode" is a flag name. -->
+    <string name="settings_row_rest_days">Rest days</string>
+    <!-- PROPOSED. In place of the Account row (its screen is not built): home_sign_out's words. -->
+    <string name="settings_row_sign_out">Sign out</string>
+    <!-- copy.md: "Leave this bond?" is the confirmation; the row is the act. -->
+    <string name="settings_row_leave">Leave this bond</string>
+
+    <!-- states.md §8 draws "Rest days · On". -->
+    <string name="settings_value_on">On</string>
+    <!-- PROPOSED. Rest days off (strict mode on). -->
+    <string name="settings_value_off">Off</string>
+    <!-- PROPOSED. No reveal time set: the day opens as soon as both have written (FR-061, states.md §1). -->
+    <string name="settings_reveal_none">When you have both written</string>
+    <!-- PROPOSED. A row's value while its change is in flight, mirroring Sending (write_saving's words). -->
+    <string name="settings_saving">Saving</string>
+    <!-- home_sign_out_sending's words. -->
+    <string name="settings_signing_out">Signing out</string>
+    <!-- PROPOSED. The leave row while the leave is in flight. -->
+    <string name="settings_leaving">Leaving</string>
+
+    <!-- PROPOSED. Spoken hint on a row that toggles in place (Rest days). -->
+    <string name="settings_toggle_hint">Turns it on or off</string>
+
+    <!-- The reveal time picker (OS time picker stand-in, docs/missing-components.md). PROPOSED: its answers. -->
+    <string name="settings_picker_confirm">Save</string>
+    <!-- copy.md warmth audit: bare "Cancel" dismisses a dialog. -->
+    <string name="settings_cancel">Cancel</string>
+
+    <!-- states.md §8, the bond name editor's heading. -->
+    <string name="settings_name_heading">What do you call this bond?</string>
+    <!-- states.md §8: the editor's action. -->
+    <string name="settings_name_save">Save</string>
+    <!-- PROPOSED. Save in flight (write_saving's words). -->
+    <string name="settings_name_saving">Saving</string>
+
+    <!-- PROPOSED. Under the relationship-type heading (onboarding's bond_type_heading): bond_type_line without "You can change it later", which is false here. -->
+    <string name="settings_type_line">This shapes the prompts we suggest.</string>
+    <!-- PROPOSED. Spoken hint on a relationship card here: a tap selects and saves (onboarding's says "Selects and continues"). -->
+    <string name="settings_type_hint">Selects and saves</string>
+
+    <!-- copy.md: "Leave this bond?". The leave confirmation, in the platform's dialog (figma-deviations.md C2). -->
+    <string name="settings_leave_title">Leave this bond?</string>
+    <!-- PROPOSED. states.md §9: it ends at once, for both; it stays readable for both and takes nothing new. Entries are kept (FR-029a's withdraw offer is not built). -->
+    <string name="settings_leave_line">It ends now, for both of you. What you both wrote stays readable, and nothing new can be added.</string>
+    <!-- PROPOSED. The dialog's destructive answer. -->
+    <string name="settings_leave_confirm">Leave</string>
+
+    <!-- states.md §8 (the ETag conflict, "worth drawing"): a 412, after the screen has reloaded. -->
+    <string name="settings_error_conflict">This changed while you were looking at it.</string>
+    <!-- states.md §10 "Generic error", its two lines as one (onboarding_error_generic's words). -->
+    <string name="settings_error_generic">That didn't work. Nothing was lost. Try again in a moment.</string>
+    <!-- onboarding_error_rate_limited's words. A 429: when, never why. -->
+    <string name="settings_error_rate_limited">This is paused for a short while. Try again in a few minutes.</string>
+
+    <!-- states.md §10 "Generic error" (Figma 384:341): the StateBlock in place of settings that could not load. -->
+    <string name="settings_load_error_heading">That didn't work.</string>
+    <string name="settings_load_error_line">Nothing was lost. Try again in a moment.</string>
+    <string name="settings_load_error_action">Try again</string>
+</resources>

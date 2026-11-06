@@ -120,9 +120,9 @@ fun RelationshipTypeScreen(
  * One relationship card: 358 wide, padding 24, the label in `title`; when
  * selected, a check at the end, 24 in and centred (359:88 at 326, 344.5).
  *
- * Local, not a designsystem `SelectableCard`: states.md §1a says these cards
- * recur exactly twice (here and Bond settings) and are promoted only if a
- * third use appears.
+ * Not a designsystem `SelectableCard`: states.md §1a says these cards recur
+ * exactly twice (here and Bond settings, which calls this one with its own
+ * [hint]) and are promoted only if a third use appears.
  *
  * Selection is a radio group's, announced with the hint "Selects and
  * continues" (states.md §1: say that tapping both selects and continues).
@@ -131,10 +131,14 @@ fun RelationshipTypeScreen(
  * the control (tokens.md §1).
  */
 @Composable
-private fun RelationshipCard(label: String, selected: Boolean, onClick: () -> Unit) {
+fun RelationshipCard(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    hint: String = stringResource(Res.string.bond_type_card_hint),
+) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
-    val hint = stringResource(Res.string.bond_type_card_hint)
     Row(
         modifier = Modifier
             .fillMaxWidth()

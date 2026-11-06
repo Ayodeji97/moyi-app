@@ -44,9 +44,8 @@ data object RevealRoute
  * Write slides up and down as a sheet (owner approval, 2026-10-29), and not under
  * Reduce Motion. Today stays drawn beneath it while it moves.
  *
- * @param onOpenSettings the settings target in Today's nav row. TODO(logic): Bond
- *   settings (`GET /api/v1/bonds/{bondId}`, `…/members/me/settings`) is not built; the
- *   shell opens the auth placeholder for now, which is where sign-out lives.
+ * @param onOpenSettings the settings target in Today's nav row, with the day's bond:
+ *   the shell opens Bond settings.
  * @param onNoOpenBond the person is in no open bond any more (left or ended on the
  *   other phone). The shell sends them back to the signed-in start, which decides.
  * @param debugTools long-press switches that step the preview day. The shell passes
@@ -54,7 +53,7 @@ data object RevealRoute
  */
 fun NavGraphBuilder.todayGraph(
     navController: NavController,
-    onOpenSettings: () -> Unit,
+    onOpenSettings: (bondId: String) -> Unit,
     onNoOpenBond: () -> Unit,
     debugTools: Boolean,
 ) {
