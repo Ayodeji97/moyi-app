@@ -259,3 +259,22 @@ pushes the revealed cards 24 above 159:19. Owner call.
 
 The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 `TODO(motion)`), pending Figma 180:21. The design system has no motion tokens yet.
+
+## Onboarding
+
+### 16. The time-zone picker (bond-timezone-picker PR, 2026-11-06)
+
+- **Today:** `tokens.md` §4 has `Field` `Select` ("tapping it opens a picker the screen owns"),
+  and `strings-proposed.md` decides the picker's load-failure line (`field.timezone.error`). The
+  design system has no picker, list row or search component, and Figma draws no picker frame.
+- **Here, interim:** a full screen inside Create bond: `MoyiScaffold` with its back arrow,
+  `ScreenHeader` ("Choose your shared time zone"), a `Field` used as the search, and one row per
+  zone (city in `body`/`ink`, region in `body`/`inkMuted`, a `Check` glyph on the chosen one) in a
+  full-width target at least 48 tall. Header, search and rows scroll together. No new token,
+  colour or component. System back and the iOS edge swipe close it (`LayerBackHandler`).
+- **The open question:** whether the picker is this full screen, a sheet, or the platform's own
+  picker; what a list row looks like (it will recur in Bond settings and Archive); and whether
+  the city names should be the platform's localised ones rather than the IANA id's last part.
+- **Strings proposed:** `timezone_picker_heading`, `timezone_picker_search_label`,
+  `timezone_picker_empty`, and a new wording for `field_timezone_error_unsupported` (the old
+  one sent people to their phone's settings, written before the picker existed).

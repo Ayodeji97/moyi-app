@@ -18,6 +18,7 @@ import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
+import com.moyi.app.designsystem.platform.LayerBackHandler
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.common.RelationshipType
@@ -51,6 +52,9 @@ fun CreateBondRoot(
             CreateBondEvent.NavigateBack -> onNavigateBack()
         }
     }
+    // While the picker is open, system back (and the iOS edge swipe, which follows
+    // its arrow) closes it instead of leaving Create bond.
+    LayerBackHandler(enabled = state.picker != null) { viewModel.onAction(CreateBondAction.OnTimeZoneDismiss) }
     CreateBondScreen(state = state, onAction = viewModel::onAction)
 }
 
@@ -63,12 +67,20 @@ fun CreateBondRoot(
  * block, so the button does not move and the fields keep their values.
  * Keyboard up (362:1196): the scaffold scrolls the heading away and sits the
  * action on the keyboard. No reveal time: it lives in Bond settings.
+ *
+ * While [CreateBondState.picker] is set, the time-zone picker takes the whole
+ * screen ([TimeZonePicker]); the form's values wait in the state underneath.
  */
 @Composable
 fun CreateBondScreen(
     state: CreateBondState,
     onAction: (CreateBondAction) -> Unit,
 ) {
+    val picker = state.picker
+    if (picker != null) {
+        TimeZonePicker(picker = picker, onAction = onAction)
+        return
+    }
     val spacing = MoyiTheme.spacing
     MoyiScaffold(
         onBack = { onAction(CreateBondAction.OnBackClick) },
@@ -119,7 +131,8 @@ fun CreateBondScreen(
     }
 }
 
-private val previewState = CreateBondState(type = RelationshipType.Couple, timeZoneCity = "Lagos")
+private val previewState =
+    CreateBondState(type = RelationshipType.Couple, timeZoneId = "Africa/Lagos", timeZoneCity = "Lagos")
 
 @Preview
 @Composable
