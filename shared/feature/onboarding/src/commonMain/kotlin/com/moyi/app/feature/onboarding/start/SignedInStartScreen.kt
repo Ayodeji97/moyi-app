@@ -27,6 +27,7 @@ fun SignedInStartRoot(
     onNavigateToToday: () -> Unit,
     onNavigateToOnboarding: () -> Unit,
     onNavigateToGate: () -> Unit,
+    onNavigateToArchived: (partnerName: String?) -> Unit,
     viewModel: SignedInStartViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -35,6 +36,7 @@ fun SignedInStartRoot(
             SignedInStartEvent.NavigateToToday -> onNavigateToToday()
             SignedInStartEvent.NavigateToOnboarding -> onNavigateToOnboarding()
             SignedInStartEvent.NavigateToGate -> onNavigateToGate()
+            is SignedInStartEvent.NavigateToArchived -> onNavigateToArchived(event.partnerName)
         }
     }
     SignedInStartScreen(state = state, onAction = viewModel::onAction)

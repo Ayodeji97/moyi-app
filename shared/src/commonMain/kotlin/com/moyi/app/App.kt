@@ -24,10 +24,14 @@ import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.debug.UiPreviewRoute
 import com.moyi.app.debug.uiPreviewGraph
-import com.moyi.app.feature.auth.navigation.HomePlaceholderRoute
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.RegisterRoute
 import com.moyi.app.feature.auth.navigation.authGraph
+import com.moyi.app.feature.bond.navigation.BondArchivedRoute
+import com.moyi.app.feature.bond.navigation.BondSettingsGraph
+import com.moyi.app.feature.bond.navigation.bondArchivedDestination
+import com.moyi.app.feature.bond.navigation.bondSettingsGraph
+import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
 import com.moyi.app.feature.onboarding.navigation.SignedInStartRoute
 import com.moyi.app.feature.onboarding.navigation.onboardingGraph
@@ -44,13 +48,14 @@ import org.koin.compose.viewmodel.koinViewModel
  *   retry succeeds.
  * - **SignedIn**: the signed-in start, which asks the server where this
  *   person is (`GET /bonds`, `GET /me`) and replaces itself with Today, the
- *   unverified gate or onboarding. Onboarding's last action calls
+ *   archived bond, the unverified gate or onboarding. Onboarding's last action calls
  *   `onOnboardingFinished`, which lands on Today, the root of the signed-in app.
  * - **SignedOut**: the promise (Onboarding 1), leading to sign up or sign in.
  *   A sign-out or an ended session still lands on sign in (below).
  * - **UI preview** (debug builds only), chosen before the session is known:
  *   `-PmoyiUiPreview=onboarding` opens a preview index (see `UiPreviewIndex`);
- *   `-PmoyiUiPreview=today` opens Today on a preview day (PreviewDailyLoop), no backend.
+ *   `-PmoyiUiPreview=today` opens Today on a preview day (PreviewDailyLoop), no backend;
+ *   its settings target opens Bond settings on preview settings (PreviewBondSettings).
  *
  * The start destination is chosen once, when the state first leaves Unknown.
  * Later changes are navigation: a sign-in navigates from the screen, and a
@@ -116,19 +121,26 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
         )
         todayGraph(
             navController = navController,
-            // TODO(logic): Bond settings is not built. Until it is, the settings target opens
-            // the auth placeholder, which is where sign-out lives.
-            onOpenSettings = { navController.navigate(HomePlaceholderRoute) },
+            onOpenSettings = { bondId -> navController.navigate(BondSettingsGraph(bondId)) { launchSingleTop = true } },
             // Left or ended on the other phone: the signed-in start asks the server again.
             onNoOpenBond = { navController.resetTo(SignedInStartRoute) },
             debugTools = UiPreview.today,
+        )
+        bondSettingsGraph(
+            navController = navController,
+            // Left, blocked, or found ended: the same path as Today finding no open bond.
+            onBondEnded = { navController.resetTo(SignedInStartRoute) },
         )
         onboardingGraph(
             navController = navController,
             onNavigateToRegister = { navController.navigate(RegisterRoute) },
             onNavigateToSignIn = { navController.navigate(LoginRoute()) },
             onOnboardingFinished = { navController.resetTo(TodayRoute) },
+            // The bond has ended: the archived screen, a root with no back (SKILL.md).
+            onBondArchived = { partnerName -> navController.resetTo(BondArchivedRoute(partnerName)) },
         )
+        // Starting a new bond pushes onboarding over the archived screen, so back returns to it.
+        bondArchivedDestination(onStartNewBond = { navController.navigate(OnboardingRoute) })
         if (UiPreview.onboarding) uiPreviewGraph(navController)
     }
 }

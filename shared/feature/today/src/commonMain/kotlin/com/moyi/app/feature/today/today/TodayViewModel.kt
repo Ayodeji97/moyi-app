@@ -2,6 +2,11 @@ package com.moyi.app.feature.today.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.core.DataError
+import com.moyi.app.core.Result
+import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.bond.Invite
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DeleteResult
@@ -36,6 +41,8 @@ import kotlinx.coroutines.launch
 class TodayViewModel(
     private val loop: DailyLoop,
     private val ledger: RevealLedger,
+    /** For "Share the invite again": the bond's live invite, or a new one when it has none. */
+    private val bonds: BondRepository,
 ) : ViewModel() {
 
     /** The delete dialog, the delete in flight and a failed delete: Today's own, not the day's (D11). */
@@ -75,13 +82,9 @@ class TodayViewModel(
             TodayAction.OnArchiveClick -> {
                 // TODO(logic): navigate to Archive (GET /api/v1/bonds/{bondId}/days), not built yet.
             }
-            TodayAction.OnSettingsClick -> send(TodayEvent.NavigateToSettings)
-            TodayAction.OnShareInviteClick -> {
-                // TODO(logic): open the OS share sheet with the invite link. POST /api/v1/bonds/{bondId}/invites
-                //  (no body, 201) issues a new invite and revokes any outstanding one (doc 06); 409 is
-                //  BOND_FULL or BOND_ARCHIVED. It navigates nowhere, and the sheet closing is never proof the
-                //  invite was sent (SKILL.md §9).
-            }
+            // The target is drawn only on a loaded day, so there is always a bond to open.
+            TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
+            TodayAction.OnShareInviteClick -> shareInvite()
             TodayAction.OnDebugCycle -> debugCycle()
         }
     }
@@ -98,6 +101,41 @@ class TodayViewModel(
             }
             DailyLoopState.NoOpenBond -> send(TodayEvent.NavigateToStart)
             DailyLoopState.Loading, DailyLoopState.Failed -> Unit
+        }
+    }
+
+    /**
+     * "Share the invite again" (states.md §8): the OS sheet with the bond's **live** invite.
+     * Only when the bond is known to hold none is a new one issued, because issuing revokes
+     * the old code (doc 06), which the partner may already have. If the bonds cannot be
+     * read, nothing is issued: the Generic error line says so. `409 BOND_FULL` (they joined)
+     * and `BOND_ARCHIVED` refresh Today, which then shows what is true. It navigates nowhere,
+     * and the sheet closing is never proof the invite was sent.
+     */
+    private fun shareInvite() {
+        if (ui.value.sharing) return
+        val bondId = (loop.state.value as? DailyLoopState.Ready)?.day?.bondId ?: return
+        ui.update { it.copy(sharing = true, failed = false) }
+        viewModelScope.launch {
+            val invite = when (val list = bonds.bonds()) {
+                is Result.Failure -> null.also { ui.update { it.copy(sharing = false, failed = true) } }
+                is Result.Success -> list.data.firstOrNull { it.id == bondId }?.invite ?: issueInvite(bondId)
+            }
+            if (invite != null) {
+                ui.update { it.copy(sharing = false) }
+                send(TodayEvent.ShareInvite(link = invite.link, code = invite.code))
+            }
+        }
+    }
+
+    private suspend fun issueInvite(bondId: String): Invite? = when (val created = bonds.createInvite(bondId)) {
+        is Result.Success -> created.data
+        is Result.Failure -> {
+            val code = (created.error as? DataError.Network.Api)?.problem?.code
+            val moved = code == ApiErrorCode.BOND_FULL || code == ApiErrorCode.BOND_ARCHIVED
+            ui.update { it.copy(sharing = false, failed = !moved) }
+            if (moved) loop.refresh()
+            null
         }
     }
 
@@ -175,5 +213,11 @@ class TodayViewModel(
         loop.clear()
     }
 
-    private data class TodayUi(val confirming: Boolean = false, val deleting: Boolean = false, val failed: Boolean = false)
+    private data class TodayUi(
+        val confirming: Boolean = false,
+        val deleting: Boolean = false,
+        val failed: Boolean = false,
+        /** An invite is being found or issued for the share sheet: a second tap waits for it. */
+        val sharing: Boolean = false,
+    )
 }

@@ -92,6 +92,8 @@ data object JoinCannotBeUsedRoute
  *
  * Signed in, from [SignedInStartRoute], which replaces itself with one of:
  * - Today ([onOnboardingFinished]) when the person is in an open bond;
+ * - the archived bond ([onBondArchived], in `:shared:feature:bond`) when they are in
+ *   none and their newest bond has ended;
  * - the unverified gate when they are not verified and in none (FR-002); it
  *   replaces itself with relationship type once `GET /me` says verified;
  * - [OnboardingRoute] (relationship type, a root) otherwise.
@@ -121,6 +123,7 @@ fun NavGraphBuilder.onboardingGraph(
     onNavigateToRegister: () -> Unit,
     onNavigateToSignIn: () -> Unit,
     onOnboardingFinished: () -> Unit,
+    onBondArchived: (partnerName: String?) -> Unit,
 ) {
     composable<PromiseRoute> {
         PromiseRoot(onBegin = onNavigateToRegister, onHaveAccount = onNavigateToSignIn)
@@ -130,6 +133,7 @@ fun NavGraphBuilder.onboardingGraph(
             onNavigateToToday = onOnboardingFinished,
             onNavigateToOnboarding = { navController.resetTo(OnboardingRoute) },
             onNavigateToGate = { navController.resetTo(UnverifiedGateRoute) },
+            onNavigateToArchived = onBondArchived,
         )
     }
     composable<UnverifiedGateRoute> {

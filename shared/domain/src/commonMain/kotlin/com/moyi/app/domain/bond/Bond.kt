@@ -1,5 +1,7 @@
 package com.moyi.app.domain.bond
 
+import kotlin.time.Instant
+
 /**
  * A bond as the app needs it. Built from the server's `BondResponse` by the
  * data layer; nothing here knows the wire format.
@@ -39,11 +41,15 @@ enum class BondType { COUPLE, FRIENDS, FAMILY, PARENT_CHILD }
 /** `Bond.status` (doc 04). */
 enum class BondStatus { PENDING_MEMBER, ACTIVE, ARCHIVED, PENDING_DELETION, DELETED }
 
-/** A live invite: the six-character [code] and the [link] that carries it (FR-022). */
+/**
+ * A live invite: the six-character [code] and the [link] that carries it (FR-022).
+ * [expiresAt] is when it stops working; null when the server did not say.
+ */
 data class Invite(
     val id: String,
     val code: String,
     val link: String,
+    val expiresAt: Instant? = null,
 )
 
 /** What `GET /invites/{code}` shows before the invite is spent (states.md §2, Confirm). */

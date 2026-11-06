@@ -122,8 +122,8 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 | `login_error_rate_limited` | Sign in is paused for a short while. Your account is fine. Try again in a few minutes. | `ratelimit.line` plus a "when" (states.md §1b); the full-screen 345:53 is not built |
 | `auth_error_rate_limited` | This is paused for a short while. Try again in a few minutes. | 429 on register, verify, resend |
 | `login_session_ended` | You have been signed out. Sign in again to continue. | Session ended (§4) |
-| `home_greeting` / `home_line` | Hello, {name} / You are signed in. The rest of Moyi is on its way. | Temporary placeholder |
-| `home_sign_out` / `_sending` | Sign out / Signing out | Temporary placeholder |
+| `home_greeting` / `home_line` | Hello, {name} / You are signed in. The rest of Moyi is on its way. | Temporary placeholder; removed with it in the Bond settings PR |
+| `home_sign_out` / `_sending` | Sign out / Signing out | Temporary placeholder; the words moved to Bond settings (`settings_row_sign_out`, `settings_signing_out`) |
 
 ### 7b. Destinations PR #6 draws but cannot reach yet
 
@@ -225,3 +225,97 @@ pushes the revealed cards 24 above 159:19. Owner call.
 
 The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 `TODO(motion)`), pending Figma 180:21. The design system has no motion tokens yet.
+
+## Bond settings, part 1
+
+### 16. The OS time picker (reveal time; later, your reminder)
+
+- **Today:** `states.md` §8: Reveal time and Your reminder "open an **OS time picker**. No
+  in-app screen". The app had no platform time picker.
+- **Here:** `TimeOfDayPicker` (designsystem): Material 3's `TimePicker` dial in an
+  `AlertDialog`, on **both** platforms, in Rosewood through `MoyiTheme`'s Material roles.
+  On Android that is close to the platform's own picker; on iOS it is not (the native one is
+  a `UIDatePicker` in time mode, as a wheel or a compact popover).
+- **The open question:** whether iOS gets `UIDatePicker` (an `expect`/`actual`, as
+  `ConfirmDialog` does), and whether the dial's colours need their own check in light.
+  The picker has no way to clear a reveal time back to "when you have both written"; no
+  screen offers it yet.
+
+### 17. The settings row
+
+- **Today:** Figma draws the Bond settings rows as loose frames (396:13 and its siblings:
+  label and value, `body`, 56 tall), not one of the ten components, and `tokens.md` §1 sets
+  their rule: an underline only where the row navigates.
+- **Here:** `SettingsRow` and `SettingsToggleRow`, local to `feature/bond`, the smallest
+  version inside the tokens: 16 above and below a 24 line, the whole row the target, the value
+  underlined when the row navigates (the label when it has no value), `danger` with the
+  underline kept for Leave this bond. Rest days is a switch to assistive technology.
+- **The open question:** whether rows become a design-system component (Account and the
+  later settings screens will want them too).
+
+### 18. The ETag conflict state
+
+- **Today:** `states.md` §8 names it, "This changed while you were looking at it.", and says
+  it is worth drawing; there is no frame.
+- **Here:** the screen reloads and shows the line as the inline error at the row or editor
+  that was saved, with the person's input kept. Needs a frame and the owner's wording.
+
+## Bond settings, part 2
+
+### 19. The time-zone picker
+
+- **Today:** `states.md` §8 and Figma 397:53 draw the zone as a `Field · Select` whose
+  chevron opens "a picker the screen owns"; no picker is drawn, and neither platform has a
+  system time-zone picker an app can open (Android's lives in Settings, iOS has none).
+  Onboarding's create-bond field has the same gap (its `OnTimeZoneClick` is a TODO).
+- **Here:** the most conservative form the existing pieces allow, local to `feature/bond`:
+  a screen with the heading "Choose a city", a `Field · Text` to search, and one
+  `SettingsRow` per region zone the platform knows (kotlinx-datetime's list, `UTC` and
+  `Etc/…` left out because the backend refuses them), the city as the label and the IANA
+  id as the value. A tap chooses and returns. Names are not localised: the city is read
+  out of the id (`America/Argentina/Buenos_Aires` is Buenos Aires).
+- **The open question:** a drawn picker (and whether onboarding shares it), localised zone
+  names (ICU on Android, `NSTimeZone.localizedName` on iOS), and whether the device's zone
+  is offered first.
+
+### 20. The 30-day refusal
+
+- **Today:** `states.md` §8 says the refusal names a date; there is no frame.
+- **Here:** an `InlineError` 8 above Propose change (or Agree), without the date, because
+  the contract has none (`backend-contract-gaps.md` row 15).
+
+
+## Ending and safety
+
+Numbered from 30 so they do not collide with sections other open PRs add; renumbered at merge.
+
+### 30. Close the box: the two states between asking and the cooling-off
+
+- **Today:** Figma draws the ask (399:38 BOTH MUST AGREE) and the cooling-off (399:1525),
+  but not what each member sees after one of them has asked: the one who asked, waiting,
+  and the other, asked to agree. The API has both (`pendingDeletionRequest`, ADR-0030).
+- **Here:** the time zone's two-party layouts, reused. *Asked* is the Proposed layout
+  (397:67): the heading "You asked to close the box", when the ask lapses, and the
+  secondary Cancel this request. *Agree* is the Confirm layout (397:102): who asked, Close
+  the box (`danger`) and Decline. Words PROPOSED.
+- **Also not drawn:** a Close the box row on the Bond settings root (396:3 has Leave and
+  Block and leave only). It is added to Ending, underlined in `danger`, with the value
+  Asked, or "Closes on 6 December" during the cooling-off.
+
+### 31. Export and the archive link on the ending screens
+
+- **Today:** "Export your archive" is drawn on the archived screens, the block confirm and
+  the cooling-off (states.md §9, FR-009 MUST), and the archived screen links to the bond's
+  Archive. The vendored contract has no export route, and the Archive is on another PR
+  stack (#22 to #25).
+- **Here:** both are left out rather than drawn dead. The block consequence drops "Export
+  first if you want to keep them." with it, and the archived line does not promise an
+  export. Owed together with the export screen (`Account 8 · export · REQUESTED`).
+
+### 32. Bond · archived: READ ONLY and BLOCKED are one screen
+
+- **Today:** 399:21 offers Close the box; 614:1832 does not. ADR-0030 refuses a deletion
+  request on every archived bond, so states.md §9 now says neither offers it.
+- **Here:** one screen for both, with no back, built from nothing but the bond list, so a
+  blocked person and a blocker see the same thing (`26` §2.1). Its one action is Start a
+  new bond (PROPOSED); Figma's primary label was not read.

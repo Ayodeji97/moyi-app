@@ -5,6 +5,17 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.cash.turbine.test
+import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.core.ApiProblem
+import com.moyi.app.core.DataError
+import com.moyi.app.core.EmptyResult
+import com.moyi.app.core.Result
+import com.moyi.app.domain.bond.Bond
+import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.bond.BondStatus
+import com.moyi.app.domain.bond.BondType
+import com.moyi.app.domain.bond.Invite
+import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DeleteResult
 import com.moyi.app.feature.today.common.RevealLedger
@@ -29,7 +40,8 @@ import kotlin.test.assertTrue
 class TodayViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
     private val ledger = RevealLedger()
-    private val viewModel by lazy { TodayViewModel(loop, ledger) }
+    private val bonds = InviteBonds()
+    private val viewModel by lazy { TodayViewModel(loop, ledger, bonds) }
 
     private fun TestScope.collectState() {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
@@ -266,7 +278,7 @@ class TodayViewModelTest : MainDispatcherTest() {
     fun theDayIsForgottenWhenTodayGoes() {
         // Today is the root of the signed-in app: it goes with a sign-out, and the day goes with it.
         val store = ViewModelStore()
-        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger) } }
+        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds) } }
         ViewModelProvider.create(store, factory)[TodayViewModel::class]
         loop.show(dayView(TodayStatus.Revealed))
         val clearsBefore = loop.clears
@@ -276,4 +288,77 @@ class TodayViewModelTest : MainDispatcherTest() {
         assertEquals(clearsBefore + 1, loop.clears)
         assertEquals(DailyLoopState.Loading, loop.state.value)
     }
+
+    // ---- Share the invite again (states.md §8) ----
+
+    @Test
+    fun shareInviteAgainSharesTheLiveInviteWithoutIssuingANewOne() = runTest {
+        bonds.list = Result.Success(listOf(bond(invite = LIVE)))
+        collectState()
+        loop.show(dayView(TodayStatus.PartnerNotJoined))
+        viewModel.events.test {
+            viewModel.onAction(TodayAction.OnShareInviteClick)
+            assertEquals(TodayEvent.ShareInvite(LIVE.link, LIVE.code), awaitItem())
+        }
+        assertEquals(0, bonds.created, "issuing one would revoke the code the partner may already hold")
+    }
+
+    @Test
+    fun shareInviteAgainIssuesOneOnlyWhenTheBondHasNone() = runTest {
+        bonds.list = Result.Success(listOf(bond(invite = null)))
+        collectState()
+        loop.show(dayView(TodayStatus.PartnerNotJoined))
+        viewModel.events.test {
+            viewModel.onAction(TodayAction.OnShareInviteClick)
+            assertEquals(TodayEvent.ShareInvite(NEW.link, NEW.code), awaitItem())
+        }
+        assertEquals(listOf("bond-1"), bonds.createdFor)
+    }
+
+    @Test
+    fun shareInviteAgainIssuesNothingWhenTheBondsCannotBeRead() = runTest {
+        bonds.list = Result.Failure(DataError.Network.NoInternet)
+        collectState()
+        loop.show(dayView(TodayStatus.PartnerNotJoined))
+        viewModel.onAction(TodayAction.OnShareInviteClick)
+        assertEquals(0, bonds.created)
+        assertTrue(viewModel.state.value.actionFailed)
+    }
+
+    @Test
+    fun aBondThatFilledMeanwhileRefreshesTodayInsteadOfSharing() = runTest {
+        bonds.list = Result.Success(listOf(bond(invite = null)))
+        bonds.create = Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.BOND_FULL)))
+        collectState()
+        loop.show(dayView(TodayStatus.PartnerNotJoined))
+        val before = loop.refreshes
+        viewModel.events.test {
+            viewModel.onAction(TodayAction.OnShareInviteClick)
+            expectNoEvents()
+        }
+        assertEquals(before + 1, loop.refreshes)
+        assertFalse(viewModel.state.value.actionFailed)
+    }
+}
+
+private val LIVE = Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD")
+private val NEW = Invite("i2", "M4XR9T", "https://getmoyi.app/i/M4XR9T")
+
+private fun bond(invite: Invite?) = Bond("bond-1", "Amara and Tunde", BondType.COUPLE, BondStatus.PENDING_MEMBER, invite)
+
+/** The bonds Today reads for "Share the invite again", and the invites it issues. */
+internal class InviteBonds : BondRepository {
+    var list: Result<List<Bond>, DataError.Network> = Result.Success(emptyList())
+    var create: Result<Invite, DataError.Network> = Result.Success(NEW)
+    val createdFor = mutableListOf<String>()
+    val created get() = createdFor.size
+    override suspend fun bonds() = list
+    override suspend fun createInvite(bondId: String): Result<Invite, DataError.Network> {
+        createdFor += bondId
+        return create
+    }
+    override suspend fun createBond(name: String, type: BondType, anchorTimezone: String): Result<Bond, DataError.Network> = error("not used")
+    override suspend fun revokeInvite(bondId: String, inviteId: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun resolveInvite(code: String): Result<InvitePreview, DataError.Network> = error("not used")
+    override suspend fun acceptInvite(code: String): Result<Bond, DataError.Network> = error("not used")
 }

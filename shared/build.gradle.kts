@@ -44,6 +44,7 @@ kotlin {
             implementation(project(":shared:feature:auth"))
             implementation(project(":shared:feature:onboarding"))
             implementation(project(":shared:feature:today"))
+            implementation(project(":shared:feature:bond"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.kermit)
