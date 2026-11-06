@@ -9,12 +9,17 @@ import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
+import com.moyi.app.domain.bond.Bond
+import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondSettingsChange
 import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
+import com.moyi.app.domain.bond.Invite
+import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.bond.MemberSettings
+import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
@@ -74,11 +79,79 @@ class FakeBondSettingsRepository(var server: BondSettings = settingsV1) : BondSe
         return leaveAnswers.removeFirstOrNull() ?: Result.Success(Unit)
     }
 
+    val proposeAnswers = ArrayDeque<Result<BondSettings, DataError.Network>>()
+    val confirmAnswers = ArrayDeque<Result<BondSettings, DataError.Network>>()
+    val cancelAnswers = ArrayDeque<EmptyResult<DataError.Network>>()
+    val proposals = mutableListOf<String>()
+    val confirmations = mutableListOf<String>()
+    var cancels = 0
+
+    /** Proposes as a server would: waits for the other member, unless nobody has joined (then it applies). */
+    override suspend fun proposeTimezone(bondId: String, timezone: String): Result<BondSettings, DataError.Network> {
+        proposals += timezone
+        gate?.await()
+        proposeAnswers.removeFirstOrNull()?.let { return it }
+        server = if (server.waitingForPartner) {
+            server.copy(anchorTimezone = timezone, version = bump())
+        } else {
+            server.copy(pendingTimezone = PendingTimezoneChange("p-new", timezone, proposedByMe = true), version = bump())
+        }
+        return Result.Success(server)
+    }
+
+    override suspend fun confirmTimezone(bondId: String, proposalId: String): Result<BondSettings, DataError.Network> {
+        confirmations += proposalId
+        gate?.await()
+        confirmAnswers.removeFirstOrNull()?.let { return it }
+        val pending = server.pendingTimezone ?: return apiError(404, ApiErrorCode.NOT_FOUND)
+        server = server.copy(anchorTimezone = pending.timezone, pendingTimezone = null, version = bump())
+        return Result.Success(server)
+    }
+
+    override suspend fun cancelTimezoneChange(bondId: String): EmptyResult<DataError.Network> {
+        cancels++
+        cancelAnswers.removeFirstOrNull()?.let { return it }
+        server = server.copy(pendingTimezone = null)
+        return Result.Success(Unit)
+    }
+
+    private fun bump(): String = "\"${server.version.trim('"').toInt() + 1}\""
+
     override suspend fun memberSettings(bondId: String): Result<MemberSettings, DataError.Network> =
         Result.Success(MemberSettings(TimeOfDay(20, 0), "Africa/Lagos"))
 
     override suspend fun replaceMemberSettings(bondId: String, settings: MemberSettings): Result<MemberSettings, DataError.Network> =
         Result.Success(settings)
+}
+
+val liveInvite = Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD")
+val newInvite = Invite("i2", "M4XR9T", "https://getmoyi.app/i/M4XR9T")
+
+/** The invite calls of [BondRepository], over the settings fake's [settings] server. */
+class FakeBondRepository(private val settings: FakeBondSettingsRepository) : BondRepository {
+    val createAnswers = ArrayDeque<Result<Invite, DataError.Network>>()
+    val revokeAnswers = ArrayDeque<EmptyResult<DataError.Network>>()
+    val revoked = mutableListOf<String>()
+    var created = 0
+
+    override suspend fun createInvite(bondId: String): Result<Invite, DataError.Network> {
+        created++
+        createAnswers.removeFirstOrNull()?.let { return it }
+        settings.server = settings.server.copy(invite = newInvite)
+        return Result.Success(newInvite)
+    }
+
+    override suspend fun revokeInvite(bondId: String, inviteId: String): EmptyResult<DataError.Network> {
+        revoked += inviteId
+        revokeAnswers.removeFirstOrNull()?.let { return it }
+        settings.server = settings.server.copy(invite = null)
+        return Result.Success(Unit)
+    }
+
+    override suspend fun bonds(): Result<List<Bond>, DataError.Network> = error("not used")
+    override suspend fun createBond(name: String, type: BondType, anchorTimezone: String): Result<Bond, DataError.Network> = error("not used")
+    override suspend fun resolveInvite(code: String): Result<InvitePreview, DataError.Network> = error("not used")
+    override suspend fun acceptInvite(code: String): Result<Bond, DataError.Network> = error("not used")
 }
 
 class FakeAuthRepository : AuthRepository {

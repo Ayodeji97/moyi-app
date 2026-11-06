@@ -30,7 +30,9 @@ import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
 class BondSettingsViewModelTest : MainDispatcherTest() {
     private val repo = FakeBondSettingsRepository()
     private val auth = FakeAuthRepository()
-    private val viewModel by lazy { BondSettingsViewModel("b1", repo, auth) }
+    private val bonds = FakeBondRepository(repo)
+    private var zones: Set<String> = setOf("Europe/London", "Africa/Lagos", "UTC", "Etc/GMT+1", "America/Argentina/Buenos_Aires")
+    private val viewModel by lazy { BondSettingsViewModel("b1", repo, auth, bonds, zoneIds = { zones }) }
 
     private val generic = UiText.Resource(Res.string.settings_error_generic)
     private val conflictLine = UiText.Resource(Res.string.settings_error_conflict)

@@ -38,6 +38,11 @@ import com.moyi.app.feature.bond.resources.settings_cancel
 import com.moyi.app.feature.bond.resources.settings_group_bond
 import com.moyi.app.feature.bond.resources.settings_group_day
 import com.moyi.app.feature.bond.resources.settings_group_ending
+import com.moyi.app.feature.bond.resources.settings_group_invite
+import com.moyi.app.feature.bond.resources.settings_invite_heading
+import com.moyi.app.feature.bond.resources.settings_invite_value_active
+import com.moyi.app.feature.bond.resources.settings_invite_value_none
+import com.moyi.app.feature.bond.resources.settings_row_timezone
 import com.moyi.app.feature.bond.resources.settings_group_you
 import com.moyi.app.feature.bond.resources.settings_heading
 import com.moyi.app.feature.bond.resources.settings_leave_confirm
@@ -78,11 +83,11 @@ import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
  * heading at 96 (no eyebrow under a back target, D1), then the groups 24 apart, each a
  * `label` heading 16 above its 56 rows.
  *
- * Drawn here: This bond (relationship type, bond name), The day (reveal time, rest days),
- * Just you (sign out, in place of Account), Ending (leave). Left out on purpose, with no
- * dead row (docs/figma/bond-settings-check.md): the shared time zone (its FR-027 flow is a
- * later PR), your reminder (`/members/me/notifications` is not in the contract copy yet),
- * the Invite group (416:*), and Block and leave.
+ * Drawn here: This bond (relationship type, bond name), The day (shared time zone, reveal
+ * time, rest days), Just you (sign out, in place of Account), Invite (only while the bond
+ * waits for its second member or holds a live code), Ending (leave). Left out on purpose,
+ * with no dead row (docs/figma/bond-settings-check.md): your reminder
+ * (`/members/me/notifications` is not in the contract copy yet), and Block and leave.
  *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, under
  * the back target, so the way out stays.
@@ -148,6 +153,13 @@ private fun SettingsRoot(
             }
             SettingsGroup(stringResource(Res.string.settings_group_day)) {
                 SettingsRow(
+                    label = stringResource(Res.string.settings_row_timezone),
+                    value = cityOf(settings.anchorTimezone),
+                    kind = RowKind.Navigates,
+                    enabled = !busy,
+                    onClick = { onAction(BondSettingsAction.OnTimeZoneClick) },
+                )
+                SettingsRow(
                     label = stringResource(Res.string.settings_row_reveal),
                     value = when {
                         state.saving == SettingsField.RevealTime -> saving
@@ -176,6 +188,19 @@ private fun SettingsRoot(
                     enabled = !busy,
                     onClick = { onAction(BondSettingsAction.OnSignOutClick) },
                 )
+            }
+            // Only while the bond waits for its second member, or still holds a live code:
+            // a full bond has nothing to invite to (409 BOND_FULL).
+            if (settings.waitingForPartner || settings.invite != null) {
+                SettingsGroup(stringResource(Res.string.settings_group_invite)) {
+                    SettingsRow(
+                        label = stringResource(Res.string.settings_invite_heading),
+                        value = stringResource(if (settings.invite != null) Res.string.settings_invite_value_active else Res.string.settings_invite_value_none),
+                        kind = RowKind.Navigates,
+                        enabled = !busy,
+                        onClick = { onAction(BondSettingsAction.OnInviteClick) },
+                    )
+                }
             }
             SettingsGroup(stringResource(Res.string.settings_group_ending)) {
                 SettingsRow(

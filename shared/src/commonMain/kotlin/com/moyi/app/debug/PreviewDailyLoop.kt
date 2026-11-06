@@ -1,5 +1,6 @@
 package com.moyi.app.debug
 
+import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.today.Prompt
 import com.moyi.app.feature.today.common.DailyLoop
@@ -95,5 +96,8 @@ private val PreviewLatency: Duration = 800.milliseconds
 internal val previewTodayModule: Module = module {
     single<DailyLoop> { PreviewDailyLoop() }
     // Today's settings target opens Bond settings on preview settings (PreviewBondSettings).
-    single<BondSettingsRepository> { PreviewBondSettingsRepository() }
+    single { PreviewBondSettingsRepository() }
+    single<BondSettingsRepository> { get<PreviewBondSettingsRepository>() }
+    // Invites (Bond settings › Invite, and Today's "Share the invite again") over the same preview bond.
+    single<BondRepository> { PreviewSettingsBondRepository(get()) }
 }

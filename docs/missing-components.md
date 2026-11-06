@@ -259,3 +259,28 @@ The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
   it is worth drawing; there is no frame.
 - **Here:** the screen reloads and shows the line as the inline error at the row or editor
   that was saved, with the person's input kept. Needs a frame and the owner's wording.
+
+## Bond settings, part 2
+
+### 19. The time-zone picker
+
+- **Today:** `states.md` §8 and Figma 397:53 draw the zone as a `Field · Select` whose
+  chevron opens "a picker the screen owns"; no picker is drawn, and neither platform has a
+  system time-zone picker an app can open (Android's lives in Settings, iOS has none).
+  Onboarding's create-bond field has the same gap (its `OnTimeZoneClick` is a TODO).
+- **Here:** the most conservative form the existing pieces allow, local to `feature/bond`:
+  a screen with the heading "Choose a city", a `Field · Text` to search, and one
+  `SettingsRow` per region zone the platform knows (kotlinx-datetime's list, `UTC` and
+  `Etc/…` left out because the backend refuses them), the city as the label and the IANA
+  id as the value. A tap chooses and returns. Names are not localised: the city is read
+  out of the id (`America/Argentina/Buenos_Aires` is Buenos Aires).
+- **The open question:** a drawn picker (and whether onboarding shares it), localised zone
+  names (ICU on Android, `NSTimeZone.localizedName` on iOS), and whether the device's zone
+  is offered first.
+
+### 20. The 30-day refusal
+
+- **Today:** `states.md` §8 says the refusal names a date; there is no frame.
+- **Here:** an `InlineError` 8 above Propose change (or Agree), without the date, because
+  the contract has none (`backend-contract-gaps.md` row 15).
+
