@@ -44,8 +44,33 @@ class SignedInStartViewModelTest : MainDispatcherTest() {
     }
 
     @Test
-    fun onlyEndedBondsCountAsNone() = runTest {
-        bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED), bond(BondStatus.DELETED)))
+    fun aNewestBondThatHasEndedIsTheArchivedScreenNamingTheOtherMember() = runTest {
+        bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED).copy(partnerName = "Amara"), bond(BondStatus.DELETED)))
+        assertEquals(SignedInStartEvent.NavigateToArchived("Amara"), firstEvent())
+    }
+
+    @Test
+    fun theArchivedScreenNeedsOnlyTheBondNotTheAccount() = runTest {
+        bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED)))
+        account.result = Result.Failure(DataError.Network.NoInternet)
+        assertEquals(SignedInStartEvent.NavigateToArchived(null), firstEvent())
+    }
+
+    @Test
+    fun anOpenBondWinsOverAnEndedOne() = runTest {
+        bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED), bond(BondStatus.ACTIVE)))
+        assertEquals(SignedInStartEvent.NavigateToToday, firstEvent())
+    }
+
+    @Test
+    fun aBondInItsCoolingOffIsStillOpen() = runTest {
+        bonds.bondsResult = Result.Success(listOf(bond(BondStatus.PENDING_DELETION)))
+        assertEquals(SignedInStartEvent.NavigateToToday, firstEvent())
+    }
+
+    @Test
+    fun aDeletedBondCountsAsNone() = runTest {
+        bonds.bondsResult = Result.Success(listOf(bond(BondStatus.DELETED)))
         assertEquals(SignedInStartEvent.NavigateToOnboarding, firstEvent())
     }
 

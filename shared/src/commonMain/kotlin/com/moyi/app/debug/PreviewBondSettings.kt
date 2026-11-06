@@ -15,6 +15,7 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.bond.MemberSettings
+import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
 import kotlinx.coroutines.delay
@@ -36,6 +37,11 @@ import kotlin.time.Duration.Companion.milliseconds
  * Propose; proposing then waits (Proposed) until it is cancelled. The bond holds a live
  * invite, so the Invite row shows on this ACTIVE bond: cancelling it is Revoked, and
  * creating one is Active again with a new code.
+ *
+ * Tunde has asked to close the box (Agree). Agreeing starts the cooling-off, 30 days
+ * from now; Keep the box calls it off; asking again then waits on Tunde (Asked) until
+ * cancelled. Leave and Block and leave end the bond (ARCHIVED), so the signed-in start
+ * shows the archived bond.
  */
 internal class PreviewBondSettingsRepository(private val latency: Duration = 800.milliseconds) : BondSettingsRepository {
     private var settings = BondSettings(
@@ -50,6 +56,8 @@ internal class PreviewBondSettingsRepository(private val latency: Duration = 800
         partnerName = "Tunde",
         pendingTimezone = PendingTimezoneChange("preview-proposal", "Europe/London", proposedByMe = false),
         invite = previewInvite("K7Q2PD"),
+        // Tunde asked to close the box: Bond settings › Close the box opens on Agree.
+        pendingDeletion = PendingDeletionRequest(requestedByMe = false, expiresAt = Clock.System.now() + 7.days),
     )
     private var zoneChanged = false
     private var inviteCount = 0
@@ -70,8 +78,32 @@ internal class PreviewBondSettingsRepository(private val latency: Duration = 800
         return Result.Success(settings)
     }
 
-    override suspend fun leave(bondId: String): EmptyResult<DataError.Network> {
+    override suspend fun leave(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> = end(withdrawEntries)
+
+    override suspend fun block(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> = end(withdrawEntries)
+
+    /** Leave and block end it the same way: ARCHIVED, so the signed-in start shows the archived bond. */
+    private suspend fun end(@Suppress("UNUSED_PARAMETER") withdrawEntries: Boolean): EmptyResult<DataError.Network> {
         delay(latency)
+        settings = settings.copy(status = BondStatus.ARCHIVED, pendingDeletion = null, deletionScheduledFor = null, invite = null)
+        return Result.Success(Unit)
+    }
+
+    /** Asks, or agrees to Tunde's ask, which starts the 30-day cooling-off. */
+    override suspend fun requestDeletion(bondId: String): Result<BondSettings, DataError.Network> {
+        delay(latency)
+        val theirs = settings.pendingDeletion?.requestedByMe == false
+        settings = if (theirs) {
+            settings.copy(status = BondStatus.PENDING_DELETION, pendingDeletion = null, deletionScheduledFor = Clock.System.now() + 30.days, version = next())
+        } else {
+            settings.copy(pendingDeletion = PendingDeletionRequest(requestedByMe = true, expiresAt = Clock.System.now() + 7.days), version = next())
+        }
+        return Result.Success(settings)
+    }
+
+    override suspend fun cancelDeletion(bondId: String): EmptyResult<DataError.Network> {
+        delay(latency)
+        settings = settings.copy(status = BondStatus.ACTIVE, pendingDeletion = null, deletionScheduledFor = null, version = next())
         return Result.Success(Unit)
     }
 

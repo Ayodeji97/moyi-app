@@ -27,8 +27,11 @@ import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.RegisterRoute
 import com.moyi.app.feature.auth.navigation.authGraph
+import com.moyi.app.feature.bond.navigation.BondArchivedRoute
 import com.moyi.app.feature.bond.navigation.BondSettingsGraph
+import com.moyi.app.feature.bond.navigation.bondArchivedDestination
 import com.moyi.app.feature.bond.navigation.bondSettingsGraph
+import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
 import com.moyi.app.feature.onboarding.navigation.SignedInStartRoute
 import com.moyi.app.feature.onboarding.navigation.onboardingGraph
@@ -45,7 +48,7 @@ import org.koin.compose.viewmodel.koinViewModel
  *   retry succeeds.
  * - **SignedIn**: the signed-in start, which asks the server where this
  *   person is (`GET /bonds`, `GET /me`) and replaces itself with Today, the
- *   unverified gate or onboarding. Onboarding's last action calls
+ *   archived bond, the unverified gate or onboarding. Onboarding's last action calls
  *   `onOnboardingFinished`, which lands on Today, the root of the signed-in app.
  * - **SignedOut**: the promise (Onboarding 1), leading to sign up or sign in.
  *   A sign-out or an ended session still lands on sign in (below).
@@ -125,7 +128,7 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
         )
         bondSettingsGraph(
             navController = navController,
-            // Left, or found ended: the same path as Today finding no open bond.
+            // Left, blocked, or found ended: the same path as Today finding no open bond.
             onBondEnded = { navController.resetTo(SignedInStartRoute) },
         )
         onboardingGraph(
@@ -133,7 +136,11 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
             onNavigateToRegister = { navController.navigate(RegisterRoute) },
             onNavigateToSignIn = { navController.navigate(LoginRoute()) },
             onOnboardingFinished = { navController.resetTo(TodayRoute) },
+            // The bond has ended: the archived screen, a root with no back (SKILL.md).
+            onBondArchived = { partnerName -> navController.resetTo(BondArchivedRoute(partnerName)) },
         )
+        // Starting a new bond pushes onboarding over the archived screen, so back returns to it.
+        bondArchivedDestination(onStartNewBond = { navController.navigate(OnboardingRoute) })
         if (UiPreview.onboarding) uiPreviewGraph(navController)
     }
 }

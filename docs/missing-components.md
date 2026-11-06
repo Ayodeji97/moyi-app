@@ -284,3 +284,38 @@ The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 - **Here:** an `InlineError` 8 above Propose change (or Agree), without the date, because
   the contract has none (`backend-contract-gaps.md` row 15).
 
+
+## Ending and safety
+
+Numbered from 30 so they do not collide with sections other open PRs add; renumbered at merge.
+
+### 30. Close the box: the two states between asking and the cooling-off
+
+- **Today:** Figma draws the ask (399:38 BOTH MUST AGREE) and the cooling-off (399:1525),
+  but not what each member sees after one of them has asked: the one who asked, waiting,
+  and the other, asked to agree. The API has both (`pendingDeletionRequest`, ADR-0030).
+- **Here:** the time zone's two-party layouts, reused. *Asked* is the Proposed layout
+  (397:67): the heading "You asked to close the box", when the ask lapses, and the
+  secondary Cancel this request. *Agree* is the Confirm layout (397:102): who asked, Close
+  the box (`danger`) and Decline. Words PROPOSED.
+- **Also not drawn:** a Close the box row on the Bond settings root (396:3 has Leave and
+  Block and leave only). It is added to Ending, underlined in `danger`, with the value
+  Asked, or "Closes on 6 December" during the cooling-off.
+
+### 31. Export and the archive link on the ending screens
+
+- **Today:** "Export your archive" is drawn on the archived screens, the block confirm and
+  the cooling-off (states.md §9, FR-009 MUST), and the archived screen links to the bond's
+  Archive. The vendored contract has no export route, and the Archive is on another PR
+  stack (#22 to #25).
+- **Here:** both are left out rather than drawn dead. The block consequence drops "Export
+  first if you want to keep them." with it, and the archived line does not promise an
+  export. Owed together with the export screen (`Account 8 · export · REQUESTED`).
+
+### 32. Bond · archived: READ ONLY and BLOCKED are one screen
+
+- **Today:** 399:21 offers Close the box; 614:1832 does not. ADR-0030 refuses a deletion
+  request on every archived bond, so states.md §9 now says neither offers it.
+- **Here:** one screen for both, with no back, built from nothing but the bond list, so a
+  blocked person and a blocker see the same thing (`26` §2.1). Its one action is Start a
+  new bond (PROPOSED); Figma's primary label was not read.

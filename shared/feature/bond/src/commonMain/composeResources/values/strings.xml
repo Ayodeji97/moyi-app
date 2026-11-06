@@ -42,8 +42,6 @@
     <string name="settings_saving">Saving</string>
     <!-- home_sign_out_sending's words. -->
     <string name="settings_signing_out">Signing out</string>
-    <!-- PROPOSED. The leave row while the leave is in flight. -->
-    <string name="settings_leaving">Leaving</string>
 
     <!-- PROPOSED. Spoken hint on a row that toggles in place (Rest days). -->
     <string name="settings_toggle_hint">Turns it on or off</string>
@@ -65,12 +63,97 @@
     <!-- PROPOSED. Spoken hint on a relationship card here: a tap selects and saves (onboarding's says "Selects and continues"). -->
     <string name="settings_type_hint">Selects and saves</string>
 
-    <!-- copy.md: "Leave this bond?". The leave confirmation, in the platform's dialog (figma-deviations.md C2). -->
+    <!-- copy.md: "Leave this bond?". The leave confirm's heading (Figma 398:27), a full screen since FR-029a's offer needs a checkbox. -->
     <string name="settings_leave_title">Leave this bond?</string>
-    <!-- PROPOSED. states.md §9: it ends at once, for both; it stays readable for both and takes nothing new. Entries are kept (FR-029a's withdraw offer is not built). -->
-    <string name="settings_leave_line">It ends now, for both of you. What you both wrote stays readable, and nothing new can be added.</string>
-    <!-- PROPOSED. The dialog's destructive answer. -->
+    <!-- PROPOSED. Line 398:52. states.md §9: it ends at once, for both; it stays readable for both and takes nothing new. No claim about the entries: the row below decides them. -->
+    <string name="settings_leave_line">It ends now, for both of you. The bond stays readable to you both, and nothing new can be added.</string>
+    <!-- PROPOSED (X7: the leave confirm's copy owed the destructive reading, strings-proposed.md §10). The withdraw row 398:53, off by default. block.withdraw's first sentence, then block.consequence's fact, without its dash. %1$s is the other member's display name. -->
+    <string name="settings_leave_withdraw">Withdraw the entries I wrote. They go permanently, for both of you, and %1$s sees only that something was there.</string>
+    <!-- PROPOSED. The same with no name known. -->
+    <string name="settings_leave_withdraw_unnamed">Withdraw the entries I wrote. They go permanently, for both of you, and the other person sees only that something was there.</string>
+    <!-- PROPOSED. The confirm's destructive PrimaryAction (398:75). -->
     <string name="settings_leave_confirm">Leave</string>
+    <!-- PROPOSED. 409 BOND_ARCHIVED on a leave that asked to withdraw: the bond had already ended, and doc 06 says nothing is withdrawn then. -->
+    <string name="settings_leave_error_ended">This bond had already ended, so nothing was withdrawn.</string>
+
+    <!-- ===== Block and leave (FR-029, FR-029a; Figma 612:1827, 661:1949; strings-proposed.md §10) ===== -->
+
+    <!-- block.row (strings-proposed.md §10, in file, not decided). -->
+    <string name="settings_row_block">Block and leave</string>
+    <!-- block.heading (612:1833). %1$s is the other member's display name. -->
+    <string name="block_heading">Block %1$s and end this bond?</string>
+    <!-- block.line (612:1834). %1$s is the other member's display name. -->
+    <string name="block_line">The bond ends now. %1$s cannot invite you again, and is not told that you blocked them.</string>
+    <!-- block.withdraw (612:1837), on by default. -->
+    <string name="block_withdraw">Withdraw the entries I wrote.</string>
+    <!-- block.consequence (612:1848) with its em dash made a comma (copy.md: no dashes), and without "Export first if you want to keep them.": there is no export to go to yet. %1$s is the other member's display name. -->
+    <string name="block_consequence">Everything you wrote is withdrawn at the same time. Those words go permanently, for both of you, and %1$s sees only that something was there.</string>
+    <!-- PROPOSED. The consequence with the withdraw row off (661:1961, whose words were not read). -->
+    <string name="block_consequence_kept">What you wrote stays, in the archive you both keep.</string>
+    <!-- block.confirm (612:1839). -->
+    <string name="block_confirm">Block and leave</string>
+    <!-- PROPOSED. Its Sending label. -->
+    <string name="block_confirming">Blocking</string>
+    <!-- PROPOSED. The leave confirm's Sending label. -->
+    <string name="settings_leave_confirming">Leaving</string>
+
+    <!-- ===== Close the box (FR-028; Figma 399:38, 399:1525; states.md §9) ===== -->
+
+    <!-- PROPOSED. The row in Ending (not drawn on the root): states.md §9's name for the act. -->
+    <string name="settings_row_close_box">Close the box</string>
+    <!-- PROPOSED. Its value once someone has asked, and during the cooling-off. %1$s is the date, day first then the month. -->
+    <string name="settings_close_box_value_asked">Asked</string>
+    <string name="settings_close_box_value_closing">Closes on %1$s</string>
+    <!-- PROPOSED. Ask's heading (399:46). -->
+    <string name="close_box_heading">Close the box?</string>
+    <!-- PROPOSED. Ask's line (399:47): mutual, both confirm, permanent after 30 days, either can call it off (states.md §9). %1$s is the other member's display name. -->
+    <string name="close_box_line">Closing the box deletes this bond and everything in it, for both of you. It needs you both: once %1$s asks too, it closes 30 days later, and either of you can call it off until then.</string>
+    <!-- PROPOSED. The same with no name known. -->
+    <string name="close_box_line_unnamed">Closing the box deletes this bond and everything in it, for both of you. It needs you both: once the other person asks too, it closes 30 days later, and either of you can call it off until then.</string>
+    <!-- PROPOSED. Ask's and Agree's destructive PrimaryAction (399:49), and its Sending label. -->
+    <string name="close_box_confirm">Close the box</string>
+    <string name="close_box_confirming">Asking</string>
+    <!-- copy.md: bare "Cancel" dismisses (399:52). -->
+    <string name="close_box_cancel">Cancel</string>
+    <!-- PROPOSED. Asked (not drawn; the time zone's Proposed layout): the person asked, the other has not. -->
+    <string name="close_box_asked_heading">You asked to close the box</string>
+    <!-- PROPOSED. %1$s is the other member's display name, %2$s the day the ask lapses. -->
+    <string name="close_box_asked_line">It closes only if %1$s asks too, and your ask lapses on %2$s if not. Nothing is deleted until 30 days after you both have asked.</string>
+    <!-- PROPOSED. The same with no name or no date known. -->
+    <string name="close_box_asked_line_plain">It closes only if the other person asks too. Nothing is deleted until 30 days after you both have asked.</string>
+    <!-- PROPOSED, copy.md's "Cancel this <thing>". -->
+    <string name="close_box_withdraw">Cancel this request</string>
+    <string name="close_box_withdrawing">Cancelling</string>
+    <!-- PROPOSED. Agree (not drawn): the other member asked. %1$s is their display name. -->
+    <string name="close_box_agree_heading">%1$s asked to close the box</string>
+    <string name="close_box_agree_heading_unnamed">The other person asked to close the box</string>
+    <!-- PROPOSED. Agree's line. -->
+    <string name="close_box_agree_line">If you ask too, the bond and everything in it are deleted for both of you 30 days from now. Either of you can call it off until then.</string>
+    <!-- PROPOSED. Agree's secondary: the same DELETE, from the other side. -->
+    <string name="close_box_decline">Decline</string>
+    <string name="close_box_declining">Declining</string>
+    <!-- states.md §9: "The box closes on 4 October". The cooling-off heading (399:1531). %1$s is the date, day first then the month. -->
+    <string name="close_box_cooling_heading">The box closes on %1$s</string>
+    <!-- PROPOSED. With no date known. -->
+    <string name="close_box_cooling_heading_undated">The box is closing</string>
+    <!-- PROPOSED. The cooling-off line (399:1532): nothing is gone, nothing more can change, either can call it off. -->
+    <string name="close_box_cooling_line">Nothing is gone yet, and nothing more can be changed. Either of you can call it off until then.</string>
+    <!-- PROPOSED. The cooling-off PrimaryAction (399:1534): the safe action is primary (states.md §9). -->
+    <string name="close_box_keep">Keep the box</string>
+    <string name="close_box_keeping">Keeping the box</string>
+
+    <!-- ===== Bond archived (Figma 399:21 READ ONLY, 614:1832 BLOCKED; states.md §9) ===== -->
+
+    <!-- PROPOSED. The eyebrow (399:27): the screen has no back, so D1 does not drop it. -->
+    <string name="archived_eyebrow">Ending</string>
+    <!-- PROPOSED. The heading (399:29). The same words for both, whoever ended it (`26` §2.1). -->
+    <string name="archived_heading">This bond has ended</string>
+    <!-- PROPOSED. The line (399:30): states.md §9's three things, less the export, which is not built. %1$s is the other member's display name. -->
+    <string name="archived_line">It is read only for both of you, and your archive stays. What %1$s wrote about you stays readable unless %1$s removes it.</string>
+    <!-- PROPOSED. The same with no name known. -->
+    <string name="archived_line_unnamed">It is read only for both of you, and your archive stays. What the other person wrote about you stays readable unless they remove it.</string>
+    <!-- PROPOSED. The PrimaryAction (399:32), whose words were not read: starting a new bond (copy.md: "New bond"). -->
+    <string name="archived_new_bond">Start a new bond</string>
 
     <!-- states.md §8 (the ETag conflict, "worth drawing"): a 412, after the screen has reloaded. -->
     <string name="settings_error_conflict">This changed while you were looking at it.</string>

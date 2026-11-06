@@ -10,7 +10,7 @@ import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
 enum class SettingsLoad { Loading, Failed, Ready }
 
 /** What a save, a leave or an error belongs to: the row (or editor) that shows it. */
-enum class SettingsField { Name, Type, RevealTime, RestDays, Leave, TimeZone, Invite }
+enum class SettingsField { Name, Type, RevealTime, RestDays, Leave, TimeZone, Invite, Block, CloseBox }
 
 /**
  * Which of the three time-zone screens (Figma 397:22, 397:67, 397:102) the pending
@@ -18,6 +18,13 @@ enum class SettingsField { Name, Type, RevealTime, RestDays, Leave, TimeZone, In
  * only cancel it); one the other member made is Confirm (BR-6: never the proposer's).
  */
 enum class TimeZoneStep { Propose, Proposed, Confirm }
+
+/**
+ * Which close-the-box screen (FR-028; Figma 399:38, 399:1525) the bond calls for:
+ * nothing asked is Ask; this person asked is Asked (they can only withdraw it); the other
+ * member asked is Agree (their own ask is the agreement); both asked is CoolingOff.
+ */
+enum class CloseBoxStep { Ask, Asked, Agree, CoolingOff }
 
 /** An inline error, under the row or above the editor's action that caused it. Its input is kept. */
 @Immutable
@@ -39,7 +46,10 @@ data class BondSettingsState(
     val nameDraft: String = "",
     val nameError: UiText? = null,
     val pickingRevealTime: Boolean = false,
-    val confirmingLeave: Boolean = false,
+    /** FR-029a on the leave confirm (Figma 398:53): off by default, so leaving keeps the entries. */
+    val withdrawOnLeave: Boolean = false,
+    /** FR-029a on the block confirm (612:1835): on by default (`26` §3.3); 661:1949 is it turned off. */
+    val withdrawOnBlock: Boolean = true,
     val signingOut: Boolean = false,
     /** The zone chosen on Propose, an IANA id; starts as the bond's own. */
     val zoneDraft: String? = null,
@@ -52,8 +62,22 @@ data class BondSettingsState(
     val inviteCopied: Boolean = false,
     /** Which part of a time-zone screen is in flight: the primary (propose, agree) or the secondary (cancel, decline). */
     val zoneSecondaryInFlight: Boolean = false,
+    /** The same for a close-the-box screen: true while its `DELETE` is the call in flight. */
+    val closeBoxSecondaryInFlight: Boolean = false,
 ) {
     val leaving: Boolean get() = saving == SettingsField.Leave
+    val blocking: Boolean get() = saving == SettingsField.Block
+
+    val closeBoxStep: CloseBoxStep
+        get() {
+            val settings = settings ?: return CloseBoxStep.Ask
+            return when {
+                settings.coolingOff -> CloseBoxStep.CoolingOff
+                settings.pendingDeletion?.requestedByMe == true -> CloseBoxStep.Asked
+                settings.pendingDeletion != null -> CloseBoxStep.Agree
+                else -> CloseBoxStep.Ask
+            }
+        }
 
     val timeZoneStep: TimeZoneStep
         get() = when (settings?.pendingTimezone?.proposedByMe) {
@@ -87,8 +111,20 @@ sealed interface BondSettingsAction {
     data object OnRestDaysToggle : BondSettingsAction
     data object OnSignOutClick : BondSettingsAction
     data object OnLeaveClick : BondSettingsAction
+    data object OnLeaveWithdrawToggle : BondSettingsAction
     data object OnLeaveConfirm : BondSettingsAction
-    data object OnLeaveDismiss : BondSettingsAction
+
+    // Block and leave (FR-029, FR-029a)
+    data object OnBlockClick : BondSettingsAction
+    data object OnBlockWithdrawToggle : BondSettingsAction
+    data object OnBlockConfirm : BondSettingsAction
+
+    // Close the box (FR-028)
+    data object OnCloseBoxClick : BondSettingsAction
+    /** Ask, or agree to the other member's ask: the same `POST`. */
+    data object OnCloseBoxConfirm : BondSettingsAction
+    /** Withdraw your ask, decline theirs, or call off the cooling-off: the same `DELETE`. */
+    data object OnCloseBoxWithdraw : BondSettingsAction
 
     /** An editor closed without saving (back): its error goes with it. */
     data object OnEditorClosed : BondSettingsAction
@@ -120,6 +156,9 @@ sealed interface BondSettingsEvent {
     /** A zone was chosen in the picker: back to Propose, which shows it. */
     data object ZonePicked : BondSettingsEvent
     data object OpenInvite : BondSettingsEvent
+    data object OpenLeave : BondSettingsEvent
+    data object OpenBlock : BondSettingsEvent
+    data object OpenCloseBox : BondSettingsEvent
 
     /**
      * Open the OS share sheet with the invite. Fire and forget: the sheet closing is never

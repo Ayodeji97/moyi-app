@@ -19,6 +19,7 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.bond.MemberSettings
+import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
 import kotlinx.coroutines.CompletableDeferred
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlin.time.Instant
 
 val settingsV1 = BondSettings(
     bondId = "b1",
@@ -51,7 +53,6 @@ class FakeBondSettingsRepository(var server: BondSettings = settingsV1) : BondSe
     val leaveAnswers = ArrayDeque<EmptyResult<DataError.Network>>()
     val updates = mutableListOf<Triple<String, String, BondSettingsChange>>()
     var readCount = 0
-    var leaves = 0
     var gate: CompletableDeferred<Unit>? = null
 
     override suspend fun settings(bondId: String): Result<BondSettings, DataError.Network> {
@@ -74,9 +75,48 @@ class FakeBondSettingsRepository(var server: BondSettings = settingsV1) : BondSe
         return Result.Success(server)
     }
 
-    override suspend fun leave(bondId: String): EmptyResult<DataError.Network> {
-        leaves++
+    /** Each leave's withdraw choice, in order. */
+    val leaveWithdraws = mutableListOf<Boolean>()
+    val leaves: Int get() = leaveWithdraws.size
+
+    override suspend fun leave(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> {
+        leaveWithdraws += withdrawEntries
         return leaveAnswers.removeFirstOrNull() ?: Result.Success(Unit)
+    }
+
+    val blockAnswers = ArrayDeque<EmptyResult<DataError.Network>>()
+    /** Each block's withdraw choice, in order. */
+    val blockWithdraws = mutableListOf<Boolean>()
+
+    override suspend fun block(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> {
+        blockWithdraws += withdrawEntries
+        gate?.await()
+        return blockAnswers.removeFirstOrNull() ?: Result.Success(Unit)
+    }
+
+    val deletionAnswers = ArrayDeque<Result<BondSettings, DataError.Network>>()
+    val deletionCancelAnswers = ArrayDeque<EmptyResult<DataError.Network>>()
+    var deletionRequests = 0
+    var deletionCancels = 0
+
+    /** As the server: the first ask waits for the other member; the other member's ask starts the cooling-off. */
+    override suspend fun requestDeletion(bondId: String): Result<BondSettings, DataError.Network> {
+        deletionRequests++
+        gate?.await()
+        deletionAnswers.removeFirstOrNull()?.let { return it }
+        server = if (server.pendingDeletion?.requestedByMe == false) {
+            server.copy(status = BondStatus.PENDING_DELETION, pendingDeletion = null, deletionScheduledFor = coolingOffEnds, version = bump())
+        } else {
+            server.copy(pendingDeletion = PendingDeletionRequest(requestedByMe = true, expiresAt = askLapses), version = bump())
+        }
+        return Result.Success(server)
+    }
+
+    override suspend fun cancelDeletion(bondId: String): EmptyResult<DataError.Network> {
+        deletionCancels++
+        deletionCancelAnswers.removeFirstOrNull()?.let { return it }
+        server = server.copy(status = BondStatus.ACTIVE, pendingDeletion = null, deletionScheduledFor = null, version = bump())
+        return Result.Success(Unit)
     }
 
     val proposeAnswers = ArrayDeque<Result<BondSettings, DataError.Network>>()
@@ -123,6 +163,9 @@ class FakeBondSettingsRepository(var server: BondSettings = settingsV1) : BondSe
     override suspend fun replaceMemberSettings(bondId: String, settings: MemberSettings): Result<MemberSettings, DataError.Network> =
         Result.Success(settings)
 }
+
+val askLapses: Instant = Instant.parse("2026-11-13T10:00:00Z")
+val coolingOffEnds: Instant = Instant.parse("2026-12-06T10:00:00Z")
 
 val liveInvite = Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD")
 val newInvite = Invite("i2", "M4XR9T", "https://getmoyi.app/i/M4XR9T")

@@ -11,6 +11,7 @@ import com.moyi.app.domain.bond.TimeOfDay
 import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.settings_error_conflict
 import com.moyi.app.feature.bond.resources.settings_error_generic
+import com.moyi.app.feature.bond.resources.settings_leave_error_ended
 import com.moyi.app.feature.bond.settings.BondSettingsAction
 import com.moyi.app.feature.bond.settings.BondSettingsEvent
 import com.moyi.app.feature.bond.settings.BondSettingsViewModel
@@ -227,47 +228,87 @@ class BondSettingsViewModelTest : MainDispatcherTest() {
     // ----- leave -----
 
     @Test
-    fun leavingAsksFirstAndDoesNothingUntilConfirmed() {
-        viewModel.onAction(BondSettingsAction.OnLeaveClick)
-        assertTrue(viewModel.state.value.confirmingLeave)
-        assertEquals(0, repo.leaves)
-
-        viewModel.onAction(BondSettingsAction.OnLeaveDismiss)
-
-        assertFalse(viewModel.state.value.confirmingLeave)
+    fun leavingOpensItsConfirmWithEntriesKeptAndDoesNothingUntilConfirmed() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            assertEquals(BondSettingsEvent.OpenLeave, awaitItem())
+        }
+        assertFalse(viewModel.state.value.withdrawOnLeave, "FR-029a is off by default on leave (ADR-0035)")
         assertEquals(0, repo.leaves)
     }
 
     @Test
-    fun aConfirmedLeaveLeavesThenEnds() = runTest {
-        viewModel.onAction(BondSettingsAction.OnLeaveClick)
+    fun aConfirmedLeaveKeepsTheEntriesThenEnds() = runTest {
         viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            assertEquals(BondSettingsEvent.OpenLeave, awaitItem())
             viewModel.onAction(BondSettingsAction.OnLeaveConfirm)
             assertEquals(BondSettingsEvent.Ended, awaitItem())
         }
-        assertEquals(1, repo.leaves)
+        assertEquals(listOf(false), repo.leaveWithdraws)
     }
 
     @Test
-    fun aFailedLeaveKeepsThePersonHereWithTheReason() = runTest {
-        repo.leaveAnswers += Result.Failure(DataError.Network.NoInternet)
-        viewModel.onAction(BondSettingsAction.OnLeaveClick)
+    fun aLeaveWithTheRowTickedWithdrawsTheEntries() = runTest {
         viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            assertEquals(BondSettingsEvent.OpenLeave, awaitItem())
+            viewModel.onAction(BondSettingsAction.OnLeaveWithdrawToggle)
+            viewModel.onAction(BondSettingsAction.OnLeaveConfirm)
+            assertEquals(BondSettingsEvent.Ended, awaitItem())
+        }
+        assertEquals(listOf(true), repo.leaveWithdraws)
+    }
+
+    @Test
+    fun reopeningTheLeaveConfirmStartsFromEntriesKeptAgain() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            viewModel.onAction(BondSettingsAction.OnLeaveWithdrawToggle)
+            viewModel.onAction(BondSettingsAction.OnEditorClosed)
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertFalse(viewModel.state.value.withdrawOnLeave)
+    }
+
+    @Test
+    fun aFailedLeaveKeepsThePersonHereWithTheReasonAndTheirChoice() = runTest {
+        repo.leaveAnswers += Result.Failure(DataError.Network.NoInternet)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            assertEquals(BondSettingsEvent.OpenLeave, awaitItem())
+            viewModel.onAction(BondSettingsAction.OnLeaveWithdrawToggle)
             viewModel.onAction(BondSettingsAction.OnLeaveConfirm)
             expectNoEvents()
         }
         assertEquals(SettingsError(SettingsField.Leave, generic), viewModel.state.value.error)
         assertFalse(viewModel.state.value.leaving)
+        assertTrue(viewModel.state.value.withdrawOnLeave)
     }
 
     @Test
     fun leavingABondThatAlreadyEndedStillEnds() = runTest {
         repo.leaveAnswers += apiError(409, ApiErrorCode.BOND_ARCHIVED)
-        viewModel.onAction(BondSettingsAction.OnLeaveClick)
         viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            assertEquals(BondSettingsEvent.OpenLeave, awaitItem())
             viewModel.onAction(BondSettingsAction.OnLeaveConfirm)
             assertEquals(BondSettingsEvent.Ended, awaitItem())
         }
+    }
+
+    @Test
+    fun aWithdrawingLeaveOnABondThatAlreadyEndedSaysNothingWasWithdrawn() = runTest {
+        repo.leaveAnswers += apiError(409, ApiErrorCode.BOND_ARCHIVED)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnLeaveClick)
+            assertEquals(BondSettingsEvent.OpenLeave, awaitItem())
+            viewModel.onAction(BondSettingsAction.OnLeaveWithdrawToggle)
+            viewModel.onAction(BondSettingsAction.OnLeaveConfirm)
+            expectNoEvents()
+        }
+        assertEquals(SettingsError(SettingsField.Leave, UiText.Resource(Res.string.settings_leave_error_ended)), viewModel.state.value.error)
     }
 
     // ----- sign out -----

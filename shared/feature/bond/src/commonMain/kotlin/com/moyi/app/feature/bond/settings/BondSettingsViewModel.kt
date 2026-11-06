@@ -11,6 +11,7 @@ import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondSettingsChange
 import com.moyi.app.domain.bond.BondSettingsRepository
+import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.TimeOfDay
 import com.moyi.app.feature.bond.resources.Res
@@ -18,6 +19,7 @@ import com.moyi.app.feature.bond.resources.settings_error_conflict
 import com.moyi.app.feature.bond.resources.settings_error_generic
 import com.moyi.app.feature.bond.resources.settings_error_rate_limited
 import com.moyi.app.feature.bond.resources.settings_invite_error_full
+import com.moyi.app.feature.bond.resources.settings_leave_error_ended
 import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon
 import com.moyi.app.feature.bond.resources.settings_tz_error_unsupported
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
@@ -46,8 +48,12 @@ import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
  * - **`412`** (the other member changed something first): reload, show what is
  *   there now, and say "This changed while you were looking at it." The change is
  *   not retried blindly; the editor keeps what the person typed, to save again.
- * - **Leave** is confirmed first (SKILL.md §3), then `POST …/leave`, then
- *   [BondSettingsEvent.Ended]. A failure keeps the person here, with the reason.
+ * - **Leave** and **Block and leave** are confirmed on their own screens (SKILL.md §3),
+ *   each with FR-029a's offer to withdraw the person's entries (off on leave, on on
+ *   block), then the `POST`, then [BondSettingsEvent.Ended]. A failure keeps the person
+ *   there, with the reason.
+ * - **Close the box** (FR-028): one `POST` asks or agrees, one `DELETE` withdraws, declines
+ *   or calls off the cooling-off ([BondSettingsState.closeBoxStep]).
  * - **Sign out** ends the session; the shell routes to sign in on its own.
  * - **The shared time zone** (FR-027, ADR-0030) is three screens over one pending
  *   change ([BondSettingsState.timeZoneStep]): propose a zone, cancel your own proposal,
@@ -97,7 +103,7 @@ class BondSettingsViewModel(
                 if (_state.value.settings?.type == action.type) return send(BondSettingsEvent.Saved)
                 save(SettingsField.Type, BondSettingsChange(type = action.type), closeEditor = true)
             }
-            BondSettingsAction.OnRevealTimeClick -> if (canEdit()) _state.update { it.copy(pickingRevealTime = true, error = null) }
+            BondSettingsAction.OnRevealTimeClick -> if (canChangeSettings()) _state.update { it.copy(pickingRevealTime = true, error = null) }
             is BondSettingsAction.OnRevealTimePicked -> {
                 _state.update { it.copy(pickingRevealTime = false) }
                 val time = TimeOfDay(action.hour, action.minute)
@@ -111,9 +117,26 @@ class BondSettingsViewModel(
                 save(SettingsField.RestDays, BondSettingsChange(strictMode = !settings.strictMode))
             }
             BondSettingsAction.OnSignOutClick -> signOut()
-            BondSettingsAction.OnLeaveClick -> if (canEdit()) _state.update { it.copy(confirmingLeave = true, error = null) }
-            BondSettingsAction.OnLeaveConfirm -> leave()
-            BondSettingsAction.OnLeaveDismiss -> _state.update { it.copy(confirmingLeave = false) }
+            BondSettingsAction.OnLeaveClick -> if (canEdit()) {
+                // Every visit starts from the default: entries kept (FR-029a, off on leave).
+                _state.update { it.copy(withdrawOnLeave = false, error = null) }
+                send(BondSettingsEvent.OpenLeave)
+            }
+            BondSettingsAction.OnLeaveWithdrawToggle -> if (_state.value.saving == null) _state.update { it.copy(withdrawOnLeave = !it.withdrawOnLeave) }
+            BondSettingsAction.OnLeaveConfirm -> endBond(SettingsField.Leave)
+            BondSettingsAction.OnBlockClick -> if (canEdit() && _state.value.settings?.partnerName != null) {
+                // On by default on block (`26` §3.3), every visit.
+                _state.update { it.copy(withdrawOnBlock = true, error = null) }
+                send(BondSettingsEvent.OpenBlock)
+            }
+            BondSettingsAction.OnBlockWithdrawToggle -> if (_state.value.saving == null) _state.update { it.copy(withdrawOnBlock = !it.withdrawOnBlock) }
+            BondSettingsAction.OnBlockConfirm -> endBond(SettingsField.Block)
+            BondSettingsAction.OnCloseBoxClick -> if (canEdit()) {
+                _state.update { it.copy(error = null) }
+                send(BondSettingsEvent.OpenCloseBox)
+            }
+            BondSettingsAction.OnCloseBoxConfirm -> requestDeletion()
+            BondSettingsAction.OnCloseBoxWithdraw -> cancelDeletion()
             BondSettingsAction.OnEditorClosed -> _state.update { it.copy(error = null, nameError = null) }
             BondSettingsAction.OnTimeZoneClick -> {
                 val settings = _state.value.settings ?: return
@@ -157,7 +180,7 @@ class BondSettingsViewModel(
     }
 
     private fun propose() {
-        if (!canEdit()) return
+        if (!canChangeSettings()) return
         val current = _state.value.settings ?: return
         val zone = _state.value.zoneDraft ?: return
         // The zone it already is: nothing to ask the other member.
@@ -181,7 +204,7 @@ class BondSettingsViewModel(
     }
 
     private fun agree() {
-        if (!canEdit()) return
+        if (!canChangeSettings()) return
         val pending = _state.value.settings?.pendingTimezone?.takeUnless { it.proposedByMe } ?: return
         _state.update { it.copy(saving = SettingsField.TimeZone, zoneSecondaryInFlight = false, error = null) }
         viewModelScope.launch {
@@ -202,7 +225,7 @@ class BondSettingsViewModel(
 
     /** The proposer cancels, or the other member declines: either way the `DELETE`, then the root. */
     private fun withdrawProposal() {
-        if (!canEdit()) return
+        if (!canChangeSettings()) return
         if (_state.value.settings?.pendingTimezone == null) return
         _state.update { it.copy(saving = SettingsField.TimeZone, zoneSecondaryInFlight = true, error = null) }
         viewModelScope.launch {
@@ -231,7 +254,7 @@ class BondSettingsViewModel(
     // ----- the invite -----
 
     private fun cancelInvite() {
-        if (!canEdit()) return
+        if (!canChangeSettings()) return
         val invite = _state.value.settings?.invite ?: return
         _state.update { it.copy(saving = SettingsField.Invite, error = null) }
         viewModelScope.launch {
@@ -244,7 +267,7 @@ class BondSettingsViewModel(
     }
 
     private fun createInvite() {
-        if (!canEdit()) return
+        if (!canChangeSettings()) return
         _state.update { it.copy(saving = SettingsField.Invite, error = null) }
         viewModelScope.launch {
             when (val result = bonds.createInvite(bondId)) {
@@ -307,8 +330,14 @@ class BondSettingsViewModel(
 
     private fun canEdit(): Boolean = _state.value.let { it.settings != null && it.saving == null && !it.signingOut }
 
+    /**
+     * During the cooling-off the bond takes no other write (`409 BOND_ARCHIVED`, states.md §9):
+     * nothing is gone, and nothing more can be changed. Leaving, blocking and calling it off stay.
+     */
+    private fun canChangeSettings(): Boolean = canEdit() && _state.value.settings?.coolingOff != true
+
     private fun save(field: SettingsField, change: BondSettingsChange, closeEditor: Boolean = false) {
-        if (!canEdit()) return
+        if (!canChangeSettings()) return
         val current = _state.value.settings ?: return
         _state.update { it.copy(saving = field, error = null) }
         viewModelScope.launch {
@@ -355,20 +384,72 @@ class BondSettingsViewModel(
         }
     }
 
-    private fun leave() {
-        _state.update { it.copy(confirmingLeave = false) }
+    /**
+     * Leave or block: one `POST`, the person's FR-029a choice sent as it stands, then
+     * [BondSettingsEvent.Ended]. The bond ends for both either way, and the other member
+     * sees the same archived bond whichever it was (`26` §2.1).
+     */
+    private fun endBond(field: SettingsField) {
         if (!canEdit()) return
-        _state.update { it.copy(saving = SettingsField.Leave, error = null) }
+        val withdraw = if (field == SettingsField.Block) _state.value.withdrawOnBlock else _state.value.withdrawOnLeave
+        _state.update { it.copy(saving = field, error = null) }
         viewModelScope.launch {
-            when (val result = repository.leave(bondId)) {
-                is Result.Success -> send(BondSettingsEvent.Ended)
+            val result = if (field == SettingsField.Block) repository.block(bondId, withdraw) else repository.leave(bondId, withdraw)
+            val error = (result as? Result.Failure)?.error ?: return@launch send(BondSettingsEvent.Ended)
+            when {
+                // It had already ended, and the leave withdrew nothing (doc 06): say so rather
+                // than let the person think their words are gone. Their choice is kept.
+                withdraw && field == SettingsField.Leave && error.code() == ApiErrorCode.BOND_ARCHIVED ->
+                    _state.update { it.copy(saving = null, error = SettingsError(field, UiText.Resource(Res.string.settings_leave_error_ended))) }
                 // Already ended, or gone: either way the person is out, which is what they asked for.
-                is Result.Failure -> if (result.error.isGone()) {
-                    send(BondSettingsEvent.Ended)
-                } else {
-                    _state.update { it.copy(saving = null, error = SettingsError(SettingsField.Leave, result.error.message())) }
-                }
+                error.isGone() -> send(BondSettingsEvent.Ended)
+                else -> _state.update { it.copy(saving = null, error = SettingsError(field, error.message())) }
             }
+        }
+    }
+
+    // ----- close the box (FR-028) -----
+
+    /** Ask, or agree: the answer says which, and the screen follows it (Asked or CoolingOff). */
+    private fun requestDeletion() {
+        if (!canEdit()) return
+        if (_state.value.closeBoxStep == CloseBoxStep.Asked || _state.value.closeBoxStep == CloseBoxStep.CoolingOff) return
+        _state.update { it.copy(saving = SettingsField.CloseBox, closeBoxSecondaryInFlight = false, error = null) }
+        viewModelScope.launch {
+            when (val result = repository.requestDeletion(bondId)) {
+                is Result.Success -> _state.update { it.copy(settings = result.data, saving = null) }
+                is Result.Failure -> closeBoxFailure(result.error)
+            }
+        }
+    }
+
+    /**
+     * Withdraw the ask, decline the other member's, or call off the cooling-off: the same
+     * `DELETE`, then the root. A `404` is "nothing was pending": already what was asked for.
+     */
+    private fun cancelDeletion() {
+        if (!canEdit()) return
+        if (_state.value.closeBoxStep == CloseBoxStep.Ask) return
+        _state.update { it.copy(saving = SettingsField.CloseBox, closeBoxSecondaryInFlight = true, error = null) }
+        viewModelScope.launch {
+            val result = repository.cancelDeletion(bondId)
+            if (result is Result.Failure && !result.error.isNotFound()) return@launch closeBoxFailure(result.error)
+            refreshAfter {
+                // Called off: ACTIVE again (states.md §9; a bond somebody left could not have been asked).
+                val status = if (it.status == BondStatus.PENDING_DELETION) BondStatus.ACTIVE else it.status
+                it.copy(pendingDeletion = null, deletionScheduledFor = null, status = status)
+            }
+            _state.update { it.copy(closeBoxSecondaryInFlight = false) }
+            send(BondSettingsEvent.Saved)
+        }
+    }
+
+    private suspend fun closeBoxFailure(error: DataError.Network) {
+        if (error.isGone()) {
+            _state.update { it.copy(saving = null, closeBoxSecondaryInFlight = false) }
+            send(BondSettingsEvent.Ended)
+        } else {
+            _state.update { it.copy(saving = null, closeBoxSecondaryInFlight = false, error = SettingsError(SettingsField.CloseBox, error.message())) }
         }
     }
 
