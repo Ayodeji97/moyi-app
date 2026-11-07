@@ -3,9 +3,8 @@ package com.moyi.app.feature.today.reveal
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.moyi.app.feature.today.common.FakeCopy
-import com.moyi.app.feature.today.common.FakeDailyLoop
-import com.moyi.app.feature.today.common.TodayStatus
+import com.moyi.app.feature.today.common.DailyLoop
+import com.moyi.app.feature.today.common.DailyLoopState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import kotlin.time.Duration
 
 /** The two drawn frames of the reveal: before (179:3) and after (179:8). */
@@ -23,9 +23,9 @@ enum class RevealPhase { Before, After }
 @Immutable
 data class RevealState(
     val phase: RevealPhase = RevealPhase.Before,
-    val date: String = FakeCopy.DATE,
-    val partnerName: String = FakeCopy.PARTNER_NAME,
-    val myEntry: String = FakeCopy.MY_ENTRY,
+    val date: LocalDate? = null,
+    val partnerName: String = "",
+    val myEntry: String = "",
     /** The partner's words: null in [RevealPhase.Before], set only once the day turns to [RevealPhase.After]. */
     val partnerEntry: String? = null,
 )
@@ -38,7 +38,7 @@ sealed interface RevealAction {
      */
     data object OnBack : RevealAction
 
-    /** DEBUG ONLY (PR #8): play the reveal again from before. */
+    /** DEBUG ONLY (`-PmoyiUiPreview=today`): play the reveal again from before. */
     data object OnDebugReplay : RevealAction
 }
 
@@ -52,18 +52,28 @@ sealed interface RevealEvent {
  * the before frame, turns to after (the product's one animation), holds, and settles
  * into Today · revealed.
  *
- * TODO(logic): reached when GET …/today first reports REVEALED for a day this device
- *  last saw as PARTIAL or PENDING_REVEAL (so it plays once per day per device, and
- *  never for PENDING_REVEAL, states.md §5a), or from the "Your day is open." push.
- *  The partner's text arrives in that same response.
+ * Reached from Today when a refresh first finds the day revealed with the partner's
+ * words, once per bond-day in this process (Today's RevealLedger; never for
+ * PENDING_REVEAL, states.md §5a). It plays the day Today loaded: the partner's text
+ * arrived in that same response, and is held here until the turn.
+ *
+ * TODO(logic): open it from the "Your day is open." push too (no push handling yet),
+ *  and remember across launches that it played (the ledger is in memory: owed).
  */
 class RevealViewModel(
-    private val loop: FakeDailyLoop,
+    loop: DailyLoop,
     private val beforeHold: Duration = RevealMotion.BeforeHold,
     private val afterHold: Duration = RevealMotion.AfterHold,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(RevealState(myEntry = loop.day.value.myEntry))
+    private val day = (loop.state.value as? DailyLoopState.Ready)?.day
+
+    /** Shown only once the day has turned: the before frame never holds them. */
+    private val partnerWords: String? = day?.partnerEntry
+
+    private val _state = MutableStateFlow(
+        RevealState(date = day?.date, partnerName = day?.partnerName.orEmpty(), myEntry = day?.myEntry.orEmpty()),
+    )
     val state: StateFlow<RevealState> = _state.asStateFlow()
 
     private val _events = Channel<RevealEvent>()
@@ -90,7 +100,7 @@ class RevealViewModel(
         if (settled) return
         settled = true
         sequence?.cancel()
-        loop.setStatus(TodayStatus.Revealed)
+        // Nothing to write back: the day is already revealed, and Today below shows it.
         viewModelScope.launch { _events.send(RevealEvent.Settle) }
     }
 
@@ -100,7 +110,7 @@ class RevealViewModel(
         _state.update { it.copy(phase = RevealPhase.Before, partnerEntry = null) }
         sequence = viewModelScope.launch {
             delay(beforeHold)
-            _state.update { it.copy(phase = RevealPhase.After, partnerEntry = loop.day.value.partnerEntry) }
+            _state.update { it.copy(phase = RevealPhase.After, partnerEntry = partnerWords) }
             delay(afterHold)
             settle()
         }

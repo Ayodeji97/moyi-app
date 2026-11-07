@@ -19,9 +19,12 @@ import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.feature.today.FakeDailyLoop
+import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.di.todayFeatureModule
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.dsl.module
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -44,7 +47,8 @@ class TodayBackTest {
 
     @BeforeTest
     fun startKoinWithTheFakeDay() {
-        startKoin { modules(todayFeatureModule) }
+        // The feature's own module, with the day replaced: no repositories, no network.
+        startKoin { modules(todayFeatureModule, module { single<DailyLoop> { FakeDailyLoop() } }) }
     }
 
     @AfterTest
@@ -65,7 +69,7 @@ class TodayBackTest {
             MoyiTheme(darkTheme = true) {
                 nav = rememberNavController()
                 NavHost(nav, startDestination = TodayRoute) {
-                    todayGraph(nav, onOpenSettings = {}, debugTools = false)
+                    todayGraph(nav, onOpenSettings = {}, onNoOpenBond = {}, debugTools = false)
                 }
             }
         }

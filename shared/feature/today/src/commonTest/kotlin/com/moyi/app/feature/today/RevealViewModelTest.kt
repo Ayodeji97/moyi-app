@@ -1,8 +1,6 @@
 package com.moyi.app.feature.today
 
 import app.cash.turbine.test
-import com.moyi.app.feature.today.common.FakeCopy
-import com.moyi.app.feature.today.common.FakeDailyLoop
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.reveal.RevealAction
 import com.moyi.app.feature.today.reveal.RevealEvent
@@ -16,28 +14,30 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
 class RevealViewModelTest : MainDispatcherTest() {
-    private val loop = FakeDailyLoop().apply { setStatus(TodayStatus.Waiting) }
+    private val loop = FakeDailyLoop().apply { show(dayView(TodayStatus.Revealed)) }
 
     @Test
-    fun opensOnTheBeforeFrameWithoutThePartnersWords() {
+    fun opensOnTheBeforeFrameWithMyWordsAndWithoutThePartners() {
         val vm = RevealViewModel(loop, beforeHold = 1.hours, afterHold = 1.hours)
         assertEquals(RevealPhase.Before, vm.state.value.phase)
+        assertEquals(MINE, vm.state.value.myEntry)
+        assertEquals(PARTNER, vm.state.value.partnerName)
+        assertEquals(DAY, vm.state.value.date)
         assertNull(vm.state.value.partnerEntry)
     }
 
     @Test
-    fun turnsAndSettlesTodayIntoRevealed() = runTest {
+    fun turnsToThePartnersWordsAndSettles() = runTest {
         val vm = RevealViewModel(loop, beforeHold = Duration.ZERO, afterHold = Duration.ZERO)
         vm.events.test {
             assertEquals(RevealEvent.Settle, awaitItem())
         }
         assertEquals(RevealPhase.After, vm.state.value.phase)
-        assertEquals(FakeCopy.PARTNER_ENTRY, vm.state.value.partnerEntry)
-        assertEquals(TodayStatus.Revealed, loop.day.value.status)
+        assertEquals(THEIRS, vm.state.value.partnerEntry)
     }
 
     @Test
-    fun backBeforeTheTurnSettlesIntoRevealedAtOnce() = runTest {
+    fun backBeforeTheTurnSettlesAtOnce() = runTest {
         // D12: Back ends the moment early, into Today · revealed, never out of the app.
         val vm = RevealViewModel(loop, beforeHold = 1.hours, afterHold = 1.hours)
         vm.events.test {
@@ -45,7 +45,6 @@ class RevealViewModelTest : MainDispatcherTest() {
             assertEquals(RevealEvent.Settle, awaitItem())
             expectNoEvents()
         }
-        assertEquals(TodayStatus.Revealed, loop.day.value.status)
         assertEquals(RevealPhase.Before, vm.state.value.phase, "settled early: the turn never played")
     }
 
@@ -59,5 +58,13 @@ class RevealViewModelTest : MainDispatcherTest() {
             assertEquals(RevealEvent.Settle, awaitItem())
             expectNoEvents()
         }
+    }
+
+    @Test
+    fun withNoDayLoadedItShowsNothingOfAnyone() {
+        val empty = FakeDailyLoop()
+        val vm = RevealViewModel(empty, beforeHold = Duration.ZERO, afterHold = 1.hours)
+        assertEquals("", vm.state.value.myEntry)
+        assertNull(vm.state.value.partnerEntry)
     }
 }

@@ -1,6 +1,6 @@
 <resources>
     <!--
-    The daily loop's copy (PR #8, UI only). Each string says where it comes from:
+    The daily loop's copy. Each string says where it comes from:
       copy.md / states.md: the design system's corpus (copy.md's table is authoritative).
       FIGMA NODE NAME: the auto-name of a Figma text node (not verified `characters`).
       PROPOSED: written in this PR, not yet approved by the owner. Never shipped unreviewed.
@@ -54,6 +54,21 @@
     <string name="today_announce_queued">Written. It will send when you're back online</string>
     <!-- PROPOSED. The line that stands where your deleted entry was (EntryCard Tombstone, 420:59, one body line). -->
     <string name="today_tombstone_line">You deleted what you wrote.</string>
+
+    <!-- PROPOSED. Partner not joined while nobody has joined yet: the real bond has no partner name to give (docs/figma/today-check.md). States that it will wait, without blame (states.md §3). -->
+    <string name="today_partner_pending_line_unnamed">It will be here when they join.</string>
+    <!-- PROPOSED (Figma 159:3's form, "Tuesday · 2 September"). The Bond-day in Today's nav row and on the reveal. %1$s = the weekday, %2$s = the day and month, both in the device's language. -->
+    <string name="today_date_header">%1$s · %2$s</string>
+    <!-- states.md §10 "Offline" form, "Tuesday, 2 September": the Bond-day in running text. %1$s = the weekday, %2$s = the day and month. -->
+    <string name="today_date_in_sentence">%1$s, %2$s</string>
+    <!-- states.md §10 "Generic error" (Figma 384:341): the StateBlock in place of a Today that could not load. -->
+    <string name="today_error_heading">That didn't work.</string>
+    <!-- states.md §10 "Generic error", the second line. -->
+    <string name="today_error_line">Nothing was lost. Try again in a moment.</string>
+    <!-- states.md §10 "Generic error": its action. -->
+    <string name="today_error_action">Try again</string>
+    <!-- states.md §10 "Generic error", its two lines as one (onboarding_error_generic's words): a delete that did not go through, under the entry that is still there. -->
+    <string name="today_action_failed">That didn't work. Nothing was lost. Try again in a moment.</string>
 
     <!-- ===== Write, the composer (Figma 181:3 and siblings) ===== -->
 

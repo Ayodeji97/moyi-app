@@ -1,26 +1,35 @@
 package com.moyi.app.feature.today.today
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.EntryCard
 import com.moyi.app.designsystem.component.EntryCardVariant
+import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
+import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
@@ -31,6 +40,8 @@ import com.moyi.app.feature.today.common.NoteAction
 import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.TodayNavRow
 import com.moyi.app.feature.today.common.TodayStatus
+import com.moyi.app.feature.today.common.dayHeader
+import com.moyi.app.feature.today.common.dayInSentence
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.today_announce_not_written
 import com.moyi.app.feature.today.resources.today_announce_partner_not_joined
@@ -46,7 +57,12 @@ import com.moyi.app.feature.today.resources.delete_heading
 import com.moyi.app.feature.today.resources.delete_line
 import com.moyi.app.feature.today.resources.today_delete
 import com.moyi.app.feature.today.resources.today_edit
+import com.moyi.app.feature.today.resources.today_action_failed
+import com.moyi.app.feature.today.resources.today_error_action
+import com.moyi.app.feature.today.resources.today_error_heading
+import com.moyi.app.feature.today.resources.today_error_line
 import com.moyi.app.feature.today.resources.today_partner_pending_line
+import com.moyi.app.feature.today.resources.today_partner_pending_line_unnamed
 import com.moyi.app.feature.today.resources.today_queued_line
 import com.moyi.app.feature.today.resources.today_revealed_title
 import com.moyi.app.feature.today.resources.today_share_invite_again
@@ -63,15 +79,20 @@ fun TodayRoot(
     onNavigateToWrite: (editing: Boolean) -> Unit,
     onNavigateToReveal: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNoOpenBond: () -> Unit,
     debugTools: Boolean,
     viewModel: TodayViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Every foreground, and every return from Write or the reveal: the day may have moved on
+    // the other phone, and a push is never relied on to have arrived (states.md §10).
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onAction(TodayAction.OnForeground) }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)
             TodayEvent.NavigateToReveal -> onNavigateToReveal()
             TodayEvent.NavigateToSettings -> onNavigateToSettings()
+            TodayEvent.NavigateToStart -> onNoOpenBond()
         }
     }
     TodayScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
@@ -82,7 +103,11 @@ fun TodayRoot(
  * 384:327, 420:54). The `nav` row is pinned at the top (y 24); the content starts
  * 16 below it (y 88). No back: Today is the root.
  *
- * @param debugTools PR #8 only: a long press on the date steps the fake state.
+ * Before the first answer: the bare `surface` (states.md §0), as the app shows while
+ * restoring a session. A first load that failed: the Generic error (Figma 384:341),
+ * the StateBlock the signed-in start uses, with Try again.
+ *
+ * @param debugTools `-PmoyiUiPreview=today` only: a long press on the date steps the preview day.
  */
 @Composable
 fun TodayScreen(
@@ -90,10 +115,32 @@ fun TodayScreen(
     onAction: (TodayAction) -> Unit,
     debugTools: Boolean = false,
 ) {
+    when (state.load) {
+        TodayLoad.Loading -> Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
+        TodayLoad.Failed -> MoyiScaffold(contentArrangement = Arrangement.Center) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                StateBlock(
+                    heading = stringResource(Res.string.today_error_heading),
+                    line = stringResource(Res.string.today_error_line),
+                    actionLabel = stringResource(Res.string.today_error_action),
+                    onAction = { onAction(TodayAction.OnRetryClick) },
+                )
+            }
+        }
+        TodayLoad.Ready -> TodayDay(state, onAction, debugTools)
+    }
+}
+
+@Composable
+private fun TodayDay(
+    state: TodayState,
+    onAction: (TodayAction) -> Unit,
+    debugTools: Boolean,
+) {
     MoyiScaffold(
         header = {
             TodayNavRow(
-                date = state.date,
+                date = state.date?.let { dayHeader(it) }.orEmpty(),
                 onArchiveClick = { onAction(TodayAction.OnArchiveClick) },
                 onSettingsClick = { onAction(TodayAction.OnSettingsClick) },
                 onDebugCycle = if (debugTools) ({ onAction(TodayAction.OnDebugCycle) }) else null,
@@ -123,7 +170,7 @@ fun TodayScreen(
         // true without reporting on anyone, and that deleting yours never touches theirs.
         ConfirmDialog(
             title = stringResource(Res.string.delete_heading),
-            message = stringResource(Res.string.delete_line, state.partnerName),
+            message = stringResource(Res.string.delete_line, state.partnerName.orEmpty()),
             confirmLabel = stringResource(Res.string.delete_confirm),
             dismissLabel = stringResource(Res.string.delete_cancel),
             onConfirm = { onAction(TodayAction.OnDeleteConfirm) },
@@ -154,8 +201,9 @@ private fun ColumnScope.NotWritten(state: TodayState) {
             .semantics { paneTitle = announce },
     ) {
         Spacer(Modifier.height(MoyiTheme.spacing.xxl))
-        // TODO(logic): `prompt` from GET …/today; dismissing it in Write sends no promptId.
-        MoyiText(text = state.prompt, role = TextRole.Entry)
+        // The server's prompt of the day. With none (an ended bond, an empty library), the
+        // layout keeps its one job, the Write action, and draws no invented line in its place.
+        state.prompt?.let { MoyiText(text = it, role = TextRole.Entry) }
     }
 }
 
@@ -165,9 +213,10 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
     val announce = stringResource(Res.string.today_announce_waiting)
     CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
+        ActionFailed(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         WaitingNote(
-            partnerName = state.partnerName,
+            partnerName = state.partnerName.orEmpty(),
             onEdit = { onAction(TodayAction.OnEditClick) },
             onDelete = { onAction(TodayAction.OnDeleteBeforeRevealClick) },
         )
@@ -207,8 +256,12 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
     }
     Spacer(Modifier.height(MoyiTheme.spacing.md))
     CenteredContent {
-        PartnerCard(state)
-        Spacer(Modifier.height(MoyiTheme.spacing.md))
+        // The partner's words, unless they deleted theirs after the reveal: no frame draws
+        // their tombstone on Today yet (owed), so nothing stands in for it.
+        if (state.partnerEntry != null) {
+            PartnerCard(state)
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+        }
         if (deleted) {
             // states.md Appendix: the tombstone is labelled "From you", never the partner.
             EntryCard(
@@ -218,6 +271,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
             )
         } else {
             OwnCard(state)
+            ActionFailed(state)
             // Entries are immutable after the reveal: no edit (states.md §5). Delete
             // goes through a confirmation. Placement interpreted: 159:19 draws no link.
             TextLink(
@@ -239,7 +293,10 @@ private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayActi
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         DayNote(
-            line = stringResource(Res.string.today_partner_pending_line, state.partnerName),
+            // Nobody has joined, so the real bond has no one to name yet; the named line
+            // (copy.md) is kept for when a name is known. The unnamed one is PROPOSED.
+            line = state.partnerName?.let { stringResource(Res.string.today_partner_pending_line, it) }
+                ?: stringResource(Res.string.today_partner_pending_line_unnamed),
             actions = listOf(NoteAction(stringResource(Res.string.today_share_invite_again), { onAction(TodayAction.OnShareInviteClick) })),
         )
         // TODO(PR #7): Figma 220:27 places the InviteCode (358 × 195) 16 below this note.
@@ -276,9 +333,10 @@ private fun ColumnScope.Queued(state: TodayState) {
     CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
-        // TODO(logic): the outbox sends it when the connection returns (doc 13 §5), with the
-        //  Idempotency-Key minted at the tap and `intendedAt` = the Bond-day it was written for.
-        DayNote(line = stringResource(Res.string.today_queued_line, state.queuedForDate))
+        // TODO(logic): the outbox (doc 13 §5, owed with SQLDelight) sends it when the connection
+        //  returns, with the Idempotency-Key minted at the tap and `intendedAt` = the Bond-day it
+        //  was written for. Until then only the UI preview reaches this layout.
+        DayNote(line = stringResource(Res.string.today_queued_line, state.queuedForDate?.let { dayInSentence(it) }.orEmpty()))
     }
 }
 
@@ -287,10 +345,22 @@ internal fun OwnCard(state: TodayState) {
     EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry)
 }
 
+/**
+ * A delete that did not go through: the entry is back (or never left), and the Generic
+ * error's words say so (states.md §10), in InlineError's `danger` under my card.
+ * Placement interpreted: no frame draws a failed delete on Today.
+ */
+@Composable
+private fun ActionFailed(state: TodayState) {
+    if (!state.actionFailed) return
+    Spacer(Modifier.height(MoyiTheme.spacing.sm))
+    InlineError(stringResource(Res.string.today_action_failed))
+}
+
 @Composable
 internal fun PartnerCard(state: TodayState) {
     EntryCard(
-        authorLabel = stringResource(Res.string.today_author_partner, state.partnerName),
+        authorLabel = stringResource(Res.string.today_author_partner, state.partnerName.orEmpty()),
         // Only Revealed, Tombstone and SoloTheyWrote draw this card, and only they hold the words.
         text = state.partnerEntry.orEmpty(),
         variant = EntryCardVariant.Partner,
@@ -300,7 +370,13 @@ internal fun PartnerCard(state: TodayState) {
 // ---- Previews: every state, dark (the reference) ----
 
 private fun previewState(status: TodayStatus) = TodayState(
+    load = TodayLoad.Ready,
     status = status,
+    date = if (status == TodayStatus.SoloYouWrote || status == TodayStatus.SoloTheyWrote) FakeCopy.SOLO_DATE else FakeCopy.DATE,
+    partnerName = FakeCopy.PARTNER_NAME,
+    prompt = FakeCopy.PROMPT,
+    myEntry = FakeCopy.MY_ENTRY,
+    queuedForDate = FakeCopy.DATE,
     partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf {
         status == TodayStatus.Revealed || status == TodayStatus.Tombstone || status == TodayStatus.SoloTheyWrote
     },
@@ -326,6 +402,12 @@ private fun TodayPreview(status: TodayStatus) {
 @Preview @Composable private fun TodaySoloTheyWrotePreview() = TodayPreview(TodayStatus.SoloTheyWrote)
 
 @Preview @Composable private fun TodayQueuedPreview() = TodayPreview(TodayStatus.Queued)
+
+@Preview
+@Composable
+private fun TodayLoadFailedPreview() {
+    MoyiTheme(darkTheme = true) { TodayScreen(state = TodayState(load = TodayLoad.Failed), onAction = {}) }
+}
 
 @Preview
 @Composable
