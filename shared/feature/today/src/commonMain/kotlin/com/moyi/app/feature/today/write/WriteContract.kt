@@ -1,8 +1,11 @@
 package com.moyi.app.feature.today.write
 
 import androidx.compose.runtime.Immutable
+import com.moyi.app.designsystem.component.AttachedVoiceState
 import com.moyi.app.designsystem.platform.PhotoPick
 import com.moyi.app.designsystem.platform.PickedPhoto
+import com.moyi.app.designsystem.platform.RecorderEvent
+
 /** Where a send or save stands (states.md §4; Figma 419:193, 384:229). */
 enum class WriteSubmit {
     Idle,
@@ -54,7 +57,23 @@ data class WriteState(
     val photoNotice: PhotoNotice? = null,
     /** The platform dialog asking library or camera is showing. */
     val choosingPhotoSource: Boolean = false,
+    /**
+     * The voice note being recorded, or recorded and not sent (docs/missing-components.md §44).
+     * Held in memory only: like the photo, it is not part of the draft.
+     */
+    val voice: AttachedVoiceState? = null,
+    /** Whether "Record a voice note" is offered: not while editing, and not without an uploader. */
+    val voiceOffered: Boolean = false,
+    /** While [submit] is Sending: true while the voice note uploads (after the photo, before the words). */
+    val sendingVoice: Boolean = false,
+    /** What went wrong with the voice note itself, said above the action. */
+    val voiceNotice: VoiceNotice? = null,
 ) {
+    /** A finished recording, ready to send; null while recording or with none. */
+    val recordedVoice: AttachedVoiceState.Recorded? get() = voice as? AttachedVoiceState.Recorded
+
+    val recording: Boolean get() = voice is AttachedVoiceState.Recording
+
     /**
      * FR-041 counts user-perceived characters (grapheme clusters): a family emoji is one.
      *
@@ -80,14 +99,17 @@ data class WriteState(
      * Keep as a draft, closes and keeps it.
      */
     val wouldLoseWords: Boolean
-        get() = ((text.isNotBlank() && text != originalText) || photo != null) && submit != WriteSubmit.Queued
+        get() = ((text.isNotBlank() && text != originalText) || photo != null || voice != null) && submit != WriteSubmit.Queued
 
     /**
-     * 1 to 500, with at least one non-space character (FR-041). A photo never stands in for
-     * words (text is always sufficient, and always required). A photo the server refused
-     * must be removed first: the line above the action says so.
+     * 1 to 500, with at least one non-space character (FR-041). A photo or a voice note never
+     * stands in for words (text is always sufficient, and always required, NFR-103). Media the
+     * server refused must be removed first: the line above the action says so. While
+     * recording, the recording is stopped first: Send waits for it.
      */
-    val canSubmit: Boolean get() = text.isNotBlank() && !overLimit && photoNotice != PhotoNotice.Refused
+    val canSubmit: Boolean
+        get() = text.isNotBlank() && !overLimit && photoNotice != PhotoNotice.Refused &&
+            voiceNotice != VoiceNotice.Refused && !recording
 
     companion object {
         /** states.md §4 "character counter appears only now", past 400. */
@@ -137,7 +159,21 @@ sealed interface WriteAction {
 
     /** The remove control on the attached photo. */
     data object OnRemovePhoto : WriteAction
+
+    /** "Record a voice note": asks for the microphone if it must, then records. */
     data object OnRecordVoiceClick : WriteAction
+
+    /** The stop control while recording. */
+    data object OnStopRecordingClick : WriteAction
+
+    /** Throws the recorded voice note away and records a new one. */
+    data object OnRecordAgainClick : WriteAction
+
+    /** The remove control on the recorded voice note. */
+    data object OnRemoveVoice : WriteAction
+
+    /** What the platform recorder reported. */
+    data class OnRecorderEvent(val event: RecorderEvent) : WriteAction
 
     /** DEBUG ONLY (`-PmoyiUiPreview=today`): step to the next drawn composer state. */
     data object OnDebugCycle : WriteAction
@@ -149,6 +185,12 @@ sealed interface WriteEvent {
 
     /** Open the system photo picker or the camera (the screen holds the platform launchers). */
     data class PickPhoto(val source: PhotoSource) : WriteEvent
+
+    /** Start the platform recorder (the screen holds it, as it holds the photo launchers). */
+    data object StartRecording : WriteEvent
+
+    /** Stop it, keeping what was recorded: the person stopped, or the limit was reached. */
+    data object StopRecording : WriteEvent
 }
 
 enum class PhotoSource { Library, Camera }
@@ -159,5 +201,17 @@ enum class PhotoNotice {
     Unreadable,
 
     /** The server will not take it (processing failed, or moderation held it): remove it to send the words. */
+    Refused,
+}
+
+/** What went wrong with the voice note itself (not with sending). */
+enum class VoiceNotice {
+    /** The person said no to the microphone, now or before: Settings is where to allow it. */
+    MicrophoneDenied,
+
+    /** The microphone could not be opened, or nothing usable was recorded. Nothing is attached. */
+    CouldNotRecord,
+
+    /** The server will not take it (its processing failed, or moderation held it): remove it to send the words. */
     Refused,
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.AttachedPhoto
+import com.moyi.app.designsystem.component.AttachedVoice
 import com.moyi.app.designsystem.component.ComposeField
 import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.InlineError
@@ -27,6 +28,10 @@ import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.platform.NoArrowBackHandler
 import com.moyi.app.designsystem.platform.rememberPhotoPicker
+import com.moyi.app.designsystem.platform.rememberVoiceRecorder
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.compose.foundation.layout.Column
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.resources.Res
@@ -47,10 +52,16 @@ import com.moyi.app.feature.today.resources.write_queued
 import com.moyi.app.feature.today.resources.write_save
 import com.moyi.app.feature.today.resources.write_save_failed
 import com.moyi.app.feature.today.resources.write_save_failed_photo
+import com.moyi.app.feature.today.resources.write_save_failed_photo_voice
+import com.moyi.app.feature.today.resources.write_save_failed_voice
 import com.moyi.app.feature.today.resources.write_saving
 import com.moyi.app.feature.today.resources.write_send
 import com.moyi.app.feature.today.resources.write_sending
 import com.moyi.app.feature.today.resources.write_sending_photo
+import com.moyi.app.feature.today.resources.write_sending_voice
+import com.moyi.app.feature.today.resources.write_voice_failed
+import com.moyi.app.feature.today.resources.write_voice_microphone_denied
+import com.moyi.app.feature.today.resources.write_voice_refused
 import com.moyi.app.feature.today.resources.write_try_again
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -71,6 +82,10 @@ fun WriteRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val photoPicker = rememberPhotoPicker { pick -> viewModel.onAction(WriteAction.OnPhotoPicked(pick)) }
+    // Held here, as the photo launchers are: leaving Write throws an unfinished recording away.
+    val recorder = rememberVoiceRecorder { event -> viewModel.onAction(WriteAction.OnRecorderEvent(event)) }
+    // The app going to the background ends a recording where it is, and keeps it.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { recorder.stop() }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             WriteEvent.Close -> onClose()
@@ -78,6 +93,8 @@ fun WriteRoot(
                 PhotoSource.Library -> photoPicker.chooseFromLibrary()
                 PhotoSource.Camera -> photoPicker.takePhoto()
             }
+            WriteEvent.StartRecording -> recorder.start()
+            WriteEvent.StopRecording -> recorder.stop()
         }
     }
     NoArrowBackHandler { viewModel.onAction(WriteAction.OnCloseClick) }
@@ -146,17 +163,10 @@ fun WriteScreen(
             // Never disabled or read-only while sending: either drops focus and the keyboard
             // (419:193 keeps it up). The ViewModel ignores edits in flight instead.
             onAddPhoto = if (state.photosOffered) ({ onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }) else null,
-            onRecordVoice = { onAction(WriteAction.OnRecordVoiceClick) },
+            // One voice note per entry (FR-043): once one is recording or recorded, its own row offers what is next.
+            onRecordVoice = if (state.voiceOffered && state.voice == null) ({ onAction(WriteAction.OnRecordVoiceClick) }) else null,
             focusRequester = focusRequester,
-            attachment = state.photo?.let { photo ->
-                {
-                    AttachedPhoto(
-                        photo = photo,
-                        // Not while it is being sent: the photo on its way is the one shown.
-                        onRemove = if (state.submit == WriteSubmit.Sending) null else ({ onAction(WriteAction.OnRemovePhoto) }),
-                    )
-                }
-            },
+            attachment = if (state.photo == null && state.voice == null) null else ({ Attachments(state, onAction) }),
             modifier = Modifier
                 .weight(1f)
                 .then(if (state.editing) Modifier.semantics { paneTitle = editingAnnounce } else Modifier),
@@ -192,11 +202,39 @@ fun WriteScreen(
     }
 }
 
-/** The one line above the action: a photo's own problem first, then Save failed. */
+/** What is attached, inside the box above its toolbar (interim, §41 and §44): the photo, then the voice note. */
+@Composable
+private fun Attachments(state: WriteState, onAction: (WriteAction) -> Unit) {
+    // Not while they are being sent: what is on its way is what is shown.
+    val sending = state.submit == WriteSubmit.Sending
+    Column {
+        state.photo?.let { photo ->
+            AttachedPhoto(photo = photo, onRemove = if (sending) null else ({ onAction(WriteAction.OnRemovePhoto) }))
+        }
+        state.voice?.let { voice ->
+            AttachedVoice(
+                state = voice,
+                onStop = { onAction(WriteAction.OnStopRecordingClick) },
+                onRecordAgain = if (sending) null else ({ onAction(WriteAction.OnRecordAgainClick) }),
+                onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveVoice) }),
+            )
+        }
+    }
+}
+
+/** The one line above the action: the media's own problems first, then Save failed. */
 private fun errorLine(state: WriteState): StringResource? = when {
     state.photoNotice == PhotoNotice.Refused -> Res.string.write_photo_refused
+    state.voiceNotice == VoiceNotice.Refused -> Res.string.write_voice_refused
     state.photoNotice == PhotoNotice.Unreadable -> Res.string.write_photo_unreadable
-    state.submit == WriteSubmit.Failed -> if (state.photo != null) Res.string.write_save_failed_photo else Res.string.write_save_failed
+    state.voiceNotice == VoiceNotice.MicrophoneDenied -> Res.string.write_voice_microphone_denied
+    state.voiceNotice == VoiceNotice.CouldNotRecord -> Res.string.write_voice_failed
+    state.submit == WriteSubmit.Failed -> when {
+        state.photo != null && state.recordedVoice != null -> Res.string.write_save_failed_photo_voice
+        state.photo != null -> Res.string.write_save_failed_photo
+        state.recordedVoice != null -> Res.string.write_save_failed_voice
+        else -> Res.string.write_save_failed
+    }
     else -> null
 }
 
@@ -213,6 +251,7 @@ private fun actionState(state: WriteState): PrimaryActionState = when (state.sub
             when {
                 state.editing -> Res.string.write_saving
                 state.sendingPhoto -> Res.string.write_sending_photo
+                state.sendingVoice -> Res.string.write_sending_voice
                 else -> Res.string.write_sending
             },
         ),

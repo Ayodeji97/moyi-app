@@ -207,6 +207,8 @@ class TodayViewModel(
                 partnerEntry = view.partnerEntry.takeIf { view.status in PartnerVisible },
                 myPhoto = view.myPhoto,
                 partnerPhoto = view.partnerPhoto.takeIf { view.status in PartnerVisible },
+                myVoice = view.myVoice,
+                partnerVoice = view.partnerVoice.takeIf { view.status in PartnerVisible },
                 queuedDay = view.queuedDay,
                 refusal = view.refusal,
                 // Only a revealed entry can be deleted this way: a dialog left from a day

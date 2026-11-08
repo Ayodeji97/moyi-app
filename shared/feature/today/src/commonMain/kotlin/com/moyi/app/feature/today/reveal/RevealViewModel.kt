@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moyi.app.designsystem.component.EntryPhoto
+import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import kotlinx.coroutines.Job
@@ -32,6 +33,9 @@ data class RevealState(
     val myPhoto: EntryPhoto? = null,
     /** The partner's photo: like [partnerEntry], only in [RevealPhase.After]. */
     val partnerPhoto: EntryPhoto? = null,
+    val myVoice: VoiceNote? = null,
+    /** The partner's voice note: like [partnerEntry], only in [RevealPhase.After]. */
+    val partnerVoice: VoiceNote? = null,
 )
 
 sealed interface RevealAction {
@@ -75,9 +79,10 @@ class RevealViewModel(
     /** Shown only once the day has turned: the before frame never holds them. */
     private val partnerWords: String? = day?.partnerEntry
     private val partnerPhoto: EntryPhoto? = day?.partnerPhoto
+    private val partnerVoice: VoiceNote? = day?.partnerVoice
 
     private val _state = MutableStateFlow(
-        RevealState(date = day?.date, partnerName = day?.partnerName.orEmpty(), myEntry = day?.myEntry.orEmpty(), myPhoto = day?.myPhoto),
+        RevealState(date = day?.date, partnerName = day?.partnerName.orEmpty(), myEntry = day?.myEntry.orEmpty(), myPhoto = day?.myPhoto, myVoice = day?.myVoice),
     )
     val state: StateFlow<RevealState> = _state.asStateFlow()
 
@@ -112,10 +117,10 @@ class RevealViewModel(
     private fun play() {
         if (settled) return
         sequence?.cancel()
-        _state.update { it.copy(phase = RevealPhase.Before, partnerEntry = null, partnerPhoto = null) }
+        _state.update { it.copy(phase = RevealPhase.Before, partnerEntry = null, partnerPhoto = null, partnerVoice = null) }
         sequence = viewModelScope.launch {
             delay(beforeHold)
-            _state.update { it.copy(phase = RevealPhase.After, partnerEntry = partnerWords, partnerPhoto = partnerPhoto) }
+            _state.update { it.copy(phase = RevealPhase.After, partnerEntry = partnerWords, partnerPhoto = partnerPhoto, partnerVoice = partnerVoice) }
             delay(afterHold)
             settle()
         }

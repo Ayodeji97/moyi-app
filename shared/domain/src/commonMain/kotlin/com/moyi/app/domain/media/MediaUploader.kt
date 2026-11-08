@@ -28,7 +28,7 @@ enum class UploadFailure {
     /** No answer, a timeout, a busy server or a limit: the same upload may succeed later. */
     Retryable,
 
-    /** The server will not take this photo (its type or size, a failed processing, moderation): retrying cannot help. */
+    /** The server will not take this photo or voice note (its type or size, a failed processing, moderation): retrying cannot help. */
     Refused,
 }
 
@@ -106,8 +106,8 @@ class MediaUploader(
     }
 
     /**
-     * Deletes what [progress] uploaded, when it will not be sent after all (the photo was
-     * removed or replaced, or the words discarded). Best effort: an asset never attached
+     * Deletes what [progress] uploaded, when it will not be sent after all (the photo
+     * or voice note was removed or replaced, or the words discarded). Best effort: an asset never attached
      * is deleted by the server a day later anyway (`Retention.UNATTACHED`).
      */
     suspend fun discard(progress: UploadProgress) {
@@ -123,13 +123,16 @@ class MediaUploader(
     }
 
     companion object {
-        /** Quick at first (a photo is processed in a second or two), then every two seconds; 64 s in all. */
+        /**
+         * Quick at first (a photo is processed in a second or two, a minute's voice note transcoded
+         * to Opus in about as long), then every two seconds; 64 s in all.
+         */
         val DEFAULT_POLL_DELAYS: List<Long> = listOf(500L, 500L, 1_000L, 1_000L) + List(30) { 2_000L }
     }
 }
 
 /**
- * Which failures are the photo's own. 413 (too large), 415 (a type it does not take) and
+ * Which failures are the photo's or voice note's own. 413 (too large), 415 (a type it does not take) and
  * 422 (a declaration it refused) would be refused again for the same bytes; everything
  * else (no answer, 429, 5xx, a busy asset, an address not yet confirmed) may pass later.
  */

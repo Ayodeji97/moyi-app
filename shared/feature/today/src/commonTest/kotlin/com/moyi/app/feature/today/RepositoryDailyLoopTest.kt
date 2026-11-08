@@ -251,6 +251,31 @@ class RepositoryDailyLoopTest {
     }
 
     @Test
+    fun aVoiceEntryIsNeverQueuedOfflineEither() = runTest {
+        loop.refresh()
+        for (offline in listOf(DataError.Network.NoInternet, DataError.Network.Timeout, DataError.Network.Server(503))) {
+            entries.submitResult = Result.Failure(offline)
+            assertEquals(WriteResult.Failed, loop.submit(MINE, null, "key-1", NOON_ON_THE_DAY, voiceMediaId = "v1"), "$offline")
+        }
+        assertTrue(outbox.queue.isEmpty(), "the outbox holds words only")
+        assertEquals(0, outbox.retries)
+        assertEquals("v1", entries.submitted.last().voiceMediaId)
+    }
+
+    @Test
+    fun aVoiceNoteTheServerWillNotAttachIsSaidSoAndTheSameForAPhotoAlongsideIt() = runTest {
+        loop.refresh()
+        entries.submitResult = Result.Failure(
+            DataError.Network.Api(
+                ApiProblem(422, ApiErrorCode.VALIDATION_FAILED, listOf(FieldError("voiceMediaId", "MEDIA_NOT_ATTACHABLE", "cannot be attached"))),
+            ),
+        )
+        assertEquals(WriteResult.VoiceRefused, loop.submit(MINE, null, "key-1", NOON_ON_THE_DAY, imageMediaId = "m1", voiceMediaId = "v1"))
+        assertEquals("m1", entries.submitted.last().imageMediaId, "an entry carries both")
+        assertTrue(outbox.queue.isEmpty())
+    }
+
+    @Test
     fun aQueueThatCannotBeWrittenFailsTheSendSoTheComposerKeepsTheWords() = runTest {
         loop.refresh()
         outbox.failEnqueue = true

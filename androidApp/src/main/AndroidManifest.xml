@@ -9,6 +9,9 @@
     <!-- Android 13+: notifications are a runtime permission, asked only from Bond settings ›
          Notifications (NotificationPermissionPolicy). Below 13 it is granted at install. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Voice notes: asked only at the tap on "Record a voice note" in Write (rememberVoiceRecorder),
+         never at launch. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- No backup and no device-to-device transfer (figma-deviations.md P3). Nothing
          on the device is worth restoring: the server holds the account and every

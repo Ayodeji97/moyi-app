@@ -1,6 +1,7 @@
 package com.moyi.app.feature.today.common
 
 import com.moyi.app.designsystem.component.EntryPhoto
+import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Prompt
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +40,7 @@ interface DailyLoop {
         idempotencyKey: String,
         intendedAt: Instant,
         imageMediaId: String? = null,
+        voiceMediaId: String? = null,
     ): WriteResult
 
     /** Replaces my entry's words before the reveal. */
@@ -95,6 +97,10 @@ data class DayView(
     val myPhoto: EntryPhoto? = null,
     /** The partner's photo: held exactly where [partnerEntry] is, by the same rule. */
     val partnerPhoto: EntryPhoto? = null,
+    /** The voice note on my live entry, as the server plays it to me. */
+    val myVoice: VoiceNote? = null,
+    /** The partner's voice note: held exactly where [partnerEntry] is, by the same rule. */
+    val partnerVoice: VoiceNote? = null,
     /** Which Bond-day my queued entry will count for; set exactly in [TodayStatus.Queued]. */
     val queuedDay: QueuedDay? = null,
     /** A queued entry the server refused, whose words went back to the draft: Today says so once. */
@@ -104,7 +110,7 @@ data class DayView(
     override fun toString(): String =
         "DayView(bondId=$bondId, date=$date, status=$status, myEntryId=$myEntryId, " +
             "myEntry=${myEntry?.let { "(redacted)" }}, partnerEntry=${partnerEntry?.let { "(redacted)" }}, " +
-            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, queuedDay=$queuedDay, refusal=$refusal)"
+            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, queuedDay=$queuedDay, refusal=$refusal)"
 }
 
 enum class WriteResult {
@@ -125,6 +131,9 @@ enum class WriteResult {
      * or gone): the words and the photo stay, and the composer says the photo cannot be sent.
      */
     PhotoRefused,
+
+    /** As [PhotoRefused], for the voice note (`MEDIA_NOT_ATTACHABLE` on `voiceMediaId`). */
+    VoiceRefused,
 }
 
 enum class DeleteResult {

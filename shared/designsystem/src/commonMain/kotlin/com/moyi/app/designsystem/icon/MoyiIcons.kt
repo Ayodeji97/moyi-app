@@ -155,6 +155,28 @@ object MoyiIcons {
     }
 
     /**
+     * Voice notes (interim, docs/missing-components.md §43 and §44: no frame draws the
+     * player or the recorder). Lucide's `play` (`<polygon 6 3 20 12 6 21>`), `pause` (two
+     * `<rect 4x16 rx1>`), `square` (`<rect x3 y3 18x18 rx2>`, the stop) and `rotate-ccw`
+     * (record again), each written as a path.
+     */
+    val Play: ImageVector by lazy { lucide("Play", "M6 3 20 12 6 21z") }
+
+    val Pause: ImageVector by lazy {
+        lucide(
+            "Pause",
+            "M7 4h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z",
+            "M15 4h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z",
+        )
+    }
+
+    val Stop: ImageVector by lazy { lucide("Stop", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z") }
+
+    val RecordAgain: ImageVector by lazy {
+        lucide("RecordAgain", "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5")
+    }
+
+    /**
      * The FavouriteToggle's Idle glyph and nothing else (states.md §6: a bookmark, never a
      * star or a heart). lucide `bookmark`, stroke only.
      */

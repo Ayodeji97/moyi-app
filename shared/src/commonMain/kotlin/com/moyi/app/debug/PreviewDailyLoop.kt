@@ -49,6 +49,7 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
         idempotencyKey: String,
         intendedAt: Instant,
         imageMediaId: String?,
+        voiceMediaId: String?,
     ): WriteResult {
         delay(latency)
         myEntry = text

@@ -52,6 +52,8 @@ import com.moyi.app.designsystem.component.Chip
 import com.moyi.app.designsystem.component.ChipRow
 import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.EntryPhotoView
+import com.moyi.app.designsystem.component.VoiceNote
+import com.moyi.app.designsystem.component.VoiceNoteView
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
@@ -538,12 +540,12 @@ private fun DayCard(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit)
         }
         day.partnerEntry?.let { words ->
             Spacer(Modifier.height(MoyiTheme.spacing.md))
-            CardEntry(stringResource(Res.string.today_author_partner, partnerName), words, day.partnerPhoto, partner = true)
+            CardEntry(stringResource(Res.string.today_author_partner, partnerName), words, day.partnerPhoto, day.partnerVoice, partner = true)
         }
         when {
             day.myEntry != null -> {
                 Spacer(Modifier.height(MoyiTheme.spacing.md))
-                CardEntry(stringResource(Res.string.today_author_you), day.myEntry, day.myPhoto)
+                CardEntry(stringResource(Res.string.today_author_you), day.myEntry, day.myPhoto, day.myVoice)
             }
             day.myTombstone -> {
                 Spacer(Modifier.height(MoyiTheme.spacing.md))
@@ -556,13 +558,17 @@ private fun DayCard(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit)
 }
 
 @Composable
-private fun CardEntry(author: String, words: String, photo: EntryPhoto?, partner: Boolean = false) {
+private fun CardEntry(author: String, words: String, photo: EntryPhoto?, voice: VoiceNote?, partner: Boolean = false) {
     MoyiText(text = author, role = TextRole.Label)
     Spacer(Modifier.height(MoyiTheme.spacing.xs))
     MoyiText(text = words, role = TextRole.Title, maxLines = 2, ellipsis = true)
     if (photo != null) {
         Spacer(Modifier.height(MoyiTheme.spacing.sm))
         EntryPhotoView(photo, protectFromCapture = partner)
+    }
+    if (voice != null) {
+        Spacer(Modifier.height(MoyiTheme.spacing.sm))
+        VoiceNoteView(voice, protectFromCapture = partner)
     }
 }
 

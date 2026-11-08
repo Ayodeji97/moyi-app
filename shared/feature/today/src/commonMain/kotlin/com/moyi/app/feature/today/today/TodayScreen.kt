@@ -420,7 +420,7 @@ internal fun offersOpenWrite(refusal: OutboxRefusal, status: TodayStatus): Boole
 
 @Composable
 internal fun OwnCard(state: TodayState) {
-    EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto)
+    EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
 }
 
 /**
@@ -443,6 +443,7 @@ internal fun PartnerCard(state: TodayState) {
         text = state.partnerEntry.orEmpty(),
         variant = EntryCardVariant.Partner,
         photo = state.partnerPhoto,
+        voice = state.partnerVoice,
     )
 }
 

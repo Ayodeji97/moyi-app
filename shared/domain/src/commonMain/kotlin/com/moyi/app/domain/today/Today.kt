@@ -57,12 +57,14 @@ data class MyEntry(
     val status: EntryStatus,
     /** The photo on it, as the server shows it to me; null when it has none, or when read from the cache. */
     val image: EntryImage? = null,
+    /** The voice note on it, as the server plays it to me; null when it has none, or when read from the cache. */
+    val voice: EntryVoice? = null,
 ) {
     /** Written and not withdrawn. */
     val isLive: Boolean get() = status != EntryStatus.DELETED
 
     /** Never the words: a data class would print them into any log that printed this. */
-    override fun toString(): String = "MyEntry(id=$id, text=${if (text == null) "null" else "(redacted)"}, status=$status, image=$image)"
+    override fun toString(): String = "MyEntry(id=$id, text=${if (text == null) "null" else "(redacted)"}, status=$status, image=$image, voice=$voice)"
 }
 
 /** An entry's own status, as an entry read in full carries it. */
@@ -75,13 +77,23 @@ enum class EntryStatus { SUBMITTED, REVEALED, DELETED }
  */
 sealed interface PartnerEntry {
     /** Read in full while its status is still SUBMITTED: a solo day unlocked at rollover (FR-063). */
-    data class Submitted(val id: String, val text: String, val image: EntryImage? = null) : PartnerEntry {
-        override fun toString(): String = "Submitted(id=$id, text=(redacted), image=$image)"
+    data class Submitted(
+        val id: String,
+        val text: String,
+        val image: EntryImage? = null,
+        val voice: EntryVoice? = null,
+    ) : PartnerEntry {
+        override fun toString(): String = "Submitted(id=$id, text=(redacted), image=$image, voice=$voice)"
     }
 
     /** Read in full: the day opened. */
-    data class Revealed(val id: String, val text: String, val image: EntryImage? = null) : PartnerEntry {
-        override fun toString(): String = "Revealed(id=$id, text=(redacted), image=$image)"
+    data class Revealed(
+        val id: String,
+        val text: String,
+        val image: EntryImage? = null,
+        val voice: EntryVoice? = null,
+    ) : PartnerEntry {
+        override fun toString(): String = "Revealed(id=$id, text=(redacted), image=$image, voice=$voice)"
     }
 
     /** Its tombstone: the partner deleted it after I had been shown it. */
@@ -104,7 +116,7 @@ data class Prompt(
 /**
  * An entry's photo as the server shows it to the person asking (`EntryImageResponse`,
  * spec §4 D2). [url], [width] and [height] are present when [status] is
- * [EntryImageStatus.Ready], and on [EntryImageStatus.NotShared] unless the photo was
+ * [EntryMediaStatus.Ready], and on [EntryMediaStatus.NotShared] unless the photo was
  * blocked outright. [sensitive] is true only on a ready photo that passed moderation with
  * adult nudity found: shown covered, behind a tap.
  *
@@ -113,7 +125,7 @@ data class Prompt(
  */
 data class EntryImage(
     val id: String,
-    val status: EntryImageStatus,
+    val status: EntryMediaStatus,
     val url: String?,
     val width: Int?,
     val height: Int?,
@@ -123,8 +135,30 @@ data class EntryImage(
         "EntryImage(id=$id, status=$status, url=${url?.let { "(redacted)" }}, width=$width, height=$height, sensitive=$sensitive)"
 }
 
-enum class EntryImageStatus {
-    /** Shown: [EntryImage.url] reaches it. */
+/**
+ * An entry's voice note as the server plays it to the person asking (`EntryVoiceResponse`,
+ * spec §4 D3). [url] and [durationMs] are present when [status] is [EntryMediaStatus.Ready],
+ * and on [EntryMediaStatus.NotShared] unless it was blocked outright. [sensitive] as a photo's.
+ *
+ * The [url] is a signed GET of an Ogg Opus file (mono, 24 kbit/s), valid for at least 24
+ * hours: a credential for the voice note. It is never logged ([toString]), never written to
+ * the device's cache, and fetched only when the person taps play (metered data: voice notes
+ * on demand).
+ */
+data class EntryVoice(
+    val id: String,
+    val status: EntryMediaStatus,
+    val url: String?,
+    val durationMs: Int?,
+    val sensitive: Boolean,
+) {
+    override fun toString(): String =
+        "EntryVoice(id=$id, status=$status, url=${url?.let { "(redacted)" }}, durationMs=$durationMs, sensitive=$sensitive)"
+}
+
+/** How an entry's photo or voice note stands for the person asking (`EntryImageResponse` and `EntryVoiceResponse` share it). */
+enum class EntryMediaStatus {
+    /** Shown or playable: its url reaches it. */
     Ready,
 
     /** Not shown to this reader yet. Never says why: not processed, not moderated, or kept from them. */

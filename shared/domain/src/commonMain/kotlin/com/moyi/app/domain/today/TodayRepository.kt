@@ -30,7 +30,8 @@ interface TodayRepository {
      *
      * [imageMediaId] is a photo already uploaded and processed (`READY`); the server
      * attaches it in the entry's own transaction, or refuses the entry with
-     * `422 VALIDATION_FAILED` on `imageMediaId` (`MEDIA_NOT_ATTACHABLE`).
+     * `422 VALIDATION_FAILED` on `imageMediaId` (`MEDIA_NOT_ATTACHABLE`). [voiceMediaId] is the
+     * same for a voice note, on `voiceMediaId`. An entry may carry one of each (FR-042, FR-043).
      */
     suspend fun submitEntry(
         bondId: String,
@@ -39,6 +40,7 @@ interface TodayRepository {
         idempotencyKey: String,
         intendedAt: Instant? = null,
         imageMediaId: String? = null,
+        voiceMediaId: String? = null,
     ): Result<MyEntry, DataError.Network>
 
     /** Replaces the words of my entry before the reveal. [idempotencyKey] as for [submitEntry]. */

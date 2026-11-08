@@ -19,7 +19,8 @@ import com.moyi.app.domain.media.UploadFailure
 import com.moyi.app.domain.media.UploadOutcome
 import com.moyi.app.domain.media.UploadProgress
 import com.moyi.app.domain.today.EntryImage
-import com.moyi.app.domain.today.EntryImageStatus
+import com.moyi.app.domain.today.EntryVoice
+import com.moyi.app.domain.today.EntryMediaStatus
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -35,6 +36,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -125,7 +127,37 @@ class MediaUploadTest {
         val submitted = Json.parseToJsonElement(assertIs<TextContent>(fixture.requests[5].body).text).jsonObject
         assertEquals("m1", submitted["imageMediaId"]?.jsonPrimitive?.content)
         val mine = assertIs<Result.Success<com.moyi.app.domain.today.MyEntry>>(entry).data
-        assertEquals(EntryImage("m1", EntryImageStatus.Ready, "http://storage.test/display", 1280, 960, sensitive = false), mine.image)
+        assertEquals(EntryImage("m1", EntryMediaStatus.Ready, "http://storage.test/display", 1280, 960, sensitive = false), mine.image)
+    }
+
+    @Test
+    fun aVoiceNoteGoesTheSameWayAsAudioAndTheEntryCarriesItsVoiceMediaId() = runTest {
+        val voice = MediaBytes(MediaKind.Voice, "audio/mp4", bytes)
+        val fixture = Fixture { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/media/upload-intent" -> respondJson(INTENT.replace("image/jpeg", "audio/mp4"), HttpStatusCode.Created)
+                "/api/v1/bonds/b1/entries" -> respondJson(ENTRY_WITH_VOICE, HttpStatusCode.Created)
+                else -> happy(request)
+            }
+        }
+
+        val ready = assertIs<UploadOutcome.Ready>(fixture.uploader.send(voice))
+        val entry = fixture.today.submitEntry("b1", "You sang.", null, "entry-key", voiceMediaId = ready.mediaId)
+
+        val intent = Json.parseToJsonElement(assertIs<TextContent>(fixture.requests[0].body).text).jsonObject
+        assertEquals("VOICE", intent["kind"]?.jsonPrimitive?.content)
+        assertEquals("audio/mp4", intent["contentType"]?.jsonPrimitive?.content)
+        assertEquals(expectedChecksum, intent["checksum"]?.jsonPrimitive?.content)
+        // Straight to storage, typed as signed, with no bearer token.
+        val put = fixture.requests.single { it.method == HttpMethod.Put }
+        assertEquals("audio/mp4", assertIs<OutgoingContent.ByteArrayContent>(put.body).contentType.toString())
+        assertNull(put.headers[HttpHeaders.Authorization])
+        // The entry names the voice note, and no photo.
+        val submitted = Json.parseToJsonElement(assertIs<TextContent>(fixture.requests.last().body).text).jsonObject
+        assertEquals("m1", submitted["voiceMediaId"]?.jsonPrimitive?.content)
+        assertNull(submitted["imageMediaId"]?.jsonPrimitive?.contentOrNull)
+        val mine = assertIs<Result.Success<com.moyi.app.domain.today.MyEntry>>(entry).data
+        assertEquals(EntryVoice("m1", EntryMediaStatus.Ready, "http://storage.test/voice.ogg", 42_000, sensitive = false), mine.voice)
     }
 
     @Test
@@ -255,6 +287,12 @@ class MediaUploadTest {
         val INTENT =
             """{"mediaId":"m1","uploadUrl":"$UPLOAD_URL","expiresAt":"2026-11-08T20:00:00Z",""" +
                 """"requiredHeaders":{"Content-Type":"image/jpeg","Content-Length":"1234","x-amz-checksum-sha256":"67Nd5bvu6/rZWThd+888ngAaPm2Sxx6OkmgaJYRrfSc="}}"""
+
+        const val ENTRY_WITH_VOICE =
+            """{"id":"e1","bondId":"b1","date":"2026-09-14","authorMemberId":"m1","text":"You sang.",""" +
+                """"status":"SUBMITTED","createdAt":"2026-09-14T19:12:44Z","intendedAt":"2026-09-14T19:12:44Z",""" +
+                """"favourited":false,"reaction":null,"image":null,""" +
+                """"voice":{"id":"m1","status":"READY","url":"http://storage.test/voice.ogg","durationMs":42000,"sensitive":false}}"""
 
         const val ENTRY_WITH_PHOTO =
             """{"id":"e1","bondId":"b1","date":"2026-09-14","authorMemberId":"m1","text":"You made the tea.",""" +

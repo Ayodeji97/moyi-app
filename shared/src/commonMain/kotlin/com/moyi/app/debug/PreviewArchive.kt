@@ -183,7 +183,7 @@ internal class PreviewArchiveRepository : ArchiveRepository {
 internal class PreviewTodayRepository(private val archive: PreviewArchiveRepository) : TodayRepository {
     override suspend fun today(bondId: String): Result<Today, DataError.Network> = Result.Failure(DataError.Network.Unknown)
 
-    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: kotlin.time.Instant?, imageMediaId: String?): Result<MyEntry, DataError.Network> =
+    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: kotlin.time.Instant?, imageMediaId: String?, voiceMediaId: String?): Result<MyEntry, DataError.Network> =
         Result.Failure(DataError.Network.Unknown)
 
     override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String): Result<MyEntry, DataError.Network> =

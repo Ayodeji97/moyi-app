@@ -3,6 +3,7 @@ package com.moyi.app.data.repository
 import com.moyi.app.api.models.BondDayResponse
 import com.moyi.app.api.models.EntryImageResponse
 import com.moyi.app.api.models.EntryResponse
+import com.moyi.app.api.models.EntryVoiceResponse
 import com.moyi.app.api.models.LockedEntryResponse
 import com.moyi.app.api.models.MemberResponse
 import com.moyi.app.api.models.TodayPromptResponse
@@ -10,8 +11,9 @@ import com.moyi.app.api.models.TodayResponse
 import com.moyi.app.api.wire.PartnerEntryWire
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryImage
-import com.moyi.app.domain.today.EntryImageStatus
+import com.moyi.app.domain.today.EntryMediaStatus
 import com.moyi.app.domain.today.EntryStatus
+import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Prompt
@@ -104,18 +106,49 @@ class TodayMappersTest {
     @Test
     fun aPhotoIsMappedAsTheServerShowsItToTheReader() {
         val ready = EntryImageResponse(height = 960, id = "m1", sensitive = false, status = EntryImageResponse.Status.READY, url = URL, width = 1280)
-        assertEquals(EntryImage("m1", EntryImageStatus.Ready, URL, 1280, 960, false), ready.toEntryImage())
+        assertEquals(EntryImage("m1", EntryMediaStatus.Ready, URL, 1280, 960, false), ready.toEntryImage())
         // Sensitive only on a ready photo (the contract: false unless READY).
         assertTrue(ready.copy(sensitive = true).toEntryImage().sensitive)
         // Processing: never a URL, whatever was sent.
         val processing = ready.copy(status = EntryImageResponse.Status.PROCESSING, sensitive = true)
-        assertEquals(EntryImage("m1", EntryImageStatus.Processing, null, 1280, 960, false), processing.toEntryImage())
+        assertEquals(EntryImage("m1", EntryMediaStatus.Processing, null, 1280, 960, false), processing.toEntryImage())
         // Not shared: the author still has the photo, unless it was blocked outright.
-        assertEquals(EntryImageStatus.NotShared, ready.copy(status = EntryImageResponse.Status.NOT_SHARED).toEntryImage().status)
+        assertEquals(EntryMediaStatus.NotShared, ready.copy(status = EntryImageResponse.Status.NOT_SHARED).toEntryImage().status)
         assertEquals(URL, ready.copy(status = EntryImageResponse.Status.NOT_SHARED).toEntryImage().url)
         assertNull(ready.copy(status = EntryImageResponse.Status.NOT_SHARED, url = null).toEntryImage().url)
         // A ready photo without its URL cannot be drawn: read as still on its way.
-        assertEquals(EntryImageStatus.Processing, ready.copy(url = null).toEntryImage().status)
+        assertEquals(EntryMediaStatus.Processing, ready.copy(url = null).toEntryImage().status)
+    }
+
+    @Test
+    fun aVoiceNoteIsMappedAsTheServerPlaysItToTheReader() {
+        val ready = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL)
+        assertEquals(EntryVoice("v1", EntryMediaStatus.Ready, URL, 42_000, false), ready.toEntryVoice())
+        assertTrue(ready.copy(sensitive = true).toEntryVoice().sensitive)
+        // Processing: never a URL or a length, whatever was sent, and never sensitive.
+        val processing = ready.copy(status = EntryVoiceResponse.Status.PROCESSING, sensitive = true)
+        assertEquals(EntryVoice("v1", EntryMediaStatus.Processing, null, null, false), processing.toEntryVoice())
+        // Not shared: the author can still play it, unless it was blocked outright.
+        val notShared = ready.copy(status = EntryVoiceResponse.Status.NOT_SHARED)
+        assertEquals(EntryVoice("v1", EntryMediaStatus.NotShared, URL, 42_000, false), notShared.toEntryVoice())
+        assertNull(notShared.copy(url = null, durationMs = null).toEntryVoice().url)
+        // A ready voice note without its URL cannot be played: read as still on its way.
+        assertEquals(EntryMediaStatus.Processing, ready.copy(url = null).toEntryVoice().status)
+        // A length that is not a length is left for the player to learn.
+        assertNull(ready.copy(durationMs = 0).toEntryVoice().durationMs)
+    }
+
+    @Test
+    fun anEntrysVoiceNoteTravelsWithItAndATombstoneHasNone() {
+        val voice = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL)
+        assertEquals("v1", entry(EntryResponse.Status.SUBMITTED, "w").copy(voice = voice).toMyEntry()?.voice?.id)
+        assertNull(entry(EntryResponse.Status.DELETED, null).copy(voice = voice).toMyEntry()?.voice)
+        val revealed = PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w").copy(voice = voice)).toPartnerEntry()
+        assertEquals("v1", assertIs<PartnerEntry.Revealed>(revealed).voice?.id)
+        val solo = PartnerEntryWire.Entry(entry(EntryResponse.Status.SUBMITTED, "w").copy(voice = voice)).toPartnerEntry()
+        assertEquals("v1", assertIs<PartnerEntry.Submitted>(solo).voice?.id)
+        // The voice note's URL never reaches a log.
+        assertTrue("(redacted)" in voice.toEntryVoice().toString() && URL !in voice.toEntryVoice().toString())
     }
 
     @Test

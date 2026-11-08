@@ -34,6 +34,32 @@
     <string name="ds_entry_photo_not_shared">This photo is not shared.</string>
     <!-- PROPOSED (photos). EntryCard: a photo that passed moderation as sensitive (Q16: covered, behind a tap). Names the next action. -->
     <string name="ds_entry_photo_sensitive">This photo may be sensitive. Tap to see it.</string>
+    <!-- PROPOSED (voice notes). Spoken name of the play control on a voice note (icon only): on an EntryCard, and in the composer to listen back. -->
+    <string name="ds_voice_play">Play the voice note</string>
+    <!-- PROPOSED (voice notes). Spoken name of the same control while it plays. -->
+    <string name="ds_voice_pause">Pause the voice note</string>
+    <!-- PROPOSED (voice notes). A voice note's length, or how far it has played and its length: "0:12 of 0:45". Clock times, not words. -->
+    <string name="ds_voice_progress">%1$s of %2$s</string>
+    <!-- PROPOSED (voice notes). Said by the control while the voice note is fetched, the moment play is tapped (states.md: no spinner, the control says what it is doing). -->
+    <string name="ds_voice_loading">Getting the voice note</string>
+    <!-- PROPOSED (voice notes). It could not be fetched or played. Names the next action (owner: copy names the next action). -->
+    <string name="ds_voice_unplayable">This voice note couldn't be played. Tap play to try again.</string>
+    <!-- PROPOSED (voice notes). EntryCard: the voice note is not playable to this reader yet (EntryVoiceResponse PROCESSING). Never says why (spec §4 D3). -->
+    <string name="ds_entry_voice_on_its_way">A voice note is on its way.</string>
+    <!-- PROPOSED (voice notes). EntryCard, its author only: moderation held it back from the other member (NOT_SHARED, Q10). -->
+    <string name="ds_entry_voice_not_shared">This voice note is not shared.</string>
+    <!-- PROPOSED (voice notes). EntryCard: a voice note that passed moderation as sensitive (Q16). Play is already a tap, so it names that tap. -->
+    <string name="ds_entry_voice_sensitive">This voice note may be sensitive. Tap play to hear it.</string>
+    <!-- PROPOSED (voice notes). Composer, while recording: the time so far and the most allowed, "Recording 0:12 of 1:00". -->
+    <string name="ds_compose_recording">Recording %1$s of %2$s</string>
+    <!-- PROPOSED (voice notes). Spoken name of the stop control while recording (icon only). -->
+    <string name="ds_compose_stop_recording">Stop recording</string>
+    <!-- PROPOSED (voice notes). Composer: the voice note recorded and not sent yet, with its length: "Your voice note, 0:42". -->
+    <string name="ds_compose_recorded">Your voice note, %1$s</string>
+    <!-- PROPOSED (voice notes). Spoken name of the control that throws the recording away and records a new one (icon only). -->
+    <string name="ds_compose_record_again">Record again</string>
+    <!-- PROPOSED (voice notes). Spoken name of the remove control on the recorded voice note (icon only). -->
+    <string name="ds_compose_remove_voice">Remove the voice note</string>
     <!-- FavouriteToggle Idle: the visible label and the spoken name. entry.favourite.add (strings-proposed.md §6a). -->
     <string name="ds_favourite_add">Add to favourites</string>
     <!-- FavouriteToggle Marked: the visible label and the spoken name. entry.favourite.remove (strings-proposed.md §6a). -->

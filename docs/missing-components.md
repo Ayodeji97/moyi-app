@@ -637,3 +637,87 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   improvised.
 - **Open question for the owner:** a full-screen viewer (with pinch to zoom, and the capture
   protection a partner's photo needs) or none.
+
+## Voice notes on entries
+
+### 43. A voice note on an EntryCard
+
+- **Today:** not drawn. `tokens.md` §4 gives `EntryCard` no media slot; `states.md` §4 says only
+  "Voice note and photo are optional and secondary"; `SKILL.md` §11 says "voice notes on demand".
+  Nothing draws a player, its loading state, the partner's *processing* state
+  (`EntryVoiceResponse.PROCESSING`), the author's *not shared* state (Q10), or what *sensitive*
+  (Q16) means for sound. There are no play, pause or stop glyphs in `tokens.md` §6.
+- **Here (interim, the most conservative reading):** under the words (and under the photo, when
+  there is one), a 48 target with Lucide's `play` / `pause` glyph tinted `ink`, and beside it, in
+  `inkMuted`, the length ("0:42") before it plays and "0:12 of 0:42" while it plays or is paused
+  (PROPOSED `ds_voice_progress`). No waveform, no scrubber, no speed control. Spoken names:
+  "Play the voice note" / "Pause the voice note" (PROPOSED `ds_voice_play`, `ds_voice_pause`).
+  - **On demand only:** nothing is fetched until play is tapped. While it is fetched the line
+    reads "Getting the voice note" (PROPOSED `ds_voice_loading`): the control says what it is
+    doing, no spinner. It could not be played: "This voice note couldn't be played. Tap play to
+    try again." (PROPOSED `ds_voice_unplayable`).
+  - **Processing:** one muted line, no player: "A voice note is on its way." (PROPOSED
+    `ds_entry_voice_on_its_way`). **Not shared:** the player (when the server still gives the
+    URL) and "This voice note is not shared." (PROPOSED). **Sensitive:** "This voice note may be
+    sensitive. Tap play to hear it." above the player (PROPOSED): nothing plays without a tap
+    anyway, so the tap is the cover.
+  - **One at a time, and it stops with the screen:** starting one pauses any other; leaving the
+    screen releases the player; the app going to the background pauses it; a call pauses it
+    (Android audio focus, iOS session interruption), as does unplugging headphones on Android.
+  - **Where:** Today, the reveal, the Archive's day view and the Archive list's day card, as the
+    photo is. A locked or deleted card draws nothing and says nothing of one. A partner's voice
+    note is inside their EntryCard, protected with it; in the Archive list it protects the screen
+    itself (`VoiceNoteView(protectFromCapture = true)`).
+- **No cache:** the file is never written to disk. Android streams it (media3 ExoPlayer with
+  `DefaultHttpDataSource`, no `CacheDataSource`); iOS fetches it into memory through an ephemeral
+  `URLSession` (no `URLCache`) because AVFoundation cannot open Ogg (backend-contract-gaps row 30).
+  Played again after it ends, it is not fetched again while the screen is open. The Today and
+  Archive SQL caches do not keep the voice note or its URL.
+- **Open questions for the owner:** (1) the player's look and copy; (2) a scrubber or a waveform;
+  (3) whether the Archive list offers the player or only the day view; (4) "reduce data usage".
+
+### 44. Recording a voice note in the composer
+
+- **Today:** `ComposeField` draws the "Record a voice note" icon (tokens.md §6) and nothing after
+  the tap: no permission moment, no recording state, no limit, no listen-back, no remove.
+- **Here (interim):**
+  - **Permission at the tap, not before:** Android asks for `RECORD_AUDIO` with the system dialog
+    the first time the mic is tapped; iOS asks with PROPOSED `NSMicrophoneUsageDescription`
+    ("Moyi uses the microphone only when you record a voice note to add to your entry."). Refused,
+    now or before: "Moyi can't use the microphone. Allow it in Settings to record a voice note."
+    (PROPOSED `write_voice_microphone_denied`). No settings deep link is improvised.
+  - **Recording:** inside the box, above the toolbar, where the photo preview goes: a 48 stop
+    target (Lucide `square`, "Stop recording") and "Recording 0:12 of 1:00" (PROPOSED
+    `ds_compose_recording`). The mic icon is hidden while one is recording or recorded (FR-043: at
+    most one). Send is disabled while recording. At 1:00 it stops itself (the backend allows 60 s
+    plus 1 s grace) and keeps the minute.
+  - **Interruptions keep what was said:** a call, Siri, another app taking the microphone (Android:
+    transient exclusive audio focus lost), or the app going to the background stops the recording
+    where it is, and it becomes the voice note. Closing Write while recording stops it first, then
+    asks the D10 question; Discard throws it away.
+  - **Recorded:** a 48 play/pause target to listen back (from memory, nothing leaves the phone),
+    "Your voice note, 0:42" (PROPOSED `ds_compose_recorded`), then two 48 targets: Lucide
+    `rotate-ccw` "Record again" and the X "Remove the voice note" (PROPOSED). Both are hidden while
+    it is being sent. Not offered while editing (an edit sends words only).
+  - **Sending:** after any photo, `PrimaryAction` Sending reads "Sending your voice note"
+    (PROPOSED `write_sending_voice`) while it uploads and is transcoded, then "Sending". The entry
+    carries `voiceMediaId` (and `imageMediaId` when there is a photo: one of each, FR-042/043).
+  - **Failures keep everything:** "That didn't save. Your words and your voice note are still
+    here." (PROPOSED `write_save_failed_voice`; with a photo too, `write_save_failed_photo_voice`)
+    and Try again, which resumes (bytes already in storage are not sent again). **Refused** (too
+    long, unreadable, or held by moderation before it was attached): "This voice note can't be
+    sent. Remove it to send your words." (PROPOSED `write_voice_refused`). A recording that did not
+    work: "That recording didn't work. Try recording again." (PROPOSED `write_voice_failed`).
+  - **Offline:** as a photo entry (§40): never queued; it fails in the composer and keeps the
+    words and the recording. The draft keeps the words, not the recording.
+- **Encoding:** AAC-LC in MPEG-4 (`audio/mp4`), mono, 44.1 kHz, 64 kbit/s, on both platforms
+  (`VoiceFormat.MP4` accepts Android's `mp42` and iOS's `M4A ` brands; a minute is about 480 KB,
+  under the 5 MiB cap). The server keeps Opus at 24 kbit/s, so recording higher only spends
+  upload. The recording is a file only while it records (MPEG-4 writes its index last, so it
+  needs a seekable file): `cacheDir/voice` on Android, the temporary directory on iOS. It is read
+  into memory and deleted the moment it stops; a file a killed process left is deleted before the
+  next recording.
+- **Open questions for the owner:** (1) the recorder's look, its place in the box, and the copy;
+  (2) hold to record instead of tap to start and stop; (3) a settings deep link from the refused
+  line; (4) queue voice entries offline (the §40 question, for sound); (5) keep the recording with
+  the draft.
