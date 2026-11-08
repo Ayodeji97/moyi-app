@@ -13,6 +13,10 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
+import com.moyi.app.feature.auth.navigation.ForgotPasswordRoute
+import com.moyi.app.feature.auth.navigation.ResetLinkSentRoute
+import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
+import com.moyi.app.feature.auth.navigation.SessionEndedRoute
 import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.onboarding.navigation.JoinCodeRoute
 import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
@@ -45,6 +49,13 @@ private val entries: List<Pair<String, Any>> = listOf(
     // Check email needs a 201 from sign up to reach; here it opens directly. Its
     // actions call the API, so they fail without a backend: this is for layout.
     "Auth: check email" to VerifyRoute(email = "amara@example.com"),
+    // Reached in the app only after 401 TOKEN_REUSE_DETECTED. "Sign in" opens sign in.
+    "Auth: session ended (sign-in used from two places)" to SessionEndedRoute,
+    // The reset screens open directly too; their actions call the API, so without a
+    // backend they show the offline error. For layout, like check email.
+    "Auth: forgot password (prefilled)" to ForgotPasswordRoute(email = "amara@example.com"),
+    "Auth: reset link sent" to ResetLinkSentRoute(email = "amara@example.com"),
+    "Auth: choose a new password" to ResetPasswordRoute(email = "amara@example.com"),
 )
 
 @Composable

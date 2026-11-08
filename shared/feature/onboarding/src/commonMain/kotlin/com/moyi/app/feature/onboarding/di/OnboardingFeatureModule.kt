@@ -25,7 +25,13 @@ val onboardingFeatureModule = module {
     viewModelOf(::RelationshipTypeViewModel)
     viewModel { (type: RelationshipType) ->
         // Read when the screen opens, so a zone changed in system settings since launch is the one sent.
-        CreateBondViewModel(type, bonds = get(), deviceTimeZone = TimeZone.currentSystemDefault().id)
+        CreateBondViewModel(
+            type,
+            bonds = get(),
+            deviceTimeZone = TimeZone.currentSystemDefault().id,
+            // The platform's tz database (no endpoint): read when the picker opens.
+            availableZoneIds = { TimeZone.availableZoneIds },
+        )
     }
     viewModel { (code: String, link: String) -> InviteHandoffViewModel(code, link) }
     viewModel { params -> JoinCodeViewModel(params.getOrNull<String>(), bonds = get()) }

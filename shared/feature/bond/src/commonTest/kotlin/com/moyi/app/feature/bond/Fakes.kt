@@ -217,6 +217,10 @@ class FakeAuthRepository : AuthRepository {
 
     override suspend fun login(email: String, password: String): Result<User, DataError> = Result.Failure(DataError.Network.Unknown)
 
+    override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> = error("not used")
+
+    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> = error("not used")
+
     override suspend fun logout() {
         logouts++
     }

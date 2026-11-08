@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.platform.ProtectFromCapture
 import com.moyi.app.designsystem.theme.MoyiDimens
 
 /** The four variants of [EntryCard] (`tokens.md` §4, component 1). */
@@ -48,12 +49,17 @@ enum class EntryCardVariant {
  * - **No timestamp slot and no reaction slot**: a timestamp at reveal is a metric
  *   (`14` §3), and the reaction slot is owed (ADR-0037, states.md §5a).
  * - Read as one unit by screen readers (label, then words).
+ * - **A `Partner` card protects the screen from capture** while it is shown (R3,
+ *   [ProtectFromCapture]).
  *
  * TODO(design): the paper grain on the three raised variants (tokens.md §8 item 5:
  * a 256 px tile per mode, swapped at the platform layer) is not in the repository yet.
  *
  * @param text the words; ignored for [EntryCardVariant.Locked], and for
  *   [EntryCardVariant.Tombstone] the short line that stands where the words were.
+ * @param protectFromCapture on by default for [EntryCardVariant.Partner]. Turn it off
+ *   only for words no partner wrote (the promise screen's made-up samples), so that
+ *   leaving a real partner card unprotected has to be written at the call site.
  */
 @Composable
 fun EntryCard(
@@ -61,10 +67,14 @@ fun EntryCard(
     text: String,
     modifier: Modifier = Modifier,
     variant: EntryCardVariant = EntryCardVariant.Own,
+    protectFromCapture: Boolean = variant == EntryCardVariant.Partner,
 ) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
     val recessed = variant == EntryCardVariant.Tombstone
+    // R3: wherever the partner's words are drawn, the screen cannot be captured.
+    // Here rather than on each screen, so no screen can draw them and forget.
+    if (protectFromCapture) ProtectFromCapture()
     Column(
         modifier = modifier
             .fillMaxWidth()

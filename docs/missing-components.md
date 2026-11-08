@@ -59,9 +59,18 @@ Recorded in PR #5 (design system), 2026-10-27.
 - **Today:** a recorded gap. `states.md` §1c: "the *session revoked* state `13` names ... has no
   frame and no copy". The API's fallback sentence is "This sign-in was used from two places at
   once, so it has been ended. Sign in again to continue." Only that sign-in is ended.
-- **Here:** PR #6 routes to sign-in and shows a muted line 16 under the heading, flagged as
-  owed: "You have been signed out. Sign in again to continue." (`login_session_ended`,
-  proposed). It shows for `ReuseDetected` and `Invalid`, not for a sign-out the person asked for.
+- **Here (session-ended PR, 2026-11-05):** built as its own root screen, `SessionEndedScreen`,
+  for `ReuseDetected` only. Shape from auth-placement-spec §7: eyebrow "Account", heading, one
+  muted line 16 under it, PrimaryAction "Sign in" pinned at the bottom, no back. "Sign in"
+  replaces the stack with sign in. Copy approved by the owner 2026-11-05: heading "This sign-in
+  has ended", line "It was used from two places at once, so we ended it to keep your entries
+  safe. Anything else you are signed in on is unaffected. We have emailed you about it."
+- **`Invalid` is not this screen.** `REFRESH_TOKEN_INVALID` (expired, revoked by a password reset,
+  or not kept) has no "two places" story, so it keeps PR #6's neutral line on sign in: "You have
+  been signed out. Sign in again to continue." (`login_session_ended`, proposed). A sign-out the
+  person asked for shows nothing. The mapping is `routeAfterSessionEnd`.
+- **Owed upstream:** `states.md` §1c still calls this a gap, and doc 13 says "routes to sign-in
+  with an explanation". Both live outside this repository; Figma has no frame.
 
 ### 5. Sign-up name field
 
@@ -82,6 +91,19 @@ Recorded in PR #5 (design system), 2026-10-27.
   helper "Paste the code from the link we sent, or the whole link.", errors "Paste the code
   from the email first." and "That code does not match. Copy it again from the email."
   In the expired state the field is hidden. Decide whether it ships or is debug-only.
+
+### 6a. Reset-password paste-code field
+
+- **Today:** not in Figma. Choose a new password (345:30) draws only the new password, the
+  consequence line and "Save and sign in"; the token is meant to arrive by deep link from the
+  reset email, which this app does not handle yet.
+- **Here:** the password-reset PR adds the same stand-in as §6: a `Field` `Text` first in the
+  form, with verify's label, helper and errors ("Code from the email", "Paste the code from the
+  link we sent, or the whole link.", "Paste the code from the email first.", "That code does not
+  match. Copy it again from the email."). The reset link carries the token as `?token=` too
+  (backend `VerificationEmailComposer.linkFor`, read only), so `extractVerificationToken` is
+  reused unchanged. An expired or used link shows a new proposed error under the field. Decide
+  with §6 whether it ships or is debug-only; when deep links land, both go.
 
 ### 7. 18+ and Terms consent control
 
@@ -125,10 +147,22 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 | `home_greeting` / `home_line` | Hello, {name} / You are signed in. The rest of Moyi is on its way. | Temporary placeholder; removed with it in the Bond settings PR |
 | `home_sign_out` / `_sending` | Sign out / Signing out | Temporary placeholder; the words moved to Bond settings (`settings_row_sign_out`, `settings_signing_out`) |
 
+### 7c. Every string the password-reset PR proposed
+
+In the same `strings.xml`, marked `PROPOSED`. The rest of the three screens' copy is
+`strings-proposed.md` (`reset.*`) or reused from sign in, sign up and verify.
+
+| Key | String | Why it exists |
+|---|---|---|
+| `reset_request_action` | Send the link | Forgot password's PrimaryAction; `strings-proposed.md` has no key for it |
+| `reset_request_action_sending` | Sending the link | Its Sending label (states.md §1c) |
+| `reset_action_sending` | Saving | "Save and sign in" while saving and signing in |
+| `reset_token_error_expired` | That link has expired. Go back and ask for a new one. | `410 PASSWORD_RESET_TOKEN_EXPIRED` under the paste field (§6a) |
+
 ### 7b. Destinations PR #6 draws but cannot reach yet
 
 - **Terms** and **Privacy Policy** on sign up: no published URL, so the links do nothing.
-- **I forgot my password** on sign in: password reset is a later PR; the link does nothing.
+- **I forgot my password** on sign in: reached since the password-reset PR (2026-11-05).
 - **Sign in is the root** while the promise screen (Onboarding 1) is unbuilt, so it has no
   back control and its eyebrow sits at the top of the content (as the unverified gate does).
 
@@ -226,9 +260,55 @@ pushes the revealed cards 24 above 159:19. Owner call.
 The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 `TODO(motion)`), pending Figma 180:21. The design system has no motion tokens yet.
 
+## Onboarding
+
+### 16. The time-zone picker (bond-timezone-picker PR, 2026-11-06)
+
+- **Today:** `tokens.md` §4 has `Field` `Select` ("tapping it opens a picker the screen owns"),
+  and `strings-proposed.md` decides the picker's load-failure line (`field.timezone.error`). The
+  design system has no picker, list row or search component, and Figma draws no picker frame.
+- **Here, interim:** a full screen inside Create bond: `MoyiScaffold` with its back arrow,
+  `ScreenHeader` ("Choose your shared time zone"), a `Field` used as the search, and one row per
+  zone (city in `body`/`ink`, region in `body`/`inkMuted`, a `Check` glyph on the chosen one) in a
+  full-width target at least 48 tall. Header, search and rows scroll together. No new token,
+  colour or component. System back and the iOS edge swipe close it (`LayerBackHandler`).
+- **The open question:** whether the picker is this full screen, a sheet, or the platform's own
+  picker; what a list row looks like (it will recur in Bond settings and Archive); and whether
+  the city names should be the platform's localised ones rather than the IANA id's last part.
+- **Strings proposed:** `timezone_picker_heading`, `timezone_picker_search_label`,
+  `timezone_picker_empty`, and a new wording for `field_timezone_error_unsupported` (the old
+  one sent people to their phone's settings, written before the picker existed).
+## Archive (PR for Archive, part 4: month jump)
+
+### 17. The month picker
+
+- **Today:** `states.md` §6 says month jump is route 1 and "Tapping opens a month picker", and
+  draws the 56 pt row (Figma 257:9) with "Jump to". **No picker is drawn**: there is no picker
+  frame in the Archive section (425:317), no row for one in `tokens.md` §4, and `SKILL.md` says
+  nothing about it. `strings-proposed.md` §8 records "Jump to" as deliberately unwired.
+- **Here:** no component of ours. The most conservative option: the platform's **simple
+  dialog**, Material 3's `AlertDialog` in Rosewood (as `ConfirmDialog` on Android), titled
+  "Jump to a month" (PROPOSED), a list of months newest first, each a 48 dp row in `body`, and
+  Cancel. Tapping a month chooses it and closes the dialog. **The same Compose dialog on iOS**:
+  the iOS month and year wheel (`UIDatePicker` in `.yearAndMonth`, iOS 17.4+) would need a
+  hosting sheet with Done and Cancel that the design system does not draw either.
+- **Which months:** from the current Bond-day's month (never a later one) back to the month of
+  the oldest day the Archive has loaded so far. The client knows of no earlier day: the
+  contract has no "oldest day" or "months with days", and the bond's `createdAt` is not
+  carried into the app. So the picker grows as you scroll or jump further back.
+- **The open questions:** (1) a drawn picker, or keep the platform dialog; (2) on iOS, the
+  wheel in a sheet instead; (3) how far back it should reach: the bond's start
+  (`BondResponse.createdAt`, one more call) or a server-side list of months.
+
+### 18. The month row is 56 in `states.md`, 80 in Figma
+
+- `states.md` §6 sizes it twice ("the 56 pt month-jump row"; the field "costs 59 pt" against
+  it). Figma's frame 257:9 is 80 tall (the glyph at y 28, the 48 target at y 16). **Built 56**
+  (the design system wins), so the chips sit at 240 and the list at 312, 24 above Figma's 264
+  and 336. One of the two needs correcting.
 ## Bond settings, part 1
 
-### 16. The OS time picker (reveal time; later, your reminder)
+### 19. The OS time picker (reveal time; later, your reminder)
 
 - **Today:** `states.md` §8: Reveal time and Your reminder "open an **OS time picker**. No
   in-app screen". The app had no platform time picker.
@@ -241,7 +321,7 @@ The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
   The picker has no way to clear a reveal time back to "when you have both written"; no
   screen offers it yet.
 
-### 17. The settings row
+### 20. The settings row
 
 - **Today:** Figma draws the Bond settings rows as loose frames (396:13 and its siblings:
   label and value, `body`, 56 tall), not one of the ten components, and `tokens.md` §1 sets
@@ -253,7 +333,7 @@ The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 - **The open question:** whether rows become a design-system component (Account and the
   later settings screens will want them too).
 
-### 18. The ETag conflict state
+### 21. The ETag conflict state
 
 - **Today:** `states.md` §8 names it, "This changed while you were looking at it.", and says
   it is worth drawing; there is no frame.
@@ -262,7 +342,7 @@ The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
 
 ## Bond settings, part 2
 
-### 19. The time-zone picker
+### 22. The time-zone picker
 
 - **Today:** `states.md` §8 and Figma 397:53 draw the zone as a `Field · Select` whose
   chevron opens "a picker the screen owns"; no picker is drawn, and neither platform has a
@@ -278,7 +358,7 @@ The reveal's timing, easing and choreography are placeholders (`RevealMotion`,
   names (ICU on Android, `NSTimeZone.localizedName` on iOS), and whether the device's zone
   is offered first.
 
-### 20. The 30-day refusal
+### 23. The 30-day refusal
 
 - **Today:** `states.md` §8 says the refusal names a date; there is no frame.
 - **Here:** an `InlineError` 8 above Propose change (or Agree), without the date, because

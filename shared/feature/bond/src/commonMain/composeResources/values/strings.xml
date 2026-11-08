@@ -202,13 +202,13 @@
     <!-- PROPOSED. Confirm's secondary (397:137): the same DELETE, from the other side. -->
     <string name="settings_tz_decline">Decline</string>
     <string name="settings_tz_declining">Declining</string>
-    <!-- PROPOSED. 409 TIMEZONE_CHANGE_TOO_SOON. states.md §8 wants the date; the contract carries it only in prose (docs/backend-contract-gaps.md, row 15), so it is not shown. -->
+    <!-- PROPOSED. 409 TIMEZONE_CHANGE_TOO_SOON. states.md §8 wants the date; the contract carries it only in prose (docs/backend-contract-gaps.md, row 24), so it is not shown. -->
     <string name="settings_tz_error_too_soon">The shared time zone changed less than 30 days ago, so it cannot change again yet.</string>
     <!-- PROPOSED. 422 on the zone: not a region zone. -->
     <string name="settings_tz_error_unsupported">That time zone cannot be used. Choose a city.</string>
     <!-- field.timezone.error (strings-proposed.md, in file): the zone list did not load; reopening the field retries. -->
     <string name="settings_tz_list_error">We could not load time zones. Your choice is still here. Open it again to retry.</string>
-    <!-- PROPOSED. The zone list's heading (no frame: docs/missing-components.md §19). -->
+    <!-- PROPOSED. The zone list's heading (no frame: docs/missing-components.md §22). -->
     <string name="settings_tz_picker_heading">Choose a city</string>
     <!-- PROPOSED. The zone list's search field. -->
     <string name="settings_tz_search_label">Search cities</string>

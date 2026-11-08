@@ -14,6 +14,12 @@ internal expect fun weekdayName(date: LocalDate): String
 /** Day first, then the month, in the device's language, no year ("2 September"). */
 internal expect fun dayAndMonth(date: LocalDate): String
 
+/** The weekday and the day of the month, in the device's language: "Tuesday 2" (an Archive day card, Figma 223:10). */
+internal expect fun weekdayAndDay(date: LocalDate): String
+
+/** The month standing alone, and the year: "September 2026" (an Archive month, Figma 257:16). */
+internal expect fun monthAndYear(date: LocalDate): String
+
 /** The Bond-day in Today's nav row and on the reveal: "Tuesday · 2 September" (Figma 159:3). */
 @Composable
 internal fun dayHeader(date: LocalDate): String {

@@ -17,6 +17,7 @@ import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.bond_create_error_limit
 import com.moyi.app.feature.onboarding.resources.bond_name_error_blank
 import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
+import com.moyi.app.feature.onboarding.resources.field_timezone_error
 import com.moyi.app.feature.onboarding.resources.field_timezone_error_unsupported
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,17 +32,24 @@ import kotlinx.coroutines.launch
  * the handoff screen. The name is checked here first (non-blank, at most 60),
  * so a `422` on it means the rules drifted; it is still shown on the field.
  *
- * Every failure keeps the name and the time zone (394:1441). The time zone is
- * the device's ([deviceTimeZone], an IANA id); the picker is not built.
+ * Every failure keeps the name and the time zone (394:1441). The time zone
+ * starts as the device's ([deviceTimeZone], an IANA id); the picker lists the
+ * platform's zones ([availableZoneIds], no endpoint) and the one chosen there
+ * is what is sent.
  */
 class CreateBondViewModel(
     type: RelationshipType,
     private val bonds: BondRepository,
     private val deviceTimeZone: String,
+    /** The platform's IANA ids. Read each time the picker opens; if it throws, the field says so. */
+    private val availableZoneIds: () -> Set<String>,
 ) : ViewModel() {
     private val _state = MutableStateFlow(
-        CreateBondState(type = type, timeZoneCity = cityOf(deviceTimeZone)),
+        CreateBondState(type = type, timeZoneId = deviceTimeZone, timeZoneCity = cityOf(deviceTimeZone)),
     )
+
+    /** Every zone the picker offers, in its order, unfiltered. Built when the picker opens. */
+    private var allZones: List<TimeZoneOption> = emptyList()
     val state: StateFlow<CreateBondState> = _state.asStateFlow()
 
     private val _events = Channel<CreateBondEvent>()
@@ -53,12 +61,44 @@ class CreateBondViewModel(
             is CreateBondAction.OnNameChange -> _state.update {
                 it.copy(name = action.value, nameError = if (action.value.length > MAX_NAME_LENGTH) tooLong else null)
             }
-            // TODO(logic): open a time-zone picker (the platform's zone list; no endpoint). A load failure
-            //  shows `field.timezone.error` in the field, and reopening it retries (strings-proposed.md).
-            CreateBondAction.OnTimeZoneClick -> Unit
+            CreateBondAction.OnTimeZoneClick -> openPicker()
+            is CreateBondAction.OnTimeZoneQueryChange -> _state.update { current ->
+                val picker = current.picker ?: return@update current
+                current.copy(picker = picker.copy(query = action.value, zones = allZones.matching(action.value)))
+            }
+            is CreateBondAction.OnTimeZoneSelect -> select(action.id)
+            CreateBondAction.OnTimeZoneDismiss -> _state.update { it.copy(picker = null) }
             CreateBondAction.OnCreateClick -> create()
             CreateBondAction.OnBackClick -> viewModelScope.launch { _events.send(CreateBondEvent.NavigateBack) }
         }
+    }
+
+    /**
+     * Opens the picker on the platform's zones. A load failure says so on the
+     * field (`field.timezone.error`) and leaves the picker closed; opening the
+     * field again is the retry (strings-proposed.md, decided 2026-09-03).
+     */
+    private fun openPicker() {
+        val current = _state.value
+        if (current.status == CreateBondStatus.Sending) return
+        val ids = runCatching(availableZoneIds).getOrElse {
+            _state.update { it.copy(timeZoneError = loadFailed) }
+            return
+        }
+        allZones = pickerZones(ids, chosen = current.timeZoneId, device = deviceTimeZone)
+        _state.update {
+            it.copy(
+                picker = TimeZonePickerState(zones = allZones),
+                // A retry that worked ends the load failure; an unsupported zone stays until one is chosen.
+                timeZoneError = it.timeZoneError.takeUnless { error -> error == loadFailed },
+            )
+        }
+    }
+
+    private fun select(id: String) {
+        // Only an offered zone can be chosen, so nothing the backend refuses gets in this way.
+        if (allZones.none { it.id == id }) return
+        _state.update { it.copy(timeZoneId = id, timeZoneCity = cityOf(id), timeZoneError = null, picker = null) }
     }
 
     private fun create() {
@@ -72,7 +112,7 @@ class CreateBondViewModel(
             _state.update { it.copy(nameError = tooLong) }
             return
         }
-        if (!isRegionZone(deviceTimeZone)) {
+        if (!isRegionZone(current.timeZoneId)) {
             _state.update { it.copy(timeZoneError = unsupportedZone) }
             return
         }
@@ -80,7 +120,7 @@ class CreateBondViewModel(
         val existing = createdBond
         viewModelScope.launch {
             if (existing != null) return@launch handOff(existing)
-            when (val created = bonds.createBond(current.name, current.type.bondType, deviceTimeZone)) {
+            when (val created = bonds.createBond(current.name, current.type.bondType, current.timeZoneId)) {
                 is Result.Success -> handOff(created.data)
                 is Result.Failure -> fail(created.error)
             }
@@ -127,6 +167,7 @@ class CreateBondViewModel(
 
     private val tooLong = UiText.Resource(Res.string.bond_name_error_too_long)
     private val unsupportedZone = UiText.Resource(Res.string.field_timezone_error_unsupported)
+    private val loadFailed = UiText.Resource(Res.string.field_timezone_error)
 
     companion object {
         /**
@@ -135,11 +176,6 @@ class CreateBondViewModel(
          */
         const val MAX_NAME_LENGTH = 60
 
-        /**
-         * The city a person recognises in an IANA id: `Africa/Lagos` is Lagos,
-         * `America/Argentina/Buenos_Aires` is Buenos Aires. Not localised yet
-         * (the platform's own zone names are owed with the picker).
-         */
         /**
          * The backend takes only a region zone (`Africa/Lagos`), never `UTC`, `GMT`
          * or `Etc/…`, which some devices and emulators report. Checked before
@@ -150,6 +186,52 @@ class CreateBondViewModel(
         fun isRegionZone(zoneId: String): Boolean =
             '/' in zoneId && !zoneId.startsWith("Etc/") && !zoneId.startsWith("SystemV/")
 
+        /**
+         * The city a person recognises in an IANA id: `Africa/Lagos` is Lagos,
+         * `America/Argentina/Buenos_Aires` is Buenos Aires. Not localised yet
+         * (the platform's own localised zone names are not used; see the PR).
+         */
         fun cityOf(zoneId: String): String = zoneId.substringAfterLast('/').replace('_', ' ')
+
+        /** What comes before the city, for telling like cities apart: `America/Argentina/Buenos_Aires` is `America, Argentina`. */
+        fun regionOf(zoneId: String): String =
+            zoneId.substringBeforeLast('/', missingDelimiterValue = "").replace("/", ", ").replace('_', ' ')
+
+        /**
+         * The IANA areas whose ids name a place. The platform lists legacy links too
+         * (`US/Eastern`, `Canada/Pacific`, `Brazil/East`): the backend accepts them, but
+         * their last part is not a city, so the picker leaves them out. The device's
+         * own zone and the chosen one are offered whatever their area.
+         */
+        private val PLACE_AREAS = setOf(
+            "Africa", "America", "Antarctica", "Arctic", "Asia",
+            "Atlantic", "Australia", "Europe", "Indian", "Pacific",
+        )
+
+        /**
+         * The picker's rows, in order: the chosen zone (marked), then the device's if
+         * it differs, then every other place zone by city. Only region zones: a zone
+         * the backend refuses is never offered.
+         */
+        fun pickerZones(ids: Set<String>, chosen: String, device: String): List<TimeZoneOption> {
+            val first = listOf(chosen, device).distinct().filter(::isRegionZone)
+            val rest = ids.asSequence()
+                .filter { isRegionZone(it) && it.substringBefore('/') in PLACE_AREAS && it !in first }
+                .sortedWith(compareBy<String> { cityOf(it).lowercase() }.thenBy { it })
+                .toList()
+            return (first + rest).map { id ->
+                TimeZoneOption(id = id, city = cityOf(id), region = regionOf(id), selected = id == chosen)
+            }
+        }
+
+        /**
+         * Searched by city, case ignored, anywhere in the name ("aires" finds Buenos
+         * Aires); the region is searched too, so "Europe" lists Europe. Order is kept.
+         */
+        fun List<TimeZoneOption>.matching(query: String): List<TimeZoneOption> {
+            val q = query.trim()
+            if (q.isEmpty()) return this
+            return filter { it.city.contains(q, ignoreCase = true) || it.region.contains(q, ignoreCase = true) }
+        }
     }
 }

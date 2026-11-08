@@ -55,9 +55,9 @@ Section **Onboarding** 425:3, section **Account** 425:313. Every frame is 390 ×
 | Onboarding 3 · verify email · checking · RETURNING | 394:1422 | 394:1545 | PrimaryAction Sending, per states.md §1c |
 | Account 1 · sign in · IDLE | **344:18** | 362:1708 | |
 | Account 1 · sign in · KEYBOARD UP | 362:1284 | 362:1764 | |
-| Account 2 · forgot password · IDLE | 344:41 | 362:1720 | |
-| Account 3 · reset link sent · NON-DISCLOSING | 345:23 | 362:1729 | |
-| Account 4 · reset password · IDLE | 345:30 | 362:1738 | |
+| Account 2 · forgot password · IDLE | 344:41 | 362:1720 | Built 2026-11-05 (`ForgotPasswordScreen`) |
+| Account 3 · reset link sent · NON-DISCLOSING | 345:23 | 362:1729 | Built 2026-11-05 (`ResetLinkSentScreen`) |
+| Account 4 · reset password · IDLE | 345:30 | 362:1738 | Built 2026-11-05 (`ResetPasswordScreen`), with the paste-code field first (missing-components §6a) |
 | Account 5 · unverified gate · BLOCKED | 345:46 | 362:1746 | Root screen with no back button. Eyebrow sits at y 24 |
 | Account 6 · rate limited · PAUSED | 345:53 | 362:1755 | This is the sign-in error state that exists in Figma |
 | Splash · COLD START | 379:5 | 379:8 | Section "Launch" 425:1854. Wordmark 113×48 at 138.5, 398 |
@@ -208,12 +208,16 @@ Field-level validation (a malformed email) uses the Field Error variant: a 2 px 
   - intro (heading plus a 2-line body) at 171.
   - Field · email (83, helper hidden) at y 292.
   - action (16, 772): PrimaryAction only.
-- **Reset link sent (345:23):** intro at 171. The action holds one secondary link (123 wide), centred at y 772.
+  - Built 2026-11-05: heading and body 16 apart, the field 24 under the body.
+- **Reset link sent (345:23):** intro at 171. The action holds one secondary link (123 wide), centred at y 772. Built 2026-11-05; the link reads "Choose a new password".
 - **Reset password (345:30):**
   - heading at 171.
   - Field · new password (115) at 228.
   - "consequence" body text, 2 lines, at 367.
   - PrimaryAction at y 772.
+  - Built 2026-11-05 with the paste-code field (NEW, not in Figma) 24 under the heading and the
+    password 24 below it, so everything after the heading moves down by one field. The
+    consequence stays 24 under the password, above the action.
 - **Unverified gate (345:46):**
   - No header (Root).
   - eyebrow at y 24, content starting at 59, intro at 107 (heading plus a 3-line body, 72).
@@ -337,7 +341,7 @@ The auth screens follow Detail **without the header title**. They put an eyebrow
 |---|---|---|
 | **Sign-up name field** (API requires `displayName`) | Absent. Sign up has email and password only | Field Type=Text, label "NAME" (proposal), placed first after the heading at y 228. That pushes email to 367 and password to 506 and adds 139. Content then needs about 703 against the 441 available, so **the content must scroll** (as the keyboard-up frame already does) and the action block stays bottom-pinned. Product and copy ruling owed |
 | **Verify-email paste-token field** | Absent. Verify assumes a link tap | Field Type=Text (not Code: the token is not 6 characters) between the intro and "Send it again", 24 below the line (y 292). "Send it again" moves to 292 + 115 + 24 = 431. The "Check again" PrimaryAction should submit the token when the field is filled. Ruling owed |
-| **Session-ended screen** (`TOKEN_REUSE_DETECTED`) | Absent. Recorded in states.md §1c as owed before Phase 6 | Same shape as rate limited and the unverified gate: eyebrow "ACCOUNT", heading plus one line (API fallback copy: "This sign-in was used from two places at once, so it has been ended. Sign in again to continue."), PrimaryAction "Sign in" at y 772. No back button (Root) |
+| **Session-ended screen** (`TOKEN_REUSE_DETECTED`) | Absent. Recorded in states.md §1c as owed before Phase 6 | Same shape as rate limited and the unverified gate: eyebrow "ACCOUNT", heading plus one line (API fallback copy: "This sign-in was used from two places at once, so it has been ended. Sign in again to continue."), PrimaryAction "Sign in" at y 772. No back button (Root). **Built 2026-11-05** for `TOKEN_REUSE_DETECTED` only, with the owner's copy (`docs/missing-components.md` §4) |
 | **Loading or sending states** | Only the PrimaryAction Sending variant (60 % opacity) and verify "Checking" exist. Sign up and sign in sending are not drawn | Swap the PrimaryAction to Sending and keep the label wording to the action (for example "Signing in"). No spinner, no skeleton (states.md §1c, tokens.md §7). Fields stay editable or are disabled; this is not specified |
 | Sign-in inline credential error | Absent | See §3.3: centred danger body, first child of the action block, 24 above the button |
 | Checkbox checked state | Absent | — |

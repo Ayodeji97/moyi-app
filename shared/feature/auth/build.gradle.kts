@@ -29,6 +29,10 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+        // Compose UI tests run on iOS (Skiko); on the Android host they would need Robolectric.
+        iosTest.dependencies {
+            implementation(libs.compose.uiTest)
+        }
     }
 }
 

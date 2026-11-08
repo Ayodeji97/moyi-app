@@ -70,6 +70,24 @@ object MoyiDimens {
         val MinTarget = TouchTarget
     }
 
+    /**
+     * The outlined secondary action (owner ruling 2026-11-06, PR 30 smoke test). Not in
+     * Figma or tokens.md yet, so every value here is **Interpreted** from its siblings.
+     */
+    object SecondaryAction {
+        /** NFR-101: at least 48 x 48, as [TextLink]; a minimum, so a 200 % label grows it. */
+        val MinTarget = TouchTarget
+        /**
+         * 1, as PrimaryAction's Queued and Disabled strokes. Here the border is what makes it
+         * read as a control, so it is drawn in `ink` or `danger`, never the decorative `outline`.
+         */
+        val Stroke = 1.dp
+        /** The same 32 as PrimaryAction, so the two read as one family. */
+        val PaddingHorizontal = 32.dp
+        /** Like PrimaryAction, the label is centred in the 48; padding only matters when it wraps. */
+        val PaddingVertical = 8.dp
+    }
+
     /** Figma §3.1 rows 6 and 6a. tokens.md has no checkbox (not one of the ten components). */
     object ConsentCheckbox {
         /** Figma §3.1 row 6: the row is 48 tall. */
@@ -101,6 +119,19 @@ object MoyiDimens {
      * its native 350 width. The page (72:2) was not read, so the inside is **Interpreted**:
      * padding 24, heading 33, 16, line 24, 16, action 48, padding 24 = 185.
      */
+    /**
+     * tokens.md §4 component 4. Figma 227:3: a calendar cell is a 48 x 48 instance, the key's
+     * swatch 20 x 20 (267:102). The page that draws each state was not read (no screenshot,
+     * rate limit), so the strokes are **Interpreted**: the 2 pt emphasis stroke `Field` uses
+     * for a shape that must carry meaning, and a 4 on 4 dash for the rest day's ring.
+     */
+    object DayCell {
+        val Size = TouchTarget
+        val KeySize = 20.dp
+        val Stroke = 2.dp
+        val Dash = 4.dp
+    }
+
     object StateBlock {
         val NativeWidth = 350.dp
         val Padding = 24.dp
@@ -144,6 +175,25 @@ object MoyiDimens {
     }
 
     /** Today's `nav` row (Figma 159:2: 358 × 48 at y 24; daily-loop spec §2). */
+    /**
+     * tokens.md §4 row 9, `Chip` (Archive's filters): a 48 pt target wrapping a 40 pt
+     * visible pill. Padding and gap are read from Figma's filters row (440:1475: All days
+     * 100 wide, 8 between chips); the component page itself was not read.
+     */
+    object Chip {
+        val Target = TouchTarget
+        val PillHeight = 40.dp
+        val PaddingHorizontal = 16.dp
+        val Stroke = 1.dp
+        val Gap = 8.dp
+    }
+
+    /** tokens.md §4 row 10, `FavouriteToggle`: a 48 pt row, a 24 px glyph, then the label. */
+    object FavouriteToggle {
+        val Target = TouchTarget
+        val Gap = 8.dp
+    }
+
     object NavRow {
         /** Figma 159:3 / 429:1352: 48 tall, the targets 48 × 48. */
         val Height = TouchTarget

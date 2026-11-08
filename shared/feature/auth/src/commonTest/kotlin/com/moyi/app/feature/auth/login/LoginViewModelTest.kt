@@ -113,4 +113,15 @@ class LoginViewModelTest : MainDispatcherTest() {
         vm.onAction(LoginAction.OnSubmit)
         assertFalse(vm.state.value.sessionEnded)
     }
+
+    @Test
+    fun forgotOpensForgotPasswordWithTheTypedEmailAndSendsNothing() = runTest {
+        val vm = viewModel(email = "")
+        vm.onAction(LoginAction.OnEmailChange(" amara@example.com "))
+        vm.events.test {
+            vm.onAction(LoginAction.OnForgotPasswordClick)
+            assertEquals(LoginEvent.NavigateToForgotPassword("amara@example.com"), awaitItem())
+        }
+        assertTrue(repo.loginCalls.isEmpty())
+    }
 }

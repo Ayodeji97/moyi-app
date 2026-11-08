@@ -123,6 +123,8 @@ class FakeAuthRepository(signedIn: User? = user(verified = false)) : AuthReposit
     ): EmptyResult<DataError.Network> = error("not used")
 
     override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> = error("not used")
     override suspend fun login(email: String, password: String): Result<User, DataError> = error("not used")
     override suspend fun logout() = error("not used")
     override suspend fun restoreSession(): SessionState = session.value

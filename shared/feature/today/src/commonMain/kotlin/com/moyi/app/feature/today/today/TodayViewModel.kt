@@ -79,9 +79,7 @@ class TodayViewModel(
             }
             TodayAction.OnDeleteConfirm -> deleteAfterReveal()
             TodayAction.OnDeleteDismiss -> ui.update { it.copy(confirming = false) }
-            TodayAction.OnArchiveClick -> {
-                // TODO(logic): navigate to Archive (GET /api/v1/bonds/{bondId}/days), not built yet.
-            }
+            TodayAction.OnArchiveClick -> send(TodayEvent.NavigateToArchive)
             // The target is drawn only on a loaded day, so there is always a bond to open.
             TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
             TodayAction.OnShareInviteClick -> shareInvite()

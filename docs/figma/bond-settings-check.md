@@ -148,7 +148,7 @@ Its value is Active or None (PROPOSED).
 | Confirm · PrimaryAction 397:135 | 700 | 700 | label 713.5 | match |
 | Confirm · secondary 397:137 | 786.5 | 786.5 | 785.5 | match |
 
-The city list (no frame; `missing-components.md` §19) is the heading "Choose a city", a
+The city list (no frame; `missing-components.md` §22) is the heading "Choose a city", a
 search `Field`, and one settings row per city with its IANA id as the value.
 
 ### Invite: Active (416:44), Revoked (416:97)

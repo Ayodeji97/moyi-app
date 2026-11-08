@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.MoyiText
+import com.moyi.app.designsystem.component.SecondaryAction
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
@@ -113,8 +114,19 @@ internal fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
     MoyiText(text = text, role = TextRole.Title, modifier = modifier.semantics { heading() })
 }
 
-/** One action under a [DayNote]: a full-width 48 target, `ink` (or `danger`) with an underline. */
-internal data class NoteAction(val label: String, val onClick: () -> Unit, val destructive: Boolean = false)
+/**
+ * One action under a [DayNote]: a full-width 48 target in `ink` (or `danger`).
+ *
+ * [outlined] draws it as a bordered [SecondaryAction] instead of an underlined [TextLink]:
+ * for an action that changes the entry here (Edit, Delete; owner ruling 2026-11-06), not
+ * for one that goes somewhere.
+ */
+internal data class NoteAction(
+    val label: String,
+    val onClick: () -> Unit,
+    val destructive: Boolean = false,
+    val outlined: Boolean = false,
+)
 
 /**
  * A heading, one line and up to two actions under an entry: the waiting,
@@ -141,13 +153,24 @@ internal fun DayNote(
         MoyiText(text = line, tone = TextTone.Muted)
         if (actions.isNotEmpty()) {
             Spacer(Modifier.height(MoyiTheme.spacing.sm))
-            actions.forEach { action ->
-                TextLink(
-                    text = action.label,
-                    onClick = action.onClick,
-                    destructive = action.destructive,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            actions.forEachIndexed { index, action ->
+                if (action.outlined) {
+                    // Bordered buttons stacked flush would touch; an 8 gap keeps two targets apart.
+                    if (index > 0) Spacer(Modifier.height(MoyiTheme.spacing.sm))
+                    SecondaryAction(
+                        text = action.label,
+                        onClick = action.onClick,
+                        destructive = action.destructive,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    TextLink(
+                        text = action.label,
+                        onClick = action.onClick,
+                        destructive = action.destructive,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }

@@ -215,7 +215,7 @@ private fun ZoneError(state: BondSettingsState) {
 }
 
 /**
- * The zone list (no frame: docs/missing-components.md §19). The most conservative form
+ * The zone list (no frame: docs/missing-components.md §22). The most conservative form
  * the existing pieces allow: a heading, a `Field · Text` to search, and one settings row
  * per city with its IANA id as the value, which tells apart cities that share a name.
  * Every region zone the platform knows (kotlinx-datetime); a tap chooses and goes back.

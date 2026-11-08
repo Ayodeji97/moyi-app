@@ -23,7 +23,8 @@ import com.moyi.app.designsystem.theme.MoyiDimens
  * There is no link colour. **An underline means it goes somewhere**, so use
  * this only for something that navigates or starts a flow. A control that
  * toggles in place or opens an OS surface takes no underline and is not a
- * `TextLink`.
+ * `TextLink`. An action that changes something on the spot (Edit, Delete) is
+ * a [SecondaryAction] (owner ruling 2026-11-06).
  *
  * Placement follows Figma §3: a secondary link is a full-width 48 target
  * (pass `Modifier.fillMaxWidth()`), with its text centred in the action
@@ -46,7 +47,8 @@ fun TextLink(
     /**
      * `danger` instead of `ink`, for a link that starts a destructive flow ("Delete
      * what you wrote", states.md §6 2026-09-07). The underline stays, so colour is
-     * never the only cue (NFR-104).
+     * never the only cue (NFR-104). Since the owner ruling of 2026-11-06, Today's
+     * Edit and Delete are a bordered [SecondaryAction], not a link.
      */
     destructive: Boolean = false,
 ) {
