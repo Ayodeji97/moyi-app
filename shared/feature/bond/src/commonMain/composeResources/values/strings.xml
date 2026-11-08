@@ -252,4 +252,38 @@
     <string name="settings_invite_creating">Creating an invite</string>
     <!-- PROPOSED. 409 BOND_FULL: the second member joined while the screen was open. -->
     <string name="settings_invite_error_full">Someone has joined, so this bond needs no invite now.</string>
+
+    <!-- ===== Notifications (FR-080, FR-081; states.md §8 "Reminder"; not drawn in Figma) ===== -->
+
+    <!-- PROPOSED. The Just you row that opens it, and the screen's heading. -->
+    <string name="settings_row_notifications">Notifications</string>
+    <!-- PROPOSED. Under the heading: whose settings these are and the daily cap (FR-082, copy.md "Notification copy"). -->
+    <string name="notifications_line">These are for this bond only. Moyi sends you no more than three a day.</string>
+
+    <!-- PROPOSED. The group that says what this phone allows. -->
+    <string name="notifications_group_phone">This phone</string>
+    <!-- PROPOSED. Not asked yet: the line and the row that shows the system prompt. -->
+    <string name="notifications_phone_not_asked">Notifications are not on for this phone yet.</string>
+    <string name="notifications_phone_allow">Allow notifications</string>
+    <!-- PROPOSED. Refused, or turned off in Settings: says so once, and how to turn them on. Never asks again. -->
+    <string name="notifications_phone_denied">Notifications are off on this phone, so none of these will arrive. To turn them on, open your phone's Settings, find Moyi and allow notifications.</string>
+    <string name="notifications_phone_open_settings">Open phone settings</string>
+
+    <!-- PROPOSED. The six kinds ADR-0045 lets a member turn off, in plain words (copy.md: no system words). -->
+    <string name="notifications_group_kinds">What to hear about</string>
+    <string name="notifications_category_reminder">Daily reminder</string>
+    <string name="notifications_category_reveal">Your day opens</string>
+    <string name="notifications_category_partner_joined">Your invite is accepted</string>
+    <string name="notifications_category_milestone">Milestones</string>
+    <string name="notifications_category_on_this_day">On this day</string>
+    <string name="notifications_category_proposal">Changes to agree to</string>
+    <!-- PROPOSED. The reminder's time, in the member's reminder zone; opens the time picker. -->
+    <string name="notifications_reminder_time">Reminder time</string>
+
+    <!-- PROPOSED. Quiet hours (FR-081): off by default; both ends or neither. -->
+    <string name="notifications_group_quiet">Quiet hours</string>
+    <string name="notifications_quiet_toggle">Quiet hours</string>
+    <string name="notifications_quiet_line">Notifications wait until quiet hours end.</string>
+    <string name="notifications_quiet_start">From</string>
+    <string name="notifications_quiet_end">Until</string>
 </resources>

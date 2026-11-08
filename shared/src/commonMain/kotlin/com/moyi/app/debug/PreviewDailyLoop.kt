@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.moyi.app.domain.notification.NotificationSettingsRepository
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import kotlin.time.Duration
@@ -110,6 +111,7 @@ internal val previewTodayModule: Module = module {
     // Today's settings target opens Bond settings on preview settings (PreviewBondSettings).
     single { PreviewBondSettingsRepository() }
     single<BondSettingsRepository> { get<PreviewBondSettingsRepository>() }
+    single<NotificationSettingsRepository> { PreviewNotificationSettingsRepository() }
     // Invites (Bond settings › Invite, and Today's "Share the invite again") over the same preview bond.
     single<BondRepository> { PreviewSettingsBondRepository(get()) }
 }

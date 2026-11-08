@@ -9,6 +9,9 @@ import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
+import com.moyi.app.domain.notification.NotificationSettingsRepository
+import com.moyi.app.domain.notification.PushTokenRegistration
+import com.moyi.app.domain.notification.PushTokenSource
 import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.domain.today.EntryOutbox
@@ -19,10 +22,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.Module
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val repositoryModule = module {
-    single<AuthRepository> { AuthRepositoryImpl(get(), get(), get(), get()) }
+    single<AuthRepository> { AuthRepositoryImpl(get(), get(), get(), pushTokens = get(), deviceInfo = get()) }
+    single<NotificationSettingsRepository> { NotificationSettingsRepositoryImpl(get(), get()) }
+    // No push provider until Firebase is set up: the one binding to swap for FCM (NoPushTokenSource).
+    single<PushTokenSource> { NoPushTokenSource }
+    single {
+        PushTokenRegistrar(get(), get(), get(), get<SessionManager>().sessionState, CoroutineScope(SupervisorJob() + Dispatchers.Default))
+    } bind PushTokenRegistration::class
     single<AccountRepository> { AccountRepositoryImpl(get(), get()) }
     single<BondRepository> { BondRepositoryImpl(get(), get()) }
     single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get()) }

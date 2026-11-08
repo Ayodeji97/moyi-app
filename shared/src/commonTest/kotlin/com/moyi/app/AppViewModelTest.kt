@@ -1,6 +1,7 @@
 package com.moyi.app
 
 import com.moyi.app.domain.auth.SessionState
+import com.moyi.app.domain.notification.PushTokenRegistration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -20,6 +21,18 @@ class AppViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private val outbox = StubOutbox()
+    private val push = object : PushTokenRegistration {
+        var starts = 0
+        var retries = 0
+
+        override fun start() {
+            starts++
+        }
+
+        override fun retry() {
+            retries++
+        }
+    }
 
     @Test
     fun aRestoreThatThrowsKeepsUnknownAndTheNextForegroundTriesAgain() {
@@ -28,7 +41,7 @@ class AppViewModelTest {
             calls++
             if (calls == 1) throw IllegalStateException("store locked") else Unit
         }
-        val viewModel = AppViewModel(repo, outbox)
+        val viewModel = AppViewModel(repo, outbox, push)
         assertEquals(1, calls)
         assertEquals(SessionState.Unknown, viewModel.session.value)
 
@@ -40,7 +53,7 @@ class AppViewModelTest {
     fun aDecidedStateIsNotRestoredAgainOnForeground() {
         var calls = 0
         val repo = StubAuthRepository { calls++ }
-        val viewModel = AppViewModel(repo, outbox)
+        val viewModel = AppViewModel(repo, outbox, push)
         repo.state.value = SessionState.SignedOut
         viewModel.onForeground()
         assertEquals(1, calls)
@@ -48,7 +61,7 @@ class AppViewModelTest {
 
     @Test
     fun theShellStartsTheOutboxOnceAndEveryForegroundTriesItAgain() {
-        val viewModel = AppViewModel(StubAuthRepository {}, outbox)
+        val viewModel = AppViewModel(StubAuthRepository {}, outbox, push)
         assertEquals(1, outbox.starts)
         assertEquals(0, outbox.retries)
 
@@ -57,5 +70,16 @@ class AppViewModelTest {
 
         assertEquals(1, outbox.starts)
         assertEquals(2, outbox.retries, "whatever the session, a foreground tries the queue again")
+    }
+
+    @Test
+    fun theShellStartsThePushTokenRegistrationOnceAndEveryForegroundRetriesIt() {
+        val viewModel = AppViewModel(StubAuthRepository {}, outbox, push)
+        assertEquals(1, push.starts)
+
+        viewModel.onForeground()
+
+        assertEquals(1, push.starts)
+        assertEquals(1, push.retries)
     }
 }

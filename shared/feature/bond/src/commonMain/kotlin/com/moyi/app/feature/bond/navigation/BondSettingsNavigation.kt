@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -11,10 +12,15 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.toRoute
+import com.moyi.app.designsystem.platform.rememberNotificationPermission
 import com.moyi.app.designsystem.platform.rememberShareSheet
 import com.moyi.app.designsystem.platform.rememberTextClipboard
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.bond.ending.BondArchivedScreen
+import com.moyi.app.feature.bond.notifications.NotificationSettingsAction
+import com.moyi.app.feature.bond.notifications.NotificationSettingsEvent
+import com.moyi.app.feature.bond.notifications.NotificationSettingsScreen
+import com.moyi.app.feature.bond.notifications.NotificationSettingsViewModel
 import com.moyi.app.feature.bond.settings.BlockScreen
 import com.moyi.app.feature.bond.settings.BondNameScreen
 import com.moyi.app.feature.bond.settings.BondSettingsAction
@@ -66,6 +72,9 @@ internal data object BlockRoute
 @Serializable
 internal data object CloseBoxRoute
 
+@Serializable
+internal data object NotificationsRoute
+
 /**
  * Bond · archived, the signed-in start's answer when the person's bond has ended and they
  * are in no open one. [partnerName] is the other member's, for the line; null when unknown.
@@ -93,6 +102,10 @@ data class BondArchivedRoute(val partnerName: String? = null)
  * - Bond settings → Close the box (push), one destination whose content follows the bond
  *   (ask, asked, agree, cooling off). Asking stays on it; withdrawing, declining or
  *   calling it off returns to the root.
+ * - Bond settings → Notifications (push), with a ViewModel of its own: its toggles and
+ *   times change in place. The phone's permission prompt is shown from here only
+ *   (NotificationPermissionPolicy), and Open phone settings leaves the app. Back returns
+ *   to the root.
  * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
  *   person to the signed-in start, which shows the archived bond. Signing out needs
  *   nothing here; the shell routes on the session ending.
@@ -150,6 +163,7 @@ fun NavGraphBuilder.bondSettingsGraph(
                 CloseBoxScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
+        composable<NotificationsRoute> { entry -> NotificationsDestination(entry, navController, onBondEnded) }
         composable<BondTypeRoute> { entry ->
             SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
@@ -190,6 +204,7 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenLeave -> navController.navigate(LeaveRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
+            BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
             is BondSettingsEvent.ShareInvite -> scope.launch {
@@ -198,6 +213,35 @@ private fun SettingsDestination(
         }
     }
     content(viewModel)
+}
+
+/**
+ * Notifications: its own ViewModel, keyed to this entry. The phone's permission is read
+ * every time the screen resumes (the person may have changed it in Settings), and the
+ * prompt is shown only when the ViewModel asks for it.
+ */
+@Composable
+private fun NotificationsDestination(entry: NavBackStackEntry, navController: NavController, onBondEnded: () -> Unit) {
+    val graphEntry = remember(entry) { navController.getBackStackEntry<BondSettingsGraph>() }
+    val bondId = remember(graphEntry) { graphEntry.toRoute<BondSettingsGraph>().bondId }
+    val viewModel: NotificationSettingsViewModel = koinViewModel(viewModelStoreOwner = entry) { parametersOf(bondId) }
+    val permission = rememberNotificationPermission()
+    val scope = rememberCoroutineScope()
+    LifecycleResumeEffect(permission) {
+        val check = scope.launch { viewModel.onAction(NotificationSettingsAction.OnPermissionChecked(permission.status())) }
+        onPauseOrDispose { check.cancel() }
+    }
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            NotificationSettingsEvent.AskPermission -> scope.launch {
+                viewModel.onAction(NotificationSettingsAction.OnPermissionChecked(permission.request()))
+            }
+            NotificationSettingsEvent.OpenPhoneSettings -> permission.openSettings()
+            NotificationSettingsEvent.Ended -> onBondEnded()
+        }
+    }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    NotificationSettingsScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
 }
 
 private fun NavController.closeEditor(viewModel: BondSettingsViewModel) {

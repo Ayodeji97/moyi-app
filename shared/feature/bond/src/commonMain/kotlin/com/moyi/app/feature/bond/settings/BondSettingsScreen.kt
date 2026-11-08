@@ -65,6 +65,7 @@ import com.moyi.app.feature.bond.resources.settings_row_close_box
 import com.moyi.app.feature.bond.resources.settings_close_box_value_asked
 import com.moyi.app.feature.bond.resources.settings_close_box_value_closing
 import com.moyi.app.feature.bond.resources.settings_row_name
+import com.moyi.app.feature.bond.resources.settings_row_notifications
 import com.moyi.app.feature.bond.resources.settings_row_rest_days
 import com.moyi.app.feature.bond.resources.settings_row_reveal
 import com.moyi.app.feature.bond.resources.settings_row_sign_out
@@ -93,8 +94,8 @@ import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
  * time, rest days), Just you (sign out, in place of Account), Invite (only while the bond
  * waits for its second member or holds a live code), Ending (leave, block and leave while
  * the other member is known, and close the box, which the root does not draw). Left out
- * on purpose, with no dead row (docs/figma/bond-settings-check.md): your reminder
- * (`/members/me/notifications` is not in the contract copy yet).
+ * on purpose, with no dead row (docs/figma/bond-settings-check.md): nothing now. Your
+ * reminder lives on Notifications (Just you), with the kinds of push and quiet hours.
  *
  * During the close-the-box cooling-off the bond takes no other write, so the rows that
  * change it are disabled; Sign out and the Ending rows stay.
@@ -126,7 +127,7 @@ fun BondSettingsScreen(
                     )
                 }
                 Spacer(Modifier.height(MoyiTheme.spacing.xxl))
-                JustYouGroup(state, busy = state.signingOut, onAction = onAction)
+                JustYouGroup(state, busy = state.signingOut, notifications = false, onAction = onAction)
             }
             UnsentSignOutQuestion(state, onAction)
         }
@@ -135,12 +136,21 @@ fun BondSettingsScreen(
 }
 
 /**
- * Just you: Sign out. Drawn on the loaded root and on the failed load alike, because it
- * needs nothing the bond's settings hold (owner ruling 2026-11-08).
+ * Just you: Notifications (on the loaded root only: they belong to the bond) and Sign out.
+ * Sign out is drawn on the failed load too, because it needs nothing the bond's settings
+ * hold (owner ruling 2026-11-08).
  */
 @Composable
-private fun JustYouGroup(state: BondSettingsState, busy: Boolean, onAction: (BondSettingsAction) -> Unit) {
+private fun JustYouGroup(state: BondSettingsState, busy: Boolean, notifications: Boolean, onAction: (BondSettingsAction) -> Unit) {
     SettingsGroup(stringResource(Res.string.settings_group_you)) {
+        if (notifications) {
+            SettingsRow(
+                label = stringResource(Res.string.settings_row_notifications),
+                kind = RowKind.Navigates,
+                enabled = !busy,
+                onClick = { onAction(BondSettingsAction.OnNotificationsClick) },
+            )
+        }
         SettingsRow(
             label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
             kind = RowKind.Acts,
@@ -236,7 +246,7 @@ private fun SettingsRoot(
                     onToggle = { onAction(BondSettingsAction.OnRestDaysToggle) },
                 )
             }
-            JustYouGroup(state, busy, onAction)
+            JustYouGroup(state, busy, notifications = true, onAction = onAction)
             // Only while the bond waits for its second member, or still holds a live code:
             // a full bond has nothing to invite to (409 BOND_FULL).
             if (settings.waitingForPartner || settings.invite != null) {

@@ -1,5 +1,9 @@
 package com.moyi.app
 
+import com.moyi.app.debug.PreviewNotificationSettingsRepository
+import com.moyi.app.domain.notification.NotificationSettingsRepository
+import com.moyi.app.domain.notification.PushTokenRegistration
+import com.moyi.app.feature.bond.notifications.NotificationSettingsViewModel
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
@@ -85,6 +89,14 @@ class AppKoinTest {
                     single<TodayCache> { NoCachedDay }
                     single<OutboxSender> { StubOutbox() }
                     single<EntryOutbox> { StubOutbox() }
+                    single<NotificationSettingsRepository> { PreviewNotificationSettingsRepository() }
+                    single<PushTokenRegistration> {
+                        object : PushTokenRegistration {
+                            override fun start() = Unit
+
+                            override fun retry() = Unit
+                        }
+                    }
                 },
             )
         }.koin
@@ -96,6 +108,7 @@ class AppKoinTest {
             koin.get<SignedInStartViewModel>()
             koin.get<UnverifiedGateViewModel>()
             koin.get<BondSettingsViewModel> { parametersOf("preview-bond") }
+            koin.get<NotificationSettingsViewModel> { parametersOf("preview-bond") }
             koin.get<RelationshipTypeViewModel>()
             koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }
             koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD") }
