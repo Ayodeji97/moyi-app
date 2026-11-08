@@ -29,8 +29,8 @@ import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
+import com.moyi.app.designsystem.component.SecondaryAction
 import com.moyi.app.designsystem.component.StateBlock
-import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.CenteredContent
@@ -235,10 +235,12 @@ internal fun WaitingNote(partnerName: String, onEdit: (() -> Unit)?, onDelete: (
     DayNote(
         heading = stringResource(Res.string.today_waiting_heading),
         line = stringResource(Res.string.today_waiting_line, partnerName),
+        // Outlined buttons, Edit in `ink` and Delete in `danger` (owner ruling 2026-11-06,
+        // PR 30 smoke test: as underlined links they read as text, not actions). Before the
+        // reveal delete is still not irreversible, so it asks no confirmation (states.md §4).
         actions = listOfNotNull(
-            onEdit?.let { NoteAction(edit, it) },
-            // Before the reveal it is not irreversible yet: `ink`, not `danger`, and no confirm.
-            onDelete?.let { NoteAction(delete, it) },
+            onEdit?.let { NoteAction(edit, it, outlined = true) },
+            onDelete?.let { NoteAction(delete, it, destructive = true, outlined = true) },
         ),
     )
 }
@@ -274,7 +276,9 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
             ActionFailed(state)
             // Entries are immutable after the reveal: no edit (states.md §5). Delete
             // goes through a confirmation. Placement interpreted: 159:19 draws no link.
-            TextLink(
+            // An outlined `danger` button, not a link (owner ruling 2026-11-06).
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+            SecondaryAction(
                 text = stringResource(Res.string.today_delete),
                 onClick = { onAction(TodayAction.OnDeleteAfterRevealClick) },
                 destructive = true,
