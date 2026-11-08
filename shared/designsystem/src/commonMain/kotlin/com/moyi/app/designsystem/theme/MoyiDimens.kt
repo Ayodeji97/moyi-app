@@ -70,6 +70,24 @@ object MoyiDimens {
         val MinTarget = TouchTarget
     }
 
+    /**
+     * The outlined secondary action (owner ruling 2026-11-06, PR 30 smoke test). Not in
+     * Figma or tokens.md yet, so every value here is **Interpreted** from its siblings.
+     */
+    object SecondaryAction {
+        /** NFR-101: at least 48 x 48, as [TextLink]; a minimum, so a 200 % label grows it. */
+        val MinTarget = TouchTarget
+        /**
+         * 1, as PrimaryAction's Queued and Disabled strokes. Here the border is what makes it
+         * read as a control, so it is drawn in `ink` or `danger`, never the decorative `outline`.
+         */
+        val Stroke = 1.dp
+        /** The same 32 as PrimaryAction, so the two read as one family. */
+        val PaddingHorizontal = 32.dp
+        /** Like PrimaryAction, the label is centred in the 48; padding only matters when it wraps. */
+        val PaddingVertical = 8.dp
+    }
+
     /** Figma §3.1 rows 6 and 6a. tokens.md has no checkbox (not one of the ten components). */
     object ConsentCheckbox {
         /** Figma §3.1 row 6: the row is 48 tall. */

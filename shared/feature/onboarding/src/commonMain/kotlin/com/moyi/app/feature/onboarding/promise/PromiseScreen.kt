@@ -108,9 +108,10 @@ private fun SampleEntries() {
     ) {
         MoyiText(stringResource(Res.string.promise_sample_label), role = TextRole.Label, tone = TextTone.Muted)
         Spacer(Modifier.height(spacing.md))
-        EntryCard(fromA, entryA, variant = EntryCardVariant.Partner)
+        // Made-up examples, not anyone's words: onboarding stays capturable (R3).
+        EntryCard(fromA, entryA, variant = EntryCardVariant.Partner, protectFromCapture = false)
         Spacer(Modifier.height(spacing.md))
-        EntryCard(fromB, entryB, variant = EntryCardVariant.Partner)
+        EntryCard(fromB, entryB, variant = EntryCardVariant.Partner, protectFromCapture = false)
     }
 }
 

@@ -148,14 +148,14 @@ Measured 2026-11-06, Pixel 9a, `-PmoyiUiPreview=today`, with `uiautomator`.
 
 | Element | Figma | Built | |
 |---|---|---|---|
-| Row | x 0, y 168, 358 x **80** | x 0, y 168, 379.4 x **56**, `outline` hairline, radius 12 | **states.md §6's 56** (the design system wins); Figma's 80 is for the owner (missing-components §17) |
+| Row | x 0, y 168, 358 x **80** | x 0, y 168, 379.4 x **56**, `outline` hairline, radius 12 | **states.md §6's 56** (the design system wins); Figma's 80 is for the owner (missing-components §18) |
 | Calendar glyph | x 16, 24 x 24, centred | x 16, 24 x 24, centred, `ink` | matches |
 | "September 2026" | x 48, 222 x 24 | x 48, `body` (24 high), one line | matches |
 | "Jump to" | 64 x 48 target at x 278, label metrics, ending 16 from the edge | `TextLink`, `body` sentence case (D14), ending 16 from the edge | D14 |
 | Screen reader | not drawn | one stop: "Showing September 2025. Jump to a month.", a button | interpreted |
 | Gap to the chips | 16 | 16 (chips at 240) | matches |
 | Row follows the scroll | not drawn | "September 2025", then "May 2025" after scrolling down twelve screens | as the brief |
-| The picker | **not drawn** (no frame in 425:317) | Material 3 `AlertDialog` in Rosewood, "Jump to a month", one 48 row per month newest first, Cancel | platform dialog (missing-components §16) |
+| The picker | **not drawn** (no frame in 425:317) | Material 3 `AlertDialog` in Rosewood, "Jump to a month", one 48 row per month newest first, Cancel | platform dialog (missing-components §17) |
 | Months offered | not drawn | September and August at first; September to April 2025 after scrolling to the end | no month after the Bond-day, none before the oldest loaded |
 | After a jump (June 2025) | not drawn | the list from Monday 30 June, at its top; the row "June 2025" | `until=2025-06-30` |
 | "Back to the newest days" | not drawn | `TextLink` under the chips, y 312, 48; the list 16 under it (y 376) | interpreted; PROPOSED copy |
@@ -231,10 +231,10 @@ The Archive is built (parts 1 to 4). What is still owed, in one place:
 2. **R3, screen capture**: the partner's entries are not protected on this branch. When PR #17
    merges, `EntryCard` Partner protects itself; the `DayCard` here is drawn without EntryCard,
    so it needs the same protection added then (`TODO(#17)` in `ArchiveScreen.kt`).
-3. **The month picker**, if the owner wants one drawn (missing-components §16), and how far
+3. **The month picker**, if the owner wants one drawn (missing-components §17), and how far
    back it reaches: today only to the oldest day loaded (the bond's `createdAt` or a server
    list of months would let it reach the start).
-4. **Month row height**: states.md's 56 or Figma's 80 (missing-components §17).
+4. **Month row height**: states.md's 56 or Figma's 80 (missing-components §18).
 5. **Search results**: a match-centred snippet or a highlight (states.md §6, open).
 6. **Favourite announcements**: "Added to favourites" / "Removed from favourites"
    (strings-proposed.md §6a) are not used yet; the toggle's new label is announced instead.

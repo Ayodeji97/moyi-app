@@ -174,6 +174,38 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun aResetRequestIsAcceptedAndSendsOnlyTheEmail() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.Accepted) }
+
+        assertEquals(Result.Success(Unit), fixture.repository.requestPasswordReset("ada@example.test"))
+        val request = fixture.requests.single()
+        assertEquals("/api/v1/auth/forgot-password", request.url.encodedPath)
+        assertEquals("""{"email":"ada@example.test"}""", assertIs<TextContent>(request.body).text)
+    }
+
+    @Test
+    fun aResetSendsTokenAndPasswordAndStartsNoSession() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.OK) }
+
+        assertEquals(Result.Success(Unit), fixture.repository.resetPassword("tok", "new password"))
+        val request = fixture.requests.single()
+        assertEquals("/api/v1/auth/reset-password", request.url.encodedPath)
+        val body = assertIs<TextContent>(request.body).text
+        assertTrue(""""token":"tok"""" in body && """"password":"new password"""" in body, body)
+        assertNull(fixture.store.current)
+        assertNull(fixture.sessionManager.currentAccessToken())
+    }
+
+    @Test
+    fun anExpiredResetLinkIsItsCodeThoughTheContractDeclaresNo410() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.Gone, "PASSWORD_RESET_TOKEN_EXPIRED") }
+
+        val result = fixture.repository.resetPassword("old", "new password")
+
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(410, ApiErrorCode.PASSWORD_RESET_TOKEN_EXPIRED))), result)
+    }
+
+        @Test
     fun logoutClearsEverythingEvenWhenTheServerCannotBeReachedAndNoStaleTokenIsSentAfter() = runTest {
         val fixture = Fixture { request ->
             when (request.url.encodedPath) {

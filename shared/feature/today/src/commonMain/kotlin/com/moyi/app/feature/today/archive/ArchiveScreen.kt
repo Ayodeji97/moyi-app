@@ -244,7 +244,7 @@ private fun MonthRow(month: LocalDate, onJump: () -> Unit) {
 }
 
 /**
- * The month picker. **The design system draws none** (docs/missing-components.md §16), so
+ * The month picker. **The design system draws none** (docs/missing-components.md §17), so
  * this is the platform's simple dialog, not a component of ours: Material 3's `AlertDialog`
  * in Rosewood (MoyiTheme maps its roles to the tokens), a list of months, newest first, and
  * Cancel. Tapping a month chooses it and closes the dialog. The same Compose dialog on iOS.

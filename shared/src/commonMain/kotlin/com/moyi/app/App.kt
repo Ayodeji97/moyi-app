@@ -19,13 +19,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
-import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.debug.UiPreviewRoute
 import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.HomePlaceholderRoute
 import com.moyi.app.feature.auth.navigation.LoginRoute
+import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
 import com.moyi.app.feature.auth.navigation.RegisterRoute
 import com.moyi.app.feature.auth.navigation.authGraph
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
@@ -93,11 +93,8 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
     // restore (a refresh token the server no longer accepts) navigates safely.
     ObserveAsEvents(viewModel.sessionEvents) { event ->
         when (event) {
-            is SessionEvent.Ended -> navController.resetTo(
-                // A sign-out the person asked for needs no explanation; the
-                // server ending the session does (copy owed, states.md §1c).
-                LoginRoute(sessionEnded = event.reason != SessionEndReason.SignedOut),
-            )
+            // Each reason gets the screen whose words are true for it (routeAfterSessionEnd).
+            is SessionEvent.Ended -> navController.resetTo(routeAfterSessionEnd(event.reason))
         }
     }
 

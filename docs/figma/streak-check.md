@@ -61,7 +61,7 @@ again (or Try again on the error).
 |---|---|---|---|
 | Rest day used footer | "Yesterday slipped by. We used a rest day. One left." | the same; yesterday's cell is the rest day | matches |
 | Ended numerals | Now 0 (20 wide), Longest at x 81 | 0 (18.7 wide), Longest 80.8 in | matches |
-| Ended footer | "Your streak ended at 21 days. That is 21 days of showing up. No rest days were left." | "Your streak ended. No rest days were left." | **the number is not sent** (contract gap 16) |
+| Ended footer | "Your streak ended at 21 days. That is 21 days of showing up. No rest days were left." | "Your streak ended. No rest days were left." | **the number is not sent** (contract gap 22) |
 | Strict key | Both wrote at 0, Today at 138, no Rest day | Today at 137.7; no Rest day | matches |
 | Strict footer | "Rest days are off." | the same | matches |
 | Strict calendar | the withdrawn history (states.md §7) | a past rest day stays a rest day (FR-073) | the frame is to be redrawn |
