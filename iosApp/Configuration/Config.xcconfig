@@ -9,9 +9,11 @@ CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0
 
 // The Shared framework is static, so the app does the final link. SQLDelight's iOS
-// driver (shared/data/database) calls the system SQLite, which must be linked here;
-// Kotlin links it for its own test binaries (KmpLibraryConventionPlugin).
-OTHER_LDFLAGS=$(inherited) -lsqlite3
+// driver (shared/data/database) calls the sqlite3 C API, and it must reach SQLCipher
+// (the SQLCipher.swift package, linked by the target), never the system SQLite: so no
+// -lsqlite3 here. Linking both would let one set of sqlite3 symbols win silently.
+// Kotlin links SQLCipher for its own test binaries (KmpLibraryConventionPlugin).
+OTHER_LDFLAGS=$(inherited)
 
 // Optional and git-ignored: overrides TEAM_ID (and anything else) on this Mac only.
 // The "?" means the build does not fail when the file is absent (CI, fresh clones).

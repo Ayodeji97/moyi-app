@@ -28,6 +28,10 @@ gradlePlugin {
             id = "moyi.contract"
             implementationClass = "com.moyi.buildlogic.ContractConventionPlugin"
         }
+        register("sqlcipher") {
+            id = "moyi.sqlcipher"
+            implementationClass = "com.moyi.buildlogic.SqlCipherConventionPlugin"
+        }
         register("dependencyGuard") {
             id = "moyi.dependency.guard"
             implementationClass = "com.moyi.buildlogic.DependencyGuardConventionPlugin"

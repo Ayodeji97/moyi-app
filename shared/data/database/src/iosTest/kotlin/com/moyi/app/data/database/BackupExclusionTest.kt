@@ -22,7 +22,7 @@ class BackupExclusionTest {
 
     @Test
     fun theDatabaseLivesInADirectoryExcludedFromBackup() = runTest {
-        val driver = iosDatabaseDriver(directory)
+        val driver = iosDatabaseDriver(directory, FakeKeyStore())
         try {
             // Touch the database so the file exists on disk.
             LocalDatabase(driver).wipe()

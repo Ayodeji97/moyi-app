@@ -32,6 +32,10 @@ ktor = "3.6.0"
 material3 = "1.12.0-alpha03"
 openapi-generator = "7.26.0"
 sqldelight = "2.4.1"
+# SQLCipher for Android: the local database encrypted at rest. The iOS app gets the same
+# SQLCipher version through the SQLCipher.swift package (iosApp.xcodeproj, and
+# SqlCipherConventionPlugin for the iOS test executables); bump all three together.
+sqlcipher-android = "4.20.0"
 turbine = "1.2.1"
 
 [libraries]
@@ -81,6 +85,7 @@ kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-androidDriver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-nativeDriver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqlcipher-android = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipher-android" }
 sqldelight-sqliteDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 
 # DI
