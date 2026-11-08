@@ -43,7 +43,7 @@ import kotlin.test.assertTrue
 class TodayViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
     private val outbox = FakeOutbox()
-    private val ledger = RevealLedger()
+    private val ledger = RevealLedger { "me" }
     private val bonds = InviteBonds()
     private val viewModel by lazy { TodayViewModel(loop, ledger, bonds, outbox) }
 

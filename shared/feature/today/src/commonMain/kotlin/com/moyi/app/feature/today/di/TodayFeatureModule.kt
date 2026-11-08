@@ -5,6 +5,8 @@ import com.moyi.app.feature.today.archive.ArchiveFeed
 import com.moyi.app.feature.today.archive.ArchiveViewModel
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.RepositoryDailyLoop
+import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.reveal.RevealViewModel
 import com.moyi.app.feature.today.streak.StreakViewModel
@@ -21,7 +23,8 @@ import org.koin.dsl.module
  */
 val todayFeatureModule = module {
     single<DailyLoop> { RepositoryDailyLoop(get(), get(), get(), get(), get()) }
-    single { RevealLedger() }
+    // Keyed by the signed-in person too: two members of one bond can share a phone.
+    single { RevealLedger { (get<AuthRepository>().session.value as? SessionState.SignedIn)?.user?.id } }
     // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.
     viewModel { TodayViewModel(get(), get(), get(), get()) }
     viewModel { (editing: Boolean) -> WriteViewModel(editing, get(), get()) }
