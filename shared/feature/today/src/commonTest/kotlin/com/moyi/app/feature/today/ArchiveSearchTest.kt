@@ -37,7 +37,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class ArchiveSearchTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop(DailyLoopState.Ready(dayView(TodayStatus.Revealed)))
     private val repository = FakeArchiveRepository()
-    private val feed = ArchiveFeed(loop, repository)
+    private val cache = FakeArchiveCache()
+    private val feed = ArchiveFeed(loop, repository, cache)
 
     private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
@@ -291,7 +292,7 @@ class ArchiveSearchTest : MainDispatcherTest() {
 
         assertEquals(listOf<ArchiveEvent>(ArchiveEvent.NavigateToDay(kotlinx.datetime.LocalDate.parse("2026-09-01"))), events)
         assertEquals(ArchiveLoad.Ready, day.state.value.load, "the result is shown at once, from the feed")
-        assertEquals(emptyList(), repository.dayCalls)
+        assertEquals(listOf("2026-09-01"), repository.dayCalls, "then asked for, as every day view is")
         // Back: the list ViewModel is the same one, so its query and results are as they were.
         assertEquals("tea", list.state.value.query)
         assertEquals(ArchiveFilter.Search, list.state.value.filter)

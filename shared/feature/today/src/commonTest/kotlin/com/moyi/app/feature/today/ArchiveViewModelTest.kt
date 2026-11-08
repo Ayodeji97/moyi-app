@@ -37,7 +37,8 @@ class ArchiveViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop(DailyLoopState.Ready(dayView(TodayStatus.Revealed)))
     private val repository = FakeArchiveRepository()
     private val entries = FakeEntries()
-    private val feed = ArchiveFeed(loop, repository)
+    private val cache = FakeArchiveCache()
+    private val feed = ArchiveFeed(loop, repository, cache)
 
     /** The list ViewModel, with its state collected (it is shared WhileSubscribed, as the screen would). */
     private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed).also { viewModel ->
@@ -198,7 +199,7 @@ class ArchiveViewModelTest : MainDispatcherTest() {
     // ---- The day view ----
 
     @Test
-    fun theDayViewShowsTheDayTheListLoadedWithoutAFetch() = runTest {
+    fun theDayViewShowsTheDayTheListLoadedAtOnceAndThenAsksTheServer() = runTest {
         repository.pages[null] = ArchivePage(listOf(revealedDay("2026-09-02")), null)
         list()
 
@@ -208,7 +209,7 @@ class ArchiveViewModelTest : MainDispatcherTest() {
         assertEquals(MINE, state.day?.myEntry)
         assertEquals(THEIRS, state.day?.partnerEntry)
         assertTrue(state.day?.canDelete == true)
-        assertTrue(repository.dayCalls.isEmpty())
+        assertEquals(listOf("2026-09-02"), repository.dayCalls, "cache-then-network: the server's answer replaces it")
     }
 
     @Test

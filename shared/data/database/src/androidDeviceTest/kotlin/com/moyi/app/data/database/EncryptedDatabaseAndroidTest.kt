@@ -96,6 +96,7 @@ class EncryptedDatabaseAndroidTest {
             cachedDayQueries.insert(Rows.day("ada"))
             draftQueries.upsert(Rows.draft)
             outboxQueries.insert(Rows.queued)
+            archiveDayQueries.upsert(Rows.archived)
         }
         plain.close()
         assertContentEquals(EncryptedDatabaseOpener.PLAINTEXT_HEADER, header())
@@ -106,7 +107,7 @@ class EncryptedDatabaseAndroidTest {
             assertEquals(Rows.day("ada"), cachedDayQueries.forUser("ada").executeAsOneOrNull())
             assertEquals(listOf(Rows.queued), outboxQueries.queuedForUser("ada").executeAsList())
         }
-        listOf("cached_day", "draft", "outbox_entry").forEach { assertEquals(1L, database.rowCount(it), it) }
+        listOf("cached_day", "draft", "outbox_entry", "archive_day").forEach { assertEquals(1L, database.rowCount(it), it) }
         close()
         assertFalse(header().contentEquals(EncryptedDatabaseOpener.PLAINTEXT_HEADER))
         assertFalse(file().readBytes().containsSlice(Rows.SECRET.encodeToByteArray()))
@@ -139,6 +140,7 @@ class EncryptedDatabaseAndroidTest {
             cachedDayQueries.insert(Rows.day("ada"))
             draftQueries.upsert(Rows.draft)
             outboxQueries.insert(Rows.queued)
+            archiveDayQueries.upsert(Rows.archived)
         }
 
         database.wipe()

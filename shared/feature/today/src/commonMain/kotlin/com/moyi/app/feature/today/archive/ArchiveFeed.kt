@@ -1,8 +1,11 @@
 package com.moyi.app.feature.today.archive
 
 import com.moyi.app.core.Result
+import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveDay
+import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.joinPage
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.feature.today.common.DailyLoop
@@ -31,13 +34,26 @@ import kotlinx.datetime.LocalDate
  * **Paging**: newest first, `cursor` passed back unchanged. **Only a null cursor
  * means the end** (the contract): a short page, or one with nothing to draw, is not.
  *
+ * **Cache-then-network** (doc 13 §5, doc 14): the plain list (no filter, no search, no
+ * month jump) is drawn from [cache] at once, then the newest page is asked for and joined
+ * in, the server winning ([joinPage]). Offline, the cached days stay, with no error. The
+ * cursor then walks down from the newest page, so each cached page is asked for again as
+ * the list reaches it, and replaced, before older days are added; a page that fails shows
+ * the failure at the end of the list only, never over the days above it. Every page the
+ * server answers is written to [cache] (the plain list's pages in place; the other lists'
+ * days only over days already cached); search results never are (the contract says they
+ * are not to be stored). Before anything is written, the partner's words are stripped from
+ * every day not allowed to show them ([cacheable], BR-1).
+ *
  * Every load runs under one [Mutex]; [clear] moves [generation] on so an answer in
- * flight cannot publish into the next session. The list ViewModel clears it on its
- * way in and out, so no one's words outlive the screen that showed them.
+ * flight cannot publish into the next session, nor be written to the cache. The list
+ * ViewModel clears it on its way in and out, so no one's words outlive the screen that
+ * showed them (the cache is the session's, and the session wipes it).
  */
 class ArchiveFeed(
     private val loop: DailyLoop,
     private val archive: ArchiveRepository,
+    private val cache: ArchiveCache,
 ) {
     private val _state = MutableStateFlow(FeedState())
     val state: StateFlow<FeedState> = _state.asStateFlow()
@@ -73,20 +89,43 @@ class ArchiveFeed(
                 _state.value = asked.copy(load = FeedLoad.Failed)
                 return
             }
-            val answer = archive.page(bond.bondId, asked, cursor = null)
             // Stale: the Archive was left, or another load (a newer query, a chip) has
             // replaced this one while it was on its way. Its answer is dropped.
-            if (startedIn != generation || !_state.value.sameLoadAs(asked)) return
-            _state.value = when (answer) {
-                is Result.Failure -> asked.copy(load = FeedLoad.Failed)
-                is Result.Success -> asked.copy(
+            fun stale() = startedIn != generation || !_state.value.sameLoadAs(asked)
+            val cached = if (asked.plain) cache.read(bond.bondId)?.takeIf { it.days.isNotEmpty() } else null
+            if (stale()) return
+            if (cached != null) {
+                _state.value = asked.copy(
                     load = FeedLoad.Ready,
                     bondId = bond.bondId,
                     partnerName = bond.partnerName,
-                    days = answer.data.days,
-                    nextCursor = answer.data.nextCursor,
+                    days = cached.days,
+                    nextCursor = cached.nextCursor,
+                    pageEnd = cached.days.last().date,
                     pages = 1,
                 )
+            }
+            val answer = archive.page(bond.bondId, asked, cursor = null)
+            if (stale()) return
+            when (answer) {
+                // With cached days on screen, a failed refresh changes nothing: no error over good days.
+                is Result.Failure -> if (cached == null) _state.value = asked.copy(load = FeedLoad.Failed)
+                is Result.Success -> {
+                    val page = answer.data
+                    _state.update {
+                        asked.copy(
+                            load = FeedLoad.Ready,
+                            bondId = bond.bondId,
+                            partnerName = bond.partnerName,
+                            days = if (asked.plain) joinPage(it.days, page, after = null) ?: page.days else page.days,
+                            nextCursor = page.nextCursor,
+                            pageEnd = page.days.lastOrNull()?.date,
+                            loadingMore = it.loadingMore,
+                            pages = it.pages + 1,
+                        )
+                    }
+                    keep(bond.bondId, asked, page, after = null)
+                }
             }
         }
     }
@@ -105,23 +144,65 @@ class ArchiveFeed(
             val current = _state.value
             val cursor = current.nextCursor ?: return
             val bondId = current.bondId ?: return
+            val after = current.pageEnd
             val answer = archive.page(bondId, current, cursor)
             if (startedIn != generation || !_state.value.sameLoadAs(current)) return
             _state.update {
                 when (answer) {
                     is Result.Failure -> it.copy(loadingMore = false, pageFailed = true)
                     is Result.Success -> it.copy(
-                        // A day already shown is never shown twice, whatever a page says.
-                        days = it.days + answer.data.days.filter { new -> it.days.none { old -> old.date == new.date } },
+                        // The plain list joins the page in place (it may be a cached page asked
+                        // again); the others append it. A day already shown is never shown twice.
+                        days = (if (it.plain && after != null) joinPage(it.days, answer.data, after) else null)
+                            ?: (it.days + answer.data.days.filter { new -> it.days.none { old -> old.date == new.date } }),
                         nextCursor = answer.data.nextCursor,
+                        pageEnd = answer.data.days.lastOrNull()?.date ?: after,
                         loadingMore = false,
                         pageFailed = false,
                         pages = it.pages + 1,
                     )
                 }
             }
+            if (answer is Result.Success) keep(bondId, current, answer.data, after)
         }
     }
+
+    /**
+     * Writes what the server answered to the cache: the plain list's page in place, the
+     * other lists' days only over days already cached, and a search's never.
+     */
+    private suspend fun keep(bondId: String, asked: FeedState, page: ArchivePage, after: String?) {
+        val safe = page.copy(days = page.days.map { it.cacheable() })
+        when {
+            asked.query != null -> Unit
+            asked.plain -> cache.putPage(bondId, safe, after)
+            else -> cache.update(bondId, safe.days)
+        }
+    }
+
+    /** The cached [date], for the day view to draw before it asks. Null when not cached. */
+    suspend fun cached(date: String): ArchiveDay? = currentBondId()?.let { cache.day(it, date) }
+
+    /** [day], as the server just answered it, over the cached day with its date (if cached). */
+    suspend fun keep(day: ArchiveDay) {
+        val bondId = currentBondId() ?: return
+        cache.update(bondId, listOf(day.cacheable()))
+    }
+
+    /** The server confirmed my mark on [entryId] of [date]: the cache follows. */
+    suspend fun keepMark(date: String, entryId: String, marked: Boolean) {
+        val bondId = currentBondId() ?: return
+        cache.setMark(bondId, date, entryId, marked)
+    }
+
+    /** [date] is not in the archive any more (`404`): gone from the list and the cache. */
+    suspend fun forget(date: String) {
+        _state.update { feed -> feed.copy(days = feed.days.filterNot { it.date == date }) }
+        val bondId = currentBondId() ?: return
+        cache.remove(bondId, date)
+    }
+
+    private fun currentBondId(): String? = _state.value.bondId ?: (loop.state.value as? DailyLoopState.Ready)?.day?.bondId
 
     /** The loaded day for [date], if the list has it. */
     fun find(date: String): ArchiveDay? = _state.value.days.firstOrNull { it.date == date }
@@ -169,18 +250,26 @@ data class FeedState(
     val partnerName: String? = null,
     val days: List<ArchiveDay> = emptyList(),
     val nextCursor: String? = null,
+    /**
+     * The plain list's: the oldest day of the last page answered (or of the cached run, before
+     * any), where the next page starts. The next page covers the dates before it ([joinPage]).
+     */
+    val pageEnd: String? = null,
     val loadingMore: Boolean = false,
     val pageFailed: Boolean = false,
     /** Pages loaded so far: the list asks again near its end each time this moves. */
     val pages: Int = 0,
 ) {
     /** The same list as [other] was asked for: same filter, same query, same month jump. */
+    /** The plain list: no filter, no search, no month jump. The only one drawn from the cache, and kept in it page by page. */
+    val plain: Boolean get() = !favourites && query == null && until == null
+
     fun sameLoadAs(other: FeedState): Boolean = favourites == other.favourites && query == other.query && until == other.until
 
     // The query is a person's own words: never in a log, like the entries.
     override fun toString(): String =
         "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, bondId=$bondId, partnerName=$partnerName, " +
-            "days=$days, nextCursor=$nextCursor, loadingMore=$loadingMore, pageFailed=$pageFailed, pages=$pages)"
+            "days=$days, nextCursor=$nextCursor, pageEnd=$pageEnd, loadingMore=$loadingMore, pageFailed=$pageFailed, pages=$pages)"
 }
 
 /**
@@ -259,6 +348,19 @@ internal fun ArchiveDay.toArchiveDayUi(): ArchiveDayUi? {
         myMarkOnMine = entry?.takeIf { mine != null && it.status == EntryStatus.REVEALED }?.let { it.id in markedByMe },
         myMarkOnTheirs = theirEntry?.takeIf { theirs != null }?.let { it.id in markedByMe },
     )
+}
+
+/**
+ * [this] as it may be kept on the device (BR-1): the partner's words only on a day that may
+ * show them, by the same rule the list draws by ([toArchiveDayUi]). The server sends words
+ * only where they may be read, so this changes nothing today; it is here so that a day
+ * the Archive would not show is never on the disk either. Without words, their entry is
+ * kept as [PartnerEntry.Locked], and so has no mark.
+ */
+internal fun ArchiveDay.cacheable(): ArchiveDay {
+    val words = partnerEntry.idIfWords() ?: return this
+    if (toArchiveDayUi()?.partnerEntry != null) return this
+    return copy(partnerEntry = PartnerEntry.Locked, markedByMe = markedByMe - words)
 }
 
 private fun PartnerEntry?.idIfWords(): String? = when (this) {

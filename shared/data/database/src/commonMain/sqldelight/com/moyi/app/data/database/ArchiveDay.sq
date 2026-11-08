@@ -1,0 +1,92 @@
+-- The Archive's days, for the person signed in and the bond Today shows (doc 13 §5:
+-- "paged cache; older pages fetched on demand and retained"). One run of days with no
+-- gaps, newest first, from the newest page the server last answered down to the oldest
+-- page kept; the server always wins: each page it answers replaces the cached rows of
+-- the dates it covers.
+--
+-- page_cursor is the nextCursor of the page the row arrived in: what to ask for after
+-- that page. The oldest row's page_cursor is therefore what to ask for after the whole
+-- run (NULL: the archive ends there), and evicting the oldest page is deleting the rows
+-- that share the oldest row's page_cursor. The cursor stays opaque: it is only ever
+-- stored and passed back, never built or read.
+--
+-- Only what the Archive draws, and only what the person may read (BR-1): the partner's
+-- words are kept only on a day allowed to show them; the feature strips them before a
+-- row gets here. Marks are the person's own favourites (0 or 1), never the partner's.
+-- Enums are stored by name; a row this build cannot read back is no cache at all.
+CREATE TABLE archive_day (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    day_date TEXT NOT NULL,
+    day_status TEXT NOT NULL,
+    my_entry_id TEXT,
+    my_entry_text TEXT,
+    my_entry_status TEXT,
+    my_entry_marked INTEGER NOT NULL,
+    partner_entry_shape TEXT,
+    partner_entry_id TEXT,
+    partner_entry_text TEXT,
+    partner_entry_marked INTEGER NOT NULL,
+    page_cursor TEXT,
+    PRIMARY KEY (user_id, bond_id, day_date)
+);
+
+run:
+SELECT * FROM archive_day WHERE user_id = ? AND bond_id = ? ORDER BY day_date DESC;
+
+forDate:
+SELECT * FROM archive_day WHERE user_id = ? AND bond_id = ? AND day_date = ?;
+
+newestDate:
+SELECT MAX(day_date) AS newest FROM archive_day WHERE user_id = ? AND bond_id = ?;
+
+oldestDate:
+SELECT MIN(day_date) AS oldest FROM archive_day WHERE user_id = ? AND bond_id = ?;
+
+-- The cursor after the whole run: the one the oldest day arrived with.
+tail:
+SELECT page_cursor FROM archive_day WHERE user_id = ? AND bond_id = ? ORDER BY day_date ASC LIMIT 1;
+
+count:
+SELECT COUNT(*) FROM archive_day WHERE user_id = ? AND bond_id = ?;
+
+upsert:
+INSERT OR REPLACE INTO archive_day VALUES ?;
+
+-- Every row that is not this person's run of this bond: one run in the table, ever.
+deleteOthers:
+DELETE FROM archive_day WHERE user_id != :user OR bond_id != :bond;
+
+deleteRun:
+DELETE FROM archive_day WHERE user_id = ? AND bond_id = ?;
+
+-- The dates a page covers: on or after its oldest day, and before the day the page
+-- before it ended on.
+deleteBetween:
+DELETE FROM archive_day WHERE user_id = :user AND bond_id = :bond AND day_date >= :from AND day_date < :before;
+
+deleteBefore:
+DELETE FROM archive_day WHERE user_id = :user AND bond_id = :bond AND day_date < :before;
+
+deleteFrom:
+DELETE FROM archive_day WHERE user_id = :user AND bond_id = :bond AND day_date >= :from;
+
+deleteDay:
+DELETE FROM archive_day WHERE user_id = ? AND bond_id = ? AND day_date = ?;
+
+-- The oldest page: every row arrived with the same nextCursor as the oldest row.
+-- IS, not =, so the last page (a NULL cursor) is matched too.
+deleteOldestPage:
+DELETE FROM archive_day WHERE user_id = :user AND bond_id = :bond AND page_cursor IS (
+    SELECT page_cursor FROM archive_day WHERE user_id = :user AND bond_id = :bond ORDER BY day_date ASC LIMIT 1
+);
+
+-- An empty page after the oldest one: the run now continues from the cursor it gave.
+moveTail:
+UPDATE archive_day SET page_cursor = :next WHERE user_id = :user AND bond_id = :bond AND page_cursor IS :previous;
+
+setMyMark:
+UPDATE archive_day SET my_entry_marked = :marked WHERE user_id = :user AND bond_id = :bond AND day_date = :date AND my_entry_id = :entry;
+
+setPartnerMark:
+UPDATE archive_day SET partner_entry_marked = :marked WHERE user_id = :user AND bond_id = :bond AND day_date = :date AND partner_entry_id = :entry;

@@ -29,7 +29,8 @@ import kotlin.test.assertTrue
 class ArchiveMonthJumpTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop(DailyLoopState.Ready(dayView(TodayStatus.Revealed)))
     private val repository = FakeArchiveRepository()
-    private val feed = ArchiveFeed(loop, repository)
+    private val cache = FakeArchiveCache()
+    private val feed = ArchiveFeed(loop, repository, cache)
 
     private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
