@@ -17,7 +17,7 @@ sealed interface SignedInStartAction {
 }
 
 sealed interface SignedInStartEvent {
-    /** In an open bond, waiting for the partner or not: Today (states.md §3). */
+    /** In an open bond, waiting for the partner or not, or a day cached from one: Today (states.md §3). */
     data object NavigateToToday : SignedInStartEvent
 
     /**

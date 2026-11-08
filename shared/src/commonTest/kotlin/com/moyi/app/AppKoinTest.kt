@@ -29,6 +29,8 @@ import com.moyi.app.feature.onboarding.start.SignedInStartViewModel
 import com.moyi.app.feature.auth.login.LoginViewModel
 import com.moyi.app.feature.auth.register.RegisterViewModel
 import com.moyi.app.feature.auth.verify.VerifyViewModel
+import com.moyi.app.domain.today.CachedDay
+import com.moyi.app.domain.today.TodayCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -74,6 +76,7 @@ class AppKoinTest {
                     single<BondRepository> { PreviewBondRepository() }
                     single<BondSettingsRepository> { PreviewBondSettingsRepository() }
                     single<AccountRepository> { StubAccountRepository }
+                    single<TodayCache> { NoCachedDay }
                 },
             )
         }.koin
@@ -136,4 +139,11 @@ internal class StubAuthRepository(private val onRestore: () -> Unit) : AuthRepos
 
 private object StubAccountRepository : AccountRepository {
     override suspend fun currentUser(): Result<User, DataError.Network> = Result.Failure(DataError.Network.Unknown)
+}
+
+/** A device with nothing cached. */
+private object NoCachedDay : TodayCache {
+    override suspend fun read(): CachedDay? = null
+    override suspend fun write(day: CachedDay) = Unit
+    override suspend fun clear() = Unit
 }

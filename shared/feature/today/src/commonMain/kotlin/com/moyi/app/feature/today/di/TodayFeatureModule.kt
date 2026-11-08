@@ -15,11 +15,12 @@ import org.koin.dsl.module
 
 /**
  * The daily loop's ViewModels, over one shared [DailyLoop] backed by the domain's
- * BondRepository and TodayRepository (bound by the data layer, assembled in :shared).
+ * BondRepository, TodayRepository and TodayCache (bound by the data layer, assembled
+ * in :shared).
  * The `-PmoyiUiPreview=today` build binds its preview loop over this one (KoinInit).
  */
 val todayFeatureModule = module {
-    single<DailyLoop> { RepositoryDailyLoop(get(), get()) }
+    single<DailyLoop> { RepositoryDailyLoop(get(), get(), get()) }
     single { RevealLedger() }
     // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.
     viewModel { TodayViewModel(get(), get(), get()) }

@@ -25,8 +25,14 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
         pluginManager.apply(libs.pluginId("androidMultiplatformLibrary"))
 
         extensions.configure<KotlinMultiplatformExtension> {
-            iosArm64()
-            iosSimulatorArm64()
+            // SQLDelight's iOS driver (shared/data/database) calls the system SQLite,
+            // which Kotlin/Native does not link by itself. Every binary that could
+            // contain the driver links it: a module's test executable reaches the
+            // driver through data:testing, the app's framework through the data layer.
+            // Linking a system library a binary never calls costs nothing.
+            listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+                target.binaries.all { linkerOpts("-lsqlite3") }
+            }
 
             extensions.configure<KotlinMultiplatformAndroidLibraryTarget> {
                 namespace = moyiNamespace()

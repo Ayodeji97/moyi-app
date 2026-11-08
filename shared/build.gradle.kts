@@ -40,6 +40,7 @@ kotlin {
             implementation(project(":shared:data:api"))
             implementation(project(":shared:data:network"))
             implementation(project(":shared:data:session"))
+            implementation(project(":shared:data:database"))
             implementation(project(":shared:data:repository"))
             implementation(project(":shared:feature:auth"))
             implementation(project(":shared:feature:onboarding"))

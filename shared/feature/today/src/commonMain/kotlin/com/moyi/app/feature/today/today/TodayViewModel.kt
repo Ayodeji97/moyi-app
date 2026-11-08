@@ -11,6 +11,7 @@ import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DeleteResult
 import com.moyi.app.feature.today.common.PartnerVisible
+import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.common.TodayStatus
 import kotlinx.coroutines.channels.Channel
@@ -26,17 +27,16 @@ import kotlinx.coroutines.launch
 /**
  * Today, over the shared [DailyLoop].
  *
- * - **Loading**: the first load shows the bare surface (no spinner); every later one
- *   refreshes behind what is shown. The screen asks on every foreground
+ * - **Loading**: the first load draws the cached day at once when there is one for
+ *   today's Bond-day, and the bare surface (no spinner) when there is not; every load
+ *   refreshes behind what is shown ([RepositoryDailyLoop]). The screen asks on every foreground
  *   ([TodayAction.OnForeground]), and the loop refreshes after each write and delete.
  * - **The reveal**: when a day turns up revealed with the partner's words, and the
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
  *
- * Today is the root of the signed-in app, so it owns the loop's lifetime: the day is
- * forgotten when this ViewModel is created and when it is cleared (a sign-out), so no
- * one's words outlive the session that loaded them.
- *
- * TODO(logic): render from a local cache at once (states.md §3, doc 13 §5), owed with SQLDelight.
+ * Today is the root of the signed-in app, so it owns the loop's lifetime: the day in
+ * memory is forgotten when this ViewModel is created and when it is cleared. The copy
+ * on disk is the session's to wipe, when it ends (SessionManager).
  */
 class TodayViewModel(
     private val loop: DailyLoop,

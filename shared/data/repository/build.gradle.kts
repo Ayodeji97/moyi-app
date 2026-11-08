@@ -10,6 +10,7 @@ kotlin {
             implementation(project(":shared:data:api"))
             implementation(project(":shared:data:network"))
             implementation(project(":shared:data:session"))
+            implementation(project(":shared:data:database"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
         }
