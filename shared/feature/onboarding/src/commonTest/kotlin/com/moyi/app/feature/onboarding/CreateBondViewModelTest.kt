@@ -16,17 +16,25 @@ import com.moyi.app.feature.onboarding.resources.bond_create_error
 import com.moyi.app.feature.onboarding.resources.bond_create_error_limit
 import com.moyi.app.feature.onboarding.resources.bond_name_error_blank
 import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
+import com.moyi.app.feature.onboarding.createbond.TimeZoneOption
+import com.moyi.app.feature.onboarding.resources.field_timezone_error
 import com.moyi.app.feature.onboarding.resources.field_timezone_error_unsupported
 import com.moyi.app.feature.onboarding.resources.onboarding_error_generic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class CreateBondViewModelTest : MainDispatcherTest() {
     private val bonds = FakeBondRepository()
-    private val viewModel = CreateBondViewModel(RelationshipType.Couple, bonds, deviceTimeZone = "Africa/Lagos")
+    private var zoneIds: () -> Set<String> = { ZONES }
+    private val viewModel = createViewModel("Africa/Lagos")
+
+    private fun createViewModel(deviceZone: String) =
+        CreateBondViewModel(RelationshipType.Couple, bonds, deviceTimeZone = deviceZone, availableZoneIds = { zoneIds() })
 
     @Test
     fun aBlankNameIsAFieldErrorAndSendsNothing() = runTest {
@@ -173,7 +181,7 @@ class CreateBondViewModelTest : MainDispatcherTest() {
     @Test
     fun aZoneTheBackendRefusesIsSaidOnTheFieldAndNeverSent() {
         for (zone in listOf("UTC", "GMT", "Etc/GMT+1")) {
-            val vm = CreateBondViewModel(RelationshipType.Couple, bonds, deviceTimeZone = zone)
+            val vm = createViewModel(zone)
             vm.onAction(CreateBondAction.OnNameChange("Us"))
             vm.onAction(CreateBondAction.OnCreateClick)
             assertEquals(UiText.Resource(Res.string.field_timezone_error_unsupported), vm.state.value.timeZoneError, zone)
@@ -194,5 +202,150 @@ class CreateBondViewModelTest : MainDispatcherTest() {
     fun theTimeZoneShowsAsItsCity() {
         assertEquals("Lagos", viewModel.state.value.timeZoneCity)
         assertEquals("Buenos Aires", CreateBondViewModel.cityOf("America/Argentina/Buenos_Aires"))
+    }
+
+    // ---- The time-zone picker ----
+
+    @Test
+    fun openingThePickerListsRegionZonesWithTheDeviceZoneFirstAndChosen() {
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        val zones = assertNotNull(viewModel.state.value.picker).zones
+        assertEquals("Africa/Lagos", zones.first().id)
+        assertTrue(zones.first().selected)
+        assertEquals(1, zones.count { it.selected })
+        // The rest by city: Buenos Aires, Kolkata, London, Longyearbyen, New York.
+        assertEquals(
+            listOf("Africa/Lagos", "America/Argentina/Buenos_Aires", "Asia/Kolkata", "Europe/London", "Arctic/Longyearbyen", "America/New_York"),
+            zones.map { it.id },
+            "no UTC, GMT, Etc/ or legacy US/ links",
+        )
+        assertEquals(TimeZoneOption("America/Argentina/Buenos_Aires", "Buenos Aires", "America, Argentina", false), zones[1])
+    }
+
+    @Test
+    fun searchFiltersByCityIgnoringCase() {
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        viewModel.onAction(CreateBondAction.OnTimeZoneQueryChange("lon"))
+        val picker = assertNotNull(viewModel.state.value.picker)
+        assertEquals("lon", picker.query)
+        assertEquals(listOf("London", "Longyearbyen"), picker.zones.map { it.city })
+
+        viewModel.onAction(CreateBondAction.OnTimeZoneQueryChange("Springfield"))
+        assertEquals(emptyList(), viewModel.state.value.picker!!.zones)
+
+        viewModel.onAction(CreateBondAction.OnTimeZoneQueryChange(""))
+        assertEquals(6, viewModel.state.value.picker!!.zones.size, "clearing the search lists everything again")
+    }
+
+    @Test
+    fun choosingAZoneSetsItAndClosesThePicker() {
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        viewModel.onAction(CreateBondAction.OnTimeZoneSelect("Europe/London"))
+        val state = viewModel.state.value
+        assertNull(state.picker)
+        assertEquals("Europe/London", state.timeZoneId)
+        assertEquals("London", state.timeZoneCity)
+
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        val zones = viewModel.state.value.picker!!.zones
+        assertEquals(listOf("Europe/London", "Africa/Lagos"), zones.take(2).map { it.id }, "the choice, then the device's")
+        assertEquals(listOf("Europe/London"), zones.filter { it.selected }.map { it.id })
+    }
+
+    @Test
+    fun dismissingThePickerLeavesTheChoiceUnchanged() {
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        viewModel.onAction(CreateBondAction.OnTimeZoneSelect("Europe/London"))
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        viewModel.onAction(CreateBondAction.OnTimeZoneQueryChange("Kol"))
+        viewModel.onAction(CreateBondAction.OnTimeZoneDismiss)
+        val state = viewModel.state.value
+        assertNull(state.picker)
+        assertEquals("Europe/London", state.timeZoneId)
+        assertEquals("London", state.timeZoneCity)
+
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        assertEquals("", viewModel.state.value.picker!!.query, "the search starts empty each time")
+    }
+
+    @Test
+    fun aZoneNotOfferedCannotBeChosen() {
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        viewModel.onAction(CreateBondAction.OnTimeZoneSelect("Etc/GMT+1"))
+        assertEquals("Africa/Lagos", viewModel.state.value.timeZoneId)
+    }
+
+    @Test
+    fun createSendsTheChosenZone() = runTest {
+        viewModel.onAction(CreateBondAction.OnNameChange("Us"))
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        viewModel.onAction(CreateBondAction.OnTimeZoneSelect("America/Argentina/Buenos_Aires"))
+        viewModel.events.test {
+            viewModel.onAction(CreateBondAction.OnCreateClick)
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+        }
+        assertEquals(
+            listOf(FakeBondRepository.CreateCall("Us", BondType.COUPLE, "America/Argentina/Buenos_Aires")),
+            bonds.createCalls,
+        )
+    }
+
+    @Test
+    fun choosingARegionZoneClearsTheUnsupportedZoneErrorAndThenCreates() = runTest {
+        val vm = createViewModel("UTC")
+        vm.onAction(CreateBondAction.OnNameChange("Us"))
+        vm.onAction(CreateBondAction.OnCreateClick)
+        assertEquals(UiText.Resource(Res.string.field_timezone_error_unsupported), vm.state.value.timeZoneError)
+
+        vm.onAction(CreateBondAction.OnTimeZoneClick)
+        assertEquals(
+            UiText.Resource(Res.string.field_timezone_error_unsupported),
+            vm.state.value.timeZoneError,
+            "opening alone does not clear it",
+        )
+        assertTrue(vm.state.value.picker!!.zones.none { it.id == "UTC" }, "a refused zone is never offered")
+        vm.onAction(CreateBondAction.OnTimeZoneSelect("Africa/Lagos"))
+        assertNull(vm.state.value.timeZoneError)
+
+        vm.events.test {
+            vm.onAction(CreateBondAction.OnCreateClick)
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+        }
+        assertEquals(listOf(FakeBondRepository.CreateCall("Us", BondType.COUPLE, "Africa/Lagos")), bonds.createCalls)
+    }
+
+    @Test
+    fun aLoadFailureIsSaidOnTheFieldAndOpeningAgainRetries() {
+        zoneIds = { throw IllegalStateException("no tz database") }
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        assertNull(viewModel.state.value.picker)
+        assertEquals(UiText.Resource(Res.string.field_timezone_error), viewModel.state.value.timeZoneError)
+        assertEquals("Africa/Lagos", viewModel.state.value.timeZoneId, "the choice is still here")
+
+        zoneIds = { ZONES }
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        assertNotNull(viewModel.state.value.picker)
+        assertNull(viewModel.state.value.timeZoneError)
+    }
+
+    @Test
+    fun aFailureKeepsTheNameAndTheChosenZone() {
+        bonds.createResult = Result.Failure(DataError.Network.NoInternet)
+        viewModel.onAction(CreateBondAction.OnNameChange("Amara and Tunde"))
+        viewModel.onAction(CreateBondAction.OnTimeZoneClick)
+        viewModel.onAction(CreateBondAction.OnTimeZoneSelect("Europe/London"))
+        viewModel.onAction(CreateBondAction.OnCreateClick)
+        val state = viewModel.state.value
+        assertEquals(CreateBondStatus.Failed, state.status)
+        assertEquals("Amara and Tunde", state.name)
+        assertEquals("Europe/London", state.timeZoneId)
+        assertEquals("London", state.timeZoneCity)
+    }
+
+    private companion object {
+        val ZONES = setOf(
+            "Africa/Lagos", "Europe/London", "America/New_York", "America/Argentina/Buenos_Aires",
+            "Asia/Kolkata", "Arctic/Longyearbyen", "UTC", "GMT", "Etc/GMT+1", "US/Eastern", "SystemV/EST5",
+        )
     }
 }

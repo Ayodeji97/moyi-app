@@ -72,8 +72,19 @@
     <string name="field_timezone_label">Shared time zone</string>
     <!-- field.timezone.helper, the in-file wording with the city as a placeholder. The highest-stakes string in the product (strings-proposed.md). %1$s is the time zone's city, e.g. Lagos. -->
     <string name="field_timezone_helper">Your day starts and ends on %1$s time, for both of you, even when either of you travels.</string>
-    <!-- PROPOSED. The device reports a zone the backend refuses (UTC, GMT, Etc/...: only a region zone such as Africa/Lagos is accepted) and the picker is not built yet. -->
-    <string name="field_timezone_error_unsupported">Your phone has no city set for its time zone. Choose one in your phone's settings, then come back.</string>
+    <!-- PROPOSED. The zone cannot be sent: the device reports one the backend refuses (UTC, GMT, Etc/...: only a region zone such as Africa/Lagos is accepted), or the backend refused the zone with a 422. Said on the field; "Open this" points at the field itself, which opens the picker (the same move as field.timezone.error). Replaces "Choose one in your phone's settings", written before the picker existed. -->
+    <string name="field_timezone_error_unsupported">We cannot use this time zone. Open this and choose a city.</string>
+    <!-- field.timezone.error, IN FILE (strings-proposed.md, decided 2026-09-03). The platform's zone list could not be read. Opening the field again retries. -->
+    <string name="field_timezone_error">We could not load time zones. Your choice is still here. Open it again to retry.</string>
+
+    <!-- ===== Onboarding 5 · time-zone picker (no Figma frame; interim layout, owner ruling owed) ===== -->
+
+    <!-- PROPOSED. The picker's heading. -->
+    <string name="timezone_picker_heading">Choose your shared time zone</string>
+    <!-- PROPOSED. The search field's label (no placeholder stands in for a label, Field). -->
+    <string name="timezone_picker_search_label">Search for a city</string>
+    <!-- PROPOSED. The search matches no zone. Most cities are not in the list: a zone is named after one city in it. -->
+    <string name="timezone_picker_empty">No time zone is named after that city. Try a larger city near it, in the same time zone.</string>
     <!-- bond.create.action. -->
     <string name="bond_create_action">Create bond</string>
     <!-- PROPOSED. The button while the bond is being created (PrimaryAction Sending, states.md §1c). -->

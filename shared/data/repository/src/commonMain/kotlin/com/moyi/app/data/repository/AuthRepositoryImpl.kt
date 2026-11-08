@@ -2,12 +2,15 @@ package com.moyi.app.data.repository
 
 import com.moyi.app.api.apis.LoginControllerApi
 import com.moyi.app.api.apis.LogoutControllerApi
+import com.moyi.app.api.apis.PasswordResetControllerApi
 import com.moyi.app.api.apis.RegistrationControllerApi
 import com.moyi.app.api.apis.VerificationControllerApi
+import com.moyi.app.api.models.ForgotPasswordRequest
 import com.moyi.app.api.models.LoginRequest
 import com.moyi.app.api.models.LogoutRequest
 import com.moyi.app.api.models.RegisterRequest
 import com.moyi.app.api.models.ResendVerificationRequest
+import com.moyi.app.api.models.ResetPasswordRequest
 import com.moyi.app.api.models.VerifyEmailRequest
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
@@ -46,6 +49,7 @@ class AuthRepositoryImpl(
     private val verification = VerificationControllerApi(config.origin, publicClient.client)
     private val loginApi = LoginControllerApi(config.origin, publicClient.client)
     private val logoutApi = LogoutControllerApi(config.origin, publicClient.client)
+    private val passwordReset = PasswordResetControllerApi(config.origin, publicClient.client)
 
     override val session: StateFlow<SessionState> = sessionManager.sessionState
     override val sessionEvents: Flow<SessionEvent> = sessionManager.events
@@ -76,6 +80,13 @@ class AuthRepositoryImpl(
 
     override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { verification.resend(ResendVerificationRequest(email)) }
+
+    override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { passwordReset.forgot(ForgotPasswordRequest(email)) }
+
+    // 200 with no body and no session: the person signs in afterwards (doc 06 §3.1).
+    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { passwordReset.reset(ResetPasswordRequest(password = password, token = token)) }
 
     override suspend fun login(email: String, password: String): Result<User, DataError> {
         val request = LoginRequest(email = email, password = password, device = deviceInfo.deviceInfo().toRequest())

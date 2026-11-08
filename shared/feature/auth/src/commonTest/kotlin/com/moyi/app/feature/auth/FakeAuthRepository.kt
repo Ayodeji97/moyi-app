@@ -30,6 +30,8 @@ class FakeAuthRepository : AuthRepository {
     var registerResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var verifyResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var resendResult: EmptyResult<DataError.Network> = Result.Success(Unit)
+    var requestResetResult: EmptyResult<DataError.Network> = Result.Success(Unit)
+    var resetResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var loginResult: Result<User, DataError> = Result.Success(USER)
 
     var gate: CompletableDeferred<Unit>? = null
@@ -50,6 +52,10 @@ class FakeAuthRepository : AuthRepository {
     val registerCalls = mutableListOf<RegisterCall>()
     val verifyCalls = mutableListOf<String>()
     val resendCalls = mutableListOf<String>()
+    val requestResetCalls = mutableListOf<String>()
+
+    /** (token, password) pairs sent to resetPassword. */
+    val resetCalls = mutableListOf<Pair<String, String>>()
     val loginCalls = mutableListOf<Pair<String, String>>()
     var logoutCalls = 0
 
@@ -76,6 +82,18 @@ class FakeAuthRepository : AuthRepository {
         resendCalls += email
         (resendGate ?: gate)?.await()
         return resendResult
+    }
+
+    override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> {
+        requestResetCalls += email
+        gate?.await()
+        return requestResetResult
+    }
+
+    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> {
+        resetCalls += token to password
+        gate?.await()
+        return resetResult
     }
 
     override suspend fun login(email: String, password: String): Result<User, DataError> {
