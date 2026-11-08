@@ -41,6 +41,31 @@ suspend fun <T : Any> safeApiCallWithETag(call: suspend () -> HttpResponse<T>): 
 suspend fun safeApiCallEmpty(call: suspend () -> HttpResponse<*>): EmptyResult<DataError.Network> =
     execute(call) { Result.Success(Unit) }
 
+/**
+ * A request to the object storage, not the API: any 2xx is success. A refusal is
+ * [DataError.Network.Server] with its status whatever it is, because the storage answers
+ * in S3's XML, never problem+json, and its body is not read (it can echo the request).
+ */
+suspend fun safeStorageCall(call: suspend () -> io.ktor.client.statement.HttpResponse): EmptyResult<DataError.Network> =
+    try {
+        val status = call().status.value
+        if (status in HTTP_OK_RANGE) Result.Success(Unit) else Result.Failure(DataError.Network.Server(status))
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: HttpRequestTimeoutException) {
+        Result.Failure(DataError.Network.Timeout)
+    } catch (_: ConnectTimeoutException) {
+        Result.Failure(DataError.Network.Timeout)
+    } catch (_: SocketTimeoutException) {
+        Result.Failure(DataError.Network.Timeout)
+    } catch (_: IOException) {
+        Result.Failure(DataError.Network.NoInternet)
+    } catch (_: Exception) {
+        Result.Failure(DataError.Network.Unknown)
+    }
+
+private val HTTP_OK_RANGE = 200..299
+
 private suspend fun <R : HttpResponse<*>, T> execute(
     call: suspend () -> R,
     onSuccess: suspend (R) -> Result<T, DataError.Network>,

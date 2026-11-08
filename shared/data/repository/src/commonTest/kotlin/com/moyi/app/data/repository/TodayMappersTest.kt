@@ -1,6 +1,7 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.models.BondDayResponse
+import com.moyi.app.api.models.EntryImageResponse
 import com.moyi.app.api.models.EntryResponse
 import com.moyi.app.api.models.LockedEntryResponse
 import com.moyi.app.api.models.MemberResponse
@@ -8,6 +9,8 @@ import com.moyi.app.api.models.TodayPromptResponse
 import com.moyi.app.api.models.TodayResponse
 import com.moyi.app.api.wire.PartnerEntryWire
 import com.moyi.app.domain.today.BondDayStatus
+import com.moyi.app.domain.today.EntryImage
+import com.moyi.app.domain.today.EntryImageStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
@@ -15,7 +18,9 @@ import com.moyi.app.domain.today.Prompt
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /** The wire-to-domain mapping, every enum value and every shape, without a network. */
@@ -96,6 +101,34 @@ class TodayMappersTest {
         assertNull(partnerName(listOf(member("m1", "Amara"), MemberResponse(id = "m2")), "m1"), "a member without a name names nobody")
     }
 
+    @Test
+    fun aPhotoIsMappedAsTheServerShowsItToTheReader() {
+        val ready = EntryImageResponse(height = 960, id = "m1", sensitive = false, status = EntryImageResponse.Status.READY, url = URL, width = 1280)
+        assertEquals(EntryImage("m1", EntryImageStatus.Ready, URL, 1280, 960, false), ready.toEntryImage())
+        // Sensitive only on a ready photo (the contract: false unless READY).
+        assertTrue(ready.copy(sensitive = true).toEntryImage().sensitive)
+        // Processing: never a URL, whatever was sent.
+        val processing = ready.copy(status = EntryImageResponse.Status.PROCESSING, sensitive = true)
+        assertEquals(EntryImage("m1", EntryImageStatus.Processing, null, 1280, 960, false), processing.toEntryImage())
+        // Not shared: the author still has the photo, unless it was blocked outright.
+        assertEquals(EntryImageStatus.NotShared, ready.copy(status = EntryImageResponse.Status.NOT_SHARED).toEntryImage().status)
+        assertEquals(URL, ready.copy(status = EntryImageResponse.Status.NOT_SHARED).toEntryImage().url)
+        assertNull(ready.copy(status = EntryImageResponse.Status.NOT_SHARED, url = null).toEntryImage().url)
+        // A ready photo without its URL cannot be drawn: read as still on its way.
+        assertEquals(EntryImageStatus.Processing, ready.copy(url = null).toEntryImage().status)
+    }
+
+    @Test
+    fun anEntrysPhotoTravelsWithItAndATombstoneHasNone() {
+        val image = EntryImageResponse(height = 960, id = "m1", sensitive = false, status = EntryImageResponse.Status.READY, url = URL, width = 1280)
+        assertEquals("m1", entry(EntryResponse.Status.SUBMITTED, "w").copy(image = image).toMyEntry()?.image?.id)
+        assertNull(entry(EntryResponse.Status.DELETED, null).copy(image = image).toMyEntry()?.image)
+        val theirs = PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w").copy(image = image)).toPartnerEntry()
+        assertEquals("m1", assertIs<PartnerEntry.Revealed>(theirs).image?.id)
+        // The image never reaches a log.
+        assertTrue("(redacted)" in image.toEntryImage().toString() && URL !in image.toEntryImage().toString())
+    }
+
     private fun entry(status: EntryResponse.Status, text: String?) = EntryResponse(
         authorMemberId = "m1",
         bondId = "b1",
@@ -119,5 +152,6 @@ class TodayMappersTest {
 
     private companion object {
         val DATE = LocalDate(2026, 9, 14)
+        const val URL = "http://localhost:9000/moyi-media/display?X-Amz-Signature=abc"
     }
 }

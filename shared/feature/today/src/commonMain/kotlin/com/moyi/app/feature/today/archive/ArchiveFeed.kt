@@ -1,6 +1,7 @@
 package com.moyi.app.feature.today.archive
 
 import com.moyi.app.core.Result
+import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
@@ -12,6 +13,8 @@ import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.PartnerVisible
 import com.moyi.app.feature.today.common.TodayStatus
+import com.moyi.app.feature.today.common.image
+import com.moyi.app.feature.today.common.toEntryPhoto
 import com.moyi.app.feature.today.common.todayStatus
 import com.moyi.app.feature.today.common.words
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -328,6 +331,10 @@ data class ArchiveDayUi(
     val myEntryId: String?,
     /** The partner's words, only where the day may show them. */
     val partnerEntry: String?,
+    /** The photo on my live entry. */
+    val myPhoto: EntryPhoto? = null,
+    /** The partner's photo, only where [partnerEntry] is held. */
+    val partnerPhoto: EntryPhoto? = null,
     /** My live entry on a revealed day: "Delete what you wrote" (with its confirm). */
     val canDelete: Boolean,
     /** The id of the partner's entry, when its words are held. */
@@ -350,7 +357,7 @@ data class ArchiveDayUi(
     override fun toString(): String =
         "ArchiveDayUi(date=$date, myEntry=${myEntry?.let { "(redacted)" }}, myTombstone=$myTombstone, " +
             "myEntryId=$myEntryId, partnerEntry=${partnerEntry?.let { "(redacted)" }}, canDelete=$canDelete, " +
-            "partnerEntryId=$partnerEntryId, myMarkOnMine=$myMarkOnMine, myMarkOnTheirs=$myMarkOnTheirs)"
+            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, partnerEntryId=$partnerEntryId, myMarkOnMine=$myMarkOnMine, myMarkOnTheirs=$myMarkOnTheirs)"
 }
 
 /**
@@ -382,6 +389,8 @@ internal fun ArchiveDay.toArchiveDayUi(): ArchiveDayUi? {
         myTombstone = tombstone,
         myEntryId = entry?.id,
         partnerEntry = theirs,
+        myPhoto = entry?.takeIf { mine != null }?.image?.toEntryPhoto(),
+        partnerPhoto = partnerEntry.image()?.takeIf { theirs != null }?.toEntryPhoto(),
         canDelete = revealed,
         partnerEntryId = partnerEntry.idIfWords().takeIf { theirs != null },
         // Each entry by its own status: theirs stays markable after I deleted mine.

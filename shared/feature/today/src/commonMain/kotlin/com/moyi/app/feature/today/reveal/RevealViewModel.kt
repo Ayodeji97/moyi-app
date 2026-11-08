@@ -3,6 +3,7 @@ package com.moyi.app.feature.today.reveal
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import kotlinx.coroutines.Job
@@ -28,6 +29,9 @@ data class RevealState(
     val myEntry: String = "",
     /** The partner's words: null in [RevealPhase.Before], set only once the day turns to [RevealPhase.After]. */
     val partnerEntry: String? = null,
+    val myPhoto: EntryPhoto? = null,
+    /** The partner's photo: like [partnerEntry], only in [RevealPhase.After]. */
+    val partnerPhoto: EntryPhoto? = null,
 )
 
 sealed interface RevealAction {
@@ -70,9 +74,10 @@ class RevealViewModel(
 
     /** Shown only once the day has turned: the before frame never holds them. */
     private val partnerWords: String? = day?.partnerEntry
+    private val partnerPhoto: EntryPhoto? = day?.partnerPhoto
 
     private val _state = MutableStateFlow(
-        RevealState(date = day?.date, partnerName = day?.partnerName.orEmpty(), myEntry = day?.myEntry.orEmpty()),
+        RevealState(date = day?.date, partnerName = day?.partnerName.orEmpty(), myEntry = day?.myEntry.orEmpty(), myPhoto = day?.myPhoto),
     )
     val state: StateFlow<RevealState> = _state.asStateFlow()
 
@@ -107,10 +112,10 @@ class RevealViewModel(
     private fun play() {
         if (settled) return
         sequence?.cancel()
-        _state.update { it.copy(phase = RevealPhase.Before, partnerEntry = null) }
+        _state.update { it.copy(phase = RevealPhase.Before, partnerEntry = null, partnerPhoto = null) }
         sequence = viewModelScope.launch {
             delay(beforeHold)
-            _state.update { it.copy(phase = RevealPhase.After, partnerEntry = partnerWords) }
+            _state.update { it.copy(phase = RevealPhase.After, partnerEntry = partnerWords, partnerPhoto = partnerPhoto) }
             delay(afterHold)
             settle()
         }

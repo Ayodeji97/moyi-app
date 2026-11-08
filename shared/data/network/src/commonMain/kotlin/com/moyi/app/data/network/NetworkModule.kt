@@ -12,5 +12,6 @@ val networkModule = module {
     single { ApiConfig.fromBuild() }
     single<HttpClientEngine> { platformEngine() }
     single { PublicHttpClient(HttpClientFactory.createPublicClient(get<HttpClientEngine>())) }
+    single { StorageHttpClient(HttpClientFactory.createStorageClient(get<HttpClientEngine>())) }
     single { AuthedHttpClient(HttpClientFactory.createAuthedClient(get<HttpClientEngine>(), get<BearerTokenSource>())) }
 }

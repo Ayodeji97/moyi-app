@@ -420,7 +420,7 @@ internal fun offersOpenWrite(refusal: OutboxRefusal, status: TodayStatus): Boole
 
 @Composable
 internal fun OwnCard(state: TodayState) {
-    EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry)
+    EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto)
 }
 
 /**
@@ -442,6 +442,7 @@ internal fun PartnerCard(state: TodayState) {
         // Only Revealed, Tombstone and SoloTheyWrote draw this card, and only they hold the words.
         text = state.partnerEntry.orEmpty(),
         variant = EntryCardVariant.Partner,
+        photo = state.partnerPhoto,
     )
 }
 

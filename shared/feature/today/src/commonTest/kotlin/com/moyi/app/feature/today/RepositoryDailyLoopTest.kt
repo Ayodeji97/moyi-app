@@ -1,7 +1,9 @@
 package com.moyi.app.feature.today
 
 import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
+import com.moyi.app.core.FieldError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.today.BondDayStatus
@@ -25,9 +27,9 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.time.Instant
-import kotlin.test.assertTrue
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RepositoryDailyLoopTest {
@@ -221,6 +223,31 @@ class RepositoryDailyLoopTest {
         entries.editResult = Result.Failure(DataError.Network.NoInternet)
         assertEquals(WriteResult.Failed, loop.edit("changed", "key-3"))
         assertTrue(outbox.queue.isEmpty(), "edits are online-only")
+    }
+
+    @Test
+    fun aPhotoEntryIsNeverQueuedOfflineItFailsSoTheComposerKeepsTheWordsAndThePhoto() = runTest {
+        loop.refresh()
+        for (offline in listOf(DataError.Network.NoInternet, DataError.Network.Timeout, DataError.Network.Server(503))) {
+            entries.submitResult = Result.Failure(offline)
+            assertEquals(WriteResult.Failed, loop.submit(MINE, null, "key-1", NOON_ON_THE_DAY, imageMediaId = "m1"), "$offline")
+        }
+        assertTrue(outbox.queue.isEmpty(), "the outbox holds words only")
+        assertEquals(0, outbox.retries)
+        assertEquals("m1", entries.submitted.last().imageMediaId)
+        assertEquals(TodayStatus.NotWritten, ready.status)
+    }
+
+    @Test
+    fun aPhotoTheServerWillNotAttachIsSaidSoAndNothingIsQueued() = runTest {
+        loop.refresh()
+        entries.submitResult = Result.Failure(
+            DataError.Network.Api(
+                ApiProblem(422, ApiErrorCode.VALIDATION_FAILED, listOf(FieldError("imageMediaId", "MEDIA_NOT_ATTACHABLE", "cannot be attached"))),
+            ),
+        )
+        assertEquals(WriteResult.PhotoRefused, loop.submit(MINE, null, "key-1", NOON_ON_THE_DAY, imageMediaId = "m1"))
+        assertTrue(outbox.queue.isEmpty())
     }
 
     @Test

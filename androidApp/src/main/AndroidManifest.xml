@@ -42,6 +42,19 @@
              singleTop: a tapped push opens the app with FLAG_ACTIVITY_CLEAR_TOP; standard
              would destroy and recreate the running activity, singleTop hands the tap to
              onNewIntent and keeps the screen and its state (MainActivity). -->
+        <!-- The camera app writes the photo it takes here (rememberPhotoPicker, TakePicture):
+             a content URI into cacheDir/camera, granted to that app for the one capture.
+             Moyi declares no CAMERA permission, so the system camera app needs none from us.
+             The file is deleted as soon as the prepared copy has been made. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.photos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/photo_paths" />
+        </provider>
         <activity
             android:exported="true"
             android:launchMode="singleTop"

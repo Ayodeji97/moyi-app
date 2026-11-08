@@ -63,6 +63,7 @@ class TodayBackTest {
                     single<DraftStore> { FakeDraftStore() }
                     single<BondRepository> { InviteBonds() }
                     single<com.moyi.app.domain.today.OutboxSender> { FakeOutbox() }
+                    single<com.moyi.app.domain.media.MediaRepository> { com.moyi.app.feature.today.FakeMedia() }
                 },
             )
         }

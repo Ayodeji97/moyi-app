@@ -38,6 +38,19 @@ object HttpClientFactory {
     fun createPublicClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) { configureCommon() }
 
     /** The authed client over [engine]; share the public client's engine so both use one connection pool. */
+    /**
+     * [StorageHttpClient]'s client: timeouts long enough for a photo on a slow network,
+     * and nothing else installed (see [StorageHttpClient] for why no logging).
+     */
+    fun createStorageClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) {
+        expectSuccess = false
+        install(HttpTimeout) {
+            connectTimeoutMillis = 15_000
+            requestTimeoutMillis = 120_000
+            socketTimeoutMillis = 60_000
+        }
+    }
+
     fun createAuthedClient(engine: HttpClientEngine, tokens: BearerTokenSource): HttpClient = HttpClient(engine) {
         configureCommon()
         configureBearerAuth(tokens)

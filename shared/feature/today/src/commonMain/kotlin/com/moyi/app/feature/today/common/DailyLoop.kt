@@ -1,5 +1,6 @@
 package com.moyi.app.feature.today.common
 
+import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Prompt
 import kotlinx.coroutines.flow.StateFlow
@@ -27,8 +28,18 @@ interface DailyLoop {
      * Writes today's entry. [idempotencyKey] and [intendedAt] are the caller's, both taken
      * at the Send tap and reused on a retry. When the server cannot be reached the entry is
      * queued on the device instead ([WriteResult.Queued]) and sent later with both unchanged.
+     *
+     * With [imageMediaId] (a photo already uploaded and ready) it is **never queued**: an
+     * entry that cannot reach the server is [WriteResult.Failed] and the composer keeps the
+     * words and the photo (the outbox holds words only: docs/missing-components.md §40).
      */
-    suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult
+    suspend fun submit(
+        text: String,
+        promptId: String?,
+        idempotencyKey: String,
+        intendedAt: Instant,
+        imageMediaId: String? = null,
+    ): WriteResult
 
     /** Replaces my entry's words before the reveal. */
     suspend fun edit(text: String, idempotencyKey: String): WriteResult
@@ -80,6 +91,10 @@ data class DayView(
     /** My words; null when I have not written, or deleted them. */
     val myEntry: String?,
     val partnerEntry: String?,
+    /** The photo on my live entry, as the server shows it to me. */
+    val myPhoto: EntryPhoto? = null,
+    /** The partner's photo: held exactly where [partnerEntry] is, by the same rule. */
+    val partnerPhoto: EntryPhoto? = null,
     /** Which Bond-day my queued entry will count for; set exactly in [TodayStatus.Queued]. */
     val queuedDay: QueuedDay? = null,
     /** A queued entry the server refused, whose words went back to the draft: Today says so once. */
@@ -89,7 +104,7 @@ data class DayView(
     override fun toString(): String =
         "DayView(bondId=$bondId, date=$date, status=$status, myEntryId=$myEntryId, " +
             "myEntry=${myEntry?.let { "(redacted)" }}, partnerEntry=${partnerEntry?.let { "(redacted)" }}, " +
-            "queuedDay=$queuedDay, refusal=$refusal)"
+            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, queuedDay=$queuedDay, refusal=$refusal)"
 }
 
 enum class WriteResult {
@@ -104,6 +119,12 @@ enum class WriteResult {
 
     /** It did not: the composer keeps them (states.md §10, Save failed). */
     Failed,
+
+    /**
+     * The server would not attach the photo (`MEDIA_NOT_ATTACHABLE`: held by moderation,
+     * or gone): the words and the photo stay, and the composer says the photo cannot be sent.
+     */
+    PhotoRefused,
 }
 
 enum class DeleteResult {

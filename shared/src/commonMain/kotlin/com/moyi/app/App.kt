@@ -23,6 +23,8 @@ import com.moyi.app.designsystem.platform.screenEnterTransition
 import com.moyi.app.designsystem.platform.screenExitTransition
 import com.moyi.app.designsystem.platform.screenPopEnterTransition
 import com.moyi.app.designsystem.platform.screenPopExitTransition
+import coil3.compose.setSingletonImageLoaderFactory
+import com.moyi.app.data.network.StorageHttpClient
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.domain.auth.SessionEvent
@@ -79,6 +81,8 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @Composable
 fun App(viewModel: AppViewModel = koinViewModel()) {
+    val storage = koinInject<StorageHttpClient>()
+    setSingletonImageLoaderFactory { context -> moyiImageLoader(context, storage.client) }
     MoyiTheme {
         val session by viewModel.session.collectAsStateWithLifecycle()
         LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onForeground() }

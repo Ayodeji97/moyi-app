@@ -80,11 +80,11 @@ internal class FakeTodayEntries : TodayRepository {
         return todayResult
     }
 
-    data class Submitted(val bondId: String, val key: String, val intendedAt: Instant?)
+    data class Submitted(val bondId: String, val key: String, val intendedAt: Instant?, val imageMediaId: String? = null)
     val submitted = mutableListOf<Submitted>()
 
-    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant?): Result<MyEntry, DataError.Network> {
-        submitted += Submitted(bondId, idempotencyKey, intendedAt)
+    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant?, imageMediaId: String?): Result<MyEntry, DataError.Network> {
+        submitted += Submitted(bondId, idempotencyKey, intendedAt, imageMediaId)
         return submitResult
     }
     override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String) = editResult

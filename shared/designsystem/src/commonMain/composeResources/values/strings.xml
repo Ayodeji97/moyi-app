@@ -22,6 +22,18 @@
     <string name="ds_compose_record_voice">Record a voice note</string>
     <!-- PROPOSED. Spoken name of the composer prompt's dismiss button (icon only). -->
     <string name="ds_compose_dismiss_prompt">Hide the prompt</string>
+    <!-- PROPOSED (photos). Spoken name of the remove control on the photo attached in the composer (icon only). -->
+    <string name="ds_compose_remove_photo">Remove the photo</string>
+    <!-- PROPOSED (photos). Spoken for the photo attached in the composer. -->
+    <string name="ds_compose_attached_photo">The photo you are adding</string>
+    <!-- PROPOSED (photos). Spoken for the photo on an EntryCard. The card reads its author first, so this need not name them. -->
+    <string name="ds_entry_photo">Photo</string>
+    <!-- PROPOSED (photos). EntryCard: the photo is not shown to this reader yet (EntryImageResponse PROCESSING). Never says why (spec §4 D2). -->
+    <string name="ds_entry_photo_on_its_way">A photo is on its way.</string>
+    <!-- PROPOSED (photos). EntryCard, its author only: moderation held it back from the other member (NOT_SHARED, owner ruling Q10: "not shared", no reason). -->
+    <string name="ds_entry_photo_not_shared">This photo is not shared.</string>
+    <!-- PROPOSED (photos). EntryCard: a photo that passed moderation as sensitive (Q16: covered, behind a tap). Names the next action. -->
+    <string name="ds_entry_photo_sensitive">This photo may be sensitive. Tap to see it.</string>
     <!-- FavouriteToggle Idle: the visible label and the spoken name. entry.favourite.add (strings-proposed.md §6a). -->
     <string name="ds_favourite_add">Add to favourites</string>
     <!-- FavouriteToggle Marked: the visible label and the spoken name. entry.favourite.remove (strings-proposed.md §6a). -->

@@ -31,6 +31,11 @@
 	<array>
 		<string>fetch</string>
 	</array>
+	<!-- PROPOSED copy (photos). Asked by iOS the first time "Take a photo" opens the camera
+	     (UIImagePickerController). The photo library needs no usage string: PHPicker runs
+	     out of process and hands over only the photo chosen. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Moyi uses the camera only when you take a photo to add to your entry.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Moyi connects to a development server on your local network.</string>
 </dict>

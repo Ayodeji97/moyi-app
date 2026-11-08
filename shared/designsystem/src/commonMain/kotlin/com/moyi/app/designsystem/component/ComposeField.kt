@@ -81,6 +81,7 @@ fun ComposeField(
     onAddPhoto: (() -> Unit)? = null,
     onRecordVoice: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
+    attachment: (@Composable () -> Unit)? = null,
 ) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
@@ -138,6 +139,8 @@ fun ComposeField(
                 .padding(wrap)
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         )
+        // Interim (docs/missing-components.md §41): what is attached sits above the toolbar, inside the box.
+        attachment?.invoke()
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (onAddPhoto != null) {
                 IconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_add_photo), enabled, onAddPhoto)

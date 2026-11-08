@@ -1,15 +1,20 @@
 package com.moyi.app.feature.today
 
+import com.moyi.app.designsystem.component.EntryPhoto
+import com.moyi.app.designsystem.component.EntryPhotoLook
 import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.today.BondDayStatus
+import com.moyi.app.domain.today.EntryImage
+import com.moyi.app.domain.today.EntryImageStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Today
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.common.toDayView
+import com.moyi.app.feature.today.common.toEntryPhoto
 import com.moyi.app.feature.today.common.todayStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -94,6 +99,21 @@ class TodayMapperTest {
         assertEquals(THEIRS, open.partnerEntry)
         assertEquals(MINE, open.myEntry)
         assertEquals(DAY, open.date)
+    }
+
+    @Test
+    fun aPartnersPhotoTravelsOnlyWithTheirWordsAndEachStatusHasItsLook() {
+        val photo = EntryImage("m2", EntryImageStatus.Ready, "http://storage.test/p", 1280, 960, sensitive = false)
+        val theirs = PartnerEntry.Revealed("t1", THEIRS, photo)
+        val waiting = assertNotNull(toDayView(bond, today(BondDayStatus.PENDING_REVEAL, mine, theirs)))
+        assertNull(waiting.partnerPhoto, "a waiting day holds nothing of theirs, the photo included")
+        val open = assertNotNull(toDayView(bond, today(BondDayStatus.REVEALED, mine.copy(image = photo.copy(id = "m1")), theirs)))
+        assertEquals(EntryPhoto("m2", "http://storage.test/p", 1280, 960, EntryPhotoLook.Shown), open.partnerPhoto)
+        assertEquals("m1", open.myPhoto?.key)
+
+        assertEquals(EntryPhotoLook.Covered, photo.copy(sensitive = true).toEntryPhoto().look)
+        assertEquals(EntryPhotoLook.OnItsWay, photo.copy(status = EntryImageStatus.Processing, url = null).toEntryPhoto().look)
+        assertEquals(EntryPhotoLook.NotShared, photo.copy(status = EntryImageStatus.NotShared).toEntryPhoto().look)
     }
 
     @Test

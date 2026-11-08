@@ -205,6 +205,8 @@ class TodayViewModel(
                 myEntry = view.myEntry.orEmpty(),
                 // The loop already holds them only in these layouts; this is the second lock on the door.
                 partnerEntry = view.partnerEntry.takeIf { view.status in PartnerVisible },
+                myPhoto = view.myPhoto,
+                partnerPhoto = view.partnerPhoto.takeIf { view.status in PartnerVisible },
                 queuedDay = view.queuedDay,
                 refusal = view.refusal,
                 // Only a revealed entry can be deleted this way: a dialog left from a day
