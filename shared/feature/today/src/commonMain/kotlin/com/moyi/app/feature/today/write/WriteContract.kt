@@ -34,6 +34,11 @@ data class WriteState(
     val originalText: String = "",
     /** The discard question is showing (D10): closing would lose typed words. */
     val confirmingDiscard: Boolean = false,
+    /**
+     * The saved draft is being read (a few milliseconds at open). The composer is not shown
+     * until it is, so the words arrive with the field and the cursor sits after them.
+     */
+    val restoringDraft: Boolean = false,
 ) {
     /**
      * FR-041 counts user-perceived characters (grapheme clusters): a family emoji is one.
@@ -55,8 +60,8 @@ data class WriteState(
      * was typed, when only spaces were, when an edit changed nothing, or once the
      * device has accepted the entry (Queued).
      *
-     * TODO(logic): once drafts are saved locally (doc 13 §5), closing still asks: the
-     *  owner's D10 makes discarding a choice, and Discard deletes the draft too.
+     * The words are also kept as a draft (doc 13 §5), but closing still asks: D10 makes
+     * discarding a choice, and Discard deletes the draft too.
      */
     val wouldLoseWords: Boolean
         get() = text.isNotBlank() && text != originalText && submit != WriteSubmit.Queued

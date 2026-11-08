@@ -1,0 +1,11 @@
+-- Version 1 to 2: the draft table (Draft.sq). A phone that ran version 1 has only
+-- cached_day; without this it would open the database and find no draft table.
+CREATE TABLE draft (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    entry_id TEXT,
+    day_date TEXT NOT NULL,
+    text TEXT NOT NULL,
+    PRIMARY KEY (user_id, bond_id, kind)
+);

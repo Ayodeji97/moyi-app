@@ -18,6 +18,7 @@ import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.domain.today.TodayRepository
 import io.ktor.client.engine.HttpClientEngine
@@ -49,6 +50,7 @@ class KoinModulesTest {
             koin.get<ArchiveRepository>()
             koin.get<StreakRepository>()
             koin.get<TodayCache>()
+            koin.get<DraftStore>()
             koin.get<LocalDatabase>()
             koin.get<PersonalData>()
             koin.get<PublicHttpClient>()

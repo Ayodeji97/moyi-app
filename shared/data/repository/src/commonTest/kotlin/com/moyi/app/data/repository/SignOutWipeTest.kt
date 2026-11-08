@@ -18,6 +18,8 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.CachedDay
+import com.moyi.app.domain.today.Draft
+import com.moyi.app.domain.today.DraftKind
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
@@ -36,7 +38,7 @@ import kotlin.test.assertNull
 /**
  * The privacy rule of the local database, end to end through the real session, the
  * real auth repository and a real (in-memory) SQLite: when a session ends, for any
- * reason, nothing of that person's day is left, and the next person to sign in on
+ * reason, nothing of that person's day or unsent words is left, and the next person to sign in on
  * the same phone finds no trace of it.
  */
 class SignOutWipeTest {
@@ -56,6 +58,19 @@ class SignOutWipeTest {
         val sessionManager = SessionManager(store, RefreshControllerApi(config.origin, publicClient.client), PersonalData { database.wipe() })
         val auth = AuthRepositoryImpl(publicClient, config, sessionManager) { DeviceInfo("ANDROID", "1.0", "16") }
         val cache = SqlTodayCache(database, sessionManager.sessionState)
+        val drafts = SqlDraftStore(database, sessionManager.sessionState)
+
+        /** Ada's day and both of her drafts, as a session would leave them. */
+        suspend fun writeAdasData() {
+            cache.write(adasDay)
+            drafts.write(Draft("bond-1", DraftKind.NewEntry, "You fixed the gate.", "2026-09-14"))
+            drafts.write(Draft("bond-1", DraftKind.Edit, "You made the tea, twice.", "2026-09-14", entryId = "e1"))
+        }
+
+        fun assertNothingLeft(message: String? = null) {
+            assertEquals(0L, database.rowCount("cached_day"), message)
+            assertEquals(0L, database.rowCount("draft"), message)
+        }
     }
 
     /** Each email signs in as its own person. */
@@ -81,18 +96,20 @@ class SignOutWipeTest {
     fun signingOutWipesTheDayAndTheNextPersonOnThePhoneFindsNothing() = runTest {
         val fixture = Fixture()
         fixture.auth.login("ada@example.test", "pw")
-        fixture.cache.write(adasDay)
+        fixture.writeAdasData()
         assertNotNull(fixture.cache.read())
+        assertNotNull(fixture.drafts.read("bond-1", DraftKind.NewEntry))
 
         fixture.auth.logout()
 
-        assertEquals(0L, fixture.database.rowCount("cached_day"), "sign-out leaves no row behind")
+        fixture.assertNothingLeft("sign-out leaves no row behind, no day and no draft")
         assertNull(fixture.cache.read())
 
         fixture.auth.login("ben@example.test", "pw")
         assertEquals("ben-id", (fixture.sessionManager.sessionState.value as SessionState.SignedIn).user.id)
         assertNull(fixture.cache.read(), "Ben must see nothing of Ada's day")
-        assertEquals(0L, fixture.database.rowCount("cached_day"))
+        assertNull(fixture.drafts.read("bond-1", DraftKind.NewEntry), "nor her unsent words")
+        fixture.assertNothingLeft()
     }
 
     @Test
@@ -101,11 +118,11 @@ class SignOutWipeTest {
         // never allows it today, but the wipe must not depend on that).
         val fixture = Fixture()
         fixture.auth.login("ada@example.test", "pw")
-        fixture.cache.write(adasDay)
+        fixture.writeAdasData()
 
         fixture.auth.login("ben@example.test", "pw")
 
-        assertEquals(0L, fixture.database.rowCount("cached_day"))
+        fixture.assertNothingLeft()
     }
 
     @Test
@@ -113,13 +130,13 @@ class SignOutWipeTest {
         for (code in listOf("REFRESH_TOKEN_INVALID", "TOKEN_REUSE_DETECTED")) {
             val fixture = Fixture(refreshAnswer = code)
             fixture.auth.login("ada@example.test", "pw")
-            fixture.cache.write(adasDay)
+            fixture.writeAdasData()
 
             // The access token is refused and the refresh is answered with [code]: the session is over.
             assertNull(fixture.sessionManager.refresh(staleAccess = "a-ada-id"))
 
             assertEquals(SessionState.SignedOut, fixture.sessionManager.sessionState.value, code)
-            assertEquals(0L, fixture.database.rowCount("cached_day"), code)
+            fixture.assertNothingLeft(code)
         }
     }
 
@@ -128,10 +145,10 @@ class SignOutWipeTest {
         val fixture = Fixture()
         fixture.store.write(storedSession("r1"))
         fixture.auth.login("ada@example.test", "pw")
-        fixture.cache.write(adasDay)
+        fixture.writeAdasData()
 
         fixture.sessionManager.endSession(SessionEndReason.Invalid)
 
-        assertEquals(0L, fixture.database.rowCount("cached_day"))
+        fixture.assertNothingLeft()
     }
 }

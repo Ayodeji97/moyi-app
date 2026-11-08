@@ -19,7 +19,9 @@ import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.feature.today.FakeDailyLoop
+import com.moyi.app.feature.today.FakeDraftStore
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.di.todayFeatureModule
 import org.koin.core.context.startKoin
@@ -57,6 +59,7 @@ class TodayBackTest {
                 todayFeatureModule,
                 module {
                     single<DailyLoop> { FakeDailyLoop() }
+                    single<DraftStore> { FakeDraftStore() }
                     single<BondRepository> { InviteBonds() }
                 },
             )

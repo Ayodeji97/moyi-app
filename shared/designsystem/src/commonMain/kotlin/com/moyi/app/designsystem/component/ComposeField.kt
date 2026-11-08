@@ -15,6 +15,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -25,7 +30,9 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.icon.MoyiIcons
@@ -57,6 +64,9 @@ import org.jetbrains.compose.resources.stringResource
  *
  * The box fills whatever height the caller gives it (at least
  * [MoyiDimens.ComposeField.MinHeight] by default) and the text scrolls inside it.
+ *
+ * Words it opens with (a restored draft, my entry being edited) have the cursor after
+ * their last character, ready to carry on, exactly as [Field] does.
  */
 @Composable
 fun ComposeField(
@@ -99,9 +109,25 @@ fun ComposeField(
                 }
             }
         }
+        // Field's pattern, for the same reasons (see Field): a TextFieldValue so prefilled words
+        // open with the cursor at their end; otherwise exactly the String overload, which shows
+        // the caller's text, keeps its own cursor and composition, and reports real changes only.
+        var fieldValueState by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+        val fieldValue = fieldValueState.copy(text = value)
+        SideEffect {
+            if (fieldValue.selection != fieldValueState.selection || fieldValue.composition != fieldValueState.composition) {
+                fieldValueState = fieldValue
+            }
+        }
+        var lastText by remember(value) { mutableStateOf(value) }
         BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
+            value = fieldValue,
+            onValueChange = { next ->
+                fieldValueState = next
+                val changed = lastText != next.text
+                lastText = next.text
+                if (changed) onValueChange(next.text)
+            },
             enabled = enabled,
             textStyle = MoyiTheme.type.entry.copy(color = colors.ink),
             cursorBrush = SolidColor(colors.ink),

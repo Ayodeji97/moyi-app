@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 class WriteViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop().apply { show(dayView(TodayStatus.NotWritten, myEntry = null)) }
     private var keys = 0
-    private fun viewModel(editing: Boolean = false) = WriteViewModel(editing, loop, newIdempotencyKey = { "key-${++keys}" })
+    private fun viewModel(editing: Boolean = false) = WriteViewModel(editing, loop, FakeDraftStore(), newIdempotencyKey = { "key-${++keys}" })
 
     private fun written(text: String) = loop.show(dayView(TodayStatus.Waiting, myEntry = text))
 
