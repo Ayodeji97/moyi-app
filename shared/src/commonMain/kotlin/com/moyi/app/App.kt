@@ -1,7 +1,5 @@
 package com.moyi.app
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +15,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.moyi.app.designsystem.platform.screenEnterTransition
+import com.moyi.app.designsystem.platform.screenExitTransition
+import com.moyi.app.designsystem.platform.screenPopEnterTransition
+import com.moyi.app.designsystem.platform.screenPopExitTransition
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.domain.auth.SessionEvent
@@ -107,11 +109,12 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
         navController = navController,
         startDestination = startDestination,
         modifier = Modifier.fillMaxSize().background(MoyiTheme.colors.surface),
-        // Screens change with no transition: the motion budget is the reveal (SKILL.md §5).
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
-        popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
+        // Screens move as each platform's own do (owner ruling 2026-11-08, MoyiMotion):
+        // Android's shared axis, the iOS push. A destination may still set its own.
+        enterTransition = { screenEnterTransition() },
+        exitTransition = { screenExitTransition() },
+        popEnterTransition = { screenPopEnterTransition() },
+        popExitTransition = { screenPopExitTransition() },
     ) {
         authGraph(
             navController = navController,

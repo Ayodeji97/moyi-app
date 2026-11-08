@@ -109,7 +109,7 @@ private fun TypeSpecimen(darkTheme: Boolean) {
             MoyiText("Written by Amara", role = TextRole.Label)
             MoyiText("Mọyì. You stayed up to help me finish it.", role = TextRole.Entry)
             MoyiText("Check your email", role = TextRole.Title)
-            MoyiText("We sent a link to amara@example.com. Open it to finish setting up.")
+            MoyiText("We sent a link to amara@example.com. Open the email, copy the link and paste it below.")
             MoyiText("Check again", role = TextRole.Action)
             MoyiText("K7Q2PD", role = TextRole.Code, modifier = Modifier.padding(top = MoyiTheme.spacing.md))
         }

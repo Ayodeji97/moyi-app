@@ -1,5 +1,7 @@
 package com.moyi.app.feature.auth.reset
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardActions
@@ -98,7 +100,9 @@ fun ResetPasswordScreen(
         ScreenHeader(stringResource(Res.string.login_eyebrow), stringResource(Res.string.reset_new_heading))
         Spacer(Modifier.height(spacing.lg))
         // NEW, not in Figma (docs/missing-components.md §6a): a stand-in until deep links.
+        val autoFocus = rememberAutoFocus()
         Field(
+            modifier = Modifier.focusRequester(autoFocus),
             value = state.token.value,
             onValueChange = { onAction(ResetPasswordAction.OnTokenChange(it)) },
             label = stringResource(Res.string.verify_token_label),

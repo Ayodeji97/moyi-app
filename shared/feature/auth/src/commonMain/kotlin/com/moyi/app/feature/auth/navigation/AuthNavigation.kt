@@ -15,9 +15,13 @@ import com.moyi.app.feature.auth.sessionended.SessionEndedScreen
 import com.moyi.app.feature.auth.verify.VerifyRoot
 import kotlinx.serialization.Serializable
 
-/** Sign in. [email] is prefilled after verifying; [sessionEnded] explains an involuntary sign-out. */
+/**
+ * Sign in. [email] is prefilled after verifying; [sessionEnded] explains an involuntary
+ * sign-out; [verified] confirms the address was just verified, so the person knows the
+ * link worked and that signing in is the last step.
+ */
 @Serializable
-data class LoginRoute(val email: String = "", val sessionEnded: Boolean = false)
+data class LoginRoute(val email: String = "", val sessionEnded: Boolean = false, val verified: Boolean = false)
 
 @Serializable
 data object RegisterRoute
@@ -89,6 +93,7 @@ fun NavGraphBuilder.authGraph(
         LoginRoot(
             initialEmail = route.email,
             sessionEnded = route.sessionEnded,
+            verified = route.verified,
             onNavigateToHome = onSignedIn,
             onNavigateToRegister = { navController.navigate(RegisterRoute) },
             onNavigateToForgotPassword = { email -> navController.navigate(ForgotPasswordRoute(email)) },
@@ -106,7 +111,7 @@ fun NavGraphBuilder.authGraph(
         val route = entry.toRoute<VerifyRoute>()
         VerifyRoot(
             email = route.email,
-            onNavigateToLogin = { email -> navController.replaceStackWithLogin(email) },
+            onNavigateToLogin = { email -> navController.replaceStackWithLogin(email, verified = true) },
             onNavigateBack = { navController.navigateUp() },
         )
     }
@@ -163,8 +168,8 @@ internal fun NavController.signInAfterSessionEnded() {
 }
 
 /** Sign in, email prefilled, as the only screen: after verifying, or after a reset whose sign-in failed. */
-internal fun NavController.replaceStackWithLogin(email: String) {
-    navigate(LoginRoute(email = email)) {
+internal fun NavController.replaceStackWithLogin(email: String, verified: Boolean = false) {
+    navigate(LoginRoute(email = email, verified = verified)) {
         popUpTo(graph.id) { inclusive = true }
     }
 }

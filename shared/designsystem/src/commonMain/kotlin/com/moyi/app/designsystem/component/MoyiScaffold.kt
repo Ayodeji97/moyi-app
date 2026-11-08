@@ -38,6 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -232,6 +236,11 @@ fun MoyiScaffold(
  *
  * The content column is never shorter than the room above the actions, in
  * both modes, so [contentArrangement] can place its children in that room.
+ *
+ * Stacked, the actions can sit below the fold. When the block then grows (an
+ * error appears after a submit with the keyboard up, 2026-11-08 smoke test), the
+ * column scrolls to its end, so the error and the action that answers it are on
+ * screen instead of hidden under the keyboard.
  */
 @Composable
 private fun ContentAndAction(
@@ -242,15 +251,29 @@ private fun ContentAndAction(
 ) {
     val outerScroll = rememberKeyboardDismissingScrollState()
     val innerScroll = rememberKeyboardDismissingScrollState()
+    var actionBlockHeight by remember { mutableIntStateOf(0) }
     BoxWithConstraints(modifier) {
         val viewport = constraints.maxHeight
         val spacing = MoyiDimens.Scaffold.ItemSpacing
         val minContent = MoyiDimens.Scaffold.MinContentHeight
+        val density = LocalDensity.current
+        val stackedNow = with(density) {
+            actionBlockHeight > 0 && shouldStackActions(viewport, actionBlockHeight, spacing.roundToPx(), minContent.roundToPx())
+        }
+        var previousHeight by remember { mutableIntStateOf(0) }
+        LaunchedEffect(actionBlockHeight) {
+            val grew = previousHeight in 1 until actionBlockHeight
+            previousHeight = actionBlockHeight
+            if (grew && stackedNow) {
+                withFrameNanos { }
+                outerScroll.animateScrollTo(outerScroll.maxValue)
+            }
+        }
         SubcomposeLayout(Modifier.fillMaxWidth().verticalScroll(outerScroll)) { incoming ->
             val loose = incoming.copy(minHeight = 0, maxHeight = Constraints.Infinity)
             val actionPlaceable = subcompose(ScaffoldSlot.Action) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().onSizeChanged { actionBlockHeight = it.height },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     content = action,
                 )
@@ -441,7 +464,7 @@ private fun ScaffoldSample(darkTheme: Boolean) {
             Spacer(Modifier.height(MoyiTheme.spacing.xxxl))
             MoyiText("Check your email", role = TextRole.Title)
             Spacer(Modifier.height(MoyiTheme.spacing.md))
-            MoyiText("We sent a link to amara@example.com. Open it to finish setting up.", tone = TextTone.Muted)
+            MoyiText("We sent a link to amara@example.com. Open the email, copy the link and paste it below.", tone = TextTone.Muted)
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.moyi.app.feature.auth.reset
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardActions
@@ -89,6 +91,7 @@ fun ForgotPasswordScreen(
         Spacer(Modifier.height(spacing.md))
         MoyiText(stringResource(Res.string.reset_request_line), tone = TextTone.Muted)
         Spacer(Modifier.height(spacing.lg))
+        val autoFocus = rememberAutoFocus()
         Field(
             value = state.email.value,
             onValueChange = { onAction(ForgotPasswordAction.OnEmailChange(it)) },
@@ -100,7 +103,7 @@ fun ForgotPasswordScreen(
                 imeAction = ImeAction.Send,
             ),
             keyboardActions = KeyboardActions(onSend = { onAction(ForgotPasswordAction.OnSubmit) }),
-            modifier = Modifier
+            modifier = Modifier.focusRequester(autoFocus)
                 .semantics { contentType = ContentType.EmailAddress + ContentType.Username }
                 .onBlur { onAction(ForgotPasswordAction.OnEmailBlur) },
         )

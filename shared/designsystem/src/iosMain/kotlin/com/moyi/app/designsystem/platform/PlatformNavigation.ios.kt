@@ -6,6 +6,12 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.unit.IntOffset
+import com.moyi.app.designsystem.theme.MoyiMotion
 import platform.UIKit.UIAccessibilityIsReduceMotionEnabled
 
 internal actual val SystemBackIsEdgeSwipe: Boolean = true
@@ -36,3 +42,26 @@ actual fun taskExitTransition(): ExitTransition =
     } else {
         slideOutVertically(tween(SheetMillis, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight }
     }
+
+/** The screen underneath drifts a third of the width, as UIKit's does. */
+private const val ParallaxFraction = 3
+
+private fun pushTween() = tween<IntOffset>(MoyiMotion.PushMillisIos, easing = MoyiMotion.IosNavigationEasing)
+
+private fun crossFadeIn() = fadeIn(tween(MoyiMotion.CrossFadeMillis))
+
+private fun crossFadeOut() = fadeOut(tween(MoyiMotion.CrossFadeMillis))
+
+actual fun screenEnterTransition(): EnterTransition =
+    if (reduceMotionEnabled()) crossFadeIn() else slideInHorizontally(pushTween()) { it }
+
+actual fun screenExitTransition(): ExitTransition =
+    if (reduceMotionEnabled()) crossFadeOut() else slideOutHorizontally(pushTween()) { -it / ParallaxFraction }
+
+actual fun screenPopEnterTransition(): EnterTransition =
+    if (reduceMotionEnabled()) crossFadeIn() else slideInHorizontally(pushTween()) { -it / ParallaxFraction }
+
+actual fun screenPopExitTransition(): ExitTransition =
+    if (reduceMotionEnabled()) crossFadeOut() else slideOutHorizontally(pushTween()) { it }
+
+actual fun reduceMotionEnabled(): Boolean = UIAccessibilityIsReduceMotionEnabled()

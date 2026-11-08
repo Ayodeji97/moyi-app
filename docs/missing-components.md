@@ -399,3 +399,43 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **Here:** one screen for both, with no back, built from nothing but the bond list, so a
   blocked person and a blocker see the same thing (`26` §2.1). Its one action is Start a
   new bond (PROPOSED); Figma's primary label was not read.
+
+## Motion and keyboard (2026-11-08 smoke test)
+
+### 33. Motion beyond the reveal: screen transitions and the busy control
+
+- **Today:** `SKILL.md` §5 sets the motion budget at one animation, the reveal, and
+  `SKILL.md` "Navigation is instant, with no transition". `PrimaryAction`'s KDoc said "no
+  animation". The one exception was the iOS Write sheet (D10).
+- **Owner ruling, 2026-11-08** (during the PR smoke test): "please handle screen
+  transition animation properly. ui animations on the screen. loading state on the
+  button". The owner owns the design system, so this amends §5; `SKILL.md`, `tokens.md`
+  and the Figma motion board are the owner's to update. Nothing outside `moyi-app` is
+  changed here.
+- **Built, as functional motion only** (no bounce, no overshoot, no decoration; the
+  reveal stays the one expressive moment). Values live in `MoyiMotion`:
+  - **Screens:** Android, Material's shared axis X (a 10 % slide with a fade through,
+    300 ms). iOS, the navigation push (full-width slide over a third-width parallax,
+    350 ms, a UIKit-like decelerate curve), which matches the edge swipe. Write keeps its
+    sheet on iOS; on Android it now rises 10 % and fades in.
+  - **The busy control:** `PrimaryAction` cross-fades its label (150 ms), eases its dim
+    and width, and while Sending its label breathes between 100 % and 55 % (900 ms each
+    way). Still no spinner: the words say what is happening, the breath says they are live.
+  - **Reduced motion:** iOS Reduce Motion turns pushes into a 200 ms cross-fade and stops
+    the breath. Android's "Remove animations" scales every Compose animation to nothing.
+- **The open question:** whether the owner wants the Figma motion board and `tokens.md`
+  to name these durations, or a different curve on either platform.
+
+### 34. The keyboard: focus on arrival, and actions under it
+
+- **Built:** a screen whose job is typing opens with its field focused and the keyboard
+  up (`rememberAutoFocus`): register, verify, forgot and choose a new password, join with
+  a code, create a bond, rename the bond. Sign in focuses the password when it arrives
+  with the email filled (after verifying or a reset). A prefilled field opens with the
+  cursor after the last character. Tapping `PrimaryAction` puts the keyboard away.
+- **Fixed:** with a tall keyboard, a sign-in error stacked the actions below the fold,
+  so the error and "Sign in" were hidden under the keyboard and nothing seemed to happen.
+  `MoyiScaffold` now scrolls to the action block when it grows while stacked.
+- **Not changed, raised:** whether submitting with the keyboard's Done should also put the
+  keyboard away (iOS apps differ); and the settings rows, whose values read as underlined
+  links with no chevron (§20, the settings row, is still open).

@@ -1,5 +1,7 @@
 package com.moyi.app.feature.onboarding.createbond
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardActions
@@ -105,7 +107,9 @@ fun CreateBondScreen(
             heading = stringResource(Res.string.bond_create_heading),
         )
         Spacer(Modifier.height(spacing.lg))
+        val autoFocus = rememberAutoFocus()
         Field(
+            modifier = Modifier.focusRequester(autoFocus),
             value = state.name,
             onValueChange = { onAction(CreateBondAction.OnNameChange(it)) },
             label = stringResource(Res.string.bond_name_label),
