@@ -19,6 +19,9 @@ class SqlCipherConventionPlugin : Plugin<Project> {
             url.set(SQLCIPHER_XCFRAMEWORK_URL)
             sha256.set(SQLCIPHER_XCFRAMEWORK_SHA256)
             outputDir.set(sqlCipherDirectory(target.rootDir))
+            // Apple binaries link only on macOS. Elsewhere (CI is Linux) the iOS link
+            // tasks that depend on this are skipped, and so is this; `ditto` is macOS's.
+            onlyIf("iOS binaries link only on macOS") { System.getProperty("os.name").startsWith("Mac") }
         }
     }
 }
