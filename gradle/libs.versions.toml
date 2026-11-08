@@ -29,6 +29,7 @@ kotlinx-serialization = "1.12.0"
 ktor = "3.6.0"
 material3 = "1.12.0-alpha03"
 openapi-generator = "7.26.0"
+sqldelight = "2.4.1"
 turbine = "1.2.1"
 
 [libraries]
@@ -72,6 +73,13 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 
+# Local database (doc 13 §2, shared/data/database): one runtime, one driver per platform,
+# and the JVM driver for host tests only (an in-memory SQLite, no Android framework).
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-androidDriver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
+sqldelight-nativeDriver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqldelight-sqliteDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+
 # DI
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
@@ -102,4 +110,5 @@ kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 buildkonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildkonfig" }
 openapiGenerator = { id = "org.openapi.generator", version.ref = "openapi-generator" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 

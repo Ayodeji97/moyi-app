@@ -17,8 +17,9 @@ Compose Multiplatform UI. Package `com.moyi.app`. The rules for working here are
 | `:shared:data:api` | `com.moyi.app.data.api` | Generated OpenAPI client only (PR #3) |
 | `:shared:data:network` | `com.moyi.app.data.network` | HttpClient, auth, error mapping |
 | `:shared:data:session` | `com.moyi.app.data.session` | Token storage and the session |
+| `:shared:data:database` | `com.moyi.app.data.database` | SQLDelight 2.x local database (Today's cache); wiped at every session change |
 | `:shared:data:repository` | `com.moyi.app.data.repository` | Repository implementations |
-| `:shared:data:testing` | `com.moyi.app.data.testing` | Test fixtures for the data modules' tests only (fake store, MockEngine helpers) |
+| `:shared:data:testing` | `com.moyi.app.data.testing` | Test fixtures for the data modules' tests only (fake store, MockEngine helpers, in-memory database) |
 | `:shared:feature:auth` | `com.moyi.app.feature.auth` | Register, verify, sign in |
 | `:shared:feature:onboarding` | `com.moyi.app.feature.onboarding` | The promise, relationship type, create bond, invite handoff, join (UI on fake state, PR #7) |
 | `:architecture-tests` | | JVM-only Konsist rules over `shared/**` |

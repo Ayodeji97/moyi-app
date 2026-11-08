@@ -1,0 +1,39 @@
+-- The last day Today showed, for the person signed in on this device (doc 13 §5:
+-- Today is cache-then-network). One row at most: every successful fetch replaces
+-- it, and the server always wins. user_id scopes it to one person, so a row can
+-- never be read as somebody else's even if a wipe were missed.
+--
+-- Only what Today renders. partner_entry_text is set only in the layouts allowed to
+-- show the partner's words (Revealed, Tombstone, Solo-they-wrote); the daily loop
+-- strips it before it gets here in every other layout.
+--
+-- Enums are stored by name (BondType, BondStatus, BondDayStatus, EntryStatus,
+-- the partner entry's shape); a name this build does not know reads as no cache.
+CREATE TABLE cached_day (
+    user_id TEXT NOT NULL PRIMARY KEY,
+    bond_id TEXT NOT NULL,
+    bond_name TEXT NOT NULL,
+    bond_type TEXT NOT NULL,
+    bond_status TEXT NOT NULL,
+    partner_name TEXT,
+    anchor_timezone TEXT,
+    day_date TEXT NOT NULL,
+    day_status TEXT NOT NULL,
+    my_entry_id TEXT,
+    my_entry_text TEXT,
+    my_entry_status TEXT,
+    partner_entry_shape TEXT,
+    partner_entry_id TEXT,
+    partner_entry_text TEXT,
+    prompt_id TEXT,
+    prompt_text TEXT
+);
+
+forUser:
+SELECT * FROM cached_day WHERE user_id = ?;
+
+insert:
+INSERT INTO cached_day VALUES ?;
+
+deleteAll:
+DELETE FROM cached_day;

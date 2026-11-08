@@ -289,4 +289,49 @@ class SessionManagerTest {
         assertNull(server.store.current)
         assertEquals(listOf<SessionEvent>(SessionEvent.Ended(SessionEndReason.Invalid)), events)
     }
+
+    // ---- Personal data (the local database) ----
+
+    @Test
+    fun startingASessionWipesWhateverTheDeviceKeptForAnyoneBefore() = runTest {
+        val server = TestServer(initial = null) { fail("no network expected") }
+        val stateAtWipe = mutableListOf<SessionState>()
+        server.onStoreWrite = { stateAtWipe += server.sessionManager.sessionState.value }
+
+        server.sessionManager.startSession(grant("a1", "r1"))
+
+        assertEquals(1, server.wipes)
+        assertEquals("wipe personal data", server.log.snapshot().first(), "wiped before the new session is stored or published")
+        assertEquals(listOf<SessionState>(SessionState.Unknown), stateAtWipe)
+    }
+
+    @Test
+    fun everySessionEndWipesPersonalData() = runTest {
+        // Signed out by the person.
+        val signedOut = TestServer(initial = null) { fail("no network expected") }
+        signedOut.sessionManager.startSession(grant("a1", "r1"))
+        signedOut.sessionManager.endSession(SessionEndReason.SignedOut)
+        assertEquals(2, signedOut.wipes)
+
+        // Ended by the server: a refresh token it no longer accepts, and a reuse.
+        for (code in listOf("REFRESH_TOKEN_INVALID", "TOKEN_REUSE_DETECTED")) {
+            val ended = TestServer(initial = storedSession("r1")) { respondProblem(HttpStatusCode.Unauthorized, code) }
+            assertEquals(SessionState.SignedOut, ended.sessionManager.restore())
+            assertEquals(1, ended.wipes, code)
+        }
+    }
+
+    @Test
+    fun aWipeThatFailsStillEndsTheSessionAndLogsNoMoreThanTheExceptionClass() = runTest {
+        val server = TestServer(initial = null) { fail("no network expected") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+        server.wipeFailure = IllegalStateException("You made the tea.")
+
+        server.sessionManager.endSession(SessionEndReason.SignedOut)
+
+        assertEquals(SessionState.SignedOut, server.sessionManager.sessionState.value)
+        assertNull(server.store.current)
+        assertTrue(server.logs.entries.none { "You made the tea." in it.message }, "a row's words must never reach a log")
+        assertTrue(server.logs.entries.any { "IllegalStateException" in it.message })
+    }
 }

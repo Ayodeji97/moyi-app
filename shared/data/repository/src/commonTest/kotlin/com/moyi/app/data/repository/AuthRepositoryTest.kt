@@ -17,6 +17,7 @@ import com.moyi.app.data.network.safeApiCall
 import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.testing.EventLog
 import com.moyi.app.data.testing.InMemoryTokenStore
+import com.moyi.app.data.testing.NoPersonalData
 import com.moyi.app.data.testing.USER_ID
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
@@ -68,7 +69,7 @@ class AuthRepositoryTest {
             handler(request)
         }
         val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
-        val sessionManager = SessionManager(store, RefreshControllerApi(config.origin, publicClient.client))
+        val sessionManager = SessionManager(store, RefreshControllerApi(config.origin, publicClient.client), NoPersonalData)
         val authedClient = HttpClientFactory.createAuthedClient(engine, sessionManager)
         val repository = AuthRepositoryImpl(publicClient, config, sessionManager) { device }
     }

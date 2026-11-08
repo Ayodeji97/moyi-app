@@ -54,9 +54,17 @@ class TestServer(
 
     val publicClient = HttpClientFactory.createPublicClient(engine)
     val logs = CapturingLogWriter()
+    /** The [PersonalData] wipes, in order; [wipeFailure], when set, is thrown by each. */
+    var wipes = 0
+    var wipeFailure: Exception? = null
     val sessionManager = SessionManager(
         store,
         RefreshControllerApi(ORIGIN, publicClient),
+        {
+            wipes++
+            log.add("wipe personal data")
+            wipeFailure?.let { throw it }
+        },
         Logger(StaticConfig(logWriterList = listOf(logs))),
     )
     val authedClient = HttpClientFactory.createAuthedClient(engine, sessionManager)

@@ -33,6 +33,11 @@ import kotlinx.coroutines.withContext
  *   a token presented twice ends every session (ADR-0021), so two concurrent
  *   refreshes are not a performance problem, they are a sign-out.
  *
+ * - **Personal data** ([personalData], the local database) is wiped whenever a
+ *   session ends, for any reason, and whenever one starts (a different account
+ *   may be signing in). Both run under the session lock, before the new state is
+ *   published, so no screen can read the last person's cache as the next one's.
+ *
  * It refreshes through [refreshApi], which must sit on the PUBLIC client: a
  * refresh that itself went through the Auth plugin could recurse on its own 401.
  *
@@ -46,6 +51,8 @@ import kotlinx.coroutines.withContext
 class SessionManager(
     private val store: SecureTokenStore,
     private val refreshApi: RefreshControllerApi,
+    /** Wiped when a session ends and when one starts; see [PersonalData]. */
+    private val personalData: PersonalData,
     logger: Logger = Logger,
 ) : BearerTokenSource {
     private val mutex = Mutex()
@@ -128,14 +135,16 @@ class SessionManager(
         }
 
     /**
-     * After a successful login: the refresh token is persisted first, then the
-     * access token and user are published.
+     * After a successful login: whatever the device kept for anyone before is wiped,
+     * then the refresh token is persisted, then the access token and user are
+     * published.
      *
      * @throws Exception if the store could not write; nothing is published then.
      */
     suspend fun startSession(grant: SessionGrant) {
         mutex.withLock {
             withContext(NonCancellable) {
+                wipePersonalData()
                 store.write(grant.toStoredSession())
                 lastAmbiguousFailure = null
                 issued.clear()
@@ -288,12 +297,28 @@ class SessionManager(
         } catch (_: Exception) {
             log.w { "Stored session could not be cleared" }
         }
+        wipePersonalData()
         accessToken.value = null
         lastAmbiguousFailure = null
         issued.clear()
         state.value = SessionState.SignedOut
         log.i { "Session ended: $reason" }
         eventChannel.trySend(SessionEvent.Ended(reason))
+    }
+
+    /**
+     * A failed wipe must not keep anyone signed in or out: it is logged by
+     * exception class only (never a row) and the session change goes on. The
+     * cache is still scoped by user id, so a missed wipe is not a leak by itself.
+     */
+    private suspend fun wipePersonalData() {
+        try {
+            personalData.wipe()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.w { "Personal data could not be wiped (${e::class.simpleName})" }
+        }
     }
 
     private sealed interface RefreshOutcome {

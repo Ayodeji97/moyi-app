@@ -22,6 +22,11 @@ data class Bond(
      * the caller is. A member who has left is still named: their words stay.
      */
     val partnerName: String? = null,
+    /**
+     * The IANA zone the bond's day turns over in (`Africa/Lagos`, doc 04 §3): the
+     * Bond-day is the calendar date there. Null when the server did not say.
+     */
+    val anchorTimezone: String? = null,
 ) {
     /**
      * Open: the person is in it and it has not ended. A bond waiting for the

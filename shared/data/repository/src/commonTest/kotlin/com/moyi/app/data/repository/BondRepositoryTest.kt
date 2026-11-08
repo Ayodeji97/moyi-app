@@ -13,6 +13,7 @@ import com.moyi.app.data.network.PublicHttpClient
 import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.testing.EventLog
 import com.moyi.app.data.testing.InMemoryTokenStore
+import com.moyi.app.data.testing.NoPersonalData
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.data.testing.storedSession
@@ -64,7 +65,7 @@ class BondRepositoryTest {
             handler(request)
         }
         val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
-        val sessionManager = SessionManager(store, RefreshControllerApi(ApiConfig("http://localhost:8080/api/v1").origin, publicClient.client))
+        val sessionManager = SessionManager(store, RefreshControllerApi(ApiConfig("http://localhost:8080/api/v1").origin, publicClient.client), NoPersonalData)
         val authed = AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager))
         val bonds = BondRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"))
         val account = AccountRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"))
@@ -81,8 +82,8 @@ class BondRepositoryTest {
         assertEquals(
             Result.Success(
                 listOf(
-                    Bond("b1", "Amara and Tunde", BondType.COUPLE, BondStatus.PENDING_MEMBER, Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD", Instant.parse("2026-11-05T10:00:00Z"))),
-                    Bond("b2", "Amara and Tunde", BondType.COUPLE, BondStatus.ARCHIVED, null),
+                    Bond("b1", "Amara and Tunde", BondType.COUPLE, BondStatus.PENDING_MEMBER, Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD", Instant.parse("2026-11-05T10:00:00Z")), anchorTimezone = "Africa/Lagos"),
+                    Bond("b2", "Amara and Tunde", BondType.COUPLE, BondStatus.ARCHIVED, null, anchorTimezone = "Africa/Lagos"),
                 ),
             ),
             result,

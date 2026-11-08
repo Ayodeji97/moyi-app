@@ -1,22 +1,12 @@
 package com.moyi.app.feature.today
 
 import com.moyi.app.core.ApiErrorCode
-import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
-import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
-import com.moyi.app.domain.bond.Bond
-import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondStatus
-import com.moyi.app.domain.bond.BondType
-import com.moyi.app.domain.bond.Invite
-import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.today.BondDayStatus
-import com.moyi.app.domain.today.EntryStatus
-import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Today
-import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DeleteResult
 import com.moyi.app.feature.today.common.RepositoryDailyLoop
@@ -31,69 +21,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-private fun api(status: Int, code: ApiErrorCode) = DataError.Network.Api(ApiProblem(status = status, code = code))
-
-private val ACTIVE = Bond(
-    id = "bond-1",
-    name = "Amara and Tunde",
-    type = BondType.COUPLE,
-    status = BondStatus.ACTIVE,
-    invite = null,
-    partnerName = PARTNER,
-)
-
-private val MY_ENTRY = MyEntry(id = "entry-1", text = MINE, status = EntryStatus.SUBMITTED)
-
-private fun today(status: BondDayStatus = BondDayStatus.OPEN, my: MyEntry? = null, theirs: PartnerEntry? = null) =
-    Today(date = "2026-09-14", status = status, myEntry = my, partnerEntry = theirs, prompt = PROMPT)
-
-private class Bonds : BondRepository {
-    var result: Result<List<Bond>, DataError.Network> = Result.Success(listOf(ACTIVE))
-    var calls = 0
-    override suspend fun bonds(): Result<List<Bond>, DataError.Network> {
-        calls++
-        return result
-    }
-    override suspend fun createBond(name: String, type: BondType, anchorTimezone: String) = error("not used")
-    override suspend fun createInvite(bondId: String): Result<Invite, DataError.Network> = error("not used")
-    override suspend fun revokeInvite(bondId: String, inviteId: String): EmptyResult<DataError.Network> = error("not used")
-    override suspend fun resolveInvite(code: String): Result<InvitePreview, DataError.Network> = error("not used")
-    override suspend fun acceptInvite(code: String): Result<Bond, DataError.Network> = error("not used")
-}
-
-private class Entries : TodayRepository {
-    var todayResult: Result<Today, DataError.Network> = Result.Success(today())
-    var submitResult: Result<MyEntry, DataError.Network> = Result.Success(MY_ENTRY)
-    var editResult: Result<MyEntry, DataError.Network> = Result.Success(MY_ENTRY)
-    var deleteResult: EmptyResult<DataError.Network> = Result.Success(Unit)
-
-    /** Holds the next `today` call until completed, then clears itself. */
-    var todayGate: CompletableDeferred<Unit>? = null
-    var deleteGate: CompletableDeferred<Unit>? = null
-    val todayCalls = mutableListOf<String>()
-    val deleted = mutableListOf<String>()
-
-    override suspend fun today(bondId: String): Result<Today, DataError.Network> {
-        todayCalls += bondId
-        todayGate?.let { todayGate = null; it.await() }
-        return todayResult
-    }
-
-    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String) = submitResult
-    override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String) = editResult
-
-    override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> {
-        deleted += entryId
-        deleteGate?.await()
-        return deleteResult
-    }
-}
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class RepositoryDailyLoopTest {
-    private val bonds = Bonds()
-    private val entries = Entries()
-    private val loop = RepositoryDailyLoop(bonds, entries)
+    private val bonds = FakeBonds()
+    private val entries = FakeTodayEntries()
+    private val cache = FakeTodayCache()
+    private val loop = RepositoryDailyLoop(bonds, entries, cache, FixedClock(NOON_ON_THE_DAY))
 
     private val ready get() = assertIs<DailyLoopState.Ready>(loop.state.value).day
 

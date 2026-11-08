@@ -11,6 +11,7 @@ import com.moyi.app.data.network.HttpClientFactory
 import com.moyi.app.data.network.PublicHttpClient
 import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.testing.InMemoryTokenStore
+import com.moyi.app.data.testing.NoPersonalData
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.domain.bond.BondSettings
@@ -58,7 +59,7 @@ class BondSettingsRepositoryTest {
         }
         private val config = ApiConfig("http://localhost:8080/api/v1")
         private val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
-        private val sessionManager = SessionManager(InMemoryTokenStore(), RefreshControllerApi(config.origin, publicClient.client))
+        private val sessionManager = SessionManager(InMemoryTokenStore(), RefreshControllerApi(config.origin, publicClient.client), NoPersonalData)
         val repo = BondSettingsRepositoryImpl(AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager)), config)
 
         fun json(): JsonObject = Json.parseToJsonElement(assertIs<TextContent>(requests.single().body).text).jsonObject

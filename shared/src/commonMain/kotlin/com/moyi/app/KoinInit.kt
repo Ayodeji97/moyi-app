@@ -3,6 +3,7 @@ package com.moyi.app
 import com.moyi.app.data.network.networkModule
 import com.moyi.app.debug.previewDataModule
 import com.moyi.app.debug.previewTodayModule
+import com.moyi.app.data.database.databaseModules
 import com.moyi.app.data.repository.repositoryModules
 import com.moyi.app.data.session.sessionModules
 import com.moyi.app.feature.auth.di.authFeatureModule
@@ -22,7 +23,7 @@ val appModule: Module = module {
 }
 
 /** Every module the app runs with, data layer first. The platform ones need `androidContext` on Android. */
-val appModules: List<Module> = listOf(networkModule) + sessionModules + repositoryModules + authFeatureModule + onboardingFeatureModule + todayFeatureModule + bondFeatureModule + appModule
+val appModules: List<Module> = listOf(networkModule) + sessionModules + databaseModules + repositoryModules + authFeatureModule + onboardingFeatureModule + todayFeatureModule + bondFeatureModule + appModule
 
 /**
  * Starts Koin once per process. Android calls it from `MoyiApplication`

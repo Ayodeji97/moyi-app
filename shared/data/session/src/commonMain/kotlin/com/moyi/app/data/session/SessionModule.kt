@@ -10,11 +10,17 @@ import org.koin.dsl.module
 
 /**
  * The session. One [SessionManager] for the app, also bound as the authed
- * client's [BearerTokenSource]. Refresh goes over the PUBLIC client.
+ * client's [BearerTokenSource]. Refresh goes over the PUBLIC client. Its
+ * [PersonalData] is bound by the repository layer, over the local database.
  */
 val sessionModule = module {
-    single { SessionManager(store = get(), refreshApi = RefreshControllerApi(get<ApiConfig>().origin, get<PublicHttpClient>().client)) } bind
-        BearerTokenSource::class
+    single {
+        SessionManager(
+            store = get(),
+            refreshApi = RefreshControllerApi(get<ApiConfig>().origin, get<PublicHttpClient>().client),
+            personalData = get(),
+        )
+    } bind BearerTokenSource::class
 }
 
 /** The platform's [SecureTokenStore]: Keychain on iOS, Keystore-encrypted file on Android (needs `androidContext`). */

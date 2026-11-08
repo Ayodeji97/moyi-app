@@ -12,6 +12,7 @@ import com.moyi.app.data.network.PublicHttpClient
 import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.testing.EventLog
 import com.moyi.app.data.testing.InMemoryTokenStore
+import com.moyi.app.data.testing.NoPersonalData
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.domain.today.BondDayStatus
@@ -56,7 +57,7 @@ class TodayRepositoryTest {
             handler(request)
         }
         val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
-        val sessionManager = SessionManager(store, RefreshControllerApi(ApiConfig("http://localhost:8080/api/v1").origin, publicClient.client))
+        val sessionManager = SessionManager(store, RefreshControllerApi(ApiConfig("http://localhost:8080/api/v1").origin, publicClient.client), NoPersonalData)
         val authed = AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager))
         val today = TodayRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"))
 

@@ -6,6 +6,7 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondStatus
+import com.moyi.app.domain.today.TodayCache
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -16,8 +17,19 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 /**
- * Decides the first signed-in screen from the server, never from what the
- * device remembers: a bond can be joined, left or ended on the other phone.
+ * Decides the first signed-in screen.
+ *
+ * **A cached day goes straight to Today**, without waiting for the server
+ * (states.md §3: Today renders from cache instantly; NFR-010: Today within 1 s on a
+ * warm cache, which a round trip from Lagos cannot meet). The cache holds a day only
+ * for the signed-in person, only while they were last seen in an open bond, and is
+ * wiped at every session change. Today refreshes behind it at once, and if the bond
+ * was left or ended on the other phone it forgets the cached day and sends the
+ * person back here ([NavigateToToday][SignedInStartEvent.NavigateToToday] is
+ * therefore never a dead end), where the server decides.
+ *
+ * With nothing cached, the server decides, never what the device remembers: a bond
+ * can be joined, left or ended on the other phone.
  *
  * `GET /bonds` and `GET /me` run side by side (states.md §3: no chained round
  * trips). An open bond wins: Today, whatever the account's state. With none, a
@@ -32,6 +44,7 @@ import kotlinx.coroutines.launch
 class SignedInStartViewModel(
     private val bonds: BondRepository,
     private val account: AccountRepository,
+    private val cachedDay: TodayCache,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SignedInStartState.Checking)
     val state: StateFlow<SignedInStartState> = _state.asStateFlow()
@@ -52,6 +65,10 @@ class SignedInStartViewModel(
     private fun check() {
         _state.value = SignedInStartState.Checking
         viewModelScope.launch {
+            if (cachedDay.read() != null) {
+                _events.send(SignedInStartEvent.NavigateToToday)
+                return@launch
+            }
             val (bondList, user) = coroutineScope {
                 val b = async { bonds.bonds() }
                 val u = async { account.currentUser() }

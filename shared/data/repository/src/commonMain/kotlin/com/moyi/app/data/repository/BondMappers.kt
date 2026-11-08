@@ -26,6 +26,7 @@ internal fun BondResponse.toBond(): Bond? = Bond(
     // An invite missing its code or link is no invite the person can pass on.
     invite = invite?.toInvite(),
     partnerName = partnerName(members, me?.memberId),
+    anchorTimezone = anchorTimezone,
 )
 
 /**
