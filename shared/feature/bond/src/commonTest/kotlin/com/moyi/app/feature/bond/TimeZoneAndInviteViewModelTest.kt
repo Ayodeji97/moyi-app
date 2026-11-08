@@ -1,0 +1,384 @@
+package com.moyi.app.feature.bond
+
+import app.cash.turbine.test
+import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.designsystem.presentation.UiText
+import com.moyi.app.domain.bond.BondStatus
+import com.moyi.app.domain.bond.PendingTimezoneChange
+import com.moyi.app.feature.bond.resources.Res
+import com.moyi.app.feature.bond.resources.settings_error_conflict
+import com.moyi.app.feature.bond.resources.settings_error_rate_limited
+import com.moyi.app.feature.bond.resources.settings_invite_error_full
+import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon
+import com.moyi.app.feature.bond.resources.settings_tz_error_unsupported
+import com.moyi.app.feature.bond.settings.BondSettingsAction
+import com.moyi.app.feature.bond.settings.BondSettingsEvent
+import com.moyi.app.feature.bond.settings.BondSettingsViewModel
+import com.moyi.app.feature.bond.settings.SettingsError
+import com.moyi.app.feature.bond.settings.SettingsField
+import com.moyi.app.feature.bond.settings.TimeZoneStep
+import kotlinx.coroutines.CompletableDeferred
+import org.jetbrains.compose.resources.StringResource
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/**
+ * The shared time zone (FR-027, ADR-0030: propose, proposed, confirm, the 30-day rule)
+ * and the invite (states.md §2: share, copy, cancel, create, the 409s) on Bond settings.
+ */
+class TimeZoneAndInviteViewModelTest : MainDispatcherTest() {
+    private val repo = FakeBondSettingsRepository()
+    private val bonds = FakeBondRepository(repo)
+    private var zones: Set<String> = setOf("Europe/London", "Africa/Lagos", "UTC", "Etc/GMT+1", "America/Argentina/Buenos_Aires")
+    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeAuthRepository(), bonds, zoneIds = { zones }) }
+
+    private val theirProposal = PendingTimezoneChange("p1", "Europe/London", proposedByMe = false)
+    private val myProposal = PendingTimezoneChange("p1", "Europe/London", proposedByMe = true)
+
+    private fun error(field: SettingsField, message: StringResource) = SettingsError(field, UiText.Resource(message))
+
+    private val state get() = viewModel.state.value
+
+    /** Opens Propose and, if [zone] is given, picks it, taking the two navigation events. */
+    private suspend fun choose(zone: String?) = viewModel.events.test {
+        viewModel.onAction(BondSettingsAction.OnTimeZoneClick)
+        assertEquals(BondSettingsEvent.OpenTimeZone, awaitItem())
+        if (zone != null) {
+            viewModel.onAction(BondSettingsAction.OnZonePicked(zone))
+            assertEquals(BondSettingsEvent.ZonePicked, awaitItem())
+        }
+    }
+
+    // ----- propose -----
+
+    @Test
+    fun theRowOpensProposeOnTheBondsOwnZone() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnTimeZoneClick)
+            assertEquals(BondSettingsEvent.OpenTimeZone, awaitItem())
+        }
+        assertEquals(TimeZoneStep.Propose, state.timeZoneStep)
+        assertEquals("Africa/Lagos", state.zoneDraft)
+    }
+
+    @Test
+    fun thePickerListsOnlyRegionZonesByCityAndSearchesThem() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnZoneFieldClick)
+            assertEquals(BondSettingsEvent.OpenZonePicker, awaitItem())
+        }
+        // UTC and Etc/ are refused by the backend (a region zone only), so they are not offered.
+        assertEquals(listOf("America/Argentina/Buenos_Aires", "Africa/Lagos", "Europe/London"), state.zones)
+
+        viewModel.onAction(BondSettingsAction.OnZoneQueryChange("lon"))
+        assertEquals(listOf("Europe/London"), state.visibleZones)
+        viewModel.onAction(BondSettingsAction.OnZoneQueryChange("buenos"))
+        assertEquals(listOf("America/Argentina/Buenos_Aires"), state.visibleZones)
+    }
+
+    @Test
+    fun noZonesFromThePlatformIsTheFieldsErrorAndOpeningItAgainRetries() = runTest {
+        zones = emptySet()
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnZoneFieldClick)
+            expectNoEvents()
+            assertTrue(state.zonesFailed)
+
+            zones = setOf("Europe/London")
+            viewModel.onAction(BondSettingsAction.OnZoneFieldClick)
+            assertEquals(BondSettingsEvent.OpenZonePicker, awaitItem())
+        }
+        assertFalse(state.zonesFailed)
+    }
+
+    @Test
+    fun pickingACityReturnsToProposeWithIt() = runTest {
+        choose("Europe/London")
+        assertEquals("Europe/London", state.zoneDraft)
+    }
+
+    @Test
+    fun proposingWaitsForTheOtherMemberAndShowsProposed() = runTest {
+        choose("Europe/London")
+        repo.gate = CompletableDeferred()
+
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnProposeClick)
+            assertEquals(SettingsField.TimeZone, state.saving, "the action says Proposing while it is in flight")
+            repo.gate!!.complete(Unit)
+            expectNoEvents()
+        }
+
+        assertEquals(listOf("Europe/London"), repo.proposals)
+        assertEquals(TimeZoneStep.Proposed, state.timeZoneStep)
+        assertEquals("Africa/Lagos", state.settings?.anchorTimezone, "nothing moves until the other member agrees")
+        assertEquals("\"2\"", state.settings?.version, "the 200's ETag is what the next settings change sends")
+        assertNull(state.saving)
+    }
+
+    @Test
+    fun proposingTheZoneItAlreadyIsSendsNothing() = runTest {
+        choose(null)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnProposeClick)
+            assertEquals(BondSettingsEvent.Saved, awaitItem())
+        }
+        assertTrue(repo.proposals.isEmpty())
+    }
+
+    @Test
+    fun onABondNobodyHasJoinedTheZoneChangesAtOnceAndTheRootShowsIt() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER)
+        choose("Europe/London")
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnProposeClick)
+            assertEquals(BondSettingsEvent.Saved, awaitItem())
+        }
+        assertEquals("Europe/London", state.settings?.anchorTimezone)
+    }
+
+    @Test
+    fun aSecondChangeInsideThirtyDaysIsRefusedPlainlyAndNotRetried() = runTest {
+        repo.proposeAnswers += apiError(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON)
+        choose("Europe/London")
+
+        viewModel.onAction(BondSettingsAction.OnProposeClick)
+
+        assertEquals(error(SettingsField.TimeZone, Res.string.settings_tz_error_too_soon), state.error)
+        assertEquals(1, repo.proposals.size, "a month is not a rate limit: no retry")
+        assertEquals(TimeZoneStep.Propose, state.timeZoneStep)
+        assertEquals("Europe/London", state.zoneDraft, "the choice is kept")
+        assertNull(state.saving)
+    }
+
+    @Test
+    fun aProposalAlreadyOpenReloadsAndShowsTheirsToAnswer() = runTest {
+        choose("Asia/Tokyo")
+        repo.proposeAnswers += apiError(409, ApiErrorCode.PROPOSAL_PENDING)
+        repo.server = settingsV1.copy(pendingTimezone = theirProposal, version = "\"2\"")
+
+        viewModel.onAction(BondSettingsAction.OnProposeClick)
+
+        assertEquals(TimeZoneStep.Confirm, state.timeZoneStep)
+        assertEquals(error(SettingsField.TimeZone, Res.string.settings_error_conflict), state.error)
+    }
+
+    @Test
+    fun aZoneTheBackendRefusesSaysSoOnTheScreen() = runTest {
+        repo.proposeAnswers += apiError(422, ApiErrorCode.VALIDATION_FAILED)
+        choose("Europe/London")
+
+        viewModel.onAction(BondSettingsAction.OnProposeClick)
+
+        assertEquals(error(SettingsField.TimeZone, Res.string.settings_tz_error_unsupported), state.error)
+    }
+
+    @Test
+    fun anEndedBondEndsSettingsFromPropose() = runTest {
+        repo.proposeAnswers += apiError(409, ApiErrorCode.BOND_ARCHIVED)
+        choose("Europe/London")
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnProposeClick)
+            assertEquals(BondSettingsEvent.Ended, awaitItem())
+        }
+    }
+
+    // ----- proposed: the proposer's side -----
+
+    @Test
+    fun theProposerCanCancelButNeverAgree() = runTest {
+        repo.server = settingsV1.copy(pendingTimezone = myProposal)
+        assertEquals(TimeZoneStep.Proposed, state.timeZoneStep)
+
+        viewModel.onAction(BondSettingsAction.OnAgreeClick)
+        assertTrue(repo.confirmations.isEmpty(), "BR-6: one person clicking twice is not two people agreeing")
+
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnWithdrawProposalClick)
+            assertEquals(BondSettingsEvent.Saved, awaitItem())
+        }
+        assertEquals(1, repo.cancels)
+        assertNull(state.settings?.pendingTimezone)
+        assertEquals(TimeZoneStep.Propose, state.timeZoneStep)
+    }
+
+    @Test
+    fun cancellingWhatIsNoLongerWaitingIsDoneNotEnded() = runTest {
+        repo.server = settingsV1.copy(pendingTimezone = myProposal)
+        viewModel.state.value
+        repo.cancelAnswers += apiError(404, ApiErrorCode.NOT_FOUND)
+        repo.server = settingsV1
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnWithdrawProposalClick)
+            assertEquals(BondSettingsEvent.Saved, awaitItem())
+        }
+        assertNull(state.settings?.pendingTimezone)
+    }
+
+    // ----- confirm: the other member's side -----
+
+    @Test
+    fun theOtherMemberAgreesAndTheZoneMoves() = runTest {
+        repo.server = settingsV1.copy(pendingTimezone = theirProposal)
+        assertEquals(TimeZoneStep.Confirm, state.timeZoneStep)
+
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnAgreeClick)
+            assertEquals(BondSettingsEvent.Saved, awaitItem())
+        }
+        assertEquals(listOf("p1"), repo.confirmations)
+        assertEquals("Europe/London", state.settings?.anchorTimezone)
+        assertNull(state.settings?.pendingTimezone)
+    }
+
+    @Test
+    fun theOtherMemberDeclinesWithTheSameDelete() = runTest {
+        repo.server = settingsV1.copy(pendingTimezone = theirProposal)
+        viewModel.state.value
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnWithdrawProposalClick)
+            assertEquals(BondSettingsEvent.Saved, awaitItem())
+        }
+        assertEquals(1, repo.cancels)
+        assertEquals("Africa/Lagos", state.settings?.anchorTimezone)
+    }
+
+    @Test
+    fun agreeingToAProposalThatLapsedReloadsAndSaysSoInsteadOfEnding() = runTest {
+        repo.server = settingsV1.copy(pendingTimezone = theirProposal)
+        viewModel.state.value
+        repo.server = settingsV1 // lapsed, or cancelled from the other phone
+
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnAgreeClick)
+            expectNoEvents()
+        }
+
+        assertEquals(TimeZoneStep.Propose, state.timeZoneStep)
+        assertEquals(error(SettingsField.TimeZone, Res.string.settings_error_conflict), state.error)
+    }
+
+    @Test
+    fun theThirtyDayRuleIsCheckedAgainAtConfirmation() = runTest {
+        repo.server = settingsV1.copy(pendingTimezone = theirProposal)
+        repo.confirmAnswers += apiError(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON)
+
+        viewModel.onAction(BondSettingsAction.OnAgreeClick)
+
+        assertEquals(error(SettingsField.TimeZone, Res.string.settings_tz_error_too_soon), state.error)
+        assertEquals(TimeZoneStep.Confirm, state.timeZoneStep)
+        assertNull(state.saving)
+    }
+
+    // ----- the invite -----
+
+    @Test
+    fun theInviteRowOpensTheInviteAndShareCarriesItsLinkAndCode() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER, invite = liveInvite)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnInviteClick)
+            assertEquals(BondSettingsEvent.OpenInvite, awaitItem())
+            viewModel.onAction(BondSettingsAction.OnShareInviteClick)
+            assertEquals(BondSettingsEvent.ShareInvite(liveInvite.link, liveInvite.code), awaitItem())
+        }
+        assertEquals(0, bonds.created, "sharing never issues: that would revoke the code being shared")
+    }
+
+    @Test
+    fun copyingTheCodeShowsCopied() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER, invite = liveInvite)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnCopyInviteClick)
+            assertEquals(BondSettingsEvent.CopyInviteCode("K7Q2PD"), awaitItem())
+        }
+        assertTrue(state.inviteCopied)
+    }
+
+    @Test
+    fun cancellingTheInviteRevokesItAndShowsRevoked() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER, invite = liveInvite)
+        viewModel.onAction(BondSettingsAction.OnCopyInviteClick)
+
+        viewModel.onAction(BondSettingsAction.OnCancelInviteClick)
+
+        assertEquals(listOf("i1"), bonds.revoked)
+        assertNull(state.settings?.invite)
+        assertFalse(state.inviteCopied)
+        assertNull(state.saving)
+    }
+
+    @Test
+    fun cancellingAnInviteAlreadyDeadIsCancelled() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER, invite = liveInvite)
+        viewModel.state.value
+        bonds.revokeAnswers += apiError(404, ApiErrorCode.NOT_FOUND)
+        repo.server = repo.server.copy(invite = null)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnCancelInviteClick)
+            expectNoEvents()
+        }
+        assertNull(state.settings?.invite)
+        assertNull(state.error)
+    }
+
+    @Test
+    fun creatingANewInviteShowsItsCode() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER)
+
+        viewModel.onAction(BondSettingsAction.OnCreateInviteClick)
+
+        assertEquals(1, bonds.created)
+        assertEquals(newInvite, state.settings?.invite)
+    }
+
+    @Test
+    fun aBondThatFilledMeanwhileSaysItNeedsNoInvite() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER)
+        viewModel.state.value
+        bonds.createAnswers += apiError(409, ApiErrorCode.BOND_FULL)
+        repo.server = settingsV1 // ACTIVE now: they joined
+
+        viewModel.onAction(BondSettingsAction.OnCreateInviteClick)
+
+        assertEquals(error(SettingsField.Invite, Res.string.settings_invite_error_full), state.error)
+        assertEquals(BondStatus.ACTIVE, state.settings?.status, "reloaded, so the root drops the Invite row")
+        assertNull(state.saving)
+    }
+
+    @Test
+    fun anEndedBondEndsSettingsFromTheInvite() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER)
+        bonds.createAnswers += apiError(409, ApiErrorCode.BOND_ARCHIVED)
+        viewModel.state.value
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnCreateInviteClick)
+            assertEquals(BondSettingsEvent.Ended, awaitItem())
+        }
+    }
+
+    @Test
+    fun theDailyInviteLimitSaysWhenNotWhy() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER)
+        bonds.createAnswers += apiError(429, ApiErrorCode.RATE_LIMITED)
+
+        viewModel.onAction(BondSettingsAction.OnCreateInviteClick)
+
+        assertEquals(error(SettingsField.Invite, Res.string.settings_error_rate_limited), state.error)
+    }
+
+    @Test
+    fun noInviteCallIsMadeWhileAnotherChangeIsInFlight() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER, invite = liveInvite)
+        repo.gate = CompletableDeferred()
+        viewModel.onAction(BondSettingsAction.OnRestDaysToggle)
+
+        viewModel.onAction(BondSettingsAction.OnCancelInviteClick)
+
+        assertTrue(bonds.revoked.isEmpty())
+        repo.gate!!.complete(Unit)
+    }
+}

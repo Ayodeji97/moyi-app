@@ -2,6 +2,8 @@ package com.moyi.app.debug
 
 import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.streak.StreakRepository
+import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.today.Prompt
 import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.DailyLoop
@@ -102,4 +104,9 @@ internal val previewTodayModule: Module = module {
     single<TodayRepository> { PreviewTodayRepository(get()) }
     // The Streak screen's four drawn states and a failure, in turn (PreviewStreak.kt).
     single<StreakRepository> { PreviewStreakRepository() }
+    // Today's settings target opens Bond settings on preview settings (PreviewBondSettings).
+    single { PreviewBondSettingsRepository() }
+    single<BondSettingsRepository> { get<PreviewBondSettingsRepository>() }
+    // Invites (Bond settings › Invite, and Today's "Share the invite again") over the same preview bond.
+    single<BondRepository> { PreviewSettingsBondRepository(get()) }
 }

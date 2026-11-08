@@ -23,6 +23,10 @@ import com.moyi.app.feature.today.FakeDailyLoop
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.di.todayFeatureModule
 import org.koin.core.context.startKoin
+import androidx.compose.ui.uikit.LocalUIViewController
+import platform.UIKit.UIViewController
+import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.feature.today.InviteBonds
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import kotlin.test.AfterTest
@@ -48,7 +52,15 @@ class TodayBackTest {
     @BeforeTest
     fun startKoinWithTheFakeDay() {
         // The feature's own module, with the day replaced: no repositories, no network.
-        startKoin { modules(todayFeatureModule, module { single<DailyLoop> { FakeDailyLoop() } }) }
+        startKoin {
+            modules(
+                todayFeatureModule,
+                module {
+                    single<DailyLoop> { FakeDailyLoop() }
+                    single<BondRepository> { InviteBonds() }
+                },
+            )
+        }
     }
 
     @AfterTest
@@ -63,6 +75,9 @@ class TodayBackTest {
                 override val viewModelStore = store
             },
             LocalNavigationEventDispatcherOwner provides rememberNavigationEventDispatcherOwner(parent = null),
+            // Today holds the OS share sheet ("Share the invite again"), which presents over the
+            // hosting view controller; a test has none, so it gets a bare one. Nothing is shared here.
+            LocalUIViewController provides remember { UIViewController() },
         ) {
             val dispatcher: NavigationEventDispatcher = LocalNavigationEventDispatcherOwner.current!!.navigationEventDispatcher
             dispatcher.addInput(input)

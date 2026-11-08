@@ -6,7 +6,6 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.moyi.app.domain.auth.SessionEndReason
-import com.moyi.app.feature.auth.home.HomePlaceholderRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
 import com.moyi.app.feature.auth.reset.ForgotPasswordRoot
@@ -60,10 +59,6 @@ data class ResetLinkSentRoute(val email: String)
 @Serializable
 data class ResetPasswordRoute(val email: String)
 
-/** TEMPORARY: the signed-in placeholder, until Today exists. */
-@Serializable
-data object HomePlaceholderRoute
-
 /**
  * The auth screens. Back stack, from the start destination (sign in):
  *
@@ -74,7 +69,7 @@ data object HomePlaceholderRoute
  *   pops to Register, whose ViewModel kept the fields.
  * - Verify → 200 replaces the whole stack with sign in, email prefilled: the
  *   account is done, so back must not return to sign up.
- * - Sign in → success replaces the stack with the placeholder ([onSignedIn]).
+ * - Sign in → success replaces the stack with the signed-in start ([onSignedIn]).
  * - Session ended → "Sign in" replaces the stack with sign in.
  * - Sign in → "I forgot my password" pushes Forgot password, prefilled with
  *   sign in's email. Forgot → 202 pushes Reset link sent; Reset link sent →
@@ -141,9 +136,6 @@ fun NavGraphBuilder.authGraph(
     }
     composable<SessionEndedRoute> {
         SessionEndedScreen(onSignIn = { navController.signInAfterSessionEnded() })
-    }
-    composable<HomePlaceholderRoute> {
-        HomePlaceholderRoot()
     }
 }
 

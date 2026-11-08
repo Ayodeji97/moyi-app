@@ -66,6 +66,11 @@ import com.moyi.app.feature.today.resources.today_partner_pending_line_unnamed
 import com.moyi.app.feature.today.resources.today_queued_line
 import com.moyi.app.feature.today.resources.today_revealed_title
 import com.moyi.app.feature.today.resources.today_share_invite_again
+import com.moyi.app.feature.today.resources.today_invite_share_text
+import com.moyi.app.designsystem.platform.rememberShareSheet
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 import com.moyi.app.feature.today.resources.today_solo_line
 import com.moyi.app.feature.today.resources.today_tombstone_line
 import com.moyi.app.feature.today.resources.today_waiting_heading
@@ -78,13 +83,15 @@ import org.koin.compose.viewmodel.koinViewModel
 fun TodayRoot(
     onNavigateToWrite: (editing: Boolean) -> Unit,
     onNavigateToReveal: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToSettings: (bondId: String) -> Unit,
     onNavigateToArchive: () -> Unit,
     onNoOpenBond: () -> Unit,
     debugTools: Boolean,
     viewModel: TodayViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val shareSheet = rememberShareSheet()
+    val scope = rememberCoroutineScope()
     // Every foreground, and every return from Write or the reveal: the day may have moved on
     // the other phone, and a push is never relied on to have arrived (states.md §10).
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onAction(TodayAction.OnForeground) }
@@ -92,9 +99,11 @@ fun TodayRoot(
         when (event) {
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)
             TodayEvent.NavigateToReveal -> onNavigateToReveal()
-            TodayEvent.NavigateToSettings -> onNavigateToSettings()
+            is TodayEvent.NavigateToSettings -> onNavigateToSettings(event.bondId)
             TodayEvent.NavigateToArchive -> onNavigateToArchive()
             TodayEvent.NavigateToStart -> onNoOpenBond()
+            // One whole sentence with both placeholders, never concatenated (copy.md).
+            is TodayEvent.ShareInvite -> scope.launch { shareSheet.share(getString(Res.string.today_invite_share_text, event.link, event.code)) }
         }
     }
     TodayScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
@@ -305,6 +314,8 @@ private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayActi
                 ?: stringResource(Res.string.today_partner_pending_line_unnamed),
             actions = listOf(NoteAction(stringResource(Res.string.today_share_invite_again), { onAction(TodayAction.OnShareInviteClick) })),
         )
+        // No invite could be found or issued: the Generic error's words, as for a failed delete.
+        ActionFailed(state)
         // TODO(PR #7): Figma 220:27 places the InviteCode (358 × 195) 16 below this note.
         //  InviteCode is PR #7's component; add it here after the rebase.
     }

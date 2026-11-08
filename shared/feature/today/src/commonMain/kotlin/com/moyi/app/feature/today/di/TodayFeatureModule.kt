@@ -22,7 +22,7 @@ val todayFeatureModule = module {
     single<DailyLoop> { RepositoryDailyLoop(get(), get()) }
     single { RevealLedger() }
     // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.
-    viewModel { TodayViewModel(get(), get()) }
+    viewModel { TodayViewModel(get(), get(), get()) }
     viewModel { (editing: Boolean) -> WriteViewModel(editing, get()) }
     viewModel { RevealViewModel(get()) }
     // The Archive: one feed shared by the list and the day view, over the domain's ArchiveRepository.

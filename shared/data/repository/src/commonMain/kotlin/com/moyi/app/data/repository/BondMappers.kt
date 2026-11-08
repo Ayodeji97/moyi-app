@@ -47,12 +47,14 @@ internal fun InviteResponse.toInvite(): Invite? = Invite(
     id = id ?: return null,
     code = code ?: return null,
     link = link ?: return null,
+    expiresAt = expiresAt,
 )
 
 internal fun InviteDetailResponse.toInvite(): Invite? = Invite(
     id = id ?: return null,
     code = code ?: return null,
     link = link ?: return null,
+    expiresAt = expiresAt,
 )
 
 /**

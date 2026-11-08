@@ -3,7 +3,6 @@ package com.moyi.app.feature.auth.di
 import com.moyi.app.feature.auth.common.DeviceLocale
 import com.moyi.app.feature.auth.common.LegalLinks
 import com.moyi.app.feature.auth.common.PlatformDeviceLocale
-import com.moyi.app.feature.auth.home.HomePlaceholderViewModel
 import com.moyi.app.feature.auth.login.LoginViewModel
 import com.moyi.app.feature.auth.register.RegisterViewModel
 import com.moyi.app.feature.auth.reset.ForgotPasswordViewModel
@@ -18,7 +17,6 @@ val authFeatureModule = module {
     single<DeviceLocale> { PlatformDeviceLocale }
     single { LegalLinks.fromBuild() }
     viewModelOf(::RegisterViewModel)
-    viewModelOf(::HomePlaceholderViewModel)
     // Navigation arguments arrive as Koin parameters (VerifyRoot, LoginRoot, ForgotPasswordRoot, ResetPasswordRoot).
     viewModel { (email: String) -> VerifyViewModel(email, get()) }
     viewModel { (email: String, sessionEnded: Boolean) -> LoginViewModel(email, sessionEnded, get()) }

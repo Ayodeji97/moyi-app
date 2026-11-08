@@ -151,14 +151,5 @@
     <!-- PROPOSED. 410 PASSWORD_RESET_TOKEN_EXPIRED (expired, or already used), under the paste field. -->
     <string name="reset_token_error_expired">That link has expired. Go back and ask for a new one.</string>
 
-    <!-- ===== Signed-in placeholder (TEMPORARY, until Today is built) ===== -->
-
-    <!-- PROPOSED, temporary. %1$s is {name}, the person's displayName. -->
-    <string name="home_greeting">Hello, %1$s</string>
-    <!-- PROPOSED, temporary. -->
-    <string name="home_line">You are signed in. The rest of Moyi is on its way.</string>
-    <!-- PROPOSED, temporary. -->
-    <string name="home_sign_out">Sign out</string>
-    <!-- PROPOSED, temporary. -->
-    <string name="home_sign_out_sending">Signing out</string>
+    
 </resources>

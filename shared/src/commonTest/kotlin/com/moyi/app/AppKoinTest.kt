@@ -8,11 +8,15 @@ import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
 import com.moyi.app.debug.PreviewBondRepository
+import com.moyi.app.debug.PreviewBondSettingsRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.feature.auth.di.authFeatureModule
+import com.moyi.app.feature.bond.di.bondFeatureModule
+import com.moyi.app.feature.bond.settings.BondSettingsViewModel
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
 import com.moyi.app.feature.onboarding.di.onboardingFeatureModule
@@ -22,7 +26,6 @@ import com.moyi.app.feature.onboarding.join.JoinCodeViewModel
 import com.moyi.app.feature.onboarding.join.JoinConfirmViewModel
 import com.moyi.app.feature.onboarding.relationship.RelationshipTypeViewModel
 import com.moyi.app.feature.onboarding.start.SignedInStartViewModel
-import com.moyi.app.feature.auth.home.HomePlaceholderViewModel
 import com.moyi.app.feature.auth.login.LoginViewModel
 import com.moyi.app.feature.auth.register.RegisterViewModel
 import com.moyi.app.feature.auth.verify.VerifyViewModel
@@ -64,22 +67,24 @@ class AppKoinTest {
             modules(
                 authFeatureModule,
                 onboardingFeatureModule,
+                bondFeatureModule,
                 appModule,
                 module {
                     single<AuthRepository> { repo }
                     single<BondRepository> { PreviewBondRepository() }
+                    single<BondSettingsRepository> { PreviewBondSettingsRepository() }
                     single<AccountRepository> { StubAccountRepository }
                 },
             )
         }.koin
         try {
             koin.get<RegisterViewModel>()
-            koin.get<HomePlaceholderViewModel>()
             koin.get<VerifyViewModel> { parametersOf("amara@example.com") }
             val login = koin.get<LoginViewModel> { parametersOf("amara@example.com", true) }
             assertEquals("amara@example.com", login.state.value.email.value)
             koin.get<SignedInStartViewModel>()
             koin.get<UnverifiedGateViewModel>()
+            koin.get<BondSettingsViewModel> { parametersOf("preview-bond") }
             koin.get<RelationshipTypeViewModel>()
             koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }
             koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD") }

@@ -81,8 +81,12 @@ sealed interface TodayAction {
 sealed interface TodayEvent {
     data class NavigateToWrite(val editing: Boolean) : TodayEvent
     data object NavigateToReveal : TodayEvent
-    data object NavigateToSettings : TodayEvent
+    /** Bond settings, for the bond this day belongs to. */
+    data class NavigateToSettings(val bondId: String) : TodayEvent
     data object NavigateToArchive : TodayEvent
+
+    /** The OS share sheet with the invite; fire and forget, it proves nothing was sent. */
+    data class ShareInvite(val link: String, val code: String) : TodayEvent
 
     /** No open bond any more: the shell asks the signed-in start where this person belongs. */
     data object NavigateToStart : TodayEvent
