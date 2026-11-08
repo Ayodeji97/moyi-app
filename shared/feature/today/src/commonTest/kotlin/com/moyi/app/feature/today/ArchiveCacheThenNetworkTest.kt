@@ -174,6 +174,119 @@ class ArchiveCacheThenNetworkTest : MainDispatcherTest() {
     }
 
     @Test
+    fun offlineFavouritesShowTheCachedDaysHoldingMyFavourite() = runTest {
+        val marked = revealedDay("2026-09-01").copy(markedByMe = setOf("theirs-2026-09-01"))
+        cache.run = ArchivePage(listOf(revealedDay("2026-09-02"), marked), null)
+        repository.pages[null] = cache.run!!
+        repository.favouritePages[null] = ArchivePage(listOf(marked), null)
+        val list = list()
+        repository.offline = true
+
+        list.onAction(ArchiveAction.OnFilterClick(ArchiveFilter.Favourites))
+
+        assertEquals(ArchiveLoad.Ready, list.state.value.load, "not the Generic error")
+        assertEquals(ArchiveFilter.Favourites, list.state.value.filter)
+        assertEquals(listOf("2026-09-01"), list.dates())
+        assertEquals(listOf<Pair<String?, Boolean>>(null to false, null to true), repository.requests, "the server was asked first")
+
+        repository.offline = false
+        list.onAction(ArchiveAction.OnRetryClick)
+        assertEquals(listOf("2026-09-01"), list.dates(), "back online: the server's answer, as before")
+        assertEquals<Pair<String?, Boolean>>(null to true, repository.requests.last())
+    }
+
+    @Test
+    fun offlineFavouritesWithNoneCachedAndMoreToAskForShowTheFailureAsBefore() = runTest {
+        cache.run = ArchivePage(listOf(revealedDay("2026-09-02"), revealedDay("2026-09-01")), "tail")
+        repository.pages[null] = cache.run!!
+        val list = list()
+        repository.offline = true
+
+        list.onAction(ArchiveAction.OnFilterClick(ArchiveFilter.Favourites))
+
+        assertEquals(ArchiveLoad.Failed, list.state.value.load, "the older favourites are not known: they are asked for, and fail")
+        assertEquals("tail" to true, repository.requests.last(), "past the cache with its own cursor")
+    }
+
+    @Test
+    fun offlineFavouritesWithNoneCachedAndNothingOlderAreTheEmptyFavourites() = runTest {
+        cache.run = ArchivePage(listOf(revealedDay("2026-09-02")), null)
+        repository.pages[null] = cache.run!!
+        val list = list()
+        repository.offline = true
+
+        list.onAction(ArchiveAction.OnFilterClick(ArchiveFilter.Favourites))
+
+        assertTrue(list.state.value.isEmpty, "the whole archive is cached and holds no favourite")
+        assertEquals(ArchiveFilter.Favourites, list.state.value.filter)
+    }
+
+    @Test
+    fun offlineAMonthJumpShowsTheCachedDaysFromThatMonthAndFailsOnlyForThePageAfterThem() = runTest {
+        cache.run = ArchivePage(listOf(revealedDay("2026-09-02"), revealedDay("2026-08-20"), revealedDay("2026-08-03")), "tail")
+        repository.pages[null] = cache.run!!
+        val list = list()
+        repository.offline = true
+
+        list.onAction(ArchiveAction.OnMonthChosen(kotlinx.datetime.LocalDate(2026, 8, 1)))
+
+        assertEquals(ArchiveLoad.Ready, list.state.value.load, "not the Generic error")
+        assertEquals(listOf("2026-08-20", "2026-08-03"), list.dates(), "on or before the month's last day")
+        assertEquals("2026-08-31", repository.untils.last(), "the server was asked first")
+
+        list.onAction(ArchiveAction.OnLoadMore)
+        assertTrue(list.state.value.pageFailed, "the page after the cache fails at the end of the list")
+        assertEquals(listOf("2026-08-20", "2026-08-03"), list.dates(), "never over the days above it")
+        assertEquals("tail", repository.cursors.last())
+    }
+
+    @Test
+    fun offlineAMonthJumpPastTheCachedRunShowsTheFailureAsBefore() = runTest {
+        val cachedRun = ArchivePage(listOf(revealedDay("2026-09-02"), revealedDay("2026-08-20")), "tail")
+        cache.run = cachedRun
+        repository.pages[null] = cachedRun
+        repository.pages["tail"] = ArchivePage(listOf(revealedDay("2026-06-10")), null)
+        val list = list()
+        list.onAction(ArchiveAction.OnLoadMore) // June seen online, so the picker offers it
+        cache.run = cachedRun // and then not kept (the cap)
+        repository.offline = true
+
+        list.onAction(ArchiveAction.OnMonthChosen(kotlinx.datetime.LocalDate(2026, 6, 1)))
+
+        assertEquals(ArchiveLoad.Failed, list.state.value.load, "June is not cached: the existing failure")
+        assertEquals("2026-06-30", repository.untils.last())
+    }
+
+    @Test
+    fun offlineSearchStaysOnlineOnlyAndShowsTheGenericError() = runTest {
+        cache.run = ArchivePage(listOf(revealedDay("2026-09-02", mine = "tea")), null)
+        repository.pages[null] = cache.run!!
+        val list = list()
+        repository.offline = true
+
+        list.onAction(ArchiveAction.OnFilterClick(ArchiveFilter.Search))
+        list.onAction(ArchiveAction.OnQueryChange("tea"))
+        advanceTimeBy(SEARCH_DEBOUNCE + 1.milliseconds)
+
+        assertEquals(ArchiveLoad.Failed, list.state.value.load, "the cached day that says tea is not searched")
+        assertEquals(listOf<Pair<String, String?>>("tea" to null), repository.searches)
+    }
+
+    @Test
+    fun anEmptyArchiveIsCachedAndShowsItsEmptyStateOffline() = runTest {
+        repository.pages[null] = ArchivePage(emptyList(), null)
+        list()
+        assertEquals(ArchivePage(emptyList(), null), cache.run, "the empty answer is kept")
+        feed.clear()
+
+        repository.offline = true
+        val offline = list()
+
+        assertEquals(ArchiveLoad.Ready, offline.state.value.load, "not the Generic error")
+        assertTrue(offline.state.value.isEmpty, "the Archive's empty state")
+    }
+
+    @Test
     fun theDayViewDrawsTheCachedDayThenAsksAndOfflineSaysNothing() = runTest {
         cache.run = ArchivePage(listOf(revealedDay("2026-09-01")), null)
         repository.dayAnswer = Result.Failure(DataError.Network.NoInternet)

@@ -222,6 +222,57 @@ class SqlArchiveCacheTest {
     }
 
     @Test
+    fun anEmptyNewestPageWithNoCursorIsKeptAsAKnownEmptyArchive() = runTest {
+        assertNull(cache.read("bond-1"), "before any answer: nothing cached, not empty")
+
+        cache.putPage("bond-1", ArchivePage(emptyList(), null), after = null)
+
+        assertEquals(ArchivePage(emptyList(), null), cache.read("bond-1"))
+        assertNull(cache.read("bond-2"), "only for the bond it was answered for")
+        session.value = SessionState.SignedIn(ben)
+        assertNull(cache.read("bond-1"), "and only for its own person")
+    }
+
+    @Test
+    fun anEmptyNewestPageWithACursorIsNotAnEmptyArchive() = runTest {
+        cache.putPage("bond-1", ArchivePage(emptyList(), "c1"), after = null)
+
+        assertNull(cache.read("bond-1"))
+    }
+
+    @Test
+    fun theNextPageWithDaysClearsTheEmptyArchive() = runTest {
+        cache.putPage("bond-1", ArchivePage(emptyList(), null), after = null)
+
+        cache.putPage("bond-1", ArchivePage(listOf(day("2026-09-07")), null), after = null)
+
+        assertEquals(ArchivePage(listOf(day("2026-09-07")), null), cache.read("bond-1"))
+        assertEquals(0L, database.rowCount("archive_empty"))
+    }
+
+    @Test
+    fun anEmptyAnswerReplacesACachedRunAndAnotherBondsAnswerClearsIt() = runTest {
+        cache.putPage("bond-1", ArchivePage(listOf(day("2026-09-07")), null), after = null)
+
+        cache.putPage("bond-1", ArchivePage(emptyList(), null), after = null)
+        assertEquals(ArchivePage(emptyList(), null), cache.read("bond-1"), "the server wins: the day was deleted")
+        assertEquals(0L, database.rowCount("archive_day"))
+
+        cache.putPage("bond-2", ArchivePage(listOf(day("2026-09-07")), null), after = null)
+        assertNull(cache.read("bond-1"), "one answer in the tables, ever")
+    }
+
+    @Test
+    fun theSessionWipeForgetsAnEmptyArchive() = runTest {
+        cache.putPage("bond-1", ArchivePage(emptyList(), null), after = null)
+
+        database.wipe()
+
+        assertNull(cache.read("bond-1"))
+        assertEquals(0L, database.rowCount("archive_empty"))
+    }
+
+    @Test
     fun aRowThisBuildCannotReadIsNoCacheAtAll() = runTest {
         cache.putPage("bond-1", ArchivePage(listOf(day("2026-09-07"), day("2026-09-06")), null), after = null)
         database.io { archiveDayQueries.upsert(day("2026-09-05").toRow("ada-id", "bond-1", null).copy(day_status = "SOMETHING_NEW")) }
