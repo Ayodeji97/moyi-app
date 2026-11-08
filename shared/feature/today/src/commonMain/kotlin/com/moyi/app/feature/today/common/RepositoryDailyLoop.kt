@@ -102,10 +102,11 @@ class RepositoryDailyLoop(
         idempotencyKey: String,
         intendedAt: Instant,
         imageMediaId: String?,
+        voiceMediaId: String?,
     ): WriteResult = mutex.withLock {
         val currentBond = bond ?: return@withLock WriteResult.Failed
         val day = today ?: return@withLock WriteResult.Failed
-        when (val result = entries.submitEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt, imageMediaId)) {
+        when (val result = entries.submitEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt, imageMediaId, voiceMediaId)) {
             is Result.Success -> {
                 // Shown at once, so a refresh that fails next cannot put "Write" back under a sent entry.
                 withMine(result.data)
@@ -113,10 +114,12 @@ class RepositoryDailyLoop(
                 WriteResult.Saved
             }
             is Result.Failure -> when {
-                // A photo entry is not queued: the outbox keeps words only, and an uploaded photo
-                // left unattached is deleted by the server after a day. The composer keeps both.
-                imageMediaId != null && result.error.isConnectionFailure() -> WriteResult.Failed
-                imageMediaId != null && result.error.isPhotoNotAttachable() -> WriteResult.PhotoRefused
+                // An entry with a photo or a voice note is not queued: the outbox keeps words only,
+                // and an upload left unattached is deleted by the server after a day. The composer
+                // keeps everything.
+                (imageMediaId != null || voiceMediaId != null) && result.error.isConnectionFailure() -> WriteResult.Failed
+                imageMediaId != null && result.error.isNotAttachable(IMAGE_FIELD) -> WriteResult.PhotoRefused
+                voiceMediaId != null && result.error.isNotAttachable(VOICE_FIELD) -> WriteResult.VoiceRefused
                 // No answer: kept on the device, sent later with the same key and body.
                 result.error.isConnectionFailure() -> {
                     val queued = QueuedEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt, day.date)
@@ -346,9 +349,9 @@ class RepositoryDailyLoop(
 
     private fun DataError.Network.isNotFound(): Boolean = this is DataError.Network.Api && problem.status == 404
 
-    /** `422 VALIDATION_FAILED` naming `imageMediaId` (`MEDIA_NOT_ATTACHABLE`, backend `GratitudeErrors`). */
-    private fun DataError.Network.isPhotoNotAttachable(): Boolean =
-        this is DataError.Network.Api && problem.fieldErrors.any { it.field == "imageMediaId" }
+    /** `422 VALIDATION_FAILED` naming [field] (`MEDIA_NOT_ATTACHABLE`, backend `GratitudeErrors`). */
+    private fun DataError.Network.isNotAttachable(field: String): Boolean =
+        this is DataError.Network.Api && problem.fieldErrors.any { it.field == field }
 
     private fun DataError.Network.isConflictOrGone(): Boolean =
         this is DataError.Network.Api && (problem.status == 409 || problem.status == 404)
@@ -366,3 +369,7 @@ internal fun Today.forCache(layout: TodayStatus): Today = when {
     partnerEntry.words() == null -> this
     else -> copy(partnerEntry = PartnerEntry.Locked)
 }
+
+/** The fields `SubmitEntryRequest` names its media by, as a 422's field errors name them. */
+private const val IMAGE_FIELD = "imageMediaId"
+private const val VOICE_FIELD = "voiceMediaId"

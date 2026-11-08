@@ -115,7 +115,7 @@ fun RevealScreen(
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.Before(state: RevealState) {
     CenteredContent {
-        EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto)
+        EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         // The same Waiting instance as Today (179:7), without its links: mid-reveal they would
         // do nothing, so they are not drawn (and so never reach TalkBack or VoiceOver focus).
@@ -149,9 +149,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.After(state: RevealSt
                 text = state.partnerEntry.orEmpty(),
                 variant = EntryCardVariant.Partner,
                 photo = state.partnerPhoto,
+                voice = state.partnerVoice,
             )
             Spacer(Modifier.height(MoyiTheme.spacing.md))
-            EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto)
+            EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
         }
     }
 }

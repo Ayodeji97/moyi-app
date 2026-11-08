@@ -174,6 +174,18 @@
     <string name="write_photo_source_camera">Take a photo</string>
     <!-- PROPOSED (photos). The chooser's way out. -->
     <string name="write_photo_source_cancel">Cancel</string>
+    <!-- PROPOSED (voice notes). PrimaryAction State=Sending while the voice note uploads and is transcoded, after any photo, before the words (states.md §4: the control says what it is doing, no spinner). -->
+    <string name="write_sending_voice">Sending your voice note</string>
+    <!-- PROPOSED (voice notes). Save failed with a voice note attached (384:229's line names the words only). -->
+    <string name="write_save_failed_voice">That didn't save. Your words and your voice note are still here.</string>
+    <!-- PROPOSED (voice notes). Save failed with both a photo and a voice note attached. -->
+    <string name="write_save_failed_photo_voice">That didn't save. Your words, your photo and your voice note are still here.</string>
+    <!-- PROPOSED (voice notes). The server will not take this voice note (too long, unreadable, or held by moderation before it was attached). Names the next action. -->
+    <string name="write_voice_refused">This voice note can't be sent. Remove it to send your words.</string>
+    <!-- PROPOSED (voice notes). The microphone was refused, now or before. Names where to change it (owner: copy names the next action). -->
+    <string name="write_voice_microphone_denied">Moyi can't use the microphone. Allow it in Settings to record a voice note.</string>
+    <!-- PROPOSED (voice notes). The microphone could not be opened, or the recording was too short to keep. -->
+    <string name="write_voice_failed">That recording didn't work. Try recording again.</string>
 
     <!-- ===== Delete after reveal: the platform's confirm dialog (D11; Figma 420:64 drew a full screen) ===== -->
 

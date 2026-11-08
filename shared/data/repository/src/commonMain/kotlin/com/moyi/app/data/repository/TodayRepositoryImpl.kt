@@ -44,8 +44,15 @@ class TodayRepositoryImpl(
         idempotencyKey: String,
         intendedAt: Instant?,
         imageMediaId: String?,
+        voiceMediaId: String?,
     ): Result<MyEntry, DataError.Network> {
-        val request = SubmitEntryRequest(text = text, promptId = promptId, intendedAt = intendedAt, imageMediaId = imageMediaId)
+        val request = SubmitEntryRequest(
+            text = text,
+            promptId = promptId,
+            intendedAt = intendedAt,
+            imageMediaId = imageMediaId,
+            voiceMediaId = voiceMediaId,
+        )
         return safeApiCall { entriesApi.submitEntry(bondId, idempotencyKey, request) }.mapOrSerialization { it.toMyEntry() }
     }
 

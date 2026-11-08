@@ -70,6 +70,8 @@ internal fun toDayView(bond: Bond, today: Today): DayView? {
         partnerEntry = today.partnerEntry.words()?.takeIf { status in PartnerVisible },
         myPhoto = today.myEntry?.takeIf { it.isLive }?.image?.toEntryPhoto(),
         partnerPhoto = today.partnerEntry.image()?.takeIf { status in PartnerVisible }?.toEntryPhoto(),
+        myVoice = today.myEntry?.takeIf { it.isLive }?.voice?.toVoiceNote(),
+        partnerVoice = today.partnerEntry.voice()?.takeIf { status in PartnerVisible }?.toVoiceNote(),
     )
 }
 

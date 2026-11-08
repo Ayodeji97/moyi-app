@@ -22,6 +22,8 @@ androidx-work = "2.11.0"
 buildkonfig = "0.23.0"
 # Coil 3 (doc 13 §3: images): Compose Multiplatform image loading, with Ktor 3 for the network.
 coil = "3.6.3"
+# Voice notes: streams and plays the backend's Ogg Opus on Android (rememberVoicePlayer).
+androidx-media3 = "1.5.1"
 composeMultiplatform = "1.12.2"
 junit = "4.13.2"
 junit5 = "5.14.4"
@@ -43,6 +45,7 @@ sqlcipher-android = "4.20.0"
 turbine = "1.2.1"
 
 [libraries]
+androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "androidx-media3" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

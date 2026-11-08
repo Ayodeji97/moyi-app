@@ -3,13 +3,15 @@ package com.moyi.app.data.repository
 import com.moyi.app.api.models.BondDayResponse
 import com.moyi.app.api.models.EntryImageResponse
 import com.moyi.app.api.models.EntryResponse
+import com.moyi.app.api.models.EntryVoiceResponse
 import com.moyi.app.api.models.TodayPromptResponse
 import com.moyi.app.api.models.TodayResponse
 import com.moyi.app.api.wire.PartnerEntryWire
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryImage
-import com.moyi.app.domain.today.EntryImageStatus
+import com.moyi.app.domain.today.EntryMediaStatus
 import com.moyi.app.domain.today.EntryStatus
+import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Prompt
@@ -43,6 +45,7 @@ internal fun EntryResponse.toMyEntry(): MyEntry? {
         text = if (status == EntryStatus.DELETED) null else text,
         status = status,
         image = image?.toEntryImage().takeIf { status != EntryStatus.DELETED },
+        voice = voice?.toEntryVoice().takeIf { status != EntryStatus.DELETED },
     )
 }
 
@@ -53,26 +56,48 @@ internal fun EntryResponse.toMyEntry(): MyEntry? {
  */
 internal fun EntryImageResponse.toEntryImage(): EntryImage {
     val shown = when (status) {
-        EntryImageResponse.Status.READY -> if (url == null) EntryImageStatus.Processing else EntryImageStatus.Ready
-        EntryImageResponse.Status.PROCESSING -> EntryImageStatus.Processing
-        EntryImageResponse.Status.NOT_SHARED -> EntryImageStatus.NotShared
+        EntryImageResponse.Status.READY -> if (url == null) EntryMediaStatus.Processing else EntryMediaStatus.Ready
+        EntryImageResponse.Status.PROCESSING -> EntryMediaStatus.Processing
+        EntryImageResponse.Status.NOT_SHARED -> EntryMediaStatus.NotShared
     }
     return EntryImage(
         id = id,
         status = shown,
-        url = url.takeIf { shown != EntryImageStatus.Processing },
+        url = url.takeIf { shown != EntryMediaStatus.Processing },
         width = width?.takeIf { it > 0 },
         height = height?.takeIf { it > 0 },
         // The contract: false unless READY.
-        sensitive = sensitive && shown == EntryImageStatus.Ready,
+        sensitive = sensitive && shown == EntryMediaStatus.Ready,
+    )
+}
+
+/**
+ * The voice note as the server plays it to the caller, by the photo's rule: a ready one
+ * without its URL cannot be played, so it is read as still on its way. A length that is
+ * missing or not positive is left out; the player then learns it from the file.
+ */
+internal fun EntryVoiceResponse.toEntryVoice(): EntryVoice {
+    val shown = when (status) {
+        EntryVoiceResponse.Status.READY -> if (url == null) EntryMediaStatus.Processing else EntryMediaStatus.Ready
+        EntryVoiceResponse.Status.PROCESSING -> EntryMediaStatus.Processing
+        EntryVoiceResponse.Status.NOT_SHARED -> EntryMediaStatus.NotShared
+    }
+    return EntryVoice(
+        id = id,
+        status = shown,
+        url = url.takeIf { shown != EntryMediaStatus.Processing },
+        durationMs = durationMs?.takeIf { it > 0 && shown != EntryMediaStatus.Processing },
+        sensitive = sensitive && shown == EntryMediaStatus.Ready,
     )
 }
 
 internal fun PartnerEntryWire.toPartnerEntry(): PartnerEntry? = when (this) {
     is PartnerEntryWire.Locked -> PartnerEntry.Locked
     is PartnerEntryWire.Entry -> when (entry.status) {
-        EntryResponse.Status.SUBMITTED -> entry.text?.let { PartnerEntry.Submitted(entry.id, it, entry.image?.toEntryImage()) }
-        EntryResponse.Status.REVEALED -> entry.text?.let { PartnerEntry.Revealed(entry.id, it, entry.image?.toEntryImage()) }
+        EntryResponse.Status.SUBMITTED ->
+            entry.text?.let { PartnerEntry.Submitted(entry.id, it, entry.image?.toEntryImage(), entry.voice?.toEntryVoice()) }
+        EntryResponse.Status.REVEALED ->
+            entry.text?.let { PartnerEntry.Revealed(entry.id, it, entry.image?.toEntryImage(), entry.voice?.toEntryVoice()) }
         EntryResponse.Status.DELETED -> PartnerEntry.Deleted(entry.id)
     }
 }

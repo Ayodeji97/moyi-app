@@ -2,8 +2,12 @@ package com.moyi.app.feature.today.write
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moyi.app.designsystem.component.AttachedVoiceState
 import com.moyi.app.designsystem.platform.PhotoPick
 import com.moyi.app.designsystem.platform.PickedPhoto
+import com.moyi.app.designsystem.platform.RecordedVoice
+import com.moyi.app.designsystem.platform.RecorderEvent
+import com.moyi.app.designsystem.platform.VoiceRecording
 import com.moyi.app.domain.media.MediaBytes
 import com.moyi.app.domain.media.MediaKind
 import com.moyi.app.domain.media.MediaUploader
@@ -64,6 +68,13 @@ import kotlin.uuid.Uuid
  * failure anywhere keeps the words and the photo, and Try again resumes where it stopped
  * (bytes already in storage are not sent twice). The photo is not part of the draft.
  *
+ * **A voice note** (§44) is recorded by the platform recorder the screen holds: this asks it
+ * to start and stop ([WriteEvent.StartRecording], [WriteEvent.StopRecording]) and runs the
+ * clock, stopping it at [VoiceRecording.MAX_DURATION_MS] (the recorder stops itself there
+ * too). An interruption ends the recording where it is and keeps it. It uploads at Send
+ * the same way, after the photo ("Sending your voice note"), and goes as `voiceMediaId`. An
+ * entry may carry both. Like a photo, it is never queued offline and not part of the draft.
+ *
  * @param editing true when reached from "Edit what you wrote" (before the reveal).
  * @param drafts where the unsent words are kept, on this device only.
  * @param uploader sends a photo; null offers no photo (the debug preview).
@@ -91,7 +102,11 @@ class WriteViewModel(
             day?.myEntry.orEmpty().let { mine -> WriteState(text = mine, prompt = null, editing = true, originalText = mine) }
         } else {
             WriteState(prompt = day?.prompt?.text)
-        }.copy(restoringDraft = day != null, photosOffered = uploader != null && !editing),
+        }.copy(
+            restoringDraft = day != null,
+            photosOffered = uploader != null && !editing,
+            voiceOffered = uploader != null && !editing,
+        ),
     )
     val state: StateFlow<WriteState> = _state.asStateFlow()
 
@@ -120,6 +135,12 @@ class WriteViewModel(
     /** How far the attached photo's upload got: a retry resumes from here. Reset with every new photo. */
     private var upload: UploadProgress = UploadProgress.None
 
+    /** How far the recorded voice note's upload got. Reset with every new recording. */
+    private var voiceUpload: UploadProgress = UploadProgress.None
+
+    /** Counts the recording's time; cancelled when it ends. */
+    private var recordingClock: Job? = null
+
     init {
         if (day != null) {
             viewModelScope.launch {
@@ -147,7 +168,7 @@ class WriteViewModel(
                 _state.update { it.copy(confirmingDiscard = false) }
                 // Discarding is the person's choice (D10): the draft goes with the words.
                 viewModelScope.launch {
-                    discardUpload()
+                    discardUploads()
                     deleteDraft()
                     _events.send(WriteEvent.Close)
                 }
@@ -172,11 +193,18 @@ class WriteViewModel(
                 if (_state.value.submit == WriteSubmit.Sending) return
                 replacePhoto(null)
             }
-            WriteAction.OnRecordVoiceClick -> {
-                // TODO(logic): record a voice note and send its id as `voiceMediaId` (POST and PATCH both take
-                //  it). Optional and secondary; text is always sufficient (NFR-103). The contract has no media
-                //  upload endpoint yet, so there is no id to send.
+            WriteAction.OnRecordVoiceClick -> startRecording()
+            WriteAction.OnStopRecordingClick -> if (_state.value.recording) send(WriteEvent.StopRecording)
+            WriteAction.OnRecordAgainClick -> {
+                if (_state.value.submit == WriteSubmit.Sending || _state.value.recordedVoice == null) return
+                replaceVoice(null)
+                startRecording()
             }
+            WriteAction.OnRemoveVoice -> {
+                if (_state.value.submit == WriteSubmit.Sending || _state.value.recording) return
+                replaceVoice(null)
+            }
+            is WriteAction.OnRecorderEvent -> onRecorderEvent(action.event)
             WriteAction.OnDebugCycle -> debugCycle()
         }
     }
@@ -192,16 +220,27 @@ class WriteViewModel(
         val current = _state.value
         if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
         val photo = current.photo?.takeIf { !current.editing }
+        val voice = current.recordedVoice?.voice?.takeIf { !current.editing }
         // Taken at the tap, before any upload: the instant the person sent it.
         val tap = tapInstant()
-        _state.update { it.copy(submit = WriteSubmit.Sending, sendingPhoto = photo != null, photoNotice = null) }
+        _state.update {
+            it.copy(
+                submit = WriteSubmit.Sending,
+                sendingPhoto = photo != null,
+                sendingVoice = photo == null && voice != null,
+                photoNotice = null,
+                voiceNotice = null,
+            )
+        }
         viewModelScope.launch {
             // Kept before it leaves: if the app dies while the send is in flight, the words are still here.
             saveDraftNow()
             val imageMediaId = if (photo == null) null else sendPhoto(photo) ?: return@launch
-            _state.update { it.copy(sendingPhoto = false) }
+            _state.update { it.copy(sendingPhoto = false, sendingVoice = voice != null) }
+            val voiceMediaId = if (voice == null) null else sendVoice(voice) ?: return@launch
+            _state.update { it.copy(sendingVoice = false) }
             // An edit (PATCH) sends only the words; a new entry sends the prompt id unless dismissed.
-            val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null }, imageMediaId)
+            val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null }, imageMediaId, voiceMediaId)
             val reused = pending?.takeIf { it.payload == payload }
             val key = reused?.key ?: newIdempotencyKey()
             val intendedAt = reused?.intendedAt ?: tap
@@ -209,7 +248,7 @@ class WriteViewModel(
             val result = if (current.editing) {
                 loop.edit(payload.text, key)
             } else {
-                loop.submit(payload.text, payload.promptId, key, intendedAt, imageMediaId)
+                loop.submit(payload.text, payload.promptId, key, intendedAt, imageMediaId, voiceMediaId)
             }
             when (result) {
                 // Queued: the outbox holds the words now, with this key, and sends them later.
@@ -217,6 +256,7 @@ class WriteViewModel(
                     pending = null
                     // Attached to the entry now: nothing left to discard.
                     upload = UploadProgress.None
+                    voiceUpload = UploadProgress.None
                     // The server (or the outbox) has the words: a draft left behind would come back as a second entry.
                     deleteDraft()
                     // The state stays Sending until the composer closes: the words are saved, and a
@@ -230,6 +270,10 @@ class WriteViewModel(
                     upload = UploadProgress.None
                     _state.update { it.copy(submit = WriteSubmit.Idle, photoNotice = PhotoNotice.Refused) }
                 }
+                WriteResult.VoiceRefused -> {
+                    voiceUpload = UploadProgress.None
+                    _state.update { it.copy(submit = WriteSubmit.Idle, voiceNotice = VoiceNotice.Refused) }
+                }
             }
         }
     }
@@ -238,24 +282,122 @@ class WriteViewModel(
      * Uploads [photo], resuming [upload]; its media id once processed, or null after
      * setting the failure, when the words must not be sent yet.
      */
-    private suspend fun sendPhoto(photo: PickedPhoto): String? {
-        val uploader = uploader ?: return null.also { _state.update { it.copy(submit = WriteSubmit.Failed, sendingPhoto = false) } }
-        val outcome = uploader.send(MediaBytes(MediaKind.Image, photo.contentType, photo.bytes), upload)
+    private suspend fun sendPhoto(photo: PickedPhoto): String? = sendMedia(
+        media = MediaBytes(MediaKind.Image, photo.contentType, photo.bytes),
+        from = upload,
         // A newer photo may have been attached meanwhile: only this photo's progress is kept.
-        if (_state.value.photo !== photo) return null
-        upload = outcome.progress
+        stillAttached = { _state.value.photo === photo },
+        keep = { upload = it },
+        refused = { it.copy(photoNotice = PhotoNotice.Refused) },
+    )
+
+    /** [sendPhoto], for the voice note, resuming [voiceUpload]. */
+    private suspend fun sendVoice(voice: RecordedVoice): String? = sendMedia(
+        media = MediaBytes(MediaKind.Voice, voice.contentType, voice.bytes),
+        from = voiceUpload,
+        stillAttached = { _state.value.recordedVoice?.voice === voice },
+        keep = { voiceUpload = it },
+        refused = { it.copy(voiceNotice = VoiceNotice.Refused) },
+    )
+
+    /**
+     * One upload through [MediaUploader], the same for a photo and a voice note: its media id
+     * once processed, or null after setting the failure (Save failed, or [refused]'s notice),
+     * when the words must not be sent yet.
+     */
+    private suspend fun sendMedia(
+        media: MediaBytes,
+        from: UploadProgress,
+        stillAttached: () -> Boolean,
+        keep: (UploadProgress) -> Unit,
+        refused: (WriteState) -> WriteState,
+    ): String? {
+        val notSending: (WriteState) -> WriteState = { it.copy(sendingPhoto = false, sendingVoice = false) }
+        val uploader = uploader ?: return null.also { _state.update { notSending(it).copy(submit = WriteSubmit.Failed) } }
+        val outcome = uploader.send(media, from)
+        if (!stillAttached()) return null
+        keep(outcome.progress)
         return when (outcome) {
             is UploadOutcome.Ready -> outcome.mediaId
             is UploadOutcome.Failed -> {
                 _state.update {
                     when (outcome.failure) {
-                        UploadFailure.Retryable -> it.copy(submit = WriteSubmit.Failed, sendingPhoto = false)
-                        UploadFailure.Refused -> it.copy(submit = WriteSubmit.Idle, sendingPhoto = false, photoNotice = PhotoNotice.Refused)
+                        UploadFailure.Retryable -> notSending(it).copy(submit = WriteSubmit.Failed)
+                        UploadFailure.Refused -> refused(notSending(it).copy(submit = WriteSubmit.Idle))
                     }
                 }
                 null
             }
         }
+    }
+
+    /** Asks the screen's recorder to start; the state changes only once it has ([RecorderEvent.Started]). */
+    private fun startRecording() {
+        val current = _state.value
+        if (!current.voiceOffered || current.submit == WriteSubmit.Sending || current.voice != null) return
+        _state.update { it.copy(voiceNotice = it.voiceNotice.takeIf { notice -> notice == VoiceNotice.Refused }) }
+        send(WriteEvent.StartRecording)
+    }
+
+    private fun onRecorderEvent(event: RecorderEvent) {
+        when (event) {
+            RecorderEvent.Started -> {
+                if (_state.value.voice != null) return
+                _state.update { it.copy(voice = AttachedVoiceState.Recording(0), voiceNotice = null, submit = it.submit.afterEdit()) }
+                runRecordingClock()
+            }
+            is RecorderEvent.Finished -> {
+                // Only a recording in progress becomes the voice note (not a late report after removal).
+                if (!_state.value.recording) return
+                recordingClock?.cancel()
+                replaceVoice(AttachedVoiceState.Recorded(event.voice))
+            }
+            RecorderEvent.PermissionDenied -> {
+                recordingClock?.cancel()
+                _state.update { it.copy(voice = null, voiceNotice = VoiceNotice.MicrophoneDenied) }
+            }
+            RecorderEvent.Failed -> {
+                recordingClock?.cancel()
+                _state.update { it.copy(voice = null, voiceNotice = VoiceNotice.CouldNotRecord) }
+            }
+        }
+    }
+
+    /**
+     * The time on screen while recording. At the limit it asks the recorder to stop; the
+     * recorder also stops itself there, whichever is first, and reports what it kept.
+     */
+    private fun runRecordingClock() {
+        recordingClock?.cancel()
+        recordingClock = viewModelScope.launch {
+            var elapsed = 0L
+            while (elapsed < VoiceRecording.MAX_DURATION_MS) {
+                delay(RECORDING_TICK)
+                elapsed = (elapsed + RECORDING_TICK).coerceAtMost(VoiceRecording.MAX_DURATION_MS)
+                _state.update { state ->
+                    if (state.recording) state.copy(voice = AttachedVoiceState.Recording(elapsed)) else state
+                }
+            }
+            _events.send(WriteEvent.StopRecording)
+        }
+    }
+
+    /** Attaches [voice] (or none) in place of the one attached, whose upload, if any, is deleted. */
+    private fun replaceVoice(voice: AttachedVoiceState?) {
+        val previous = voiceUpload
+        voiceUpload = UploadProgress.None
+        _state.update {
+            it.copy(
+                voice = voice,
+                voiceNotice = it.voiceNotice.takeIf { notice -> notice != VoiceNotice.Refused && voice == null },
+                submit = it.submit.afterEdit(),
+            )
+        }
+        if (previous.mediaId != null) viewModelScope.launch { quietly { uploader?.discard(previous) } }
+    }
+
+    private fun send(event: WriteEvent) {
+        viewModelScope.launch { _events.send(event) }
     }
 
     private fun pickPhoto(source: PhotoSource) {
@@ -281,10 +423,12 @@ class WriteViewModel(
         if (previous.mediaId != null) viewModelScope.launch { quietly { uploader?.discard(previous) } }
     }
 
-    private suspend fun discardUpload() {
-        val previous = upload
+    /** Deletes what the photo and the voice note uploaded, when neither will be sent. */
+    private suspend fun discardUploads() {
+        val previous = listOf(upload, voiceUpload)
         upload = UploadProgress.None
-        if (previous.mediaId != null) quietly { uploader?.discard(previous) }
+        voiceUpload = UploadProgress.None
+        previous.filter { it.mediaId != null }.forEach { quietly { uploader?.discard(it) } }
     }
 
     /**
@@ -293,6 +437,8 @@ class WriteViewModel(
      */
     private fun requestClose() {
         val current = _state.value
+        // Recording stops before the question: what was said so far is kept, and is what Discard throws away.
+        if (current.recording) send(WriteEvent.StopRecording)
         when {
             current.submit == WriteSubmit.Sending || current.confirmingDiscard -> Unit
             current.wouldLoseWords -> _state.update { it.copy(confirmingDiscard = true) }
@@ -303,8 +449,8 @@ class WriteViewModel(
     /** Closing loses nothing here (blank, or an edit that changed nothing), so the draft is settled first. */
     private fun close() {
         viewModelScope.launch {
-            // The photo is not part of the draft (§40): an upload it left is deleted, not orphaned.
-            discardUpload()
+            // The photo and voice note are not part of the draft (§40, §44): an upload they left is deleted, not orphaned.
+            discardUploads()
             saveDraftNow()
             _events.send(WriteEvent.Close)
         }
@@ -399,14 +545,20 @@ class WriteViewModel(
         return words.repeat(length / words.length + 1).take(length)
     }
 
-    /** The request body a key is bound to, the photo's id included. Never prints the words. */
-    private class Payload(val text: String, val promptId: String?, val imageMediaId: String? = null) {
+    /** The request body a key is bound to, the media ids included. Never prints the words. */
+    private class Payload(
+        val text: String,
+        val promptId: String?,
+        val imageMediaId: String? = null,
+        val voiceMediaId: String? = null,
+    ) {
         override fun equals(other: Any?): Boolean =
-            other is Payload && other.text == text && other.promptId == promptId && other.imageMediaId == imageMediaId
+            other is Payload && other.text == text && other.promptId == promptId &&
+                other.imageMediaId == imageMediaId && other.voiceMediaId == voiceMediaId
 
-        override fun hashCode(): Int = 31 * (31 * text.hashCode() + promptId.hashCode()) + imageMediaId.hashCode()
+        override fun hashCode(): Int = listOf(text, promptId, imageMediaId, voiceMediaId).hashCode()
 
-        override fun toString(): String = "Payload(promptId=$promptId, imageMediaId=$imageMediaId)"
+        override fun toString(): String = "Payload(promptId=$promptId, imageMediaId=$imageMediaId, voiceMediaId=$voiceMediaId)"
     }
 
     private class Pending(val payload: Payload, val key: String, val intendedAt: Instant)
@@ -424,6 +576,9 @@ class WriteViewModel(
          * force-quit loses at most the last half second of words.
          */
         const val DRAFT_PAUSE = 500L
+
+        /** How often the recording's clock moves: a seconds display turns on time. */
+        const val RECORDING_TICK = 250L
 
         private const val DEBUG_STEPS = 7
         private const val PAST_400 = 412
