@@ -1,5 +1,7 @@
 package com.moyi.app.feature.auth.register
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -120,6 +122,7 @@ fun RegisterScreen(
         ScreenHeader(stringResource(Res.string.register_eyebrow), stringResource(Res.string.register_heading))
         Spacer(Modifier.height(spacing.lg))
         // NEW, not in Figma (docs/missing-components.md §5): label and helper are proposed copy.
+        val autoFocus = rememberAutoFocus()
         Field(
             value = state.name.value,
             onValueChange = { onAction(RegisterAction.OnNameChange(it)) },
@@ -127,7 +130,7 @@ fun RegisterScreen(
             helper = stringResource(Res.string.register_name_helper),
             error = state.name.error?.asString(),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-            modifier = Modifier
+            modifier = Modifier.focusRequester(autoFocus)
                 .semantics { contentType = ContentType.PersonFullName }
                 .onBlur { onAction(RegisterAction.OnFieldBlur(RegisterField.Name)) },
         )

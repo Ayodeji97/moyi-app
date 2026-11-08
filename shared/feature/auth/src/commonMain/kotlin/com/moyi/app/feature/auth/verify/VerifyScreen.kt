@@ -1,5 +1,7 @@
 package com.moyi.app.feature.auth.verify
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -125,7 +127,9 @@ fun VerifyScreen(
         if (!expired) {
             Spacer(Modifier.height(spacing.lg))
             // NEW, not in Figma (docs/missing-components.md §6): a stand-in until deep links.
+            val autoFocus = rememberAutoFocus()
             Field(
+                modifier = Modifier.focusRequester(autoFocus),
                 value = state.token.value,
                 onValueChange = { onAction(VerifyAction.OnTokenChange(it)) },
                 label = stringResource(Res.string.verify_token_label),

@@ -65,8 +65,8 @@
     <string name="verify_eyebrow">New account</string>
     <!-- verify.heading. -->
     <string name="verify_heading">Check your email</string>
-    <!-- verify.line. %1$s is {email}, the address the person registered with. -->
-    <string name="verify_line">We sent a link to %1$s. Open it to finish setting up.</string>
+    <!-- verify.line. %1$s is {email}, the address the person registered with. PROPOSED rewording (2026-11-08 smoke test), matching the owner's reset_sent_line ruling of 2026-11-06: the link opens the website, so the line says the step that works, paste it here. Interim until the short typed code (docs/backend-contract-gaps.md row 20). -->
+    <string name="verify_line">We sent a link to %1$s. Open the email, copy the link and paste it below.</string>
     <!-- PROPOSED. The paste-token field is not in Figma; a stand-in until deep links (docs/missing-components.md §6). -->
     <string name="verify_token_label">Code from the email</string>
     <!-- PROPOSED. Helper under the token field. The whole link may be pasted; the app takes the code out of it. -->
@@ -116,6 +116,8 @@
     <string name="login_error_rate_limited">Sign in is paused for a short while. Your account is fine. Try again in a few minutes.</string>
     <!-- PROPOSED. Shown on sign in when the server no longer accepts the stored sign-in (REFRESH_TOKEN_INVALID: expired, revoked by a password reset, or not kept). Neutral on purpose: the cause is not known. -->
     <string name="login_session_ended">You have been signed out. Sign in again to continue.</string>
+    <!-- PROPOSED (2026-11-08 smoke test). Shown on sign in right after the email link is accepted: names what happened and the one step left. -->
+    <string name="login_verified">Your email is confirmed. Sign in to start.</string>
 
     <!-- ===== Session ended (TOKEN_REUSE_DETECTED, ADR-0021; no Figma frame, auth-placement-spec §7) ===== -->
 

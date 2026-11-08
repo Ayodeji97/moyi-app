@@ -185,8 +185,8 @@
         <item quantity="one">One rest day left. It is used automatically when a day slips by.</item>
         <item quantity="other">%1$d rest days left. They are used automatically when a day slips by.</item>
     </plurals>
-    <!-- PROPOSED. No rest day banked, Strict mode off. -->
-    <string name="streak_rest_days_none">No rest days left.</string>
+    <!-- PROPOSED. No rest day banked, Strict mode off. Reworded 2026-11-08 (smoke test): on a new bond "left" read as something lost; this says how one is earned (BR-5: every 14th complete day, cap 2). -->
+    <string name="streak_rest_days_none">No rest days right now. Every 14 days you both write earns one.</string>
     <!-- FIGMA NODE NAME 401:129 for one. other is PROPOSED, with the number as digits. -->
     <plurals name="streak_rest_day_used">
         <item quantity="one">Yesterday slipped by. We used a rest day. One left.</item>

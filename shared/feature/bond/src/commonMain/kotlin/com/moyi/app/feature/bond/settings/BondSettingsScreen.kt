@@ -1,5 +1,7 @@
 package com.moyi.app.feature.bond.settings
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -296,7 +298,9 @@ fun BondNameScreen(
         val heading = stringResource(Res.string.settings_name_heading)
         ScreenHeader(eyebrow = heading, heading = heading)
         Spacer(Modifier.height(spacing.lg))
+        val autoFocus = rememberAutoFocus()
         Field(
+            modifier = Modifier.focusRequester(autoFocus),
             value = state.nameDraft,
             onValueChange = { onAction(BondSettingsAction.OnNameChange(it)) },
             label = stringResource(OnboardingRes.string.bond_name_label),

@@ -1,5 +1,6 @@
 package com.moyi.app.feature.onboarding.join
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardActions
@@ -119,6 +120,7 @@ fun JoinCodeScreen(
             tone = TextTone.Muted,
         )
         Spacer(Modifier.height(spacing.md))
+        val autoFocus = rememberAutoFocus()
         Field(
             value = state.code,
             onValueChange = { onAction(JoinCodeAction.OnCodeChange(it)) },
@@ -126,7 +128,7 @@ fun JoinCodeScreen(
             type = FieldType.Code,
             helper = stringResource(Res.string.field_code_helper),
             error = state.error?.asString(),
-            modifier = Modifier.focusRequester(focus),
+            modifier = Modifier.focusRequester(autoFocus).focusRequester(focus),
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Characters,
                 autoCorrectEnabled = false,

@@ -27,7 +27,7 @@ internal expect val SystemBackIsEdgeSwipe: Boolean
 
 /**
  * Whether a task is presented as a sheet (iOS: it slides up, says Cancel, and a
- * swipe down closes it) or as a full-screen dialog (Android: no motion, an X).
+ * swipe down closes it) or as a full-screen dialog (Android: it rises and fades in, an X).
  */
 internal expect val TaskPresentsAsSheet: Boolean
 
@@ -82,11 +82,42 @@ fun LayerBackHandler(enabled: Boolean, onBack: () -> Unit) {
 }
 
 /**
- * How a task enters (D10). iOS: the sheet slides up from the bottom edge, the one
- * transition outside the reveal, approved by the owner as an exception to "screens
- * change with no transition" (SKILL.md §5). None under Reduce Motion. Android: none.
+ * How a task enters (D10). iOS: the sheet slides up from the bottom edge (none under
+ * Reduce Motion). Android: the full-screen dialog rises a short way and fades in
+ * (owner ruling 2026-11-08, MoyiMotion).
  */
 expect fun taskEnterTransition(): EnterTransition
 
 /** How a task leaves (D10): the reverse of [taskEnterTransition]. */
 expect fun taskExitTransition(): ExitTransition
+
+/*
+ * How a pushed screen enters and leaves (owner ruling 2026-11-08, MoyiMotion). The
+ * NavHost uses these for every destination that does not set its own. Each
+ * platform moves the way its own apps do:
+ *
+ * - Android: Material's shared axis X. The new screen slides a short way in from the
+ *   right while fading through; back reverses it.
+ * - iOS: the navigation push. The new screen slides in across the full width over
+ *   the old one, which drifts a third to the left; back reverses it, as the edge
+ *   swipe does. Under Reduce Motion, a cross-fade.
+ */
+
+/** A screen pushed on top: how it arrives. */
+expect fun screenEnterTransition(): EnterTransition
+
+/** The screen underneath, as another is pushed on top of it. */
+expect fun screenExitTransition(): ExitTransition
+
+/** The screen underneath, coming back as the top one is popped. */
+expect fun screenPopEnterTransition(): EnterTransition
+
+/** The top screen, leaving as it is popped. */
+expect fun screenPopExitTransition(): ExitTransition
+
+/**
+ * True when the person asked the system for less motion. iOS reads Reduce Motion;
+ * Android answers false because the system animator scale already shortens or skips
+ * every Compose animation there. Read at each use, so a change applies without a restart.
+ */
+expect fun reduceMotionEnabled(): Boolean

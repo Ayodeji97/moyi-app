@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -161,9 +164,31 @@ fun Field(
         else -> keyboardOptions
     }
 
+    // Held as a TextFieldValue so a prefilled value opens with the cursor after its
+    // last character, as platform text fields do: a field focused on arrival (rename,
+    // a pasted code) is ready to extend or delete from the end, not the start.
+    // Otherwise this is exactly what BasicTextField's String overload does inside:
+    // it always shows the caller's text, keeps its own cursor and composing region,
+    // and reports only real text changes. That matters because `value` comes back
+    // from a ViewModel a frame later; replacing the cursor or composition on a stale
+    // value would drop keystrokes typed in between.
+    var fieldValueState by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    val fieldValue = fieldValueState.copy(text = value)
+    SideEffect {
+        if (fieldValue.selection != fieldValueState.selection || fieldValue.composition != fieldValueState.composition) {
+            fieldValueState = fieldValue
+        }
+    }
+    var lastText by remember(value) { mutableStateOf(value) }
+
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = fieldValue,
+        onValueChange = { next ->
+            fieldValueState = next
+            val changed = lastText != next.text
+            lastText = next.text
+            if (changed) onValueChange(next.text)
+        },
         modifier = modifier
             .fillMaxWidth()
             .semantics { if (error != null) error(error) },

@@ -1,5 +1,19 @@
 package com.moyi.app.designsystem.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,12 +27,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -29,6 +46,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiColors
 import com.moyi.app.designsystem.platform.platformPressIndication
+import com.moyi.app.designsystem.platform.reduceMotionEnabled
+import com.moyi.app.designsystem.theme.MoyiMotion
 import com.moyi.app.designsystem.theme.MoyiDimens
 
 /**
@@ -77,9 +96,13 @@ sealed interface PrimaryActionState {
  *
  *   Disabled's hairline is what keeps it visible: a fill difference alone
  *   vanished in light mode (`tokens.md` §7b).
- * - **No spinner, no animation, no overlay.** Sending swaps the label, dims
- *   the button and stops taps; the change is announced politely to screen
- *   readers. The dimming is a state change, not an animation.
+ * - **No spinner, no overlay.** Sending swaps the label, dims the button and
+ *   stops taps; the change is announced politely to screen readers. Owner
+ *   ruling 2026-11-08 (MoyiMotion): the swap cross-fades, the dim and the width
+ *   ease over [MoyiMotion.ControlMillis], and while sending the label breathes
+ *   gently, so a slow network reads as working rather than frozen. The words
+ *   stay the feedback; the breath only says they are live. None of it runs under
+ *   reduced motion.
  */
 @Composable
 fun PrimaryAction(
@@ -105,12 +128,29 @@ fun PrimaryAction(
     }
     val enabled = state == PrimaryActionState.Idle
     val look = colors.primaryActionLook(state, destructive)
+    val reduceMotion = reduceMotionEnabled()
+    // Tapping the action is the end of typing: the keyboard goes away, so whatever the
+    // action leads to (Sending, an error under it, the next screen) is in view.
+    val focusManager = LocalFocusManager.current
+    val alpha by animateFloatAsState(look.alpha, tween(MoyiMotion.ControlMillis), label = "primaryActionAlpha")
+    val labelAlpha = if (state is PrimaryActionState.Sending && !reduceMotion) {
+        rememberInfiniteTransition(label = "primaryActionBreath").animateFloat(
+            initialValue = 1f,
+            targetValue = MoyiMotion.BreatheMinAlpha,
+            animationSpec = infiniteRepeatable(tween(MoyiMotion.BreatheMillis, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "primaryActionBreathAlpha",
+        ).value
+    } else {
+        1f
+    }
 
     Box(
         modifier = modifier
             .widthIn(min = MoyiDimens.PrimaryAction.MinWidth)
             .heightIn(min = MoyiDimens.PrimaryAction.MinHeight)
-            .alpha(look.alpha)
+            // A longer busy label ("Signing in") widens the pill smoothly, not in a jump.
+            .animateContentSize(tween(MoyiMotion.ControlMillis))
+            .alpha(alpha)
             .clip(shapes.radius)
             // Before the fill and border, so the iOS dim covers the whole
             // button and the Android ripple draws over the fill, clipped to it.
@@ -121,7 +161,10 @@ fun PrimaryAction(
                 // The platform's press (D5), tinted with the label on Android:
                 // the default ripple reads `ink`, which vanishes on the ink fill.
                 indication = platformPressIndication(color = look.label),
-                onClick = onClick,
+                onClick = {
+                    focusManager.clearFocus()
+                    onClick()
+                },
             )
             .background(look.fill)
             .border(MoyiDimens.PrimaryAction.Stroke, look.stroke, shapes.radius)
@@ -138,12 +181,25 @@ fun PrimaryAction(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            style = MoyiTheme.type.action,
-            color = look.label,
-            textAlign = TextAlign.Center,
-        )
+        AnimatedContent(
+            targetState = label,
+            transitionSpec = {
+                if (reduceMotion) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    fadeIn(tween(MoyiMotion.ControlMillis)) togetherWith fadeOut(tween(MoyiMotion.ControlMillis))
+                }
+            },
+            label = "primaryActionLabel",
+        ) { shown ->
+            Text(
+                text = shown,
+                style = MoyiTheme.type.action,
+                color = look.label,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.graphicsLayer { this.alpha = labelAlpha },
+            )
+        }
     }
 }
 

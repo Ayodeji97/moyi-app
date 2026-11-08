@@ -1,5 +1,7 @@
 package com.moyi.app.feature.auth.login
 
+import com.moyi.app.designsystem.component.rememberAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -7,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -45,6 +48,7 @@ import com.moyi.app.feature.auth.resources.login_eyebrow
 import com.moyi.app.feature.auth.resources.login_forgot
 import com.moyi.app.feature.auth.resources.login_heading
 import com.moyi.app.feature.auth.resources.login_session_ended
+import com.moyi.app.feature.auth.resources.login_verified
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -53,6 +57,7 @@ import org.koin.core.parameter.parametersOf
 fun LoginRoot(
     initialEmail: String,
     sessionEnded: Boolean,
+    verified: Boolean = false,
     onNavigateToHome: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: (email: String) -> Unit,
@@ -67,7 +72,7 @@ fun LoginRoot(
             is LoginEvent.NavigateToForgotPassword -> onNavigateToForgotPassword(event.email)
         }
     }
-    LoginScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
+    LoginScreen(state = state, onAction = viewModel::onAction, onBack = onBack, verified = verified)
 }
 
 /**
@@ -85,6 +90,7 @@ fun LoginScreen(
     state: LoginState,
     onAction: (LoginAction) -> Unit,
     onBack: (() -> Unit)? = null,
+    verified: Boolean = false,
 ) {
     val spacing = MoyiTheme.spacing
     val failed = state.submit as? SubmitStatus.Failed
@@ -119,6 +125,15 @@ fun LoginScreen(
                 tone = TextTone.Muted,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
+        } else if (verified) {
+            // Placed as the session-ended line. Without it, sign in after the link looks
+            // like the link failed and sent the person back to the start.
+            Spacer(Modifier.height(spacing.md))
+            MoyiText(
+                stringResource(Res.string.login_verified),
+                tone = TextTone.Muted,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
         }
         Spacer(Modifier.height(spacing.lg))
         Field(
@@ -136,6 +151,11 @@ fun LoginScreen(
                 .onBlur { onAction(LoginAction.OnFieldBlur(LoginField.Email)) },
         )
         Spacer(Modifier.height(spacing.lg))
+        // Arriving with the email already filled (after verifying, or a reset), the next
+        // thing to type is the password. Decided once, on arrival: typing an email
+        // must never pull focus away mid-word.
+        val arrivedWithEmail = remember { state.email.value.isNotEmpty() && state.password.value.isEmpty() }
+        val autoFocus = rememberAutoFocus(enabled = arrivedWithEmail)
         Field(
             value = state.password.value,
             onValueChange = { onAction(LoginAction.OnPasswordChange(it)) },
@@ -148,7 +168,7 @@ fun LoginScreen(
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(onDone = { onAction(LoginAction.OnSubmit) }),
-            modifier = Modifier.semantics { contentType = ContentType.Password },
+            modifier = Modifier.focusRequester(autoFocus).semantics { contentType = ContentType.Password },
         )
         Spacer(Modifier.height(spacing.lg))
         TextLink(

@@ -77,10 +77,10 @@ fun NavGraphBuilder.todayGraph(
     debugTools: Boolean,
 ) {
     composable<TodayRoute>(
-        // Today stays drawn under the sheet while it slides up (iOS). Elsewhere the
-        // transition is instant, so keeping it changes nothing.
+        // Today stays drawn under Write while the task rises over it. Anywhere else,
+        // null falls back to the NavHost's push (MoyiMotion).
         exitTransition = {
-            if (targetState.destination.hasRoute<WriteRoute>()) ExitTransition.KeepUntilTransitionsFinished else ExitTransition.None
+            if (targetState.destination.hasRoute<WriteRoute>()) ExitTransition.KeepUntilTransitionsFinished else null
         },
     ) {
         TodayRoot(
