@@ -242,6 +242,7 @@ Each is marked PROPOSED in `shared/feature/today/.../strings.xml`; none is appro
 | `delete_confirm` | Delete | the delete dialog's destructive answer |
 | `write_discard_title` / `write_discard_title_editing` | Discard what you wrote? / Discard your changes? | the composer's discard dialog (D10) |
 | `write_discard_confirm` / `write_discard_keep` | Discard / Keep writing | its two answers (D10) |
+| `write_discard_keep_draft` | Keep as a draft | its third answer, closing and keeping the draft (owner ruling 2026-11-08; §38) |
 | `ds_close` | Close | spoken name of the X that closes a task on Android (D10) |
 | `ds_compose_dismiss_prompt` | Hide the prompt | spoken name of the composer's X |
 
@@ -409,9 +410,11 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   animation". The one exception was the iOS Write sheet (D10).
 - **Owner ruling, 2026-11-08** (during the PR smoke test): "please handle screen
   transition animation properly. ui animations on the screen. loading state on the
-  button". The owner owns the design system, so this amends §5; `SKILL.md`, `tokens.md`
-  and the Figma motion board are the owner's to update. Nothing outside `moyi-app` is
-  changed here.
+  button". The owner owns the design system, so this amends §5.
+- **Status, 2026-11-08: recorded in the design system.** The owner has amended `SKILL.md`
+  §5 ("one expressive moment, plus functional motion") and added `tokens.md` §3a (motion
+  tokens, the values below). `MoyiMotion` follows them. Only the Figma motion board is
+  still to be drawn.
 - **Built, as functional motion only** (no bounce, no overshoot, no decoration; the
   reveal stays the one expressive moment). Values live in `MoyiMotion`:
   - **Screens:** Android, Material's shared axis X (a 10 % slide with a fade through,
@@ -423,8 +426,8 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
     way). Still no spinner: the words say what is happening, the breath says they are live.
   - **Reduced motion:** iOS Reduce Motion turns pushes into a 200 ms cross-fade and stops
     the breath. Android's "Remove animations" scales every Compose animation to nothing.
-- **The open question:** whether the owner wants the Figma motion board and `tokens.md`
-  to name these durations, or a different curve on either platform.
+- **Settled:** `tokens.md` §3a names these durations and curves. Still open: the Figma
+  motion board.
 
 ### 34. The keyboard: focus on arrival, and actions under it
 
@@ -457,8 +460,15 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   back online. Saturday, 7 November has closed, so it will count for the day it sends." Written
   more than 36 hours ago (PROPOSED `today_queued_line_late`): "It'll send when you're back online.
   It will count for the day it sends."
-- **The open question:** keep these, or should the product change so a day stays open for late
-  entries (a grace period on the close, a backend change)?
+- **Owner ruling, 2026-11-08 (`strings-proposed.md` §12):** the product changes, on the
+  backend. A Bond-day is settled only after a grace of about 12 hours past its end, so an entry
+  written offline at 23:00 and sent at 07:00 counts for the day it was written; missed day,
+  rest day, streak and notifications are decided once, after the grace. FR-045 and BR-3a were
+  amended to 12 h the same day. Recorded as a backend ask in `docs/backend-contract-gaps.md`
+  row 25. `today_queued_line` and `today_queued_line_late` are approved; `today_queued_line_earlier`
+  is **held** until the backend ships the grace, when it becomes "It will count for {day}."
+  Until then the app says `today_queued_line_late` for a closed earlier day too (as
+  `strings-proposed.md` §12 directs), so `today_queued_line_earlier` is no longer shown.
 
 ### 36. A queued entry the server refused
 
@@ -470,8 +480,16 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   is opened. PROPOSED `today_queued_refused`: "That didn't send. Your words are kept in Write,
   ready to send again." PROPOSED `today_queued_refused_written`: "You had already written for that
   day, so these words didn't send. They're kept in Write for your next entry."
-- **The open question:** the wording, and whether `danger` is right for a refusal that lost
-  nothing.
+- **Owner ruling, 2026-11-08 (`strings-proposed.md` §12):** both lines approved as written, and
+  **neutral, not `danger`**: nothing was lost, and `danger` is reserved for the irreversible
+  (`SKILL.md` §3). Built: the line is a `DayNote` in `inkMuted`, like Today's other informational
+  lines, with an outlined **Open Write** action (PROPOSED `today_queued_refused_open_write`: the
+  ruling names the action, the key is not in `strings-proposed.md` yet). Open Write is Today's
+  Write action, which opens the composer on the kept words and clears the line.
+- **Still open:** with `today_queued_refused_written` the day already holds my entry, so Open Write
+  opens a new-entry composer on a day that cannot take one: a Send there is refused (`409`, Save
+  failed, words kept). The words are meant for the next day; whether the action should wait for
+  that day, or open them some other way, is the owner's call.
 
 ### 37. Signing out with an entry still waiting to send
 
@@ -483,5 +501,27 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   sent yet", `_line` "Signing out deletes it from this phone. Stay signed in and it will send when
   you're back online.", `_confirm` "Sign out and delete it" (destructive), `_dismiss` "Stay signed
   in". An involuntary end (refresh refused, token reuse) asks nobody: privacy wins.
-- **The open question:** the copy, and whether the words should instead be kept somewhere that
-  survives a sign-out (which the session wipe forbids today).
+- **Owner ruling, 2026-11-08 (`strings-proposed.md` §12):** the four strings approved as written.
+  And Sign out must be reachable offline: Bond settings did not load offline, so the row could
+  not be reached. Built: when the bond's settings fail to load, the Generic error (with Try
+  again) keeps the **Just you** group under it, so Sign out and its unsent-entry question work
+  with no connection.
+- **Still open:** whether the words should instead be kept somewhere that survives a sign-out
+  (which the session wipe forbids today).
+
+### 38. A confirmation with a third answer
+
+- **Today:** `SKILL.md` §3 and D10/D11 give confirmations two answers, the destructive one and the
+  safe one, in the platform dialog (`ConfirmDialog`).
+- **Owner ruling, 2026-11-08:** closing Write with words asks "Discard what you wrote?" (or
+  "Discard your changes?") with three answers: Discard (deletes the draft), **Keep as a draft**
+  (closes, the words come back next time Write opens), Keep writing.
+- **Built, the most conservative way:** `ConfirmDialog` takes an optional `alternativeLabel` and
+  `onAlternative`; left out, the dialog is unchanged. Both platforms stack the three in one order:
+  Keep as a draft, Discard, Keep writing. Android: end-aligned `TextButton`s in the Material
+  dialog, the third plain `ink` (Material's own button row wrapped the third alone onto a second
+  row, out of order, so the three are stacked as Material stacks buttons that do not fit). iOS: a
+  default-style action in the `UIAlertController` alert; with three, iOS stacks them and puts
+  Cancel (Keep writing) at the bottom.
+- **The open question:** the string (PROPOSED `write_discard_keep_draft` "Keep as a draft") and
+  whether the design system should list the three-answer dialog as a component variant.

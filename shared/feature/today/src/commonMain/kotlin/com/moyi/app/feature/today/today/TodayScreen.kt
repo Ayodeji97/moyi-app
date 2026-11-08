@@ -64,9 +64,9 @@ import com.moyi.app.feature.today.resources.today_error_line
 import com.moyi.app.feature.today.resources.today_partner_pending_line
 import com.moyi.app.feature.today.resources.today_partner_pending_line_unnamed
 import com.moyi.app.feature.today.resources.today_queued_line
-import com.moyi.app.feature.today.resources.today_queued_line_earlier
 import com.moyi.app.feature.today.resources.today_queued_line_late
 import com.moyi.app.feature.today.resources.today_queued_refused
+import com.moyi.app.feature.today.resources.today_queued_refused_open_write
 import com.moyi.app.feature.today.resources.today_queued_refused_written
 import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.domain.today.OutboxRefusal
@@ -171,7 +171,7 @@ private fun TodayDay(
         },
     ) {
         when (state.status) {
-            TodayStatus.NotWritten -> NotWritten(state)
+            TodayStatus.NotWritten -> NotWritten(state, onAction)
             TodayStatus.Waiting -> Waiting(state, onAction)
             TodayStatus.Revealed -> Revealed(state, onAction, deleted = false)
             TodayStatus.Tombstone -> Revealed(state, onAction, deleted = true)
@@ -208,7 +208,7 @@ private fun TodayDay(
  * the day where nobody has. A distinct layout would leak the partner's activity.
  */
 @Composable
-private fun ColumnScope.NotWritten(state: TodayState) {
+private fun ColumnScope.NotWritten(state: TodayState, onAction: (TodayAction) -> Unit) {
     val announce = stringResource(Res.string.today_announce_not_written)
     Column(
         Modifier
@@ -221,7 +221,7 @@ private fun ColumnScope.NotWritten(state: TodayState) {
         // The server's prompt of the day. With none (an ended bond, an empty library), the
         // layout keeps its one job, the Write action, and draws no invented line in its place.
         state.prompt?.let { MoyiText(text = it, role = TextRole.Entry) }
-        Refusal(state)
+        Refusal(state, onAction)
     }
 }
 
@@ -232,7 +232,7 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
     CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         ActionFailed(state)
-        Refusal(state)
+        Refusal(state, onAction)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         WaitingNote(
             partnerName = state.partnerName.orEmpty(),
@@ -293,7 +293,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
         } else {
             OwnCard(state)
             ActionFailed(state)
-            Refusal(state)
+            Refusal(state, onAction)
             // Entries are immutable after the reveal: no edit (states.md §5). Delete
             // goes through a confirmation. Placement interpreted: 159:19 draws no link.
             // An outlined `danger` button, not a link (owner ruling 2026-11-06).
@@ -365,32 +365,58 @@ private fun ColumnScope.Queued(state: TodayState) {
     }
 }
 
-/** states.md §10's Offline line, naming the day; the two PROPOSED lines when that day has gone. */
+/**
+ * states.md §10's Offline line, naming the day; `.late` when that day has gone.
+ *
+ * An entry written on an earlier day that has closed also says `.late`: the owner held
+ * `today_queued_line_earlier` on 2026-11-08 (strings-proposed.md §12) until the backend
+ * keeps a day open about 12 h past its end (docs/backend-contract-gaps.md row 25). Then
+ * that case gets its own line, naming the day it counts for.
+ */
 @Composable
 private fun queuedLine(day: QueuedDay?): String = when (day) {
     is QueuedDay.ThisDay -> stringResource(Res.string.today_queued_line, dayInSentence(day.date))
-    is QueuedDay.EarlierDayClosed -> stringResource(Res.string.today_queued_line_earlier, dayInSentence(day.writtenOn))
-    QueuedDay.DayItSends, null -> stringResource(Res.string.today_queued_line_late)
+    is QueuedDay.EarlierDayClosed, QueuedDay.DayItSends, null -> stringResource(Res.string.today_queued_line_late)
 }
 
 /**
  * A queued entry the server refused: what happened, that the words are kept, and where
- * (copy.md's error shape), in InlineError's `danger`. Placement interpreted: no frame
- * draws a refused queued entry.
+ * (copy.md's error shape), with "Open Write" to go to them.
+ *
+ * **Neutral, not `danger`** (owner ruling 2026-11-08, strings-proposed.md §12): nothing
+ * was lost, the words wait in Write as the draft, and `danger` is reserved for the
+ * irreversible (SKILL.md §3). So it is a DayNote, `inkMuted` like the other informational
+ * lines, and its action is an outlined button like Waiting's (owner ruling 2026-11-06:
+ * links read as text). Open Write is [TodayAction.OnWriteClick], which also clears the
+ * line: it has been read. Placement interpreted: no frame draws a refused queued entry.
  */
 @Composable
-private fun Refusal(state: TodayState) {
+private fun Refusal(state: TodayState, onAction: (TodayAction) -> Unit) {
     val refusal = state.refusal ?: return
-    Spacer(Modifier.height(MoyiTheme.spacing.sm))
-    InlineError(
-        stringResource(
+    Spacer(Modifier.height(MoyiTheme.spacing.md))
+    DayNote(
+        line = stringResource(
             when (refusal) {
                 OutboxRefusal.AlreadyWritten -> Res.string.today_queued_refused_written
                 OutboxRefusal.NotAccepted -> Res.string.today_queued_refused
             },
         ),
+        actions = if (offersOpenWrite(refusal, state.status)) {
+            listOf(NoteAction(stringResource(Res.string.today_queued_refused_open_write), { onAction(TodayAction.OnWriteClick) }, outlined = true))
+        } else {
+            emptyList()
+        },
     )
 }
+
+/**
+ * Whether a refusal offers "Open Write". Never for [OutboxRefusal.AlreadyWritten]: that day
+ * has its entry, so Send could only fail again with 409, and the line itself says the words
+ * wait "for your next entry". Never where Today already draws Write ([TodayStatus.NotWritten]):
+ * that button opens the same kept words, and a second one beside it is noise.
+ */
+internal fun offersOpenWrite(refusal: OutboxRefusal, status: TodayStatus): Boolean =
+    refusal == OutboxRefusal.NotAccepted && status != TodayStatus.NotWritten
 
 @Composable
 internal fun OwnCard(state: TodayState) {
@@ -454,6 +480,23 @@ private fun TodayPreview(status: TodayStatus) {
 @Preview @Composable private fun TodaySoloTheyWrotePreview() = TodayPreview(TodayStatus.SoloTheyWrote)
 
 @Preview @Composable private fun TodayQueuedPreview() = TodayPreview(TodayStatus.Queued)
+
+/** A queued entry the server refused: the neutral line and Open Write (owner ruling 2026-11-08). */
+@Preview
+@Composable
+private fun TodayRefusedPreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(state = previewState(TodayStatus.NotWritten).copy(refusal = OutboxRefusal.NotAccepted), onAction = {})
+    }
+}
+
+@Preview
+@Composable
+private fun TodayRefusedWrittenPreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(state = previewState(TodayStatus.Waiting).copy(refusal = OutboxRefusal.AlreadyWritten), onAction = {})
+    }
+}
 
 @Preview
 @Composable

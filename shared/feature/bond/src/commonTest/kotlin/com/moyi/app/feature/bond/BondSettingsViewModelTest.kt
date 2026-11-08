@@ -362,5 +362,21 @@ class BondSettingsViewModelTest : MainDispatcherTest() {
         assertEquals(1, auth.logouts, "the person chose: the session (and its wipe) ends")
     }
 
+    @Test
+    fun offlineWithTheSettingsUnreadSignOutStillAsksAboutUnsentWordsAndSignsOut() {
+        // Offline: the bond's settings do not load and the outbox cannot send.
+        repo.reads += Result.Failure(DataError.Network.NoInternet)
+        outbox.queue += waiting
+        assertEquals(SettingsLoad.Failed, viewModel.state.value.load)
+
+        viewModel.onAction(BondSettingsAction.OnSignOutClick)
+        assertEquals(1, outbox.passes, "one more try, even with the settings unread")
+        assertTrue(viewModel.state.value.confirmingUnsentSignOut)
+        assertEquals(0, auth.logouts)
+
+        viewModel.onAction(BondSettingsAction.OnSignOutUnsentConfirm)
+        assertEquals(1, auth.logouts)
+    }
+
     private val waiting = QueuedEntry("b1", "You fixed the gate.", null, "key-1", Instant.parse("2026-09-14T11:00:00Z"), "2026-09-14")
 }

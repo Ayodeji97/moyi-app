@@ -49,19 +49,21 @@
     <string name="today_solo_line">This day closed with one entry.</string>
     <!-- states.md §3 announce for Solo day, either way round (you wrote, or they did). -->
     <string name="today_announce_solo">Day closed with one entry</string>
-    <!-- states.md §10 "Offline", with the Bond-day it counts for (BR-3a). %1$s = the locale date of that Bond-day. -->
+    <!-- Approved (2026-11-08, strings-proposed.md §12). states.md §10 "Offline", with the Bond-day it counts for (BR-3a). %1$s = the locale date of that Bond-day. -->
     <string name="today_queued_line">It'll send when you're back online. It will count for %1$s.</string>
     <!-- proposed -->
     <!-- PROPOSED. states.md §3 has no announce for Queued (384:327). Shaped like the others ("Written. ..."), and it says only what is true of my entry: it is on the device and will send. No partner status. -->
     <string name="today_announce_queued">Written. It will send when you're back online</string>
     <!-- PROPOSED. Queued, written on an earlier Bond-day that has closed (BR-3a (c): a closed day takes no entry, so it counts for the day it sends). states.md §10 has only the same-day line. %1$s = the locale date it was written on, "Saturday, 7 November". -->
     <string name="today_queued_line_earlier">It'll send when you're back online. %1$s has closed, so it will count for the day it sends.</string>
-    <!-- PROPOSED. Queued for more than 36 hours (BR-3a (b)): it counts for the day it sends. -->
+    <!-- Approved (2026-11-08, strings-proposed.md §12). Queued for a day that will have closed by the time it sends: it counts for the day it sends. Stays until the backend keeps a day open about 12 h past its end (docs/backend-contract-gaps.md row 25). -->
     <string name="today_queued_line_late">It'll send when you're back online. It will count for the day it sends.</string>
-    <!-- PROPOSED. A queued entry the server refused (not a connection problem): copy.md's error shape, what happened, what is kept, where to go next. -->
+    <!-- Approved (2026-11-08, strings-proposed.md §12). Neutral, never danger: nothing was lost. Shown with the "Open Write" action. A queued entry the server refused (not a connection problem): copy.md's error shape, what happened, what is kept, where to go next. -->
     <string name="today_queued_refused">That didn't send. Your words are kept in Write, ready to send again.</string>
-    <!-- PROPOSED. A queued entry refused because that day already held your entry (409 ENTRY_ALREADY_EXISTS, written from another phone). The words are kept as the next entry's draft. -->
+    <!-- Approved (2026-11-08, strings-proposed.md §12). Neutral, with "Open Write". A queued entry refused because that day already held your entry (409 ENTRY_ALREADY_EXISTS, written from another phone). The words are kept as the next entry's draft. -->
     <string name="today_queued_refused_written">You had already written for that day, so these words didn't send. They're kept in Write for your next entry.</string>
+    <!-- PROPOSED (owner ruling 2026-11-08 names the action "Open Write"; the key is not in strings-proposed.md yet). The action under either refusal line: opens Write on the kept words. -->
+    <string name="today_queued_refused_open_write">Open Write</string>
     <!-- PROPOSED. The line that stands where your deleted entry was (EntryCard Tombstone, 420:59, one body line). -->
     <string name="today_tombstone_line">You deleted what you wrote.</string>
 
@@ -154,6 +156,8 @@
     <string name="write_discard_confirm">Discard</string>
     <!-- PROPOSED (D10). The dialog's other answer: back to the composer, words intact. -->
     <string name="write_discard_keep">Keep writing</string>
+    <!-- PROPOSED (owner ruling 2026-11-08 asked for the answer; the words are his, the key is not in strings-proposed.md yet). The dialog's third answer: close Write and keep the words as the draft, restored the next time Write opens. -->
+    <string name="write_discard_keep_draft">Keep as a draft</string>
 
     <!-- ===== Delete after reveal: the platform's confirm dialog (D11; Figma 420:64 drew a full screen) ===== -->
 
@@ -193,7 +197,7 @@
         <item quantity="one">One rest day left. It is used automatically when a day slips by.</item>
         <item quantity="other">%1$d rest days left. They are used automatically when a day slips by.</item>
     </plurals>
-    <!-- PROPOSED. No rest day banked, Strict mode off. Reworded 2026-11-08 (smoke test): on a new bond "left" read as something lost; this says how one is earned (BR-5: every 14th complete day, cap 2). -->
+    <!-- Approved (2026-11-08, strings-proposed.md §11). No rest day banked, Strict mode off. Reworded 2026-11-08 (smoke test): on a new bond "left" read as something lost; this says how one is earned (BR-5: every 14th complete day, cap 2). -->
     <string name="streak_rest_days_none">No rest days right now. Every 14 days you both write earns one.</string>
     <!-- FIGMA NODE NAME 401:129 for one. other is PROPOSED, with the number as digits. -->
     <plurals name="streak_rest_day_used">
