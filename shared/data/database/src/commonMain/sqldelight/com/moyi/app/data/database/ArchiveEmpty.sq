@@ -1,0 +1,21 @@
+-- The Archive's other answer: this person's archive of this bond is known to be empty.
+-- Written when the server answers the newest page with no days and no cursor (a
+-- brand-new bond), so the Archive shows its empty state offline too, not the Generic
+-- error. archive_day cannot say it: no rows there means "nothing cached", not "nothing
+-- there". One row at most, like archive_day's one run: it goes the moment a page with
+-- days is kept (archive_day then holds the run), when another person or bond is cached,
+-- and with the session wipe (every table is wiped).
+CREATE TABLE archive_empty (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, bond_id)
+);
+
+isEmpty:
+SELECT COUNT(*) FROM archive_empty WHERE user_id = ? AND bond_id = ?;
+
+markEmpty:
+INSERT OR REPLACE INTO archive_empty (user_id, bond_id) VALUES (?, ?);
+
+clear:
+DELETE FROM archive_empty;

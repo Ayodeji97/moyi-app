@@ -74,8 +74,9 @@ class LocalDatabaseTest {
             draftQueries.upsert(draft)
             outboxQueries.insert(queued)
             archiveDayQueries.upsert(archived)
+            archiveEmptyQueries.markEmpty("ada", "bond-2")
         }
-        assertTrue(database.userTables().containsAll(listOf("cached_day", "draft", "outbox_entry", "archive_day")))
+        assertTrue(database.userTables().containsAll(listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty")))
 
         database.wipe()
 
@@ -83,6 +84,7 @@ class LocalDatabaseTest {
         assertEquals(0L, database.rowCount("draft"), "the drafts go with the day")
         assertEquals(0L, database.rowCount("outbox_entry"), "an unsent entry goes too: the session wipe is total")
         assertEquals(0L, database.rowCount("archive_day"), "the Archive's cached days go too")
+        assertEquals(0L, database.rowCount("archive_empty"), "and its known-empty marker")
         database.userTables().forEach { table -> assertEquals(0L, database.rowCount(table), table) }
     }
 
@@ -100,13 +102,14 @@ class LocalDatabaseTest {
         driver.execute(null, "DROP TABLE draft", 0)
         driver.execute(null, "DROP TABLE outbox_entry", 0)
         driver.execute(null, "DROP TABLE archive_day", 0)
+        driver.execute(null, "DROP TABLE archive_empty", 0)
         val old = LocalDatabase(driver)
         old.io { cachedDayQueries.insert(row("ada")) }
         assertEquals(listOf("cached_day"), old.userTables())
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = MoyiDatabase.Schema.version)
 
-        assertEquals(4L, MoyiDatabase.Schema.version)
+        assertEquals(5L, MoyiDatabase.Schema.version)
         old.io { draftQueries.upsert(draft) }
         assertEquals(draft, old.io { draftQueries.forKey("ada", "bond-1", "NEW_ENTRY").executeAsOne() })
         assertEquals(1L, old.rowCount("cached_day"), "the migration keeps what was there")
@@ -118,6 +121,7 @@ class LocalDatabaseTest {
         val driver = inMemoryDriver()
         driver.execute(null, "DROP TABLE outbox_entry", 0)
         driver.execute(null, "DROP TABLE archive_day", 0)
+        driver.execute(null, "DROP TABLE archive_empty", 0)
         val old = LocalDatabase(driver)
         old.io {
             cachedDayQueries.insert(row("ada"))
@@ -138,6 +142,7 @@ class LocalDatabaseTest {
         // Version 3 (#39, #40) had cached_day, draft and outbox_entry: build that, then migrate it.
         val driver = inMemoryDriver()
         driver.execute(null, "DROP TABLE archive_day", 0)
+        driver.execute(null, "DROP TABLE archive_empty", 0)
         val old = LocalDatabase(driver)
         old.io {
             cachedDayQueries.insert(row("ada"))
@@ -151,6 +156,27 @@ class LocalDatabaseTest {
         old.io { archiveDayQueries.upsert(archived) }
         assertEquals(archived, old.io { archiveDayQueries.forDate("ada", "bond-1", "2026-09-13").executeAsOne() })
         listOf("cached_day", "draft", "outbox_entry").forEach { assertEquals(1L, old.rowCount(it), "$it survives") }
+    }
+
+    @Test
+    fun aVersionFourDatabaseIsMigratedToHoldTheEmptyArchiveMarkerAndKeepsEverythingElse() = runTest {
+        // Version 4 (#43) had cached_day, draft, outbox_entry and archive_day: build that, then migrate it.
+        val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE archive_empty", 0)
+        val old = LocalDatabase(driver)
+        old.io {
+            cachedDayQueries.insert(row("ada"))
+            draftQueries.upsert(draft)
+            outboxQueries.insert(queued)
+            archiveDayQueries.upsert(archived)
+        }
+        assertEquals(setOf("cached_day", "draft", "outbox_entry", "archive_day"), old.userTables().toSet())
+
+        MoyiDatabase.Schema.migrate(driver, oldVersion = 4, newVersion = MoyiDatabase.Schema.version)
+
+        old.io { archiveEmptyQueries.markEmpty("ada", "bond-2") }
+        assertEquals(1L, old.io { archiveEmptyQueries.isEmpty("ada", "bond-2").executeAsOne() })
+        listOf("cached_day", "draft", "outbox_entry", "archive_day").forEach { assertEquals(1L, old.rowCount(it), "$it survives") }
     }
 
     @Test

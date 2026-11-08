@@ -34,8 +34,13 @@ class SqlArchiveCache(
 
     override suspend fun read(bondId: String): ArchivePage? {
         val user = userId ?: return null
-        val rows = database.io { archiveDayQueries.run(user, bondId).executeAsList() }
-        if (rows.isEmpty()) return null
+        val (rows, knownEmpty) = database.io {
+            transactionWithResult {
+                archiveDayQueries.run(user, bondId).executeAsList() to (archiveEmptyQueries.isEmpty(user, bondId).executeAsOne() > 0)
+            }
+        }
+        // No rows is "nothing cached", unless the server said this archive has no days.
+        if (rows.isEmpty()) return if (knownEmpty) ArchivePage(days = emptyList(), nextCursor = null) else null
         return ArchivePage(
             days = rows.map { it.toArchiveDay() ?: return null },
             nextCursor = rows.last().page_cursor,
@@ -53,6 +58,14 @@ class SqlArchiveCache(
             transaction {
                 // One run in the table: another person's, or another bond's, goes.
                 archiveDayQueries.deleteOthers(user, bondId)
+                // Any answer replaces "known empty": a page with days is the run now, and
+                // only a newest page with no days and no cursor says it again.
+                archiveEmptyQueries.clear()
+                if (after == null && page.days.isEmpty() && page.nextCursor == null) {
+                    archiveDayQueries.deleteRun(user, bondId)
+                    archiveEmptyQueries.markEmpty(user, bondId)
+                    return@transaction
+                }
                 val joined = if (after == null) replaceNewest(user, bondId, page) else replaceOlder(user, bondId, page, after)
                 if (!joined) return@transaction
                 page.days.forEach { archiveDayQueries.upsert(it.toRow(user, bondId, page.nextCursor)) }

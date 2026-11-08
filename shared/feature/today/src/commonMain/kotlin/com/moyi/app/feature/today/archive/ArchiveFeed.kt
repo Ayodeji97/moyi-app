@@ -36,7 +36,10 @@ import kotlinx.datetime.LocalDate
  *
  * **Cache-then-network** (doc 13 §5, doc 14): the plain list (no filter, no search, no
  * month jump) is drawn from [cache] at once, then the newest page is asked for and joined
- * in, the server winning ([joinPage]). Offline, the cached days stay, with no error. The
+ * in, the server winning ([joinPage]). Offline, the cached days stay, with no error; a
+ * known-empty archive is its empty state. Favourites and a month jump ask the server first
+ * and, when it cannot answer, draw the cached days they match ([fromCache]); a search never
+ * does. The
  * cursor then walks down from the newest page, so each cached page is asked for again as
  * the list reaches it, and replaced, before older days are added; a page that fails shows
  * the failure at the end of the list only, never over the days above it. Every page the
@@ -92,7 +95,8 @@ class ArchiveFeed(
             // Stale: the Archive was left, or another load (a newer query, a chip) has
             // replaced this one while it was on its way. Its answer is dropped.
             fun stale() = startedIn != generation || !_state.value.sameLoadAs(asked)
-            val cached = if (asked.plain) cache.read(bond.bondId)?.takeIf { it.days.isNotEmpty() } else null
+            // An empty cached run is a known-empty archive: its empty state, offline too.
+            val cached = if (asked.plain) cache.read(bond.bondId) else null
             if (stale()) return
             if (cached != null) {
                 _state.value = asked.copy(
@@ -101,7 +105,7 @@ class ArchiveFeed(
                     partnerName = bond.partnerName,
                     days = cached.days,
                     nextCursor = cached.nextCursor,
-                    pageEnd = cached.days.last().date,
+                    pageEnd = cached.days.lastOrNull()?.date,
                     pages = 1,
                 )
             }
@@ -109,7 +113,22 @@ class ArchiveFeed(
             if (stale()) return
             when (answer) {
                 // With cached days on screen, a failed refresh changes nothing: no error over good days.
-                is Result.Failure -> if (cached == null) _state.value = asked.copy(load = FeedLoad.Failed)
+                is Result.Failure -> if (cached == null) {
+                    val fallback = fromCache(bond.bondId, asked)
+                    if (stale()) return
+                    _state.value = if (fallback == null) {
+                        asked.copy(load = FeedLoad.Failed)
+                    } else {
+                        asked.copy(
+                            load = FeedLoad.Ready,
+                            bondId = bond.bondId,
+                            partnerName = bond.partnerName,
+                            days = fallback.days,
+                            nextCursor = fallback.nextCursor,
+                            pages = 1,
+                        )
+                    }
+                }
                 is Result.Success -> {
                     val page = answer.data
                     _state.update {
@@ -165,6 +184,27 @@ class ArchiveFeed(
             }
             if (answer is Result.Success) keep(bondId, current, answer.data, after)
         }
+    }
+
+    /**
+     * Favourites or a month jump the server could not answer, from the cached run (the
+     * owner's ruling, 2026-11-08): the cached days the filter would match (holding a mark of
+     * mine; on or before `until`), with the cursor that continues after the run. The run has
+     * no gaps, so these are every such day in the dates it covers, and the next page is asked
+     * for past it as usual: offline that page fails at the end of the list only. A month older
+     * than the run draws nothing with a cursor, so the list asks past it and shows the failure
+     * it showed before. Null for a search (the contract: its results are never stored, so it
+     * is online only) and for the plain list (drawn from the cache before it asks), and when
+     * nothing is cached.
+     */
+    private suspend fun fromCache(bondId: String, asked: FeedState): ArchivePage? {
+        if (asked.query != null || asked.plain) return null
+        val run = cache.read(bondId) ?: return null
+        val until = asked.until?.toString()
+        val days = run.days.filter { day ->
+            (until == null || day.date <= until) && (!asked.favourites || day.markedByMe.isNotEmpty())
+        }
+        return ArchivePage(days = days, nextCursor = run.nextCursor)
     }
 
     /**

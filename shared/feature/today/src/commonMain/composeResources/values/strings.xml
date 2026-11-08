@@ -62,7 +62,7 @@
     <string name="today_queued_refused">That didn't send. Your words are kept in Write, ready to send again.</string>
     <!-- Approved (2026-11-08, strings-proposed.md §12). Neutral, with "Open Write". A queued entry refused because that day already held your entry (409 ENTRY_ALREADY_EXISTS, written from another phone). The words are kept as the next entry's draft. -->
     <string name="today_queued_refused_written">You had already written for that day, so these words didn't send. They're kept in Write for your next entry.</string>
-    <!-- PROPOSED (owner ruling 2026-11-08 names the action "Open Write"; the key is not in strings-proposed.md yet). The action under either refusal line: opens Write on the kept words. -->
+    <!-- Approved (2026-11-08, strings-proposed.md §13). The outlined action under a neutral refusal line: opens Write on the kept words. -->
     <string name="today_queued_refused_open_write">Open Write</string>
     <!-- PROPOSED. The line that stands where your deleted entry was (EntryCard Tombstone, 420:59, one body line). -->
     <string name="today_tombstone_line">You deleted what you wrote.</string>
@@ -156,7 +156,7 @@
     <string name="write_discard_confirm">Discard</string>
     <!-- PROPOSED (D10). The dialog's other answer: back to the composer, words intact. -->
     <string name="write_discard_keep">Keep writing</string>
-    <!-- PROPOSED (owner ruling 2026-11-08 asked for the answer; the words are his, the key is not in strings-proposed.md yet). The dialog's third answer: close Write and keep the words as the draft, restored the next time Write opens. -->
+    <!-- Approved (2026-11-08, strings-proposed.md §13). The dialog's third answer: close Write and keep the words as the draft, restored the next time Write opens. -->
     <string name="write_discard_keep_draft">Keep as a draft</string>
 
     <!-- ===== Delete after reveal: the platform's confirm dialog (D11; Figma 420:64 drew a full screen) ===== -->

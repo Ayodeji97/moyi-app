@@ -52,6 +52,9 @@ class FakeArchiveRepository : ArchiveRepository {
     val marks = mutableListOf<Pair<String, Boolean>>()
     var failNext = false
 
+    /** No network: every `days` and `search` call fails with NoInternet until set back. */
+    var offline = false
+
     /** Holds the answer to every `days` call until completed: the cached days show meanwhile. */
     var daysGate: CompletableDeferred<Unit>? = null
     /** The answer to `day`; when null, the day as any of the pages here list it, else 404. */
@@ -64,6 +67,7 @@ class FakeArchiveRepository : ArchiveRepository {
         requests += cursor to favourites
         untils += until
         daysGate?.await()
+        if (offline) return Result.Failure(DataError.Network.NoInternet)
         if (failNext) {
             failNext = false
             return Result.Failure(DataError.Network.NoInternet)
@@ -93,6 +97,7 @@ class FakeArchiveRepository : ArchiveRepository {
             cancelledSearches += query
             throw cancelled
         }
+        if (offline) return Result.Failure(DataError.Network.NoInternet)
         if (failNextSearch) {
             failNextSearch = false
             return Result.Failure(DataError.Network.NoInternet)
@@ -144,7 +149,8 @@ class FakeArchiveCache : ArchiveCache {
     val marks = mutableListOf<Triple<String, String, Boolean>>()
     val removed = mutableListOf<String>()
 
-    override suspend fun read(bondId: String): ArchivePage? = run?.takeIf { it.days.isNotEmpty() }
+    /** As the real cache: no days is nothing cached, unless it is the known-empty archive (no cursor either). */
+    override suspend fun read(bondId: String): ArchivePage? = run?.takeIf { it.days.isNotEmpty() || it.nextCursor == null }
 
     override suspend fun day(bondId: String, date: String): ArchiveDay? = run?.days?.firstOrNull { it.date == date }
 

@@ -1,0 +1,8 @@
+-- Version 4 to 5: the Archive's "known empty" marker (ArchiveEmpty.sq). A phone that ran
+-- version 4 has cached_day, draft, outbox_entry and archive_day; without this it would
+-- open the database and find nowhere to say a new bond's archive is empty.
+CREATE TABLE archive_empty (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, bond_id)
+);

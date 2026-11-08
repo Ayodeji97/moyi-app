@@ -28,7 +28,9 @@ interface ArchiveCache {
     /**
      * The cached run of [bondId], newest first, with the cursor that continues after its
      * oldest day ([ArchivePage.nextCursor]: null means the run reaches the archive's end).
-     * Null when nothing is cached for this person and bond.
+     * Null when nothing is cached for this person and bond. An empty page with a null
+     * cursor when the server's newest page for it had no days and no cursor: the archive
+     * is known to be empty (until a page with days is kept).
      */
     suspend fun read(bondId: String): ArchivePage?
 
