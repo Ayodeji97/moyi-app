@@ -15,4 +15,6 @@ class IosDeviceInfoProvider : DeviceInfoProvider {
 
 actual val platformRepositoryModule: Module = module {
     single<DeviceInfoProvider> { IosDeviceInfoProvider() }
+    single<OutboxScheduler> { IosOutboxScheduler() }
+    single<ConnectivityWatcher> { IosConnectivityWatcher() }
 }

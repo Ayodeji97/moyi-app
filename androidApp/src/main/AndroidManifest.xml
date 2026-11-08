@@ -3,6 +3,9 @@
 
     <!-- The API client (PR #3 onwards). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The outbox sends again when the network returns (ConnectivityManager callback, and
+         WorkManager's network constraint, whose own manifest declares it too). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- No backup and no device-to-device transfer (figma-deviations.md P3). Nothing
          on the device is worth restoring: the server holds the account and every

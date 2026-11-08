@@ -35,8 +35,9 @@ class TodayCacheThenNetworkTest {
     private val bonds = FakeBonds()
     private val entries = FakeTodayEntries()
     private val cache = FakeTodayCache()
+    private val outbox = FakeOutbox()
     private val clock = FixedClock(NOON_ON_THE_DAY)
-    private val loop = RepositoryDailyLoop(bonds, entries, cache, clock)
+    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, clock)
 
     private val ready get() = assertIs<DailyLoopState.Ready>(loop.state.value).day
 
@@ -208,7 +209,7 @@ class TodayCacheThenNetworkTest {
     fun anAcceptedSendIsCachedEvenIfTheRefreshAfterItFails() = runTest {
         loop.refresh()
         entries.todayResult = Result.Failure(DataError.Network.Timeout)
-        loop.submit(MINE, promptId = null, idempotencyKey = "k1")
+        loop.submit(MINE, promptId = null, idempotencyKey = "k1", intendedAt = NOON_ON_THE_DAY)
         assertEquals(MY_ENTRY, cache.stored?.today?.myEntry)
     }
 
@@ -248,7 +249,7 @@ class TodayCacheThenNetworkTest {
                 return cache.read()
             }
         }
-        val slowLoop = RepositoryDailyLoop(bonds, entries, slowCache, clock)
+        val slowLoop = RepositoryDailyLoop(bonds, entries, slowCache, outbox, outbox, clock)
         bonds.result = Result.Failure(DataError.Network.NoInternet)
         launch(UnconfinedTestDispatcher(testScheduler)) { slowLoop.refresh() }
 

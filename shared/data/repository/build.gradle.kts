@@ -16,6 +16,8 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.koin.android)
+            // The outbox's background send (doc 13 §2): unique work, network constraint, backoff.
+            implementation(libs.androidx.work.runtime)
         }
         commonTest.dependencies {
             implementation(project(":shared:data:testing"))

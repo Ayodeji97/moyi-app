@@ -11,6 +11,7 @@ import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DayView
 import com.moyi.app.feature.today.common.DeleteResult
 import com.moyi.app.feature.today.common.FakeCopy
+import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.common.WriteResult
 import kotlinx.coroutines.delay
@@ -21,14 +22,15 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 /**
  * DEBUG ONLY. The day the Today preview runs on (`-PmoyiUiPreview=today`), so every
  * drawn layout (and the Archive, from the calendar target) can be reached and screenshotted with no backend and no session. Bound
  * over the real loop only in that build (KoinInit); nothing else ever sees it.
  *
- * It holds a layout, not a server's day, because one layout (Queued) has no server
- * shape yet: it needs the outbox. The long press on Today's date steps the layouts in
+ * It holds a layout, not a server's day, because one layout (Queued) is the device's, not
+ * the server's: the real loop reaches it through the outbox. The long press on Today's date steps the layouts in
  * [TodayStatus] order; Write's send and the deletes move it the way the real day would.
  */
 internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) : DailyLoop {
@@ -40,7 +42,7 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
 
     override suspend fun refresh() = Unit
 
-    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String): WriteResult {
+    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult {
         delay(latency)
         myEntry = text
         show(TodayStatus.Waiting)
@@ -85,6 +87,7 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
         prompt = Prompt("preview-prompt", FakeCopy.PROMPT),
         myEntryId = "preview-entry",
         myEntry = myEntry,
+        queuedDay = QueuedDay.ThisDay(FakeCopy.DATE).takeIf { status == TodayStatus.Queued },
         // The same rule as the real loop: the partner's words only where a layout may show them.
         partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf {
             status == TodayStatus.Revealed || status == TodayStatus.Tombstone || status == TodayStatus.SoloTheyWrote

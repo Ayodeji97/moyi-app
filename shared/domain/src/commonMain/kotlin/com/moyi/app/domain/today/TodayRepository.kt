@@ -3,6 +3,7 @@ package com.moyi.app.domain.today
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
+import kotlin.time.Instant
 
 /**
  * The daily loop (doc 06 §3.4). Every call needs a signed-in person.
@@ -22,13 +23,17 @@ interface TodayRepository {
      * Writes today's entry. [idempotencyKey] is minted by the caller at the tap and
      * passed again, unchanged, on every retry of the same send (doc 06 §1), so a
      * retry after a lost response is the same write, never a second one.
-     * [promptId] is today's prompt, unless the person dismissed it.
+     * [promptId] is today's prompt, unless the person dismissed it. [intendedAt] is the
+     * instant of the Send tap (BR-3a), sent on the first try as on every retry, because the
+     * server binds the key to the whole body: a first try without it and a queued retry
+     * with it would be two different requests under one key.
      */
     suspend fun submitEntry(
         bondId: String,
         text: String,
         promptId: String?,
         idempotencyKey: String,
+        intendedAt: Instant? = null,
     ): Result<MyEntry, DataError.Network>
 
     /** Replaces the words of my entry before the reveal. [idempotencyKey] as for [submitEntry]. */

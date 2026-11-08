@@ -11,6 +11,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
+import kotlin.time.Instant
 
 const val PARTNER = "Tunde"
 const val MINE = "You made the tea."
@@ -53,7 +54,7 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
     var deleteAfterResult = DeleteResult.Deleted
     var gate: CompletableDeferred<Unit>? = null
 
-    data class Submit(val text: String, val promptId: String?, val key: String)
+    data class Submit(val text: String, val promptId: String?, val key: String, val intendedAt: Instant)
     data class Edit(val text: String, val key: String)
 
     var refreshes = 0
@@ -72,8 +73,14 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
         onRefresh?.let { state.value = it }
     }
 
-    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String): WriteResult {
-        submits += Submit(text, promptId, idempotencyKey)
+    var refusalDismissals = 0
+
+    override suspend fun dismissRefusal() {
+        refusalDismissals++
+    }
+
+    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult {
+        submits += Submit(text, promptId, idempotencyKey, intendedAt)
         gate?.await()
         return submitResult
     }

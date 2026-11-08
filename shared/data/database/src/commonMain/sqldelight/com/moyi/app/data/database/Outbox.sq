@@ -1,0 +1,45 @@
+-- New entries sent while the server could not be reached (doc 13 §5: entry
+-- submission is queued locally), waiting for a connection. Only new entries: an
+-- edit or a delete stays online-only.
+--
+-- A retry must be the same request byte for byte (doc 06 §1: the server binds the
+-- idempotency key to a hash of the body), so the row keeps everything the body
+-- carried: the words, the prompt id, and intended_at, the instant of the Send tap
+-- in epoch milliseconds (BR-3a). day_date is the Bond-day Today showed at the tap.
+--
+-- refused is null while the entry waits. When the server refuses it (a 4xx other
+-- than the transient ones), its words move to the new-entry draft in the same
+-- transaction, text is emptied, and refused names why (ALREADY_WRITTEN or
+-- NOT_ACCEPTED) until Today has said so. user_id scopes a row to one person; the
+-- session wipes the table anyway.
+CREATE TABLE outbox_entry (
+    idempotency_key TEXT NOT NULL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    prompt_id TEXT,
+    intended_at INTEGER NOT NULL,
+    day_date TEXT NOT NULL,
+    refused TEXT
+);
+
+queuedForUser:
+SELECT * FROM outbox_entry WHERE user_id = ? AND refused IS NULL ORDER BY intended_at;
+
+queuedForBond:
+SELECT * FROM outbox_entry WHERE user_id = ? AND bond_id = ? AND refused IS NULL ORDER BY intended_at LIMIT 1;
+
+refusedForBond:
+SELECT * FROM outbox_entry WHERE user_id = ? AND bond_id = ? AND refused IS NOT NULL ORDER BY intended_at DESC LIMIT 1;
+
+insert:
+INSERT OR REPLACE INTO outbox_entry VALUES ?;
+
+markRefused:
+UPDATE outbox_entry SET refused = ?, text = '' WHERE user_id = ? AND idempotency_key = ?;
+
+deleteForKey:
+DELETE FROM outbox_entry WHERE user_id = ? AND idempotency_key = ?;
+
+deleteRefusedForBond:
+DELETE FROM outbox_entry WHERE user_id = ? AND bond_id = ? AND refused IS NOT NULL;

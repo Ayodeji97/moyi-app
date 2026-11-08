@@ -42,6 +42,14 @@
     <string name="settings_saving">Saving</string>
     <!-- home_sign_out_sending's words. -->
     <string name="settings_signing_out">Signing out</string>
+    <!-- PROPOSED (no design-system copy; docs/missing-components.md). Sign out would delete entries still waiting to send: the session wipe takes everything on this phone. Asked only after one more try to send them failed. -->
+    <string name="settings_sign_out_unsent_title">Your entry hasn't sent yet</string>
+    <!-- PROPOSED. What happens, and the other way out. -->
+    <string name="settings_sign_out_unsent_line">Signing out deletes it from this phone. Stay signed in and it will send when you're back online.</string>
+    <!-- PROPOSED. The destructive answer: the words go with the session. -->
+    <string name="settings_sign_out_unsent_confirm">Sign out and delete it</string>
+    <!-- PROPOSED. The safe answer. -->
+    <string name="settings_sign_out_unsent_dismiss">Stay signed in</string>
 
     <!-- PROPOSED. Spoken hint on a row that toggles in place (Rest days). -->
     <string name="settings_toggle_hint">Turns it on or off</string>

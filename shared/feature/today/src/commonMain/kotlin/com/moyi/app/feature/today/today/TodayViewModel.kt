@@ -7,6 +7,7 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
+import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DeleteResult
@@ -31,6 +32,8 @@ import kotlinx.coroutines.launch
  *   today's Bond-day, and the bare surface (no spinner) when there is not; every load
  *   refreshes behind what is shown ([RepositoryDailyLoop]). The screen asks on every foreground
  *   ([TodayAction.OnForeground]), and the loop refreshes after each write and delete.
+ * - **The outbox**: every foreground also tries the queued entries again, and whenever the
+ *   sender sends or refuses one (here or in the background), Today reloads: the server wins.
  * - **The reveal**: when a day turns up revealed with the partner's words, and the
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
  *
@@ -43,6 +46,8 @@ class TodayViewModel(
     private val ledger: RevealLedger,
     /** For "Share the invite again": the bond's live invite, or a new one when it has none. */
     private val bonds: BondRepository,
+    /** The queue of entries sent offline: tried again on every foreground, and Today reloads when it moves. */
+    private val outbox: OutboxSender,
 ) : ViewModel() {
 
     /** The delete dialog, the delete in flight and a failed delete: Today's own, not the day's (D11). */
@@ -60,15 +65,22 @@ class TodayViewModel(
 
     init {
         viewModelScope.launch { loop.state.collect(::onDay) }
+        // A queued entry sent (or refused) in the background: show what the server holds now.
+        viewModelScope.launch { outbox.changes.collect { loop.refresh() } }
     }
 
     fun onAction(action: TodayAction) {
         when (action) {
             TodayAction.OnForeground, TodayAction.OnRetryClick -> {
                 ui.update { it.copy(failed = false) }
+                outbox.retrySoon()
                 viewModelScope.launch { loop.refresh() }
             }
-            TodayAction.OnWriteClick -> send(TodayEvent.NavigateToWrite(editing = false))
+            TodayAction.OnWriteClick -> {
+                // Write opens on the words a refused entry left in the draft: the line has been read.
+                viewModelScope.launch { loop.dismissRefusal() }
+                send(TodayEvent.NavigateToWrite(editing = false))
+            }
             TodayAction.OnEditClick -> {
                 ui.update { it.copy(failed = false) }
                 send(TodayEvent.NavigateToWrite(editing = true))
@@ -193,7 +205,8 @@ class TodayViewModel(
                 myEntry = view.myEntry.orEmpty(),
                 // The loop already holds them only in these layouts; this is the second lock on the door.
                 partnerEntry = view.partnerEntry.takeIf { view.status in PartnerVisible },
-                queuedForDate = view.date,
+                queuedDay = view.queuedDay,
+                refusal = view.refusal,
                 // Only a revealed entry can be deleted this way: a dialog left from a day
                 // that has since moved on must not open over a different layout.
                 confirmingDelete = ui.confirming && view.status == TodayStatus.Revealed,

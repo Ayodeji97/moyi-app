@@ -16,11 +16,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
+import com.moyi.app.domain.today.DraftKind
 
 class WriteViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop().apply { show(dayView(TodayStatus.NotWritten, myEntry = null)) }
     private var keys = 0
-    private fun viewModel(editing: Boolean = false) = WriteViewModel(editing, loop, FakeDraftStore(), newIdempotencyKey = { "key-${++keys}" })
+    private val drafts = FakeDraftStore()
+    private val clock = FixedClock(TAP)
+    private fun viewModel(editing: Boolean = false) = WriteViewModel(editing, loop, drafts, newIdempotencyKey = { "key-${++keys}" }, clock = clock)
 
     private fun written(text: String) = loop.show(dayView(TodayStatus.Waiting, myEntry = text))
 
@@ -63,7 +68,7 @@ class WriteViewModelTest : MainDispatcherTest() {
             vm.onAction(WriteAction.OnSubmit)
             assertEquals(WriteEvent.Close, awaitItem())
         }
-        assertEquals(listOf(FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1")), loop.submits)
+        assertEquals(listOf(FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1", TAP)), loop.submits)
     }
 
     @Test
@@ -118,6 +123,45 @@ class WriteViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun aRetryOfTheSameWordsSendsTheInstantOfTheFirstTapNotANewOne() {
+        // intendedAt is part of the body the key is bound to (doc 06 §1).
+        loop.submitResult = WriteResult.Failed
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnTextChange("You made the tea."))
+        vm.onAction(WriteAction.OnSubmit)
+        clock.instant = TAP + 3.minutes
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(listOf(TAP, TAP), loop.submits.map { it.intendedAt })
+
+        // New words are a new send, tapped now.
+        vm.onAction(WriteAction.OnTextChange("You made the tea, twice."))
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(TAP + 3.minutes, loop.submits.last().intendedAt)
+    }
+
+    @Test
+    fun theTapIsTakenInWholeMillisecondsSoTheQueuedRetryIsTheSameBody() {
+        clock.instant = Instant.parse("2026-09-14T11:00:00.123456789Z")
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnTextChange("You made the tea."))
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(Instant.parse("2026-09-14T11:00:00.123Z"), loop.submits.single().intendedAt)
+    }
+
+    @Test
+    fun aQueuedSendClosesLikeASavedOneAndTheDraftGoesBecauseTheOutboxHasTheWords() = runTest {
+        loop.submitResult = WriteResult.Queued
+        val vm = viewModel()
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("You made the tea."))
+            vm.onAction(WriteAction.OnSubmit)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+        assertNull(drafts[DraftKind.NewEntry], "a draft left behind would come back as a second entry")
+        assertTrue(vm.state.value.submit != WriteSubmit.Failed, "queued is not a failure: no Save failed")
+    }
+
+    @Test
     fun tryAgainWithTheSameWordsAndTheSamePromptReplaysTheSameRequest() {
         loop.submitResult = WriteResult.Failed
         val vm = viewModel()
@@ -125,7 +169,7 @@ class WriteViewModelTest : MainDispatcherTest() {
         vm.onAction(WriteAction.OnSubmit)
         vm.onAction(WriteAction.OnSubmit)
         assertEquals(
-            List(2) { FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1") },
+            List(2) { FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1", TAP) },
             loop.submits,
         )
     }
@@ -143,15 +187,15 @@ class WriteViewModelTest : MainDispatcherTest() {
         vm.onAction(WriteAction.OnSubmit)
         assertEquals(
             listOf(
-                FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1"),
-                FakeDailyLoop.Submit("You made the tea.", null, "key-2"),
+                FakeDailyLoop.Submit("You made the tea.", PROMPT.id, "key-1", TAP),
+                FakeDailyLoop.Submit("You made the tea.", null, "key-2", TAP),
             ),
             loop.submits,
         )
 
         // That new send, retried unchanged, keeps its own key.
         vm.onAction(WriteAction.OnSubmit)
-        assertEquals(FakeDailyLoop.Submit("You made the tea.", null, "key-2"), loop.submits.last())
+        assertEquals(FakeDailyLoop.Submit("You made the tea.", null, "key-2", TAP), loop.submits.last())
     }
 
     @Test
@@ -385,3 +429,6 @@ class WriteViewModelTest : MainDispatcherTest() {
         }
     }
 }
+
+/** The Send tap of every composer test: 12:00 in Lagos on the test day. */
+internal val TAP: Instant = Instant.parse("2026-09-14T11:00:00Z")

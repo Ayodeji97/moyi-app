@@ -34,14 +34,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.feature.today.common.QueuedDay
+import kotlinx.datetime.LocalDate
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TodayViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
+    private val outbox = FakeOutbox()
     private val ledger = RevealLedger()
     private val bonds = InviteBonds()
-    private val viewModel by lazy { TodayViewModel(loop, ledger, bonds) }
+    private val viewModel by lazy { TodayViewModel(loop, ledger, bonds, outbox) }
 
     private fun TestScope.collectState() {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
@@ -69,6 +73,48 @@ class TodayViewModelTest : MainDispatcherTest() {
         assertEquals(TodayStatus.NotWritten, viewModel.state.value.status)
         assertEquals(PROMPT.text, viewModel.state.value.prompt)
         assertEquals(DAY, viewModel.state.value.date)
+    }
+
+    // ---- The outbox ----
+
+    @Test
+    fun aQueuedEntryIsTodaysQueuedLayoutWithTheDayItCountsFor() = runTest {
+        loop.onRefresh = DailyLoopState.Ready(
+            dayView(TodayStatus.Queued).copy(queuedDay = QueuedDay.EarlierDayClosed(LocalDate(2026, 9, 13))),
+        )
+        collectState()
+        viewModel.onAction(TodayAction.OnForeground)
+        assertEquals(TodayStatus.Queued, viewModel.state.value.status)
+        assertEquals(MINE, viewModel.state.value.myEntry)
+        assertEquals(QueuedDay.EarlierDayClosed(LocalDate(2026, 9, 13)), viewModel.state.value.queuedDay)
+        assertNull(viewModel.state.value.partnerEntry)
+    }
+
+    @Test
+    fun everyForegroundAndTryAgainAlsoTriesTheQueueAgain() = runTest {
+        collectState()
+        viewModel.onAction(TodayAction.OnForeground)
+        viewModel.onAction(TodayAction.OnRetryClick)
+        assertEquals(2, outbox.retries)
+    }
+
+    @Test
+    fun anEntrySentOrRefusedBehindTodayReloadsTheDay() = runTest {
+        collectState()
+        val before = loop.refreshes
+        outbox.changeFlow.emit(Unit)
+        assertEquals(before + 1, loop.refreshes, "the server wins: Today shows what it holds now")
+    }
+
+    @Test
+    fun aRefusalIsSaidOnTodayAndOpeningWriteDismissesIt() = runTest {
+        loop.onRefresh = DailyLoopState.Ready(dayView(TodayStatus.NotWritten).copy(refusal = OutboxRefusal.NotAccepted))
+        collectState()
+        viewModel.onAction(TodayAction.OnForeground)
+        assertEquals(OutboxRefusal.NotAccepted, viewModel.state.value.refusal)
+
+        viewModel.onAction(TodayAction.OnWriteClick)
+        assertEquals(1, loop.refusalDismissals)
     }
 
     @Test
@@ -288,7 +334,7 @@ class TodayViewModelTest : MainDispatcherTest() {
     fun theDayIsForgottenWhenTodayGoes() {
         // Today is the root of the signed-in app: it goes with a sign-out, and the day goes with it.
         val store = ViewModelStore()
-        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds) } }
+        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds, outbox) } }
         ViewModelProvider.create(store, factory)[TodayViewModel::class]
         loop.show(dayView(TodayStatus.Revealed))
         val clearsBefore = loop.clears

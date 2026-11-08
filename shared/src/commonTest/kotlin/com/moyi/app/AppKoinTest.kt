@@ -43,6 +43,12 @@ import kotlinx.coroutines.test.setMain
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import com.moyi.app.domain.today.EntryOutbox
+import com.moyi.app.domain.today.OutboxPass
+import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.domain.today.OutboxSender
+import com.moyi.app.domain.today.QueuedEntry
+import com.moyi.app.domain.today.RefusedEntry
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -77,6 +83,8 @@ class AppKoinTest {
                     single<BondSettingsRepository> { PreviewBondSettingsRepository() }
                     single<AccountRepository> { StubAccountRepository }
                     single<TodayCache> { NoCachedDay }
+                    single<OutboxSender> { StubOutbox() }
+                    single<EntryOutbox> { StubOutbox() }
                 },
             )
         }.koin
@@ -101,6 +109,27 @@ class AppKoinTest {
             koin.close()
         }
     }
+}
+
+/** An outbox with nothing in it, counting the shell's calls. */
+internal class StubOutbox : OutboxSender, EntryOutbox {
+    var starts = 0
+    var retries = 0
+    override val changes: Flow<Unit> = emptyFlow()
+    override fun start() {
+        starts++
+    }
+    override fun retrySoon() {
+        retries++
+    }
+    override suspend fun sendQueued(): OutboxPass = OutboxPass.Empty
+    override suspend fun enqueue(entry: QueuedEntry) = Unit
+    override suspend fun queued(): List<QueuedEntry> = emptyList()
+    override suspend fun queuedFor(bondId: String): QueuedEntry? = null
+    override suspend fun remove(idempotencyKey: String) = Unit
+    override suspend fun refuse(entry: QueuedEntry, reason: OutboxRefusal) = Unit
+    override suspend fun refusalFor(bondId: String): RefusedEntry? = null
+    override suspend fun clearRefusal(bondId: String) = Unit
 }
 
 /** Session stays as set; restoreSession() runs [onRestore], which may throw. */

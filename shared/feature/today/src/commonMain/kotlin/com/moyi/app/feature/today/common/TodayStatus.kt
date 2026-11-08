@@ -16,7 +16,8 @@ package com.moyi.app.feature.today.common
  *   conservative existing layout stands in: [SoloYouWrote] if mine is there,
  *   [NotWritten] otherwise.
  *
- * [Queued] has no source yet: it needs the outbox (doc 13 §5). Only the UI preview reaches it.
+ * [Queued] is the device's, not the server's: an entry in the outbox (doc 13 §5), drawn by
+ * [RepositoryDailyLoop] over a day on which the server has none of mine yet.
  */
 enum class TodayStatus {
     /** 159:2. Also what "the partner wrote, I haven't" renders as. */

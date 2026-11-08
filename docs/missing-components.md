@@ -439,3 +439,49 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **Not changed, raised:** whether submitting with the keyboard's Done should also put the
   keyboard away (iOS apps differ); and the settings rows, whose values read as underlined
   links with no chevron (§20, the settings row, is still open).
+
+## Offline: the outbox (offline-first, part 3)
+
+### 35. Queued for a day that has closed
+
+- **Today:** `states.md` §4 says the Queued state names "which day it will count for" when the
+  entry is for an earlier Bond-day, and §10 draws one line: "It'll send when you're back online.
+  It will count for Tuesday, 2 September."
+- **The catch:** BR-3a (c) refuses `intendedAt` on a Bond-day that has closed, and the nightly
+  close job closes every Bond-day at its own midnight (SOLO, EMPTY, or REVEALED), so an entry
+  written yesterday and sent today counts for **today**, not yesterday (backend `DayAssignment`,
+  read only; `docs/backend-contract-gaps.md` row 25). Saying "It will count for yesterday" would
+  be false.
+- **Here:** three lines, chosen by `QueuedDay`. Written today: §10's drawn line with today's date.
+  Written on a day that has ended (PROPOSED `today_queued_line_earlier`): "It'll send when you're
+  back online. Saturday, 7 November has closed, so it will count for the day it sends." Written
+  more than 36 hours ago (PROPOSED `today_queued_line_late`): "It'll send when you're back online.
+  It will count for the day it sends."
+- **The open question:** keep these, or should the product change so a day stays open for late
+  entries (a grace period on the close, a backend change)?
+
+### 36. A queued entry the server refused
+
+- **Today:** not in the design system. A queued entry can be refused when it is finally sent: `409
+  ENTRY_ALREADY_EXISTS` (written from another phone), `409 DAY_CLOSED` (both had written and the
+  day opened; seen on the emulator), `422`, the bond gone.
+- **Here:** the words go back to Write as the new-entry draft (never over a draft already there:
+  both are kept), and Today says so once, in `InlineError` under the prompt or my card, until Write
+  is opened. PROPOSED `today_queued_refused`: "That didn't send. Your words are kept in Write,
+  ready to send again." PROPOSED `today_queued_refused_written`: "You had already written for that
+  day, so these words didn't send. They're kept in Write for your next entry."
+- **The open question:** the wording, and whether `danger` is right for a refusal that lost
+  nothing.
+
+### 37. Signing out with an entry still waiting to send
+
+- **Today:** not in the design system. Sign out wipes everything on the phone (FR-124), the outbox
+  included, so a voluntary sign-out while offline would delete words nobody has seen.
+- **Here:** the most conservative option that does not trap the person. Sign out first tries to
+  send (one pass, at most 10 seconds). If something is still waiting, the platform `ConfirmDialog`
+  asks, its safe answer the dismiss: PROPOSED `settings_sign_out_unsent_title` "Your entry hasn't
+  sent yet", `_line` "Signing out deletes it from this phone. Stay signed in and it will send when
+  you're back online.", `_confirm` "Sign out and delete it" (destructive), `_dismiss` "Stay signed
+  in". An involuntary end (refresh refused, token reuse) asks nobody: privacy wins.
+- **The open question:** the copy, and whether the words should instead be kept somewhere that
+  survives a sign-out (which the session wipe forbids today).

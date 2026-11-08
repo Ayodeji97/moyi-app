@@ -1,8 +1,10 @@
 package com.moyi.app.feature.today.common
 
+import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Prompt
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
+import kotlin.time.Instant
 
 /**
  * The day the three screens share: Today reads it, Write and delete change it, and
@@ -21,8 +23,12 @@ interface DailyLoop {
     /** Loads the day, or reloads it behind what is already shown (states.md §3). */
     suspend fun refresh()
 
-    /** Writes today's entry. [idempotencyKey] is the caller's, minted at the tap and reused on a retry. */
-    suspend fun submit(text: String, promptId: String?, idempotencyKey: String): WriteResult
+    /**
+     * Writes today's entry. [idempotencyKey] and [intendedAt] are the caller's, both taken
+     * at the Send tap and reused on a retry. When the server cannot be reached the entry is
+     * queued on the device instead ([WriteResult.Queued]) and sent later with both unchanged.
+     */
+    suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult
 
     /** Replaces my entry's words before the reveal. */
     suspend fun edit(text: String, idempotencyKey: String): WriteResult
@@ -32,6 +38,9 @@ interface DailyLoop {
 
     /** Not optimistic: irreversible, so the tombstone shows only after the server's 204. */
     suspend fun deleteAfterReveal(): DeleteResult
+
+    /** The person went to the words a refused entry left in the draft: Today stops saying so. */
+    suspend fun dismissRefusal() = Unit
 
     /** Forgets the day: nothing of one person's day may outlive the screen that showed it (a sign-out). */
     fun clear()
@@ -71,16 +80,27 @@ data class DayView(
     /** My words; null when I have not written, or deleted them. */
     val myEntry: String?,
     val partnerEntry: String?,
+    /** Which Bond-day my queued entry will count for; set exactly in [TodayStatus.Queued]. */
+    val queuedDay: QueuedDay? = null,
+    /** A queued entry the server refused, whose words went back to the draft: Today says so once. */
+    val refusal: OutboxRefusal? = null,
 ) {
     /** Never the words: a data class would print both entries into any log that printed this. */
     override fun toString(): String =
         "DayView(bondId=$bondId, date=$date, status=$status, myEntryId=$myEntryId, " +
-            "myEntry=${myEntry?.let { "(redacted)" }}, partnerEntry=${partnerEntry?.let { "(redacted)" }})"
+            "myEntry=${myEntry?.let { "(redacted)" }}, partnerEntry=${partnerEntry?.let { "(redacted)" }}, " +
+            "queuedDay=$queuedDay, refusal=$refusal)"
 }
 
 enum class WriteResult {
     /** The server has the words. */
     Saved,
+
+    /**
+     * The server could not be reached: the entry is kept on the device and will send when
+     * it can (states.md §4, Queued offline). The composer closes as on [Saved].
+     */
+    Queued,
 
     /** It did not: the composer keeps them (states.md §10, Save failed). */
     Failed,
