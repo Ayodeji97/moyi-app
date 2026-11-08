@@ -4,15 +4,17 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
-// The daily loop: Today, Write, Reveal, and delete-after-reveal. UI ONLY for now
-// (PR #8): every screen renders FAKE state from FakeDailyLoop, and each place a
-// real call or rule belongs carries a `TODO(logic)` naming the contract endpoint.
-// Like every feature it may see the domain, never the data layer (Konsist).
+// The daily loop: Today, Write, Reveal, and delete-after-reveal, over the domain's
+// BondRepository and TodayRepository (through DailyLoop). Like every feature it
+// may see the domain, never the data layer or the generated client (Konsist).
+// kotlinx-datetime parses the Bond-day's ISO date for the locale date label.
 kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":shared:core"))
+            implementation(project(":shared:domain"))
             implementation(project(":shared:designsystem"))
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.androidx.navigation.compose)

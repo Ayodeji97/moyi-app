@@ -62,6 +62,26 @@ fun NoArrowBackHandler(enabled: Boolean = true, onBack: () -> Unit) {
 }
 
 /**
+ * System back on a layer that a screen draws over itself, inside the same
+ * destination, **with its own back arrow**: onboarding's time-zone picker. Both
+ * Android's Back and the iOS edge swipe run [onBack], as the arrow does: the swipe
+ * follows the arrow (D3), and this layer has one. Without it, system back would
+ * pop the whole screen from under the layer.
+ *
+ * While [enabled] is false (the layer is closed) it steps aside and the NavHost
+ * pops as usual. Call it from a screen's Root, like [NoArrowBackHandler].
+ */
+@Composable
+fun LayerBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    val state = rememberNavigationEventState(NavigationEventInfo.None)
+    NavigationBackHandler(
+        state = state,
+        isBackEnabled = enabled,
+        onBackCompleted = onBack,
+    )
+}
+
+/**
  * How a task enters (D10). iOS: the sheet slides up from the bottom edge, the one
  * transition outside the reveal, approved by the owner as an exception to "screens
  * change with no transition" (SKILL.md §5). None under Reduce Motion. Android: none.

@@ -47,12 +47,15 @@ data object RevealRoute
  * @param onOpenSettings the settings target in Today's nav row. TODO(logic): Bond
  *   settings (`GET /api/v1/bonds/{bondId}`, `…/members/me/settings`) is not built; the
  *   shell opens the auth placeholder for now, which is where sign-out lives.
- * @param debugTools PR #8 only: long-press switches that step the fake state. The
- *   shell passes true only for `-PmoyiUiPreview=today` builds.
+ * @param onNoOpenBond the person is in no open bond any more (left or ended on the
+ *   other phone). The shell sends them back to the signed-in start, which decides.
+ * @param debugTools long-press switches that step the preview day. The shell passes
+ *   true only for `-PmoyiUiPreview=today` builds.
  */
 fun NavGraphBuilder.todayGraph(
     navController: NavController,
     onOpenSettings: () -> Unit,
+    onNoOpenBond: () -> Unit,
     debugTools: Boolean,
 ) {
     composable<TodayRoute>(
@@ -66,6 +69,7 @@ fun NavGraphBuilder.todayGraph(
             onNavigateToWrite = { editing -> navController.navigate(WriteRoute(editing)) },
             onNavigateToReveal = { navController.openReveal() },
             onNavigateToSettings = onOpenSettings,
+            onNoOpenBond = onNoOpenBond,
             debugTools = debugTools,
         )
     }

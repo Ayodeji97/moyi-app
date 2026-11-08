@@ -28,6 +28,7 @@ import com.moyi.app.feature.today.common.CenteredContent
 import com.moyi.app.feature.today.common.DateLabel
 import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.ScreenTitle
+import com.moyi.app.feature.today.common.dayHeader
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.common.isReducedMotionEnabled
 import com.moyi.app.feature.today.resources.Res
@@ -88,7 +89,7 @@ fun RevealScreen(
 ) {
     MoyiScaffold(scrollContent = false) {
         DateLabel(
-            date = state.date,
+            date = state.date?.let { dayHeader(it) }.orEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
                 .debugLongPress(if (debugTools) ({ onAction(RevealAction.OnDebugReplay) }) else null),
@@ -169,20 +170,28 @@ private fun revealTransition(reducedMotion: Boolean): ContentTransform =
 
 // ---- Previews (the two frames; the animation runs on a device) ----
 
+private fun previewReveal(phase: RevealPhase) = RevealState(
+    phase = phase,
+    date = FakeCopy.DATE,
+    partnerName = FakeCopy.PARTNER_NAME,
+    myEntry = FakeCopy.MY_ENTRY,
+    partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf { phase == RevealPhase.After },
+)
+
 @Preview
 @Composable
 private fun RevealBeforePreview() {
-    MoyiTheme(darkTheme = true) { RevealScreen(state = RevealState(phase = RevealPhase.Before), onAction = {}, reducedMotion = false) }
+    MoyiTheme(darkTheme = true) { RevealScreen(state = previewReveal(RevealPhase.Before), onAction = {}, reducedMotion = false) }
 }
 
 @Preview
 @Composable
 private fun RevealAfterPreview() {
-    MoyiTheme(darkTheme = true) { RevealScreen(state = RevealState(phase = RevealPhase.After, partnerEntry = FakeCopy.PARTNER_ENTRY), onAction = {}, reducedMotion = false) }
+    MoyiTheme(darkTheme = true) { RevealScreen(state = previewReveal(RevealPhase.After), onAction = {}, reducedMotion = false) }
 }
 
 @Preview
 @Composable
 private fun RevealAfterLightPreview() {
-    MoyiTheme(darkTheme = false) { RevealScreen(state = RevealState(phase = RevealPhase.After, partnerEntry = FakeCopy.PARTNER_ENTRY), onAction = {}, reducedMotion = true) }
+    MoyiTheme(darkTheme = false) { RevealScreen(state = previewReveal(RevealPhase.After), onAction = {}, reducedMotion = true) }
 }
