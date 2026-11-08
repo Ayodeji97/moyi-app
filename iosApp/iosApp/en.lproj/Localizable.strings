@@ -1,0 +1,37 @@
+/*
+  The words a push shows. iOS looks them up by the keys the server sends in the push's
+  `aps.alert` (`title-loc-key`, `loc-key`): FcmPushSender.locKeys in moyi-backend,
+  `push_<category in lower case>_title` and `_body`. The server sends no text and no name,
+  so nothing anybody wrote, and nobody's name, can reach a lock screen (FR-084, T-14).
+
+  The same words are androidApp/src/main/res/values/push_strings.xml: change both together.
+  PROPOSED copy (copy.md "Notification copy"), awaiting the owner's ruling.
+*/
+
+/* The daily reminder: an invitation, never pressure (copy.md). */
+"push_reminder_title" = "A moment for today?";
+"push_reminder_body" = "Write one thing you are grateful for, when it suits you.";
+
+/* The person you invited joined the bond. */
+"push_partner_joined_title" = "Your invite is accepted";
+"push_partner_joined_body" = "You are both here now. You can each write from today.";
+
+/* The day's entries opened (copy.md: "Your day is open."). */
+"push_reveal_title" = "Your day is open.";
+"push_reveal_body" = "Both entries are there to read.";
+
+/* A day closed with one entry, opened to the other member: an opening, never a miss (FR-076). */
+"push_solo_unlock_title" = "Your day is open.";
+"push_solo_unlock_body" = "One entry is there to read.";
+
+/* 7, 30, 100 or 365 days written together: restrained (copy.md). */
+"push_milestone_title" = "A milestone together";
+"push_milestone_body" = "See it in your streak.";
+
+/* An earlier year's day on this date: gentle (copy.md). */
+"push_on_this_day_title" = "On this day";
+"push_on_this_day_body" = "A day from an earlier year is there to read again.";
+
+/* A change the other member proposed, waiting on this one. */
+"push_proposal_opened_title" = "A change to agree to";
+"push_proposal_opened_body" = "Open Bond settings to see it and answer.";

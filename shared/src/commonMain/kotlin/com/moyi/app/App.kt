@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -12,7 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.moyi.app.designsystem.platform.screenEnterTransition
@@ -36,9 +40,14 @@ import com.moyi.app.feature.bond.navigation.bondSettingsGraph
 import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
 import com.moyi.app.feature.onboarding.navigation.SignedInStartRoute
+import com.moyi.app.feature.onboarding.navigation.UnverifiedGateRoute
 import com.moyi.app.feature.onboarding.navigation.onboardingGraph
+import com.moyi.app.feature.today.common.DailyLoop
+import com.moyi.app.feature.today.common.DailyLoopState
+import com.moyi.app.feature.today.navigation.RevealRoute
 import com.moyi.app.feature.today.navigation.TodayRoute
 import com.moyi.app.feature.today.navigation.todayGraph
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -63,6 +72,10 @@ import org.koin.compose.viewmodel.koinViewModel
  * The start destination is chosen once, when the state first leaves Unknown.
  * Later changes are navigation: a sign-in navigates from the screen, and a
  * session end arrives as [SessionEvent.Ended], handled here.
+ *
+ * A tapped push ([PushTapInbox]) opens its screen once the signed-in app is showing:
+ * on a cold start after the signed-in start has landed on Today, on a warm start at
+ * once, and when signed out after signing in ([pushRouting]).
  */
 @Composable
 fun App(viewModel: AppViewModel = koinViewModel()) {
@@ -87,14 +100,21 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         if (startDestination == null) {
             Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
         } else {
-            MoyiNavHost(startDestination = startDestination, viewModel = viewModel)
+            MoyiNavHost(startDestination = startDestination, viewModel = viewModel, session = session)
         }
     }
 }
 
 @Composable
-private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
+private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session: SessionState) {
     val navController = rememberNavController()
+    val pushTaps = koinInject<PushTapInbox>()
+    val pendingTap by pushTaps.target.collectAsStateWithLifecycle()
+    val currentEntry by navController.currentBackStackEntryAsState()
+    // The Archive and the Streak read the bond from the day Today loads, so a tap opens
+    // nothing above Today until that day is in.
+    val dayLoop = koinInject<DailyLoop>()
+    val dayLoaded = dayLoop.state.collectAsStateWithLifecycle().value is DailyLoopState.Ready
 
     // Composed after NavHost has its graph, so an event buffered during the
     // restore (a refresh token the server no longer accepts) navigates safely.
@@ -144,6 +164,50 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel) {
         bondArchivedDestination(onStartNewBond = { navController.navigate(OnboardingRoute) })
         if (UiPreview.onboarding) uiPreviewGraph(navController)
     }
+
+    // After NavHost, so the graph is set. Runs again on every screen change and session
+    // change while a tap waits, which is how a cold start or a sign-in reaches it.
+    LaunchedEffect(pendingTap, currentEntry, session, dayLoaded) {
+        val target = pendingTap ?: return@LaunchedEffect
+        if (currentEntry == null) return@LaunchedEffect
+        when (val routing = pushRouting(target, navController.shellPlace(session, dayLoaded))) {
+            PushRouting.Wait -> Unit
+            PushRouting.Drop -> pushTaps.consume(target)
+            is PushRouting.Open -> {
+                pushTaps.consume(target)
+                navController.openAboveToday(routing.routes)
+            }
+        }
+    }
+}
+
+/** Where the shell is, for a waiting push tap (see [ShellPlace]). */
+private fun NavHostController.shellPlace(session: SessionState, dayLoaded: Boolean): ShellPlace {
+    if (session !is SessionState.SignedIn || UiPreviewConfig.UI_PREVIEW.isNotEmpty()) return ShellPlace.Settling
+    val destination = currentDestination ?: return ShellPlace.Settling
+    if (destination.hasRoute<SignedInStartRoute>()) return ShellPlace.Settling
+    if (runCatching { getBackStackEntry<TodayRoute>() }.isSuccess) {
+        // Today still loading (a cold start) waits; a Today that finds no open bond sends
+        // the person to the signed-in start, and from there the tap is dropped or kept.
+        return if (dayLoaded) ShellPlace.SignedInApp else ShellPlace.Settling
+    }
+    val outside = destination.hierarchy.any { it.hasRoute<OnboardingRoute>() } ||
+        destination.hasRoute<UnverifiedGateRoute>() ||
+        destination.hasRoute<BondArchivedRoute>()
+    // Neither: a sign-in screen in the moment before it moves to the signed-in start.
+    return if (outside) ShellPlace.OutsideTheApp else ShellPlace.Settling
+}
+
+/**
+ * Back to Today, then [routes] over it. A reveal playing over Today is left to settle
+ * when the target is Today itself: it is what the push was about.
+ */
+private fun NavHostController.openAboveToday(routes: List<Any>) {
+    val here = currentDestination
+    val atToday = here != null && (here.hasRoute<TodayRoute>() || here.hasRoute<RevealRoute>())
+    if (routes.isEmpty() && atToday) return
+    popBackStack<TodayRoute>(inclusive = false)
+    routes.forEach { route -> navigate(route) { launchSingleTop = true } }
 }
 
 /** Makes [route] the only screen: nothing to go back to. */

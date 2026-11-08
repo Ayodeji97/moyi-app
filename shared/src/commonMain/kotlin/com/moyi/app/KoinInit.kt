@@ -20,6 +20,8 @@ import org.koin.dsl.module
 /** The shell's own definitions. */
 val appModule: Module = module {
     viewModelOf(::AppViewModel)
+    // One per process: the platform entries put a tapped push in it, the shell takes it out.
+    single { PushTapInbox() }
 }
 
 /** Every module the app runs with, data layer first. The platform ones need `androidContext` on Android. */
