@@ -14,4 +14,6 @@ plugins {
 
     // syncContract and checkContractInSync (part of `check`).
     id("moyi.contract")
+    // sqlcipherXcframework: SQLCipher for the iOS test executables (moyi.kmp.library).
+    id("moyi.sqlcipher")
 }

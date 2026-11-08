@@ -6,6 +6,8 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
+import java.io.File
 
 /**
  * `moyi.kmp.library`: a Kotlin Multiplatform library for Android, iosArm64 and
@@ -25,14 +27,23 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
         pluginManager.apply(libs.pluginId("androidMultiplatformLibrary"))
 
         extensions.configure<KotlinMultiplatformExtension> {
-            // SQLDelight's iOS driver (shared/data/database) calls the system SQLite,
-            // which Kotlin/Native does not link by itself. Every binary that could
-            // contain the driver links it: a module's test executable reaches the
-            // driver through data:testing, the app's framework through the data layer.
-            // Linking a system library a binary never calls costs nothing.
-            listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
-                target.binaries.all { linkerOpts("-lsqlite3") }
-            }
+            // SQLDelight's iOS driver (shared/data/database) calls the `sqlite3_*` C API,
+            // which Kotlin/Native does not link by itself. It must be SQLCipher's, never
+            // the system SQLite's (-lsqlite3): with both linked, one set of symbols wins
+            // silently and `PRAGMA key` may do nothing. The app's framework is static,
+            // so Xcode links SQLCipher (the SQLCipher.swift package); the test
+            // executables are linked here, against the same xcframework, with an rpath
+            // to it so the simulator can load it when the tests run. -dead_strip_dylibs
+            // drops the libsqlite3 load command a Kotlin/Native platform library adds
+            // although no symbol binds to it, so `otool -L` shows SQLCipher alone.
+            mapOf(iosArm64() to "ios-arm64", iosSimulatorArm64() to "ios-arm64_x86_64-simulator")
+                .forEach { (target, slice) ->
+                    val frameworks = File(sqlCipherDirectory(rootDir), "SQLCipher.xcframework/$slice").absolutePath
+                    target.binaries.withType(TestExecutable::class.java).configureEach {
+                        linkerOpts("-F", frameworks, "-framework", "SQLCipher", "-rpath", frameworks, "-dead_strip_dylibs")
+                        linkTaskProvider.configure { dependsOn(SQLCIPHER_TASK) }
+                    }
+                }
 
             extensions.configure<KotlinMultiplatformAndroidLibraryTarget> {
                 namespace = moyiNamespace()

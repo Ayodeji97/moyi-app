@@ -9,7 +9,7 @@ Compose Multiplatform UI. Package `com.moyi.app`. The rules for working here are
 | Gradle path | Namespace | What it holds |
 |---|---|---|
 | `:androidApp` | `com.moyi.app` | Android shell: Activity, manifest |
-| `iosApp/` (Xcode) | | iOS shell; links the `Shared` framework |
+| `iosApp/` (Xcode) | | iOS shell; links the `Shared` framework and SQLCipher (the `SQLCipher.swift` package) |
 | `:shared` | `com.moyi.app.shared` | Umbrella: `App()`, and the one iOS framework (`Shared`, static) |
 | `:shared:core` | `com.moyi.app.core` | `Result`, `DataError`, shared utilities |
 | `:shared:domain` | `com.moyi.app.domain` | Models and repository interfaces. **No framework dependencies** |
@@ -17,7 +17,7 @@ Compose Multiplatform UI. Package `com.moyi.app`. The rules for working here are
 | `:shared:data:api` | `com.moyi.app.data.api` | Generated OpenAPI client only (PR #3) |
 | `:shared:data:network` | `com.moyi.app.data.network` | HttpClient, auth, error mapping |
 | `:shared:data:session` | `com.moyi.app.data.session` | Token storage and the session |
-| `:shared:data:database` | `com.moyi.app.data.database` | SQLDelight 2.x local database (Today's cache); wiped at every session change |
+| `:shared:data:database` | `com.moyi.app.data.database` | SQLDelight 2.x local database (Today's cache, drafts, outbox), encrypted at rest with SQLCipher; wiped at every session change |
 | `:shared:data:repository` | `com.moyi.app.data.repository` | Repository implementations |
 | `:shared:data:testing` | `com.moyi.app.data.testing` | Test fixtures for the data modules' tests only (fake store, MockEngine helpers, in-memory database) |
 | `:shared:feature:auth` | `com.moyi.app.feature.auth` | Register, verify, sign in |
@@ -59,6 +59,14 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 
 CI runs `./gradlew check` on Linux, which cannot link iOS; each PR says whether the iOS
 framework and the Xcode app were built locally.
+
+The local database is encrypted with SQLCipher on both platforms. Android gets it from
+`net.zetetic:sqlcipher-android`; the Xcode app from the `SQLCipher.swift` Swift package
+(Xcode resolves it on the first build, so that build needs the network); the iOS test
+executables from the same xcframework, which `./gradlew` downloads and checks by SHA-256
+(`:sqlcipherXcframework`). Nothing links the system SQLite (`-lsqlite3`). The Android
+encryption tests need a device or emulator:
+`./gradlew :shared:data:database:connectedAndroidDeviceTest`.
 
 ### UI preview (debug only)
 

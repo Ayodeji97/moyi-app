@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1C0DE5A1C0DE5A1C0DE5A01 /* SQLCipher in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0DE5A1C0DE5A1C0DE5A02 /* SQLCipher */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		CB7BFF004E6AD398ABBA224F /* Moyi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Moyi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -41,6 +45,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1C0DE5A1C0DE5A1C0DE5A01 /* SQLCipher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +90,7 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
+				A1C0DE5A1C0DE5A1C0DE5A02 /* SQLCipher */,
 			);
 			productName = iosApp;
 			productReference = CB7BFF004E6AD398ABBA224F /* Moyi.app */;
@@ -114,6 +120,9 @@
 			);
 			mainGroup = 5E335D5317C413BE5A0F71C5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A1C0DE5A1C0DE5A1C0DE5A03 /* XCRemoteSwiftPackageReference "SQLCipher.swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FBE9BB698CF44DC93FC3DF65 /* Products */;
 			projectDirPath = "";
@@ -368,6 +377,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1C0DE5A1C0DE5A1C0DE5A03 /* XCRemoteSwiftPackageReference "SQLCipher.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sqlcipher/SQLCipher.swift";
+			requirement = {
+				kind = exactVersion;
+				version = 4.20.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1C0DE5A1C0DE5A1C0DE5A02 /* SQLCipher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1C0DE5A1C0DE5A1C0DE5A03 /* XCRemoteSwiftPackageReference "SQLCipher.swift" */;
+			productName = SQLCipher;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2F91E4E91168998F48E9B767 /* Project object */;
 }

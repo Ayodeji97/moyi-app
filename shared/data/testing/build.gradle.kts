@@ -17,7 +17,7 @@ kotlin {
             api(project(":shared:data:database"))
         }
         // An in-memory database per test (inMemoryDatabase): the JVM's SQLite on the
-        // Android host tests, the system SQLite on the iOS simulator.
+        // Android host tests, SQLCipher (unkeyed, so plain) on the iOS simulator.
         androidMain.dependencies {
             implementation(libs.sqldelight.sqliteDriver)
         }

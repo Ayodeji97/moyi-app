@@ -4,19 +4,29 @@ plugins {
 }
 
 // The local database (doc 13 §2 and §5): SQLDelight 2.x, one SQLite file per
-// install. It holds what Today shows offline and nothing that is not the signed-in
+// install, encrypted at rest with SQLCipher (EncryptedDatabaseOpener): Android links
+// sqlcipher-android, iOS the SQLCipher.swift package (the app) or the same xcframework
+// (the test executables, moyi.kmp.library). It holds what Today shows offline and nothing that is not the signed-in
 // person's own; the session wipes all of it when a session ends or a new one starts
 // (LocalDatabase.wipe). It knows no network, no session and no domain: the
 // repository layer maps between its rows and domain models.
 kotlin {
+    android {
+        withDeviceTestBuilder {}.configure {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        }
+    }
     sourceSets {
         commonMain.dependencies {
             api(libs.sqldelight.runtime)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
+            // Logs the class of a failure to open the database, never a key or a row.
+            implementation(libs.kermit)
         }
         androidMain.dependencies {
             implementation(libs.sqldelight.androidDriver)
+            implementation(libs.sqlcipher.android)
             implementation(libs.koin.android)
         }
         iosMain.dependencies {
@@ -25,6 +35,13 @@ kotlin {
         commonTest.dependencies {
             implementation(project(":shared:data:testing"))
             implementation(libs.kotlinx.coroutines.test)
+        }
+        // SQLCipher on Android is a native library, so the encryption is tested on a
+        // device or emulator (`connectedAndroidDeviceTest`), not on the JVM host.
+        getByName("androidDeviceTest").dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.androidx.testRunner)
+            implementation(libs.androidx.testExt.junit)
         }
     }
 }
