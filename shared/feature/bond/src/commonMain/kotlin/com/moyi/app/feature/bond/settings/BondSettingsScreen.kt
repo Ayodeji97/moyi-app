@@ -100,7 +100,10 @@ import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
  * change it are disabled; Sign out and the Ending rows stay.
  *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, under
- * the back target, so the way out stays.
+ * the back target, so the way out stays. Under it stays the one group that needs nothing
+ * from the server, Just you (Sign out): offline, or with the bond unreadable, signing out
+ * must still be reachable (owner ruling 2026-11-08). Its unsent-entry question works there
+ * too, since it asks the device's outbox, not the bond.
  */
 @Composable
 fun BondSettingsScreen(
@@ -112,18 +115,58 @@ fun BondSettingsScreen(
     when {
         state.load == SettingsLoad.Loading || (state.load == SettingsLoad.Ready && settings == null) ->
             Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
-        state.load == SettingsLoad.Failed -> MoyiScaffold(onBack = onBack, contentArrangement = Arrangement.Center) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                StateBlock(
-                    heading = stringResource(Res.string.settings_load_error_heading),
-                    line = stringResource(Res.string.settings_load_error_line),
-                    actionLabel = stringResource(Res.string.settings_load_error_action),
-                    onAction = { onAction(BondSettingsAction.OnRetryClick) },
-                )
+        state.load == SettingsLoad.Failed -> {
+            MoyiScaffold(onBack = onBack, contentArrangement = Arrangement.Center) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    StateBlock(
+                        heading = stringResource(Res.string.settings_load_error_heading),
+                        line = stringResource(Res.string.settings_load_error_line),
+                        actionLabel = stringResource(Res.string.settings_load_error_action),
+                        onAction = { onAction(BondSettingsAction.OnRetryClick) },
+                    )
+                }
+                Spacer(Modifier.height(MoyiTheme.spacing.xxl))
+                JustYouGroup(state, busy = state.signingOut, onAction = onAction)
             }
+            UnsentSignOutQuestion(state, onAction)
         }
         settings != null -> SettingsRoot(state, settings, onAction, onBack)
     }
+}
+
+/**
+ * Just you: Sign out. Drawn on the loaded root and on the failed load alike, because it
+ * needs nothing the bond's settings hold (owner ruling 2026-11-08).
+ */
+@Composable
+private fun JustYouGroup(state: BondSettingsState, busy: Boolean, onAction: (BondSettingsAction) -> Unit) {
+    SettingsGroup(stringResource(Res.string.settings_group_you)) {
+        SettingsRow(
+            label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
+            kind = RowKind.Acts,
+            enabled = !busy,
+            onClick = { onAction(BondSettingsAction.OnSignOutClick) },
+        )
+    }
+}
+
+/**
+ * A sign-out that would delete words still waiting to send (the session wipe is total).
+ * ConfirmDialog with the copy approved 2026-11-08 (strings-proposed.md §12), its safe
+ * answer the dismiss.
+ */
+@Composable
+private fun UnsentSignOutQuestion(state: BondSettingsState, onAction: (BondSettingsAction) -> Unit) {
+    if (!state.confirmingUnsentSignOut) return
+    ConfirmDialog(
+        title = stringResource(Res.string.settings_sign_out_unsent_title),
+        message = stringResource(Res.string.settings_sign_out_unsent_line),
+        confirmLabel = stringResource(Res.string.settings_sign_out_unsent_confirm),
+        dismissLabel = stringResource(Res.string.settings_sign_out_unsent_dismiss),
+        onConfirm = { onAction(BondSettingsAction.OnSignOutUnsentConfirm) },
+        onDismiss = { onAction(BondSettingsAction.OnSignOutUnsentDismiss) },
+        destructive = true,
+    )
 }
 
 @Composable
@@ -193,14 +236,7 @@ private fun SettingsRoot(
                     onToggle = { onAction(BondSettingsAction.OnRestDaysToggle) },
                 )
             }
-            SettingsGroup(stringResource(Res.string.settings_group_you)) {
-                SettingsRow(
-                    label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
-                    kind = RowKind.Acts,
-                    enabled = !busy,
-                    onClick = { onAction(BondSettingsAction.OnSignOutClick) },
-                )
-            }
+            JustYouGroup(state, busy, onAction)
             // Only while the bond waits for its second member, or still holds a live code:
             // a full bond has nothing to invite to (409 BOND_FULL).
             if (settings.waitingForPartner || settings.invite != null) {
@@ -250,20 +286,7 @@ private fun SettingsRoot(
         }
     }
 
-    if (state.confirmingUnsentSignOut) {
-        // A sign-out that would delete words still waiting to send (the session wipe is
-        // total). The design system has no such question: ConfirmDialog with PROPOSED copy
-        // (docs/missing-components.md), its safe answer the dismiss.
-        ConfirmDialog(
-            title = stringResource(Res.string.settings_sign_out_unsent_title),
-            message = stringResource(Res.string.settings_sign_out_unsent_line),
-            confirmLabel = stringResource(Res.string.settings_sign_out_unsent_confirm),
-            dismissLabel = stringResource(Res.string.settings_sign_out_unsent_dismiss),
-            onConfirm = { onAction(BondSettingsAction.OnSignOutUnsentConfirm) },
-            onDismiss = { onAction(BondSettingsAction.OnSignOutUnsentDismiss) },
-            destructive = true,
-        )
-    }
+    UnsentSignOutQuestion(state, onAction)
 
     if (state.pickingRevealTime) {
         val initial = settings.revealTime ?: DEFAULT_REVEAL_TIME

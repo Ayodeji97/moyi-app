@@ -32,6 +32,7 @@ import com.moyi.app.feature.today.resources.write_announce_editing
 import com.moyi.app.feature.today.resources.write_counter
 import com.moyi.app.feature.today.resources.write_discard_confirm
 import com.moyi.app.feature.today.resources.write_discard_keep
+import com.moyi.app.feature.today.resources.write_discard_keep_draft
 import com.moyi.app.feature.today.resources.write_discard_title
 import com.moyi.app.feature.today.resources.write_discard_title_editing
 import com.moyi.app.feature.today.resources.write_queued
@@ -147,6 +148,8 @@ fun WriteScreen(
             onConfirm = { onAction(WriteAction.OnDiscardConfirm) },
             onDismiss = { onAction(WriteAction.OnDiscardDismiss) },
             destructive = true,
+            alternativeLabel = stringResource(Res.string.write_discard_keep_draft),
+            onAlternative = { onAction(WriteAction.OnKeepDraft) },
         )
     }
 }

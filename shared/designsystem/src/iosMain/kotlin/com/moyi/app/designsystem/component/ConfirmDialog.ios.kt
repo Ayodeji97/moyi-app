@@ -17,7 +17,9 @@ import platform.UIKit.UIViewController
  * A `UIAlertController` alert, presented over the Compose view controller. iOS
  * draws it, so it is the system's look, type and Dynamic Type, and VoiceOver reads
  * it as an alert. Cancel takes the cancel style (iOS places it and makes it the
- * default for Escape); a destructive confirm is red, as iOS draws it.
+ * default for Escape); a destructive confirm is red, as iOS draws it. A third,
+ * plain answer ([alternativeLabel]) turns the alert's two side-by-side buttons into
+ * a stack of three, which is how iOS draws any alert with more than two.
  *
  * Presented when it enters the composition and dismissed if it leaves before an
  * answer (the screen went away under it). An answer dismisses it on its own.
@@ -31,11 +33,14 @@ actual fun ConfirmDialog(
     onDismiss: () -> Unit,
     message: String?,
     destructive: Boolean,
+    alternativeLabel: String?,
+    onAlternative: () -> Unit,
 ) {
     val host = LocalUIViewController.current
     val currentOnConfirm by rememberUpdatedState(onConfirm)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
-    DisposableEffect(host, title, message, confirmLabel, dismissLabel, destructive) {
+    val currentOnAlternative by rememberUpdatedState(onAlternative)
+    DisposableEffect(host, title, message, confirmLabel, dismissLabel, destructive, alternativeLabel) {
         var answered = false
         val alert = UIAlertController.alertControllerWithTitle(title, message, UIAlertControllerStyleAlert)
         alert.addAction(
@@ -44,6 +49,16 @@ actual fun ConfirmDialog(
                 currentOnDismiss()
             },
         )
+        // A third answer is a plain action. With three, iOS stacks them in the order added
+        // and moves the cancel action to the bottom, so this sits on top.
+        if (alternativeLabel != null) {
+            alert.addAction(
+                UIAlertAction.actionWithTitle(alternativeLabel, UIAlertActionStyleDefault) { _ ->
+                    answered = true
+                    currentOnAlternative()
+                },
+            )
+        }
         alert.addAction(
             UIAlertAction.actionWithTitle(
                 confirmLabel,

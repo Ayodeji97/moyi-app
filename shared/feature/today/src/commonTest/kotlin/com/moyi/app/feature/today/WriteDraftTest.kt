@@ -186,6 +186,43 @@ class WriteDraftTest : MainDispatcherTest() {
     }
 
     @Test
+    fun keepAsADraftClosesAndTheWordsComeBackNextTime() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            // Closed before the pause: Keep as a draft writes the words now, not after it.
+            vm.type("You made the tea.")
+            vm.onAction(WriteAction.OnCloseClick)
+            assertTrue(vm.state.value.confirmingDiscard)
+            vm.onAction(WriteAction.OnKeepDraft)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+        assertFalse(vm.state.value.confirmingDiscard)
+        assertEquals("You made the tea.", store[DraftKind.NewEntry]?.text)
+        assertTrue(loop.submits.isEmpty(), "keeping is not sending")
+
+        val reopened = viewModel()
+        runCurrent()
+        assertEquals("You made the tea.", reopened.state.value.text)
+    }
+
+    @Test
+    fun keepAsADraftKeepsAnEditDraftForItsEntry() = runTest {
+        written()
+        val vm = viewModel(editing = true)
+        vm.events.test {
+            vm.type("$MINE And the toast.")
+            vm.onAction(WriteAction.OnCloseClick)
+            vm.onAction(WriteAction.OnKeepDraft)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+        assertEquals("$MINE And the toast.", store[DraftKind.Edit]?.text)
+
+        val reopened = viewModel(editing = true)
+        runCurrent()
+        assertEquals("$MINE And the toast.", reopened.state.value.text)
+    }
+
+    @Test
     fun emptyingTheFieldLeavesNoDraft() = runTest {
         val vm = viewModel()
         vm.type("You made the tea.")

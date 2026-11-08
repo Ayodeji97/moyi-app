@@ -61,7 +61,8 @@ data class WriteState(
      * device has accepted the entry (Queued).
      *
      * The words are also kept as a draft (doc 13 §5), but closing still asks: D10 makes
-     * discarding a choice, and Discard deletes the draft too.
+     * discarding a choice, and Discard deletes the draft too. The question's third answer,
+     * Keep as a draft, closes and keeps it.
      */
     val wouldLoseWords: Boolean
         get() = text.isNotBlank() && text != originalText && submit != WriteSubmit.Queued
@@ -95,6 +96,12 @@ sealed interface WriteAction {
 
     /** The discard question's other answer (or Android Back over it): stay, words intact. */
     data object OnDiscardDismiss : WriteAction
+
+    /**
+     * The discard question's third answer (owner ruling 2026-11-08): close and keep the
+     * words as the draft, so they come back the next time Write opens.
+     */
+    data object OnKeepDraft : WriteAction
     data object OnAddPhotoClick : WriteAction
     data object OnRecordVoiceClick : WriteAction
 

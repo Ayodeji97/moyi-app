@@ -39,7 +39,8 @@ import kotlin.uuid.Uuid
  * written to [drafts] [DRAFT_PAUSE] after the last keystroke, and at the Send tap, so they
  * survive closing the app, a force-quit or a crash, and come back when Write reopens. A new
  * entry and an edit keep separate drafts ([DraftKind]). A send or save that succeeds deletes
- * the draft; one that fails keeps it. Discard deletes it. Nothing about a draft is shown or
+ * the draft; one that fails keeps it. Discard deletes it; Keep as a draft, the discard
+ * question's third answer, closes and keeps it. Nothing about a draft is shown or
  * said: no toast, no "saved".
  *
  * A new-entry draft is restored whichever Bond-day it was written on: dropping unsent words
@@ -130,6 +131,12 @@ class WriteViewModel(
                 }
             }
             WriteAction.OnDiscardDismiss -> _state.update { it.copy(confirmingDiscard = false) }
+            WriteAction.OnKeepDraft -> {
+                _state.update { it.copy(confirmingDiscard = false) }
+                // Keeping is the other choice: the words on screen are written now (not after
+                // the pause, which closing would cancel), so they are there when Write reopens.
+                close()
+            }
             WriteAction.OnAddPhotoClick -> {
                 // TODO(logic): pick a photo and send its id as `imageMediaId` (POST and PATCH both take it).
                 //  Optional (NFR-103). The contract has no media upload endpoint yet, so there is no id to send.
