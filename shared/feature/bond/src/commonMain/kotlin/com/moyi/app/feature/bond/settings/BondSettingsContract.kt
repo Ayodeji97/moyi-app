@@ -51,6 +51,11 @@ data class BondSettingsState(
     /** FR-029a on the block confirm (612:1835): on by default (`26` §3.3); 661:1949 is it turned off. */
     val withdrawOnBlock: Boolean = true,
     val signingOut: Boolean = false,
+    /**
+     * Sign out would delete entries still waiting to send (the session wipe is total), and
+     * a last try could not send them: the person is asked first.
+     */
+    val confirmingUnsentSignOut: Boolean = false,
     /** The zone chosen on Propose, an IANA id; starts as the bond's own. */
     val zoneDraft: String? = null,
     /** The picker's search text, and every region zone the platform knows, sorted by city. */
@@ -110,6 +115,12 @@ sealed interface BondSettingsAction {
     data object OnRevealTimeDismiss : BondSettingsAction
     data object OnRestDaysToggle : BondSettingsAction
     data object OnSignOutClick : BondSettingsAction
+
+    /** Sign out anyway: the unsent entries are deleted with the session. */
+    data object OnSignOutUnsentConfirm : BondSettingsAction
+
+    /** Stay signed in: the entries keep waiting for a connection. */
+    data object OnSignOutUnsentDismiss : BondSettingsAction
     data object OnLeaveClick : BondSettingsAction
     data object OnLeaveWithdrawToggle : BondSettingsAction
     data object OnLeaveConfirm : BondSettingsAction

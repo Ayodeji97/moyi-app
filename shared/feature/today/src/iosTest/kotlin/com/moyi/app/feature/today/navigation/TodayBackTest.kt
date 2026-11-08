@@ -22,6 +22,7 @@ import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.feature.today.FakeDailyLoop
 import com.moyi.app.feature.today.FakeDraftStore
+import com.moyi.app.feature.today.FakeOutbox
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.di.todayFeatureModule
 import org.koin.core.context.startKoin
@@ -61,6 +62,7 @@ class TodayBackTest {
                     single<DailyLoop> { FakeDailyLoop() }
                     single<DraftStore> { FakeDraftStore() }
                     single<BondRepository> { InviteBonds() }
+                    single<com.moyi.app.domain.today.OutboxSender> { FakeOutbox() }
                 },
             )
         }

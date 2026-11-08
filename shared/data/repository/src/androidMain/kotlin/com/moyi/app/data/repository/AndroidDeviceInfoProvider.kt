@@ -27,4 +27,6 @@ class AndroidDeviceInfoProvider(private val context: Context) : DeviceInfoProvid
 
 actual val platformRepositoryModule: Module = module {
     single<DeviceInfoProvider> { AndroidDeviceInfoProvider(androidContext()) }
+    single<OutboxScheduler> { WorkManagerOutboxScheduler(androidContext()) }
+    single<ConnectivityWatcher> { AndroidConnectivityWatcher(androidContext()) }
 }

@@ -5,12 +5,18 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.today.CachedDay
+import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
+import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.domain.today.OutboxSender
+import com.moyi.app.domain.today.QueuedEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.domain.today.TodayRepository
+import com.moyi.app.domain.today.isConnectionFailure
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,11 +28,20 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * The real [DailyLoop], over `GET /bonds`, the daily-loop endpoints and the local
- * [TodayCache] (doc 13 §5: Today is cache-then-network). Drafts and the outbox are
- * still owed, so an entry is never queued.
+ * [TodayCache] (doc 13 §5: Today is cache-then-network), and the [EntryOutbox] for an
+ * entry sent while the server could not be reached.
+ *
+ * **The outbox**: a send that gets no answer (no connection, a timeout, the server's own
+ * `5xx`) is queued with its key and `intendedAt` instead of failing, the [OutboxSender] is
+ * asked to retry, and Today shows it as [TodayStatus.Queued] until the server has it.
+ * Queued is drawn over the server's day only where that day says I have not written; a day
+ * that holds my entry is the server's answer, and the server always wins. A queued entry
+ * the server refused shows Today's refusal line until the person opens Write, where its
+ * words wait as the draft.
  *
  * **Which bond**: the person's first open one in `GET /bonds` (newest first), as
  * the signed-in start chose it. There is no screen for more than one (states.md §2).
@@ -54,6 +69,8 @@ class RepositoryDailyLoop(
     private val bonds: BondRepository,
     private val entries: TodayRepository,
     private val cache: TodayCache,
+    private val outbox: EntryOutbox,
+    private val sender: OutboxSender,
     private val clock: Clock = Clock.System,
 ) : DailyLoop {
     private val _state = MutableStateFlow<DailyLoopState>(DailyLoopState.Loading)
@@ -79,22 +96,51 @@ class RepositoryDailyLoop(
         }
     }
 
-    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String): WriteResult = mutex.withLock {
-        val bondId = bond?.id ?: return@withLock WriteResult.Failed
-        when (val result = entries.submitEntry(bondId, text, promptId, idempotencyKey)) {
+    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult = mutex.withLock {
+        val currentBond = bond ?: return@withLock WriteResult.Failed
+        val day = today ?: return@withLock WriteResult.Failed
+        when (val result = entries.submitEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt)) {
             is Result.Success -> {
                 // Shown at once, so a refresh that fails next cannot put "Write" back under a sent entry.
                 withMine(result.data)
                 load()
                 WriteResult.Saved
             }
-            is Result.Failure -> {
-                // 409 ENTRY_ALREADY_EXISTS (written from the other phone, or a lost answer) and
-                // 404 (the bond went) both mean the day is not what this screen thinks.
-                if (result.error.isConflictOrGone()) load()
-                WriteResult.Failed
+            is Result.Failure -> when {
+                // No answer: kept on the device, sent later with the same key and body.
+                result.error.isConnectionFailure() -> {
+                    val queued = QueuedEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt, day.date)
+                    if (!enqueue(queued)) return@withLock WriteResult.Failed
+                    sender.retrySoon()
+                    publish(currentBond, day, confirmed = false)
+                    WriteResult.Queued
+                }
+                else -> {
+                    // 409 ENTRY_ALREADY_EXISTS (written from the other phone, or a lost answer) and
+                    // 404 (the bond went) both mean the day is not what this screen thinks.
+                    if (result.error.isConflictOrGone()) load()
+                    WriteResult.Failed
+                }
             }
         }
+    }
+
+    /** False when the device could not keep it: then the composer keeps the words (Save failed). */
+    private suspend fun enqueue(entry: QueuedEntry): Boolean = try {
+        outbox.enqueue(entry)
+        true
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        false
+    }
+
+    override suspend fun dismissRefusal() = mutex.withLock {
+        val currentBond = bond ?: return@withLock
+        val day = today ?: return@withLock
+        outboxQuietly { outbox.clearRefusal(currentBond.id) }
+        publish(currentBond, day, confirmed = false)
+        Unit
     }
 
     override suspend fun edit(text: String, idempotencyKey: String): WriteResult = mutex.withLock {
@@ -232,11 +278,49 @@ class RepositoryDailyLoop(
      */
     private suspend fun publish(bond: Bond, today: Today, confirmed: Boolean = true): Boolean {
         val view = toDayView(bond, today) ?: return false
+        val shown = withOutbox(view, bond)
         this.bond = bond
         this.today = today
-        _state.value = DailyLoopState.Ready(view)
+        _state.value = DailyLoopState.Ready(shown)
+        // The cache keeps the server's day only: the outbox is read again whenever it is drawn.
         if (confirmed) cache.write(CachedDay(bond.copy(invite = null), today.forCache(view.status)))
         return true
+    }
+
+    /**
+     * [view] with what the outbox holds for its bond: Queued over a day on which I have not
+     * written, and a refusal not yet said. A refusal that it was already written stops
+     * mattering once that day has passed, and is forgotten then.
+     */
+    private suspend fun withOutbox(view: DayView, bond: Bond): DayView {
+        val queued = outboxQuietly { outbox.queuedFor(bond.id) }
+        val refusal = outboxQuietly { outbox.refusalFor(bond.id) }?.let { refused ->
+            val stale = refused.reason == OutboxRefusal.AlreadyWritten && refused.dayDate != view.date.toString()
+            if (stale) {
+                outboxQuietly { outbox.clearRefusal(bond.id) }
+                null
+            } else {
+                refused.reason
+            }
+        }
+        if (queued == null || view.status != TodayStatus.NotWritten) return view.copy(refusal = refusal)
+        val zone = bond.anchorTimezone?.let { runCatching { TimeZone.of(it) }.getOrNull() }
+        val writtenOn = runCatching { LocalDate.parse(queued.dayDate) }.getOrNull()
+        return view.copy(
+            status = TodayStatus.Queued,
+            myEntry = queued.text,
+            queuedDay = queuedDay(queued.intendedAt, clock.now(), view.date, zone, writtenOn),
+            refusal = refusal,
+        )
+    }
+
+    /** The outbox is local and should not fail; if it does, Today still draws the server's day. */
+    private suspend fun <T> outboxQuietly(block: suspend () -> T): T? = try {
+        block()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
     }
 
     private suspend fun withMine(entry: MyEntry) {

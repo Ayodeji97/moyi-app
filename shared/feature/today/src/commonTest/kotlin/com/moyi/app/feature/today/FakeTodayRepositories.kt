@@ -13,15 +13,23 @@ import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.CachedDay
+import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
+import com.moyi.app.domain.today.OutboxPass
+import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.domain.today.PartnerEntry
+import com.moyi.app.domain.today.QueuedEntry
+import com.moyi.app.domain.today.RefusedEntry
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.domain.today.TodayRepository
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 internal fun api(status: Int, code: ApiErrorCode) = DataError.Network.Api(ApiProblem(status = status, code = code))
 
@@ -72,7 +80,13 @@ internal class FakeTodayEntries : TodayRepository {
         return todayResult
     }
 
-    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String) = submitResult
+    data class Submitted(val bondId: String, val key: String, val intendedAt: Instant?)
+    val submitted = mutableListOf<Submitted>()
+
+    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant?): Result<MyEntry, DataError.Network> {
+        submitted += Submitted(bondId, idempotencyKey, intendedAt)
+        return submitResult
+    }
     override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String) = editResult
 
     override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> {
@@ -98,6 +112,43 @@ internal class FakeTodayCache(var stored: CachedDay? = null) : TodayCache {
         clears++
         stored = null
     }
+}
+
+/**
+ * The outbox and its sender in memory: [queue] is what the table would hold, [refusals]
+ * the refusal markers. The sender only counts: the real one is tested in the data layer.
+ */
+internal class FakeOutbox : EntryOutbox, OutboxSender {
+    val queue = mutableListOf<QueuedEntry>()
+    val refusals = mutableMapOf<String, RefusedEntry>()
+    var retries = 0
+    var failEnqueue = false
+    val changeFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+
+    override suspend fun enqueue(entry: QueuedEntry) {
+        if (failEnqueue) error("disk full")
+        queue += entry
+    }
+    override suspend fun queued(): List<QueuedEntry> = queue.toList()
+    override suspend fun queuedFor(bondId: String): QueuedEntry? = queue.firstOrNull { it.bondId == bondId }
+    override suspend fun remove(idempotencyKey: String) {
+        queue.removeAll { it.idempotencyKey == idempotencyKey }
+    }
+    override suspend fun refuse(entry: QueuedEntry, reason: OutboxRefusal) {
+        queue.remove(entry)
+        refusals[entry.bondId] = RefusedEntry(entry.bondId, reason, entry.dayDate)
+    }
+    override suspend fun refusalFor(bondId: String): RefusedEntry? = refusals[bondId]
+    override suspend fun clearRefusal(bondId: String) {
+        refusals.remove(bondId)
+    }
+
+    override val changes: Flow<Unit> = changeFlow
+    override fun start() = Unit
+    override fun retrySoon() {
+        retries++
+    }
+    override suspend fun sendQueued(): OutboxPass = if (queue.isEmpty()) OutboxPass.Empty else OutboxPass.Waiting
 }
 
 /** A clock stopped at [instant]. */

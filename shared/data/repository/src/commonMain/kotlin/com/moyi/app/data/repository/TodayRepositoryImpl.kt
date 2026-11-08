@@ -14,13 +14,15 @@ import com.moyi.app.data.network.safeApiCallEmpty
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayRepository
+import kotlin.time.Instant
 
 /**
  * [TodayRepository] over the generated entry APIs, on the AUTHED client (a 401
  * refreshes once and retries; see BondRepositoryImpl).
  *
- * Online only for now. The local cache, drafts and outbox of doc 13 §5 are owed:
- * SQLDelight is not in the project yet (docs/figma/today-check.md, "Owed").
+ * The network half only: the cache, the drafts and the outbox of doc 13 §5 are their own
+ * stores (SqlTodayCache, SqlDraftStore, SqlEntryOutbox), and the outbox's sender retries
+ * through [submitEntry] with the same key and body.
  *
  * Nothing here logs: the HTTP logger prints method, URL and status only, so
  * entry text never reaches a log (CLAUDE.md, Code).
@@ -40,9 +42,9 @@ class TodayRepositoryImpl(
         text: String,
         promptId: String?,
         idempotencyKey: String,
+        intendedAt: Instant?,
     ): Result<MyEntry, DataError.Network> {
-        // No intendedAt: that belongs to an entry queued offline (BR-3a), and there is no outbox yet.
-        val request = SubmitEntryRequest(text = text, promptId = promptId)
+        val request = SubmitEntryRequest(text = text, promptId = promptId, intendedAt = intendedAt)
         return safeApiCall { entriesApi.submitEntry(bondId, idempotencyKey, request) }.mapOrSerialization { it.toMyEntry() }
     }
 

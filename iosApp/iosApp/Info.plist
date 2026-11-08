@@ -21,6 +21,16 @@
 		<key>UIImageName</key>
 		<string>LaunchWordmark</string>
 	</dict>
+	<!-- The outbox's background send (IosOutboxScheduler): a BGAppRefreshTask, which needs
+	     the fetch background mode. iOS runs it when it chooses, never on a schedule. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.moyi.app.outbox</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Moyi connects to a development server on your local network.</string>
 </dict>

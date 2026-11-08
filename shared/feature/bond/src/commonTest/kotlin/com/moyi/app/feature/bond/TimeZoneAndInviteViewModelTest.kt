@@ -34,7 +34,7 @@ class TimeZoneAndInviteViewModelTest : MainDispatcherTest() {
     private val repo = FakeBondSettingsRepository()
     private val bonds = FakeBondRepository(repo)
     private var zones: Set<String> = setOf("Europe/London", "Africa/Lagos", "UTC", "Etc/GMT+1", "America/Argentina/Buenos_Aires")
-    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeAuthRepository(), bonds, zoneIds = { zones }) }
+    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeAuthRepository(), bonds, FakeOutbox(), FakeOutbox(), zoneIds = { zones }) }
 
     private val theirProposal = PendingTimezoneChange("p1", "Europe/London", proposedByMe = false)
     private val myProposal = PendingTimezoneChange("p1", "Europe/London", proposedByMe = true)

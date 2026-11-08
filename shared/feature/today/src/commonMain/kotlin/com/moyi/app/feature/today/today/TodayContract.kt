@@ -1,6 +1,8 @@
 package com.moyi.app.feature.today.today
 
 import androidx.compose.runtime.Immutable
+import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.feature.today.common.TodayStatus
 import kotlinx.datetime.LocalDate
 
@@ -40,8 +42,10 @@ data class TodayState(
      * day too, when the partner deleted theirs (no frame draws that yet).
      */
     val partnerEntry: String? = null,
-    /** The Bond-day a queued entry will count for (states.md §4, BR-3a, `intendedAt`). */
-    val queuedForDate: LocalDate? = null,
+    /** Which Bond-day a queued entry will count for (states.md §4, BR-3a, `intendedAt`); set in Queued. */
+    val queuedDay: QueuedDay? = null,
+    /** A queued entry the server refused: its words are back in Write, and Today says so. */
+    val refusal: OutboxRefusal? = null,
     /** Deleting my revealed entry is being confirmed, in the platform dialog over Today (D11). */
     val confirmingDelete: Boolean = false,
     /** The delete is in flight: its link is disabled so it cannot be sent twice. */

@@ -6,6 +6,7 @@ import co.touchlab.kermit.Logger
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
+import com.moyi.app.domain.today.OutboxSender
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -22,9 +23,13 @@ import kotlinx.coroutines.launch
  * the first restore may decide nothing). A restore that throws keeps Unknown:
  * the shell shows the blank surface, never sign in, because an unreadable
  * store is not the same as no session.
+ *
+ * It also wakes the outbox (doc 13 §5): its connectivity watch starts with the shell, and
+ * every foreground tries the queued entries again, whatever screen is showing.
  */
 class AppViewModel(
     private val authRepository: AuthRepository,
+    private val outbox: OutboxSender,
 ) : ViewModel() {
     val session: StateFlow<SessionState> = authRepository.session
 
@@ -35,11 +40,13 @@ class AppViewModel(
 
     init {
         restore()
+        outbox.start()
     }
 
     /** The app came to the foreground (ON_START). */
     fun onForeground() {
         if (session.value == SessionState.Unknown) restore()
+        outbox.retrySoon()
     }
 
     /**

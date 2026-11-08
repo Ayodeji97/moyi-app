@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -27,10 +29,11 @@ import kotlin.uuid.Uuid
  * The composer, over the shared [DailyLoop]: it opens on the day Today loaded (its
  * prompt, or my words when editing) and sends through the loop, which refreshes Today.
  *
- * Online only. Sending waits for the server (PrimaryAction Sending, no spinner) and
- * closes on its answer; a failure keeps the words and shows Save failed (384:229).
- * There is no offline queue yet (doc 13 §5's outbox is owed), so Queued is reached
- * only by the debug switch.
+ * Sending waits for the server (PrimaryAction Sending, no spinner) and closes on its answer;
+ * a refusal keeps the words and shows Save failed (384:229). A new entry that gets **no**
+ * answer (offline, a timeout, the server's own failure) is queued on the device instead
+ * (doc 13 §5): the composer closes as on success, the draft goes (the outbox holds the
+ * words now), and Today shows it as Queued. An edit is never queued: it shows Save failed.
  *
  * **Drafts** (doc 13 §5: local first, always; states.md §4: saved silently). The words are
  * written to [drafts] [DRAFT_PAUSE] after the last keystroke, and at the Send tap, so they
@@ -40,19 +43,21 @@ import kotlin.uuid.Uuid
  * said: no toast, no "saved".
  *
  * A new-entry draft is restored whichever Bond-day it was written on: dropping unsent words
- * is the harm BR-3a exists to prevent. Until the queued send (with `intendedAt`) exists,
- * sending it files it under today, as any send does now. An edit draft is restored only into
+ * is the harm BR-3a exists to prevent. The server files it by the `intendedAt` of the Send
+ * tap, not by the day the draft was begun. An edit draft is restored only into
  * the entry it was written for: put into another entry, its Save would change the wrong words.
  *
  * @param editing true when reached from "Edit what you wrote" (before the reveal).
  * @param drafts where the unsent words are kept, on this device only.
  * @param newIdempotencyKey mints the `Idempotency-Key` at the tap; tests pass a counter.
+ * @param clock reads the instant of the Send tap, sent as `intendedAt`; tests pass a fixed one.
  */
 class WriteViewModel(
     private val editing: Boolean,
     private val loop: DailyLoop,
     private val drafts: DraftStore,
     private val newIdempotencyKey: () -> String = ::randomIdempotencyKey,
+    private val clock: Clock = Clock.System,
 ) : ViewModel() {
 
     private val day = (loop.state.value as? DailyLoopState.Ready)?.day
@@ -82,6 +87,9 @@ class WriteViewModel(
      * or a prompt dismissed since, is a different send with a new key, because the contract
      * answers the same key with a different body with 422. After a lost success that new key
      * meets 409 ENTRY_ALREADY_EXISTS, and the loop reloads the day, so Today shows the entry.
+     *
+     * The key's `intendedAt` is part of the same body, so it is taken with the key and kept
+     * with it: a retry of the same words sends the instant of the first tap, never a new one.
      */
     private var pending: Pending? = null
 
@@ -147,8 +155,10 @@ class WriteViewModel(
         if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
         // An edit (PATCH) sends only the words; a new entry sends the prompt id unless dismissed.
         val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null })
-        val key = pending?.takeIf { it.payload == payload }?.key ?: newIdempotencyKey()
-        pending = Pending(payload, key)
+        val reused = pending?.takeIf { it.payload == payload }
+        val key = reused?.key ?: newIdempotencyKey()
+        val intendedAt = reused?.intendedAt ?: tapInstant()
+        pending = Pending(payload, key, intendedAt)
         _state.update { it.copy(submit = WriteSubmit.Sending) }
         viewModelScope.launch {
             // Kept before it leaves: if the app dies while the send is in flight, the words are still here.
@@ -156,12 +166,13 @@ class WriteViewModel(
             val result = if (current.editing) {
                 loop.edit(payload.text, key)
             } else {
-                loop.submit(payload.text, payload.promptId, key)
+                loop.submit(payload.text, payload.promptId, key, intendedAt)
             }
             when (result) {
-                WriteResult.Saved -> {
+                // Queued: the outbox holds the words now, with this key, and sends them later.
+                WriteResult.Saved, WriteResult.Queued -> {
                     pending = null
-                    // The server has the words: a draft left behind would come back as a second entry.
+                    // The server (or the outbox) has the words: a draft left behind would come back as a second entry.
                     deleteDraft()
                     // The state stays Sending until the composer closes: the words are saved, and a
                     // close tapped in the moment before it goes must not ask to discard them (D10).
@@ -293,7 +304,13 @@ class WriteViewModel(
         override fun toString(): String = "Payload(promptId=$promptId)"
     }
 
-    private class Pending(val payload: Payload, val key: String)
+    private class Pending(val payload: Payload, val key: String, val intendedAt: Instant)
+
+    /**
+     * The Send tap, in whole milliseconds: the outbox keeps milliseconds, and a retry must
+     * send the very same body (doc 06 §1), so the first try must not carry more precision.
+     */
+    private fun tapInstant(): Instant = Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
 
     companion object {
         /**

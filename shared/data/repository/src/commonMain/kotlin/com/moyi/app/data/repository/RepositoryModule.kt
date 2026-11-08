@@ -10,8 +10,13 @@ import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.today.DraftStore
+import com.moyi.app.domain.today.EntryOutbox
+import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.domain.today.TodayRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -27,6 +32,13 @@ val repositoryModule = module {
     single<TodayCache> { SqlTodayCache(get(), get<SessionManager>().sessionState) }
     // The composer's drafts (doc 13 §5: local first, always), keyed by the signed-in person.
     single<DraftStore> { SqlDraftStore(get(), get<SessionManager>().sessionState) }
+    // New entries sent while offline, and the one sender that retries them (doc 13 §5). The
+    // scheduler and the connectivity watcher are the platform's (platformRepositoryModule).
+    single<EntryOutbox> { SqlEntryOutbox(get(), get<SessionManager>().sessionState) }
+    single<OutboxSender> {
+        OutboxSenderImpl(get(), get(), get(), get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Default))
+    }
+    single { OutboxBackgroundRunner(get(), get()) }
     // What the session wipes when one ends or starts: the whole local database.
     single<PersonalData> {
         val database = get<LocalDatabase>()
@@ -34,7 +46,10 @@ val repositoryModule = module {
     }
 }
 
-/** The platform's [DeviceInfoProvider]; Android needs `androidContext` for the app version. */
+/**
+ * The platform's [DeviceInfoProvider], [OutboxScheduler] and [ConnectivityWatcher];
+ * Android needs `androidContext` for all three.
+ */
 expect val platformRepositoryModule: Module
 
 val repositoryModules: List<Module> = listOf(repositoryModule, platformRepositoryModule)

@@ -167,6 +167,13 @@ class TodayRepositoryTest {
     }
 
     @Test
+    fun intendedAtIsSentAsTheInstantOfTheTapToTheMillisecond() = runTest {
+        val fixture = Fixture { respondJson(entryJson("e1", "SUBMITTED", "Words."), HttpStatusCode.Created) }
+        fixture.today.submitEntry("b1", "Words.", null, "k-1", intendedAt = kotlin.time.Instant.parse("2026-09-14T10:59:30.123Z"))
+        assertEquals("2026-09-14T10:59:30.123Z", fixture.sentJson()["intendedAt"]?.jsonPrimitive?.content)
+    }
+
+    @Test
     fun aDismissedPromptSendsNoPromptIdAtAll() = runTest {
         val fixture = Fixture { respondJson(entryJson("e1", "SUBMITTED", "Words."), HttpStatusCode.Created) }
         fixture.today.submitEntry("b1", "Words.", promptId = null, idempotencyKey = "k-1")

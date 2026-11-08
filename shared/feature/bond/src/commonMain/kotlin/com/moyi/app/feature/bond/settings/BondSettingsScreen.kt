@@ -29,7 +29,12 @@ import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.TimeOfDayPicker
+import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_confirm
+import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_dismiss
+import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_line
+import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_title
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
@@ -243,6 +248,21 @@ private fun SettingsRoot(
                 )
             }
         }
+    }
+
+    if (state.confirmingUnsentSignOut) {
+        // A sign-out that would delete words still waiting to send (the session wipe is
+        // total). The design system has no such question: ConfirmDialog with PROPOSED copy
+        // (docs/missing-components.md), its safe answer the dismiss.
+        ConfirmDialog(
+            title = stringResource(Res.string.settings_sign_out_unsent_title),
+            message = stringResource(Res.string.settings_sign_out_unsent_line),
+            confirmLabel = stringResource(Res.string.settings_sign_out_unsent_confirm),
+            dismissLabel = stringResource(Res.string.settings_sign_out_unsent_dismiss),
+            onConfirm = { onAction(BondSettingsAction.OnSignOutUnsentConfirm) },
+            onDismiss = { onAction(BondSettingsAction.OnSignOutUnsentDismiss) },
+            destructive = true,
+        )
     }
 
     if (state.pickingRevealTime) {

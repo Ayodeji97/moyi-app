@@ -36,7 +36,8 @@ sqldelight {
             // The .sq files are the schema a fresh install creates; each numbered
             // .sqm file (1.sqm: version 1 to 2) carries a phone that already has the
             // database forward. Version 1 (cached_day) is on development phones
-            // since #37, so the draft table arrives by migration, not by reinstall.
+            // since #37, so the draft table arrives by migration (1.sqm), not by
+            // reinstall, and the outbox the same way (2.sqm, version 2 to 3).
         }
     }
 }

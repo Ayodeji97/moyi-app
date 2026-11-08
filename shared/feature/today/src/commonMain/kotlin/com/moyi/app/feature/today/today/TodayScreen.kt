@@ -64,6 +64,12 @@ import com.moyi.app.feature.today.resources.today_error_line
 import com.moyi.app.feature.today.resources.today_partner_pending_line
 import com.moyi.app.feature.today.resources.today_partner_pending_line_unnamed
 import com.moyi.app.feature.today.resources.today_queued_line
+import com.moyi.app.feature.today.resources.today_queued_line_earlier
+import com.moyi.app.feature.today.resources.today_queued_line_late
+import com.moyi.app.feature.today.resources.today_queued_refused
+import com.moyi.app.feature.today.resources.today_queued_refused_written
+import com.moyi.app.feature.today.common.QueuedDay
+import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.feature.today.resources.today_revealed_title
 import com.moyi.app.feature.today.resources.today_share_invite_again
 import com.moyi.app.feature.today.resources.today_invite_share_text
@@ -215,6 +221,7 @@ private fun ColumnScope.NotWritten(state: TodayState) {
         // The server's prompt of the day. With none (an ended bond, an empty library), the
         // layout keeps its one job, the Write action, and draws no invented line in its place.
         state.prompt?.let { MoyiText(text = it, role = TextRole.Entry) }
+        Refusal(state)
     }
 }
 
@@ -225,6 +232,7 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
     CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         ActionFailed(state)
+        Refusal(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         WaitingNote(
             partnerName = state.partnerName.orEmpty(),
@@ -285,6 +293,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
         } else {
             OwnCard(state)
             ActionFailed(state)
+            Refusal(state)
             // Entries are immutable after the reveal: no edit (states.md §5). Delete
             // goes through a confirmation. Placement interpreted: 159:19 draws no link.
             // An outlined `danger` button, not a link (owner ruling 2026-11-06).
@@ -350,11 +359,37 @@ private fun ColumnScope.Queued(state: TodayState) {
     CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
-        // TODO(logic): the outbox (doc 13 §5, owed with SQLDelight) sends it when the connection
-        //  returns, with the Idempotency-Key minted at the tap and `intendedAt` = the Bond-day it
-        //  was written for. Until then only the UI preview reaches this layout.
-        DayNote(line = stringResource(Res.string.today_queued_line, state.queuedForDate?.let { dayInSentence(it) }.orEmpty()))
+        // The outbox sends it when the connection returns, with the key and `intendedAt` of the
+        // Send tap. The line says which Bond-day it will count for (BR-3a; QueuedDay).
+        DayNote(line = queuedLine(state.queuedDay ?: state.date?.let { QueuedDay.ThisDay(it) }))
     }
+}
+
+/** states.md §10's Offline line, naming the day; the two PROPOSED lines when that day has gone. */
+@Composable
+private fun queuedLine(day: QueuedDay?): String = when (day) {
+    is QueuedDay.ThisDay -> stringResource(Res.string.today_queued_line, dayInSentence(day.date))
+    is QueuedDay.EarlierDayClosed -> stringResource(Res.string.today_queued_line_earlier, dayInSentence(day.writtenOn))
+    QueuedDay.DayItSends, null -> stringResource(Res.string.today_queued_line_late)
+}
+
+/**
+ * A queued entry the server refused: what happened, that the words are kept, and where
+ * (copy.md's error shape), in InlineError's `danger`. Placement interpreted: no frame
+ * draws a refused queued entry.
+ */
+@Composable
+private fun Refusal(state: TodayState) {
+    val refusal = state.refusal ?: return
+    Spacer(Modifier.height(MoyiTheme.spacing.sm))
+    InlineError(
+        stringResource(
+            when (refusal) {
+                OutboxRefusal.AlreadyWritten -> Res.string.today_queued_refused_written
+                OutboxRefusal.NotAccepted -> Res.string.today_queued_refused
+            },
+        ),
+    )
 }
 
 @Composable
@@ -393,7 +428,7 @@ private fun previewState(status: TodayStatus) = TodayState(
     partnerName = FakeCopy.PARTNER_NAME,
     prompt = FakeCopy.PROMPT,
     myEntry = FakeCopy.MY_ENTRY,
-    queuedForDate = FakeCopy.DATE,
+    queuedDay = QueuedDay.ThisDay(FakeCopy.DATE),
     partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf {
         status == TodayStatus.Revealed || status == TodayStatus.Tombstone || status == TodayStatus.SoloTheyWrote
     },

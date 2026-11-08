@@ -9,5 +9,5 @@ import org.koin.dsl.module
  * (bound by the data layer, assembled in :shared). The bond's id comes from the route.
  */
 val bondFeatureModule = module {
-    viewModel { (bondId: String) -> BondSettingsViewModel(bondId, repository = get(), auth = get(), bonds = get()) }
+    viewModel { (bondId: String) -> BondSettingsViewModel(bondId, repository = get(), auth = get(), bonds = get(), outbox = get(), sender = get()) }
 }

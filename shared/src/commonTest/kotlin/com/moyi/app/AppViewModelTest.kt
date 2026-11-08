@@ -19,6 +19,8 @@ class AppViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    private val outbox = StubOutbox()
+
     @Test
     fun aRestoreThatThrowsKeepsUnknownAndTheNextForegroundTriesAgain() {
         var calls = 0
@@ -26,7 +28,7 @@ class AppViewModelTest {
             calls++
             if (calls == 1) throw IllegalStateException("store locked") else Unit
         }
-        val viewModel = AppViewModel(repo)
+        val viewModel = AppViewModel(repo, outbox)
         assertEquals(1, calls)
         assertEquals(SessionState.Unknown, viewModel.session.value)
 
@@ -38,9 +40,22 @@ class AppViewModelTest {
     fun aDecidedStateIsNotRestoredAgainOnForeground() {
         var calls = 0
         val repo = StubAuthRepository { calls++ }
-        val viewModel = AppViewModel(repo)
+        val viewModel = AppViewModel(repo, outbox)
         repo.state.value = SessionState.SignedOut
         viewModel.onForeground()
         assertEquals(1, calls)
+    }
+
+    @Test
+    fun theShellStartsTheOutboxOnceAndEveryForegroundTriesItAgain() {
+        val viewModel = AppViewModel(StubAuthRepository {}, outbox)
+        assertEquals(1, outbox.starts)
+        assertEquals(0, outbox.retries)
+
+        viewModel.onForeground()
+        viewModel.onForeground()
+
+        assertEquals(1, outbox.starts)
+        assertEquals(2, outbox.retries, "whatever the session, a foreground tries the queue again")
     }
 }

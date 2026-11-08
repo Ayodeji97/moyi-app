@@ -54,6 +54,14 @@
     <!-- proposed -->
     <!-- PROPOSED. states.md §3 has no announce for Queued (384:327). Shaped like the others ("Written. ..."), and it says only what is true of my entry: it is on the device and will send. No partner status. -->
     <string name="today_announce_queued">Written. It will send when you're back online</string>
+    <!-- PROPOSED. Queued, written on an earlier Bond-day that has closed (BR-3a (c): a closed day takes no entry, so it counts for the day it sends). states.md §10 has only the same-day line. %1$s = the locale date it was written on, "Saturday, 7 November". -->
+    <string name="today_queued_line_earlier">It'll send when you're back online. %1$s has closed, so it will count for the day it sends.</string>
+    <!-- PROPOSED. Queued for more than 36 hours (BR-3a (b)): it counts for the day it sends. -->
+    <string name="today_queued_line_late">It'll send when you're back online. It will count for the day it sends.</string>
+    <!-- PROPOSED. A queued entry the server refused (not a connection problem): copy.md's error shape, what happened, what is kept, where to go next. -->
+    <string name="today_queued_refused">That didn't send. Your words are kept in Write, ready to send again.</string>
+    <!-- PROPOSED. A queued entry refused because that day already held your entry (409 ENTRY_ALREADY_EXISTS, written from another phone). The words are kept as the next entry's draft. -->
+    <string name="today_queued_refused_written">You had already written for that day, so these words didn't send. They're kept in Write for your next entry.</string>
     <!-- PROPOSED. The line that stands where your deleted entry was (EntryCard Tombstone, 420:59, one body line). -->
     <string name="today_tombstone_line">You deleted what you wrote.</string>
 

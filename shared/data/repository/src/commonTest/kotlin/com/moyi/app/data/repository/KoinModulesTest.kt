@@ -19,6 +19,8 @@ import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.today.DraftStore
+import com.moyi.app.domain.today.EntryOutbox
+import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.domain.today.TodayRepository
 import io.ktor.client.engine.HttpClientEngine
@@ -37,6 +39,8 @@ class KoinModulesTest {
         single<SecureTokenStore> { InMemoryTokenStore() }
         single<DeviceInfoProvider> { DeviceInfoProvider { DeviceInfo("IOS", "1.0", "26.0") } }
         single<SqlDriver> { inMemoryDriver() }
+        single<OutboxScheduler> { OutboxScheduler {} }
+        single<ConnectivityWatcher> { ConnectivityWatcher {} }
     }
 
     @Test
@@ -51,6 +55,9 @@ class KoinModulesTest {
             koin.get<StreakRepository>()
             koin.get<TodayCache>()
             koin.get<DraftStore>()
+            koin.get<EntryOutbox>()
+            koin.get<OutboxSender>()
+            koin.get<OutboxBackgroundRunner>()
             koin.get<LocalDatabase>()
             koin.get<PersonalData>()
             koin.get<PublicHttpClient>()

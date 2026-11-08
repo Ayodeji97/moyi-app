@@ -5,10 +5,14 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.today.BondDayStatus
+import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.PartnerEntry
+import com.moyi.app.domain.today.QueuedEntry
+import com.moyi.app.domain.today.RefusedEntry
 import com.moyi.app.domain.today.Today
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DeleteResult
+import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.common.WriteResult
@@ -17,16 +21,21 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Instant
+import kotlin.test.assertTrue
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RepositoryDailyLoopTest {
     private val bonds = FakeBonds()
     private val entries = FakeTodayEntries()
     private val cache = FakeTodayCache()
-    private val loop = RepositoryDailyLoop(bonds, entries, cache, FixedClock(NOON_ON_THE_DAY))
+    private val outbox = FakeOutbox()
+    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, FixedClock(NOON_ON_THE_DAY))
 
     private val ready get() = assertIs<DailyLoopState.Ready>(loop.state.value).day
 
@@ -75,7 +84,7 @@ class RepositoryDailyLoopTest {
     fun aSendShowsWaitingAtOnceEvenIfTheRefreshAfterItFails() = runTest {
         loop.refresh()
         entries.todayResult = Result.Failure(DataError.Network.NoInternet)
-        assertEquals(WriteResult.Saved, loop.submit(MINE, PROMPT.id, "key-1"))
+        assertEquals(WriteResult.Saved, loop.submit(MINE, PROMPT.id, "key-1", NOON_ON_THE_DAY))
         assertEquals(TodayStatus.Waiting, ready.status)
         assertEquals(MINE, ready.myEntry)
     }
@@ -84,14 +93,15 @@ class RepositoryDailyLoopTest {
     fun aRefusedSendFailsAndAConflictCatchesTodayUp() = runTest {
         loop.refresh()
         val before = entries.todayCalls.size
-        entries.submitResult = Result.Failure(DataError.Network.NoInternet)
-        assertEquals(WriteResult.Failed, loop.submit(MINE, null, "key-1"))
-        assertEquals(before, entries.todayCalls.size, "offline: nothing to catch up on")
+        entries.submitResult = Result.Failure(api(422, ApiErrorCode.VALIDATION_FAILED))
+        assertEquals(WriteResult.Failed, loop.submit(MINE, null, "key-1", NOON_ON_THE_DAY))
+        assertEquals(before, entries.todayCalls.size, "a validation refusal: nothing to catch up on")
+        assertTrue(outbox.queue.isEmpty(), "a refusal is an answer: never queued")
 
         // Written from the other phone: Today shows what the server holds.
         entries.submitResult = Result.Failure(api(409, ApiErrorCode.ENTRY_ALREADY_EXISTS))
         entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY))
-        assertEquals(WriteResult.Failed, loop.submit(MINE, null, "key-2"))
+        assertEquals(WriteResult.Failed, loop.submit(MINE, null, "key-2", NOON_ON_THE_DAY))
         assertEquals(TodayStatus.Waiting, ready.status)
     }
 
@@ -173,4 +183,98 @@ class RepositoryDailyLoopTest {
         assertEquals(2, bonds.calls)
         assertEquals(listOf("bond-1", "bond-1"), entries.todayCalls)
     }
+
+    // ---- The outbox (doc 13 §5) ----
+
+    @Test
+    fun aSendWithNoAnswerIsQueuedWithItsKeyAndIntendedAtAndTodayShowsQueued() = runTest {
+        loop.refresh()
+        entries.submitResult = Result.Failure(DataError.Network.NoInternet)
+        val tap = Instant.parse("2026-09-14T10:59:30.123Z")
+
+        assertEquals(WriteResult.Queued, loop.submit(MINE, PROMPT.id, "key-1", tap))
+
+        val queued = outbox.queue.single()
+        assertEquals("key-1", queued.idempotencyKey)
+        assertEquals(tap, queued.intendedAt)
+        assertEquals(PROMPT.id, queued.promptId)
+        assertEquals("2026-09-14", queued.dayDate)
+        assertEquals(tap, entries.submitted.single().intendedAt, "the first try already carries intendedAt: one body for every try")
+        assertEquals(1, outbox.retries, "the sender is asked to try again")
+        assertEquals(TodayStatus.Queued, ready.status)
+        assertEquals(MINE, ready.myEntry)
+        assertEquals(QueuedDay.ThisDay(DAY), ready.queuedDay)
+    }
+
+    @Test
+    fun aTimeoutAndTheServersOwnFailureQueueTooButAnEditNeverDoes() = runTest {
+        loop.refresh()
+        entries.submitResult = Result.Failure(DataError.Network.Timeout)
+        assertEquals(WriteResult.Queued, loop.submit(MINE, null, "key-1", NOON_ON_THE_DAY))
+        outbox.queue.clear()
+        entries.submitResult = Result.Failure(DataError.Network.Server(503))
+        assertEquals(WriteResult.Queued, loop.submit(MINE, null, "key-2", NOON_ON_THE_DAY))
+
+        outbox.queue.clear()
+        entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY))
+        loop.refresh()
+        entries.editResult = Result.Failure(DataError.Network.NoInternet)
+        assertEquals(WriteResult.Failed, loop.edit("changed", "key-3"))
+        assertTrue(outbox.queue.isEmpty(), "edits are online-only")
+    }
+
+    @Test
+    fun aQueueThatCannotBeWrittenFailsTheSendSoTheComposerKeepsTheWords() = runTest {
+        loop.refresh()
+        outbox.failEnqueue = true
+        entries.submitResult = Result.Failure(DataError.Network.NoInternet)
+        assertEquals(WriteResult.Failed, loop.submit(MINE, null, "key-1", NOON_ON_THE_DAY))
+        assertEquals(TodayStatus.NotWritten, ready.status)
+    }
+
+    @Test
+    fun theServerWinsOverAQueuedEntryOnceItHoldsMine() = runTest {
+        outbox.queue += queuedAt(NOON_ON_THE_DAY)
+        loop.refresh()
+        assertEquals(TodayStatus.Queued, ready.status)
+
+        // Sent in the background: the day now holds my entry.
+        entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY))
+        loop.refresh()
+        assertEquals(TodayStatus.Waiting, ready.status)
+        assertNull(ready.queuedDay)
+    }
+
+    @Test
+    fun anEntryQueuedOnAnEarlierBondDaySaysThatDayHasClosed() = runTest {
+        // Tapped at 23:30 in Lagos on the 13th; it is now noon on the 14th.
+        outbox.queue += queuedAt(Instant.parse("2026-09-13T22:30:00Z"), dayDate = "2026-09-13")
+        loop.refresh()
+        assertEquals(QueuedDay.EarlierDayClosed(LocalDate(2026, 9, 13)), ready.queuedDay)
+    }
+
+    @Test
+    fun anEntryQueuedMoreThan36HoursAgoCountsForTheDayItSends() = runTest {
+        outbox.queue += queuedAt(Instant.parse("2026-09-12T22:00:00Z"), dayDate = "2026-09-12")
+        loop.refresh()
+        assertEquals(QueuedDay.DayItSends, ready.queuedDay)
+    }
+
+    @Test
+    fun aRefusalShowsUntilWriteOpensAndAnAlreadyWrittenOneIsForgottenWhenItsDayHasGone() = runTest {
+        outbox.refusals["bond-1"] = RefusedEntry("bond-1", OutboxRefusal.NotAccepted, "2026-09-14")
+        loop.refresh()
+        assertEquals(OutboxRefusal.NotAccepted, ready.refusal)
+        loop.dismissRefusal()
+        assertNull(ready.refusal)
+        assertTrue(outbox.refusals.isEmpty())
+
+        outbox.refusals["bond-1"] = RefusedEntry("bond-1", OutboxRefusal.AlreadyWritten, "2026-09-13")
+        loop.refresh()
+        assertNull(ready.refusal, "yesterday already held my entry: nothing to say today")
+        assertTrue(outbox.refusals.isEmpty())
+    }
+
+    private fun queuedAt(at: Instant, dayDate: String = "2026-09-14") =
+        QueuedEntry("bond-1", MINE, null, "key-q", at, dayDate)
 }

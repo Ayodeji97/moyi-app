@@ -1,5 +1,11 @@
 package com.moyi.app.feature.bond
 
+import com.moyi.app.domain.today.RefusedEntry
+import com.moyi.app.domain.today.QueuedEntry
+import com.moyi.app.domain.today.OutboxSender
+import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.domain.today.OutboxPass
+import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
@@ -226,4 +232,37 @@ class FakeAuthRepository : AuthRepository {
     }
 
     override suspend fun restoreSession(): SessionState = session.value
+}
+
+/**
+ * The outbox for sign-out: [queue] waits until [sendQueued] runs, which sends all of it
+ * when [online] and nothing otherwise.
+ */
+class FakeOutbox : EntryOutbox, OutboxSender {
+    val queue = mutableListOf<QueuedEntry>()
+    var online = false
+    var passes = 0
+
+    override suspend fun enqueue(entry: QueuedEntry) {
+        queue += entry
+    }
+    override suspend fun queued(): List<QueuedEntry> = queue.toList()
+    override suspend fun queuedFor(bondId: String): QueuedEntry? = queue.firstOrNull { it.bondId == bondId }
+    override suspend fun remove(idempotencyKey: String) {
+        queue.removeAll { it.idempotencyKey == idempotencyKey }
+    }
+    override suspend fun refuse(entry: QueuedEntry, reason: OutboxRefusal) {
+        queue.remove(entry)
+    }
+    override suspend fun refusalFor(bondId: String): RefusedEntry? = null
+    override suspend fun clearRefusal(bondId: String) = Unit
+
+    override val changes: Flow<Unit> = emptyFlow()
+    override fun start() = Unit
+    override fun retrySoon() = Unit
+    override suspend fun sendQueued(): OutboxPass {
+        passes++
+        if (online) queue.clear()
+        return if (queue.isEmpty()) OutboxPass.Empty else OutboxPass.Waiting
+    }
 }
