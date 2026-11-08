@@ -81,5 +81,5 @@ private val NamesThePartner = setOf(TodayStatus.Waiting, TodayStatus.Revealed, T
 internal fun PartnerEntry?.words(): String? = when (this) {
     is PartnerEntry.Submitted -> text
     is PartnerEntry.Revealed -> text
-    is PartnerEntry.Deleted, PartnerEntry.Locked, PartnerEntry.Removed, null -> null
+    is PartnerEntry.Deleted, PartnerEntry.Locked, null -> null
 }

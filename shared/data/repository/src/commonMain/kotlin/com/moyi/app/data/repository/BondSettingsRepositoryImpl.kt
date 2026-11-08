@@ -8,6 +8,7 @@ import com.moyi.app.api.models.BondResponse
 import com.moyi.app.api.models.ChangeTimezoneRequest
 import com.moyi.app.api.models.ConfirmTimezoneRequest
 import com.moyi.app.api.models.EndBondRequest
+import com.moyi.app.api.models.RequiredEndBondRequest
 import com.moyi.app.api.models.MemberSettingsRequest
 import com.moyi.app.api.models.MemberSettingsResponse
 import com.moyi.app.api.models.PatchBondRequest
@@ -70,7 +71,7 @@ class BondSettingsRepositoryImpl(
         safeApiCallEmpty { bondsApi.leaveBond(bondId, EndBondRequest(withdrawEntries = withdrawEntries)) }
 
     override suspend fun block(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> =
-        safeApiCallEmpty { bondsApi.blockBond(bondId, EndBondRequest(withdrawEntries = withdrawEntries)) }
+        safeApiCallEmpty { bondsApi.blockBond(bondId, RequiredEndBondRequest(withdrawEntries = withdrawEntries)) }
 
     // A 202 that carries the bond and its new ETag, as every bond response does.
     override suspend fun requestDeletion(bondId: String): Result<BondSettings, DataError.Network> =

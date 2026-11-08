@@ -2,7 +2,6 @@ package com.moyi.app.data.repository
 
 import com.moyi.app.api.models.BondDayResponse
 import com.moyi.app.api.models.EntryResponse
-import com.moyi.app.api.models.ErasedEntryResponse
 import com.moyi.app.api.models.LockedEntryResponse
 import com.moyi.app.api.models.MemberResponse
 import com.moyi.app.api.models.TodayPromptResponse
@@ -68,7 +67,6 @@ class TodayMappersTest {
         assertEquals(PartnerEntry.Revealed("e1", "w"), PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w")).toPartnerEntry())
         assertEquals(PartnerEntry.Deleted("e1"), PartnerEntryWire.Entry(entry(EntryResponse.Status.DELETED, null)).toPartnerEntry())
         assertEquals(PartnerEntry.Locked, PartnerEntryWire.Locked(LockedEntryResponse("m2", LockedEntryResponse.Status.LOCKED)).toPartnerEntry())
-        assertEquals(PartnerEntry.Removed, PartnerEntryWire.Erased(ErasedEntryResponse("m2", ErasedEntryResponse.Status.REMOVED)).toPartnerEntry())
     }
 
     @Test
@@ -105,10 +103,12 @@ class TodayMappersTest {
         date = DATE,
         favourited = false,
         id = "e1",
+        image = null,
         intendedAt = Instant.parse("2026-09-14T19:12:44Z"),
         reaction = null,
         status = status,
         text = text,
+        voice = null,
     )
 
     private fun member(id: String, name: String, left: Boolean = false) = MemberResponse(

@@ -35,7 +35,7 @@ openApiGenerate {
     // a sealed class with no subclasses, which throws on every decode. The inline
     // schema (its raw name, not the generated `DayResponsePartnerEntry`) is mapped
     // to the one hand-written file in this module, a dispatcher over the GENERATED
-    // EntryResponse, LockedEntryResponse and ErasedEntryResponse.
+    // EntryResponse and LockedEntryResponse.
     schemaMappings.set(mapOf("DayResponse_partnerEntry" to "com.moyi.app.api.wire.PartnerEntryWire"))
     generateApiTests.set(false)
     generateModelTests.set(false)

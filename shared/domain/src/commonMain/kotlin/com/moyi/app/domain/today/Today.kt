@@ -85,15 +85,12 @@ sealed interface PartnerEntry {
     /** Its tombstone: the partner deleted it after I had been shown it. */
     data class Deleted(val id: String) : PartnerEntry
 
-    /** Written and not yet revealed. */
-    data object Locked : PartnerEntry
-
     /**
-     * Withdrawn before it was ever revealed (the contract's `REMOVED`). The backend
-     * has since stopped sending it (an entry erased unseen is now no entry at all);
-     * the vendored contract still lists it, so it is decoded and shown as nothing.
+     * Written and not yet revealed. An entry the partner erased before I ever saw it
+     * is not a shape at all: the server sends no partner entry, as if it had never
+     * been written (backend #101, the owner's ruling of 2026-10-21).
      */
-    data object Removed : PartnerEntry
+    data object Locked : PartnerEntry
 }
 
 /** The prompt of the day (FR-047, ADR-0038). Optional to answer; dismissing it is the client's alone. */
