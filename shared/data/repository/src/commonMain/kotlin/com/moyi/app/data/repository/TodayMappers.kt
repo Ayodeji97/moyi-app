@@ -40,7 +40,6 @@ internal fun EntryResponse.toMyEntry(): MyEntry? {
 
 internal fun PartnerEntryWire.toPartnerEntry(): PartnerEntry? = when (this) {
     is PartnerEntryWire.Locked -> PartnerEntry.Locked
-    is PartnerEntryWire.Erased -> PartnerEntry.Removed
     is PartnerEntryWire.Entry -> when (entry.status) {
         EntryResponse.Status.SUBMITTED -> entry.text?.let { PartnerEntry.Submitted(entry.id, it) }
         EntryResponse.Status.REVEALED -> entry.text?.let { PartnerEntry.Revealed(entry.id, it) }

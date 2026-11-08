@@ -110,7 +110,6 @@ class TodayRepositoryTest {
             entryJson("e2", "SUBMITTED", "Solo words.") to PartnerEntry.Submitted("e2", "Solo words."),
             entryJson("e2", "DELETED", null) to PartnerEntry.Deleted("e2"),
             LOCKED to PartnerEntry.Locked,
-            """{"authorMemberId":"m2","status":"REMOVED"}""" to PartnerEntry.Removed,
             "null" to null,
         )
         for ((json, expected) in shapes) {
@@ -118,6 +117,13 @@ class TodayRepositoryTest {
             val today = assertIs<Result.Success<Today>>(fixture.today.today("b1"), json).data
             assertEquals(expected, today.partnerEntry, json)
         }
+    }
+
+    @Test
+    fun removedIsNoLongerAShapeTheContractNames() = runTest {
+        // Backend #101: an entry erased before it was seen arrives as null, never REMOVED.
+        val fixture = Fixture { respondJson(todayJson(partnerEntry = """{"authorMemberId":"m2","status":"REMOVED"}""")) }
+        assertEquals(Result.Failure(DataError.Network.Serialization), fixture.today.today("b1"))
     }
 
     @Test
