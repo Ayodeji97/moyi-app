@@ -2,12 +2,13 @@ package com.moyi.app.feature.today.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.moyi.app.feature.today.common.FakeCopy
-import com.moyi.app.feature.today.common.FakeDailyLoop
+import com.moyi.app.feature.today.common.DailyLoop
+import com.moyi.app.feature.today.common.DailyLoopState
+import com.moyi.app.feature.today.common.DeleteResult
+import com.moyi.app.feature.today.common.PartnerVisible
+import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.common.TodayStatus
-import com.moyi.app.feature.today.common.FakeLatency
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,66 +17,61 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Duration
 
 /**
- * Today, over the FAKE day (PR #8: UI only).
+ * Today, over the shared [DailyLoop].
  *
- * TODO(logic): read the day from a TodayRepository: render from cache at once and
- * refresh behind with `GET /api/v1/bonds/{bondId}/today` (states.md §3; no chained
- * round trips), refresh again on every foreground (states.md §10: never rely on a
- * push having arrived), and map `bondDay.status` as `TodayStatus` documents.
- * `partnerEntry` in that response is a oneOf on `status` (SUBMITTED, REVEALED, DELETED,
- * LOCKED, REMOVED). It becomes [TodayState.partnerEntry] only on the three layouts that
- * show it (Revealed, Tombstone, SoloTheyWrote); a LOCKED one carries no text, and every
- * other layout maps to null whatever the response holds.
- * Which bond: the member's one active bond, from `GET /api/v1/bonds`.
+ * - **Loading**: the first load shows the bare surface (no spinner); every later one
+ *   refreshes behind what is shown. The screen asks on every foreground
+ *   ([TodayAction.OnForeground]), and the loop refreshes after each write and delete.
+ * - **The reveal**: when a day turns up revealed with the partner's words, and the
+ *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
+ *
+ * Today is the root of the signed-in app, so it owns the loop's lifetime: the day is
+ * forgotten when this ViewModel is created and when it is cleared (a sign-out), so no
+ * one's words outlive the session that loaded them.
+ *
+ * TODO(logic): render from a local cache at once (states.md §3, doc 13 §5), owed with SQLDelight.
  */
 class TodayViewModel(
-    private val loop: FakeDailyLoop,
-    private val fakeLatency: Duration = FakeLatency,
+    private val loop: DailyLoop,
+    private val ledger: RevealLedger,
 ) : ViewModel() {
 
-    /** The delete dialog and the delete in flight: Today's own, not the day's (D11). */
-    private val deleteUi = MutableStateFlow(DeleteUi())
+    /** The delete dialog, the delete in flight and a failed delete: Today's own, not the day's (D11). */
+    private val ui = MutableStateFlow(TodayUi())
 
-    val state: StateFlow<TodayState> = combine(loop.day, deleteUi) { day, delete ->
-            TodayState(
-                status = day.status,
-                date = if (day.status == TodayStatus.SoloYouWrote || day.status == TodayStatus.SoloTheyWrote) {
-                    // A solo day is shown after rollover, so it is the day before (188:491).
-                    FakeCopy.SOLO_DATE
-                } else {
-                    FakeCopy.DATE
-                },
-                myEntry = day.myEntry,
-                partnerEntry = day.partnerEntry.takeIf { day.status in PartnerVisible },
-                // Only a revealed entry can be deleted this way: a dialog left from a day
-                // that has since moved on must not open over a different layout.
-                confirmingDelete = delete.confirming && day.status == TodayStatus.Revealed,
-                deleting = delete.deleting,
-            )
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayState(status = loop.day.value.status))
+    init {
+        loop.clear()
+    }
 
-    private val _events = Channel<TodayEvent>()
+    val state: StateFlow<TodayState> = combine(loop.state, ui, ::toState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(loop.state.value, ui.value))
+
+    private val _events = Channel<TodayEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    init {
+        viewModelScope.launch { loop.state.collect(::onDay) }
+    }
 
     fun onAction(action: TodayAction) {
         when (action) {
-            TodayAction.OnWriteClick -> send(TodayEvent.NavigateToWrite(editing = false))
-            TodayAction.OnEditClick -> send(TodayEvent.NavigateToWrite(editing = true))
-            TodayAction.OnDeleteBeforeRevealClick -> {
-                // TODO(logic): DELETE /api/v1/entries/{entryId} (no body, no Idempotency-Key, 204), optimistic, no confirmation
-                //  (states.md §4: not irreversible yet). A failure restores the entry and says so.
-                //  Whether the deleted words come back as a draft is not in states.md: owner ruling owed.
-                loop.setStatus(TodayStatus.NotWritten)
+            TodayAction.OnForeground, TodayAction.OnRetryClick -> {
+                ui.update { it.copy(failed = false) }
+                viewModelScope.launch { loop.refresh() }
             }
+            TodayAction.OnWriteClick -> send(TodayEvent.NavigateToWrite(editing = false))
+            TodayAction.OnEditClick -> {
+                ui.update { it.copy(failed = false) }
+                send(TodayEvent.NavigateToWrite(editing = true))
+            }
+            TodayAction.OnDeleteBeforeRevealClick -> deleteBeforeReveal()
             TodayAction.OnDeleteAfterRevealClick -> {
-                if (!deleteUi.value.deleting) deleteUi.update { it.copy(confirming = true) }
+                if (!ui.value.deleting) ui.update { it.copy(confirming = true, failed = false) }
             }
             TodayAction.OnDeleteConfirm -> deleteAfterReveal()
-            TodayAction.OnDeleteDismiss -> deleteUi.update { it.copy(confirming = false) }
+            TodayAction.OnDeleteDismiss -> ui.update { it.copy(confirming = false) }
             TodayAction.OnArchiveClick -> {
                 // TODO(logic): navigate to Archive (GET /api/v1/bonds/{bondId}/days), not built yet.
             }
@@ -86,34 +82,88 @@ class TodayViewModel(
                 //  BOND_FULL or BOND_ARCHIVED. It navigates nowhere, and the sheet closing is never proof the
                 //  invite was sent (SKILL.md §9).
             }
-            TodayAction.OnDebugCycle -> {
-                // A delete question left open must not come back when the cycle returns to Revealed.
-                deleteUi.update { it.copy(confirming = false) }
-                // Waiting steps through the reveal, the way a real day opens: the partner writes,
-                // the reveal plays, and it settles into Revealed.
-                if (loop.day.value.status == TodayStatus.Waiting) {
-                    send(TodayEvent.NavigateToReveal)
-                } else {
-                    loop.nextStatus()
-                }
-            }
+            TodayAction.OnDebugCycle -> debugCycle()
         }
     }
 
-    private fun deleteAfterReveal() {
-        if (deleteUi.value.deleting) return
-        deleteUi.value = DeleteUi(confirming = false, deleting = true)
+    private fun onDay(day: DailyLoopState) {
+        when (day) {
+            is DailyLoopState.Ready -> {
+                val view = day.day
+                // Only a day that opened with both entries plays the moment; never PENDING_REVEAL
+                // (states.md §5a), never a tombstone, and never a second time for the same day.
+                if (view.status == TodayStatus.Revealed && view.partnerEntry != null && ledger.firstShowing(view.bondId, view.date)) {
+                    send(TodayEvent.NavigateToReveal)
+                }
+            }
+            DailyLoopState.NoOpenBond -> send(TodayEvent.NavigateToStart)
+            DailyLoopState.Loading, DailyLoopState.Failed -> Unit
+        }
+    }
+
+    /** Optimistic: the loop shows not-written at once and restores the entry if the server refuses. */
+    private fun deleteBeforeReveal() {
+        if (ui.value.deleting) return
+        ui.update { it.copy(failed = false) }
         viewModelScope.launch {
-            // TODO(logic): DELETE /api/v1/entries/{entryId}. The contract takes no body and no
-            //  Idempotency-Key, and lists 204, 401, 403, 404, 429 and 500: no 409, because an
-            //  author's delete is a 204 even on a Bond that has ended (doc 06, ADR-0035 decision
-            //  15). Not optimistic: it is irreversible, so the tombstone shows only after the 204.
-            //  The dialog has closed by then (an iOS alert closes on any answer), so a failure
-            //  shows the generic error on Today (states.md §10) with the entry still there; a 404
-            //  (already gone, or never the caller's) refreshes Today instead.
-            delay(fakeLatency)
-            loop.setStatus(TodayStatus.Tombstone)
-            deleteUi.value = DeleteUi()
+            // TODO(logic): whether the deleted words come back as a draft is not in states.md: owner ruling owed.
+            if (loop.deleteBeforeReveal() == DeleteResult.Failed) ui.update { it.copy(failed = true) }
+        }
+    }
+
+    /**
+     * Not optimistic: it is irreversible, so the tombstone shows only after the 204. The
+     * dialog has closed by then (an iOS alert closes on any answer), so a failure shows the
+     * Generic error line on Today with the entry still there; a 404 (already gone, or never
+     * the caller's) refreshes Today instead and says nothing.
+     */
+    private fun deleteAfterReveal() {
+        if (ui.value.deleting) return
+        ui.value = TodayUi(deleting = true)
+        viewModelScope.launch {
+            val result = loop.deleteAfterReveal()
+            ui.value = TodayUi(failed = result == DeleteResult.Failed)
+        }
+    }
+
+    /**
+     * DEBUG ONLY. Waiting steps through the reveal, the way a real day opens: the preview
+     * day turns to revealed, the reveal plays over it, and it settles into Revealed. The
+     * ledger is told first, so the trigger above does not open it a second time.
+     */
+    private fun debugCycle() {
+        // A delete question left open must not come back when the cycle returns to Revealed.
+        ui.value = TodayUi()
+        val ready = loop.state.value as? DailyLoopState.Ready
+        loop.debugNextLayout()
+        if (ready?.day?.status == TodayStatus.Waiting) {
+            val now = loop.state.value as? DailyLoopState.Ready
+            if (now != null) ledger.firstShowing(now.day.bondId, now.day.date)
+            send(TodayEvent.NavigateToReveal)
+        }
+    }
+
+    private fun toState(day: DailyLoopState, ui: TodayUi): TodayState = when (day) {
+        DailyLoopState.Loading, DailyLoopState.NoOpenBond -> TodayState(load = TodayLoad.Loading)
+        DailyLoopState.Failed -> TodayState(load = TodayLoad.Failed)
+        is DailyLoopState.Ready -> {
+            val view = day.day
+            TodayState(
+                load = TodayLoad.Ready,
+                status = view.status,
+                date = view.date,
+                partnerName = view.partnerName,
+                prompt = view.prompt?.text,
+                myEntry = view.myEntry.orEmpty(),
+                // The loop already holds them only in these layouts; this is the second lock on the door.
+                partnerEntry = view.partnerEntry.takeIf { view.status in PartnerVisible },
+                queuedForDate = view.date,
+                // Only a revealed entry can be deleted this way: a dialog left from a day
+                // that has since moved on must not open over a different layout.
+                confirmingDelete = ui.confirming && view.status == TodayStatus.Revealed,
+                deleting = ui.deleting,
+                actionFailed = ui.failed,
+            )
         }
     }
 
@@ -121,10 +171,9 @@ class TodayViewModel(
         viewModelScope.launch { _events.send(event) }
     }
 
-    private data class DeleteUi(val confirming: Boolean = false, val deleting: Boolean = false)
-
-    private companion object {
-        /** The only layouts that may hold the partner's words: the day is open, or it closed SOLO with theirs. */
-        val PartnerVisible = setOf(TodayStatus.Revealed, TodayStatus.Tombstone, TodayStatus.SoloTheyWrote)
+    override fun onCleared() {
+        loop.clear()
     }
+
+    private data class TodayUi(val confirming: Boolean = false, val deleting: Boolean = false, val failed: Boolean = false)
 }

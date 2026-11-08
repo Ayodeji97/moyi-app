@@ -4,6 +4,7 @@ import com.moyi.app.api.models.BondResponse
 import com.moyi.app.api.models.InviteDetailResponse
 import com.moyi.app.api.models.InvitePreviewResponse
 import com.moyi.app.api.models.InviteResponse
+import com.moyi.app.api.models.MemberResponse
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.Bond
@@ -24,7 +25,23 @@ internal fun BondResponse.toBond(): Bond? = Bond(
     status = status?.toDomain() ?: return null,
     // An invite missing its code or link is no invite the person can pass on.
     invite = invite?.toInvite(),
+    partnerName = partnerName(members, me?.memberId),
 )
+
+/**
+ * The other member's name: the first member who is not [myMemberId], one still in
+ * the bond before one who has left. Null when nobody else is listed, and when
+ * [myMemberId] is missing: without it the app cannot tell which member is which,
+ * and naming the caller as their own partner would be worse than naming no one.
+ */
+internal fun partnerName(members: List<MemberResponse>?, myMemberId: String?): String? {
+    if (myMemberId == null) return null
+    return members.orEmpty()
+        .filter { it.id != null && it.id != myMemberId && it.displayName != null }
+        .sortedBy { it.leftAt != null }
+        .firstOrNull()
+        ?.displayName
+}
 
 internal fun InviteResponse.toInvite(): Invite? = Invite(
     id = id ?: return null,

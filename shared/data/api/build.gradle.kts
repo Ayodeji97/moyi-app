@@ -4,9 +4,11 @@ plugins {
     alias(libs.plugins.openapiGenerator)
 }
 
-// Generated code only. The OpenAPI client is generated from the vendored
-// contract into build/generated/openapi (never committed, never edited), and
-// only its src/commonMain/kotlin is compiled here. See README.md.
+// Generated code, plus ONE hand-written file: src/commonMain's PartnerEntryWire,
+// which the generator is told to use for a `oneOf` it cannot generate (row 10 of
+// docs/backend-contract-gaps.md). The OpenAPI client is generated from the vendored
+// contract into build/generated/openapi (never committed, never edited), and only
+// its src/commonMain/kotlin is compiled here. See README.md.
 val contract = rootProject.layout.projectDirectory.file("contracts/openapi.json")
 
 openApiGenerate {
@@ -29,6 +31,12 @@ openApiGenerate {
             "omitGradleWrapper" to "true",
         ),
     )
+    // docs/backend-contract-gaps.md, row 10: the partner entry's `oneOf` generates
+    // a sealed class with no subclasses, which throws on every decode. The inline
+    // schema (its raw name, not the generated `DayResponsePartnerEntry`) is mapped
+    // to the one hand-written file in this module, a dispatcher over the GENERATED
+    // EntryResponse, LockedEntryResponse and ErasedEntryResponse.
+    schemaMappings.set(mapOf("DayResponse_partnerEntry" to "com.moyi.app.api.wire.PartnerEntryWire"))
     generateApiTests.set(false)
     generateModelTests.set(false)
     generateApiDocumentation.set(false)

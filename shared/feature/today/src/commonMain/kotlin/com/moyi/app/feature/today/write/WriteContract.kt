@@ -1,8 +1,6 @@
 package com.moyi.app.feature.today.write
 
 import androidx.compose.runtime.Immutable
-import com.moyi.app.feature.today.common.FakeCopy
-
 /** Where a send or save stands (states.md §4; Figma 419:193, 384:229). */
 enum class WriteSubmit {
     Idle,
@@ -24,8 +22,8 @@ enum class WriteSubmit {
 @Immutable
 data class WriteState(
     val text: String = "",
-    /** The server's prompt; null once dismissed, or when editing. An offer, never a requirement. */
-    val prompt: String? = FakeCopy.PROMPT,
+    /** The server's prompt; null once dismissed, when editing, or when the day has none. An offer, never a requirement. */
+    val prompt: String? = null,
     /** Editing before the reveal: the same composer, the action reads Save (states.md §4). */
     val editing: Boolean = false,
     val submit: WriteSubmit = WriteSubmit.Idle,
@@ -95,7 +93,7 @@ sealed interface WriteAction {
     data object OnAddPhotoClick : WriteAction
     data object OnRecordVoiceClick : WriteAction
 
-    /** DEBUG ONLY (PR #8): step to the next drawn composer state. */
+    /** DEBUG ONLY (`-PmoyiUiPreview=today`): step to the next drawn composer state. */
     data object OnDebugCycle : WriteAction
 }
 

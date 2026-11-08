@@ -2,46 +2,67 @@ package com.moyi.app.feature.today.write
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moyi.app.feature.today.common.DailyLoop
+import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.FakeCopy
-import com.moyi.app.feature.today.common.FakeDailyLoop
-import com.moyi.app.feature.today.common.FakeLatency
-import com.moyi.app.feature.today.common.TodayStatus
+import com.moyi.app.feature.today.common.WriteResult
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Duration
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
- * The composer, over the FAKE day (PR #8: UI only).
+ * The composer, over the shared [DailyLoop]: it opens on the day Today loaded (its
+ * prompt, or my words when editing) and sends through the loop, which refreshes Today.
+ *
+ * Online only. Sending waits for the server (PrimaryAction Sending, no spinner) and
+ * closes on its answer; a failure keeps the words and shows Save failed (384:229).
+ * There is no offline queue yet (doc 13 §5's outbox is owed), so Queued is reached
+ * only by the debug switch.
  *
  * @param editing true when reached from "Edit what you wrote" (before the reveal).
- * @param fakeLatency how long the fake send takes, so Sending is visible; tests pass zero.
+ * @param newIdempotencyKey mints the `Idempotency-Key` at the tap; tests pass a counter.
  */
 class WriteViewModel(
     editing: Boolean,
-    private val loop: FakeDailyLoop,
-    private val fakeLatency: Duration = FakeLatency,
+    private val loop: DailyLoop,
+    private val newIdempotencyKey: () -> String = ::randomIdempotencyKey,
 ) : ViewModel() {
+
+    private val day = (loop.state.value as? DailyLoopState.Ready)?.day
+
+    /** Today's prompt, sent with the entry unless the person dismissed it. */
+    private val promptId: String? = day?.prompt?.id
 
     private val _state = MutableStateFlow(
         if (editing) {
-            loop.day.value.myEntry.let { mine -> WriteState(text = mine, prompt = null, editing = true, originalText = mine) }
+            day?.myEntry.orEmpty().let { mine -> WriteState(text = mine, prompt = null, editing = true, originalText = mine) }
         } else {
             // TODO(logic): restore today's local draft first (doc 13 §5: drafts are local-first,
-            //  in SQLDelight, and survive a crash or force-quit), and take the prompt from
-            //  GET /api/v1/bonds/{bondId}/today.
-            WriteState()
+            //  in SQLDelight, and survive a crash or force-quit). Owed with SQLDelight.
+            WriteState(prompt = day?.prompt?.text)
         },
     )
     val state: StateFlow<WriteState> = _state.asStateFlow()
 
     private val _events = Channel<WriteEvent>()
     val events = _events.receiveAsFlow()
+
+    /**
+     * The key of the send that has not yet succeeded, and everything it carried: the words
+     * and the prompt id actually sent. A retry of the identical payload is the same send, so
+     * it reuses the key: if the first attempt reached the server and only its answer was
+     * lost, the server replays it instead of writing twice (doc 06 §1). Any change, the words
+     * or a prompt dismissed since, is a different send with a new key, because the contract
+     * answers the same key with a different body with 422. After a lost success that new key
+     * meets 409 ENTRY_ALREADY_EXISTS, and the loop reloads the day, so Today shows the entry.
+     */
+    private var pending: Pending? = null
 
     private var debugStep = 0
 
@@ -51,17 +72,15 @@ class WriteViewModel(
                 // The words being sent are the words on screen: no edits in flight.
                 if (_state.value.submit == WriteSubmit.Sending) return
                 // TODO(logic): autosave the draft locally on every keystroke pause (debounced, about
-                //  500 ms; doc 13 §5, states.md §4 "Draft saved: silent"). No toast, no "saved".
+                //  500 ms; doc 13 §5, states.md §4 "Draft saved: silent"). No toast, no "saved". Owed.
                 _state.update { it.copy(text = action.text, submit = it.submit.afterEdit()) }
             }
-            WriteAction.OnDismissPrompt -> {
-                // TODO(logic): a dismissed prompt sends no `promptId` with the entry.
-                _state.update { it.copy(prompt = null) }
-            }
+            // A dismissed prompt sends no promptId with the entry (submit, below).
+            WriteAction.OnDismissPrompt -> _state.update { it.copy(prompt = null) }
             WriteAction.OnSubmit -> submit()
             WriteAction.OnCloseClick -> requestClose()
             WriteAction.OnDiscardConfirm -> {
-                // TODO(logic): delete today's local draft (doc 13 §5) before closing.
+                // TODO(logic): delete today's local draft (doc 13 §5) before closing. Owed.
                 _state.update { it.copy(confirmingDiscard = false) }
                 close()
             }
@@ -79,27 +98,36 @@ class WriteViewModel(
         }
     }
 
+    /**
+     * New entry: POST with today's prompt id (unless dismissed) and the key minted at
+     * this tap. Editing: PATCH, with a key minted the same way (optional in the contract).
+     * A 409 (ENTRY_ALREADY_EXISTS; ENTRY_IMMUTABLE or BOND_ARCHIVED on an edit) has no
+     * drawn state (states.md §5a): it shows Save failed with the words kept, and the loop
+     * refreshes Today underneath, so closing lands on what the server holds.
+     */
     private fun submit() {
         val current = _state.value
         if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
-        // TODO(logic): new entry: mint the Idempotency-Key at THIS tap (a UUID, kept with the queued
-        //  entry and reused on every retry; states.md §4), stamp `intendedAt` (the Bond-day it was
-        //  written for, BR-3a), and POST /api/v1/bonds/{bondId}/entries (Idempotency-Key required)
-        //  with { text, promptId?, imageMediaId?, voiceMediaId?, intendedAt? }. 409
-        //  ENTRY_ALREADY_EXISTS is one entry a day (doc 06). Optimistic: Today shows written-waiting
-        //  at once. Offline: put it in the local outbox and show Today · queued (384:327) instead.
-        //  Editing: PATCH /api/v1/entries/{entryId} with an Idempotency-Key (optional in the contract;
-        //  send one minted at the tap, as for POST) and { text, imageMediaId?, voiceMediaId? }. A 409 is
-        //  ENTRY_IMMUTABLE (the day opened while editing) or BOND_ARCHIVED (doc 06; the contract
-        //  lists the 409 without codes); neither has a drawn state yet (states.md §5a).
-        //  A failure keeps the text and shows Failed (384:229); a 2xx clears the local draft.
+        // An edit (PATCH) sends only the words; a new entry sends the prompt id unless dismissed.
+        val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null })
+        val key = pending?.takeIf { it.payload == payload }?.key ?: newIdempotencyKey()
+        pending = Pending(payload, key)
         _state.update { it.copy(submit = WriteSubmit.Sending) }
         viewModelScope.launch {
-            delay(fakeLatency)
-            loop.setMyEntry(current.text, TodayStatus.Waiting)
-            // The state stays Sending until the composer closes: the words are saved, and a
-            // close tapped in the moment before it goes must not ask to discard them (D10).
-            _events.send(WriteEvent.Close)
+            val result = if (current.editing) {
+                loop.edit(payload.text, key)
+            } else {
+                loop.submit(payload.text, payload.promptId, key)
+            }
+            when (result) {
+                WriteResult.Saved -> {
+                    pending = null
+                    // The state stays Sending until the composer closes: the words are saved, and a
+                    // close tapped in the moment before it goes must not ask to discard them (D10).
+                    _events.send(WriteEvent.Close)
+                }
+                WriteResult.Failed -> _state.update { it.copy(submit = WriteSubmit.Failed) }
+            }
         }
     }
 
@@ -124,20 +152,20 @@ class WriteViewModel(
     private fun WriteSubmit.afterEdit(): WriteSubmit = if (this == WriteSubmit.Failed) WriteSubmit.Idle else this
 
     /**
-     * Steps through the drawn composer frames, in Figma's order: empty (181:3), past 400
-     * (181:43), over limit (181:83), sending (419:193), editing (419:291), save failed
-     * (384:229), queued, and back to empty.
+     * DEBUG ONLY. Steps through the drawn composer frames, in Figma's order: empty (181:3),
+     * past 400 (181:43), over limit (181:83), sending (419:193), editing (419:291), save
+     * failed (384:229), queued, and back to empty.
      */
     private fun debugCycle() {
         debugStep = (debugStep + 1) % DEBUG_STEPS
         _state.value = when (debugStep) {
-            1 -> WriteState(text = sampleOf(PAST_400))
-            2 -> WriteState(text = sampleOf(OVER_LIMIT))
-            3 -> WriteState(text = FakeCopy.MY_ENTRY, submit = WriteSubmit.Sending)
+            1 -> WriteState(text = sampleOf(PAST_400), prompt = FakeCopy.PROMPT)
+            2 -> WriteState(text = sampleOf(OVER_LIMIT), prompt = FakeCopy.PROMPT)
+            3 -> WriteState(text = FakeCopy.MY_ENTRY, prompt = FakeCopy.PROMPT, submit = WriteSubmit.Sending)
             4 -> WriteState(text = FakeCopy.MY_ENTRY, prompt = null, editing = true, originalText = FakeCopy.MY_ENTRY)
-            5 -> WriteState(text = FakeCopy.MY_ENTRY, submit = WriteSubmit.Failed)
-            6 -> WriteState(text = FakeCopy.MY_ENTRY, submit = WriteSubmit.Queued)
-            else -> WriteState()
+            5 -> WriteState(text = FakeCopy.MY_ENTRY, prompt = FakeCopy.PROMPT, submit = WriteSubmit.Failed)
+            6 -> WriteState(text = FakeCopy.MY_ENTRY, prompt = FakeCopy.PROMPT, submit = WriteSubmit.Queued)
+            else -> WriteState(prompt = FakeCopy.PROMPT)
         }
     }
 
@@ -150,9 +178,25 @@ class WriteViewModel(
         return words.repeat(length / words.length + 1).take(length)
     }
 
+    /** The request body a key is bound to. Never prints the words. */
+    private class Payload(val text: String, val promptId: String?) {
+        override fun equals(other: Any?): Boolean =
+            other is Payload && other.text == text && other.promptId == promptId
+
+        override fun hashCode(): Int = 31 * text.hashCode() + promptId.hashCode()
+
+        override fun toString(): String = "Payload(promptId=$promptId)"
+    }
+
+    private class Pending(val payload: Payload, val key: String)
+
     companion object {
         private const val DEBUG_STEPS = 7
         private const val PAST_400 = 412
         private const val OVER_LIMIT = 512
     }
 }
+
+/** A random (version 4) UUID: entry ids and keys must not leak when they were made (doc 06 §1). */
+@OptIn(ExperimentalUuidApi::class)
+internal fun randomIdempotencyKey(): String = Uuid.random().toString()

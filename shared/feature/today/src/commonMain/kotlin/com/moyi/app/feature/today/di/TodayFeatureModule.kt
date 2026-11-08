@@ -1,6 +1,8 @@
 package com.moyi.app.feature.today.di
 
-import com.moyi.app.feature.today.common.FakeDailyLoop
+import com.moyi.app.feature.today.common.DailyLoop
+import com.moyi.app.feature.today.common.RepositoryDailyLoop
+import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.reveal.RevealViewModel
 import com.moyi.app.feature.today.today.TodayViewModel
 import com.moyi.app.feature.today.write.WriteViewModel
@@ -8,15 +10,15 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 /**
- * The daily loop's ViewModels, over one shared FAKE day.
- *
- * TODO(logic): FakeDailyLoop gives way to a TodayRepository from the data layer,
- * assembled in :shared like AuthRepository.
+ * The daily loop's ViewModels, over one shared [DailyLoop] backed by the domain's
+ * BondRepository and TodayRepository (bound by the data layer, assembled in :shared).
+ * The `-PmoyiUiPreview=today` build binds its preview loop over this one (KoinInit).
  */
 val todayFeatureModule = module {
-    single { FakeDailyLoop() }
-    // Explicit lambdas, not viewModelOf: the fake latencies and holds have defaults Koin should not resolve.
-    viewModel { TodayViewModel(get()) }
+    single<DailyLoop> { RepositoryDailyLoop(get(), get()) }
+    single { RevealLedger() }
+    // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.
+    viewModel { TodayViewModel(get(), get()) }
     viewModel { (editing: Boolean) -> WriteViewModel(editing, get()) }
     viewModel { RevealViewModel(get()) }
 }

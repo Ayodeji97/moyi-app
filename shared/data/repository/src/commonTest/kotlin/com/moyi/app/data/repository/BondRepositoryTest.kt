@@ -247,10 +247,25 @@ class BondRepositoryTest {
         assertEquals(Result.Failure(DataError.Network.Serialization), fixture.account.currentUser())
     }
 
-    private fun bondJson(id: String = "b1", status: String = "PENDING_MEMBER", invite: String? = INVITE_JSON): String =
+    @Test
+    fun theListNamesTheOtherMemberNeverTheCaller() = runTest {
+        val members =
+            """[{"id":"m1","displayName":"Amara","role":"OWNER","joinedAt":"2026-10-29T10:00:00Z","leftAt":null},""" +
+                """{"id":"m2","displayName":"Tunde","role":"MEMBER","joinedAt":"2026-10-30T10:00:00Z","leftAt":null}]"""
+        val fixture = Fixture { respondJson("""{"bonds":[${bondJson(status = "ACTIVE", invite = null, members = members)}]}""") }
+        val bond = assertIs<Result.Success<List<Bond>>>(fixture.bonds.bonds()).data.single()
+        assertEquals("Tunde", bond.partnerName)
+    }
+
+    private fun bondJson(
+        id: String = "b1",
+        status: String = "PENDING_MEMBER",
+        invite: String? = INVITE_JSON,
+        members: String = "[]",
+    ): String =
         """{"id":"$id","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":null,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
-            """"deletionScheduledFor":null,"members":[],"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
+            """"deletionScheduledFor":null,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
             """"pendingTimezoneChange":null,"pendingDeletionRequest":null}"""
 
     private companion object {

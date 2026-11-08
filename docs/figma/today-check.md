@@ -227,5 +227,11 @@ Plus the two composer gaps in the Write table, which also change auth's keyboard
   not joined. Every `DayNote` is a stand-in marked `TODO(PR #7)`.
 - **Figma, when the MCP is available**: the motion board 180:21, the Today and Send labels,
   StateBlock and EntryCard internals, the over-limit and empty action states.
-- **Not drawn anywhere**: Today for EMPTY, SUSPENDED and FROZEN days; "revealed while
+- **Offline-first (doc 13 §5)**: the daily loop is wired to the backend but online only.
+  No local cache (the first load shows the bare surface), no drafts, no outbox, so
+  Queued is reached only in the preview build. Owed with SQLDelight.
+- **The reveal ledger is in memory**: a day revealed before the app was killed plays its
+  reveal once more on the next launch. Persisting it is owed with the local store.
+- **Not drawn anywhere**: Today for EMPTY, SUSPENDED and FROZEN days (the mapper stands in
+  with Solo, you wrote or Not written; SUSPENDED is mapped like an open day); "revealed while
   editing" (409 ENTRY_IMMUTABLE); the paper grain asset on EntryCard (tokens.md §8 item 5).
