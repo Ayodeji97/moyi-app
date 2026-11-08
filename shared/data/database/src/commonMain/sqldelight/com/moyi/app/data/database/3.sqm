@@ -1,0 +1,19 @@
+-- Version 3 to 4: the Archive's cached days (ArchiveDay.sq). A phone that ran version 3
+-- has cached_day, draft and outbox_entry; without this it would open the database and
+-- find nowhere to keep the Archive.
+CREATE TABLE archive_day (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    day_date TEXT NOT NULL,
+    day_status TEXT NOT NULL,
+    my_entry_id TEXT,
+    my_entry_text TEXT,
+    my_entry_status TEXT,
+    my_entry_marked INTEGER NOT NULL,
+    partner_entry_shape TEXT,
+    partner_entry_id TEXT,
+    partner_entry_text TEXT,
+    partner_entry_marked INTEGER NOT NULL,
+    page_cursor TEXT,
+    PRIMARY KEY (user_id, bond_id, day_date)
+);

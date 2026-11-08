@@ -84,6 +84,7 @@ class EncryptedDatabaseIosTest {
             cachedDayQueries.insert(Rows.day("ada"))
             draftQueries.upsert(Rows.draft)
             outboxQueries.insert(Rows.queued)
+            archiveDayQueries.upsert(Rows.archived)
         }
         close()
         assertContentEquals(EncryptedDatabaseOpener.PLAINTEXT_HEADER, header())
@@ -95,7 +96,7 @@ class EncryptedDatabaseIosTest {
             assertEquals(Rows.day("ada"), cachedDayQueries.forUser("ada").executeAsOneOrNull())
             assertEquals(listOf(Rows.queued), outboxQueries.queuedForUser("ada").executeAsList())
         }
-        listOf("cached_day", "draft", "outbox_entry").forEach { assertEquals(1L, database.rowCount(it), it) }
+        listOf("cached_day", "draft", "outbox_entry", "archive_day").forEach { assertEquals(1L, database.rowCount(it), it) }
         assertFalse(files.exists(DATABASE_NAME + EncryptedDatabaseOpener.ENCRYPTING_SUFFIX))
         close()
         assertFalse(fileText().contains(Rows.SECRET))
@@ -174,6 +175,7 @@ class EncryptedDatabaseIosTest {
             cachedDayQueries.insert(Rows.day("ada"))
             draftQueries.upsert(Rows.draft)
             outboxQueries.insert(Rows.queued)
+            archiveDayQueries.upsert(Rows.archived)
         }
 
         database.wipe()

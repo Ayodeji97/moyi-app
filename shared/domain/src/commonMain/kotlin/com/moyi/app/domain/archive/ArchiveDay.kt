@@ -42,3 +42,43 @@ data class ArchivePage(
     /** Opaque: passed back unchanged for the page after this one. */
     val nextCursor: String?,
 )
+
+/**
+ * [run] (newest first, with no gaps) with [page] joined in, **the server winning**: the
+ * page replaces every day of [run] in the dates it covers. Null when it cannot be joined
+ * without a gap.
+ *
+ * Paging is by keyset: a cursor means "the days strictly before the day the page before
+ * ended on" (the contract's `nextCursor`, kept opaque here; only [after], that day, is
+ * known). So a page covers the dates **before [after]** (every date, for the newest page:
+ * [after] null) **down to its own oldest day**, or every older date when it is the last
+ * page (a null cursor). A day of [run] in that span that the page does not list is gone
+ * on the server: deleted, erased, or no longer listed for this person.
+ *
+ * The newest page keeps the older days of [run] only when it reaches down into them: when
+ * its oldest day is newer than every day of [run], more than a page of days came since,
+ * and the days between are known to neither, so [run] is dropped. A later page joins only
+ * when [after] is on or after [run]'s oldest day.
+ */
+fun joinPage(run: List<ArchiveDay>, page: ArchivePage, after: String?): List<ArchiveDay>? {
+    val oldest = page.days.minOfOrNull { it.date }
+    val last = page.nextCursor == null
+    val kept = if (after == null) {
+        val newestKept = run.maxOfOrNull { it.date }
+        when {
+            last || oldest == null || newestKept == null || oldest > newestKept -> emptyList()
+            else -> run.filter { it.date < oldest }
+        }
+    } else {
+        val runOldest = run.minOfOrNull { it.date } ?: return null
+        if (after < runOldest) return null
+        run.filter { day ->
+            when {
+                day.date >= after -> true
+                last || oldest == null -> false
+                else -> day.date < oldest
+            }
+        }
+    }
+    return (page.days + kept).distinctBy { it.date }.sortedByDescending { it.date }
+}
