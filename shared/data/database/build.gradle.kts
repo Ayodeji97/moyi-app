@@ -33,9 +33,10 @@ sqldelight {
     databases {
         create("MoyiDatabase") {
             packageName.set("com.moyi.app.data.database")
-            // The schema is versioned by numbered .sqm files once the first release
-            // ships; until then the .sq files are the schema and there is nothing
-            // to migrate from.
+            // The .sq files are the schema a fresh install creates; each numbered
+            // .sqm file (1.sqm: version 1 to 2) carries a phone that already has the
+            // database forward. Version 1 (cached_day) is on development phones
+            // since #37, so the draft table arrives by migration, not by reinstall.
         }
     }
 }

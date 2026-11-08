@@ -9,6 +9,7 @@ import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.streak.StreakRepository
+import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.domain.today.TodayRepository
 import org.koin.core.module.Module
@@ -24,6 +25,8 @@ val repositoryModule = module {
     single<StreakRepository> { StreakRepositoryImpl(get(), get()) }
     // Today's cache-then-network (doc 13 §5), keyed by the signed-in person.
     single<TodayCache> { SqlTodayCache(get(), get<SessionManager>().sessionState) }
+    // The composer's drafts (doc 13 §5: local first, always), keyed by the signed-in person.
+    single<DraftStore> { SqlDraftStore(get(), get<SessionManager>().sessionState) }
     // What the session wipes when one ends or starts: the whole local database.
     single<PersonalData> {
         val database = get<LocalDatabase>()

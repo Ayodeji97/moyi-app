@@ -1,0 +1,31 @@
+-- The words being written and not yet sent (doc 13 §5: drafts are local first,
+-- always; FR-045: there is no server-side draft state, so nothing here is ever
+-- synced). Written on every keystroke pause, so they survive closing the app, a
+-- force-quit or a crash.
+--
+-- One row per person, bond and kind: the new entry's draft and the edit of my
+-- entry are kept apart, so neither ever overwrites the other. user_id scopes a row
+-- to one person even if a wipe were missed; the session wipes the table anyway.
+--
+-- kind is NEW_ENTRY or EDIT (stored by name). entry_id is the entry an EDIT draft
+-- changes, null for NEW_ENTRY. day_date is the Bond-day Today showed when the
+-- draft was last written: kept for the queued send (part 3), never used to drop
+-- words.
+CREATE TABLE draft (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    entry_id TEXT,
+    day_date TEXT NOT NULL,
+    text TEXT NOT NULL,
+    PRIMARY KEY (user_id, bond_id, kind)
+);
+
+forKey:
+SELECT * FROM draft WHERE user_id = ? AND bond_id = ? AND kind = ?;
+
+upsert:
+INSERT OR REPLACE INTO draft VALUES ?;
+
+deleteForKey:
+DELETE FROM draft WHERE user_id = ? AND bond_id = ? AND kind = ?;

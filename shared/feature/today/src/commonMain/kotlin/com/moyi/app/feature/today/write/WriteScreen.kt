@@ -1,7 +1,9 @@
 package com.moyi.app.feature.today.write
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -62,7 +64,13 @@ fun WriteRoot(
         }
     }
     NoArrowBackHandler { viewModel.onAction(WriteAction.OnCloseClick) }
-    WriteScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
+    if (state.restoringDraft) {
+        // A few milliseconds while the draft is read: the bare `surface` (states.md §0), no
+        // spinner. The composer then opens with the words in it, focused, cursor at their end.
+        Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
+    } else {
+        WriteScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
+    }
 }
 
 /**

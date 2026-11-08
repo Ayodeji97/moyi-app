@@ -2,11 +2,18 @@ package com.moyi.app.feature.today.write
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moyi.app.domain.today.Draft
+import com.moyi.app.domain.today.DraftKind
+import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.WriteResult
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,12 +32,26 @@ import kotlin.uuid.Uuid
  * There is no offline queue yet (doc 13 §5's outbox is owed), so Queued is reached
  * only by the debug switch.
  *
+ * **Drafts** (doc 13 §5: local first, always; states.md §4: saved silently). The words are
+ * written to [drafts] [DRAFT_PAUSE] after the last keystroke, and at the Send tap, so they
+ * survive closing the app, a force-quit or a crash, and come back when Write reopens. A new
+ * entry and an edit keep separate drafts ([DraftKind]). A send or save that succeeds deletes
+ * the draft; one that fails keeps it. Discard deletes it. Nothing about a draft is shown or
+ * said: no toast, no "saved".
+ *
+ * A new-entry draft is restored whichever Bond-day it was written on: dropping unsent words
+ * is the harm BR-3a exists to prevent. Until the queued send (with `intendedAt`) exists,
+ * sending it files it under today, as any send does now. An edit draft is restored only into
+ * the entry it was written for: put into another entry, its Save would change the wrong words.
+ *
  * @param editing true when reached from "Edit what you wrote" (before the reveal).
+ * @param drafts where the unsent words are kept, on this device only.
  * @param newIdempotencyKey mints the `Idempotency-Key` at the tap; tests pass a counter.
  */
 class WriteViewModel(
-    editing: Boolean,
+    private val editing: Boolean,
     private val loop: DailyLoop,
+    private val drafts: DraftStore,
     private val newIdempotencyKey: () -> String = ::randomIdempotencyKey,
 ) : ViewModel() {
 
@@ -39,14 +60,14 @@ class WriteViewModel(
     /** Today's prompt, sent with the entry unless the person dismissed it. */
     private val promptId: String? = day?.prompt?.id
 
+    private val draftKind = if (editing) DraftKind.Edit else DraftKind.NewEntry
+
     private val _state = MutableStateFlow(
         if (editing) {
             day?.myEntry.orEmpty().let { mine -> WriteState(text = mine, prompt = null, editing = true, originalText = mine) }
         } else {
-            // TODO(logic): restore today's local draft first (doc 13 §5: drafts are local-first,
-            //  in SQLDelight, and survive a crash or force-quit). Owed with SQLDelight.
             WriteState(prompt = day?.prompt?.text)
-        },
+        }.copy(restoringDraft = day != null),
     )
     val state: StateFlow<WriteState> = _state.asStateFlow()
 
@@ -66,23 +87,39 @@ class WriteViewModel(
 
     private var debugStep = 0
 
+    /** The draft write waiting for the keystroke pause; replaced by every keystroke. */
+    private var draftSave: Job? = null
+
+    init {
+        if (day != null) {
+            viewModelScope.launch {
+                val draft = quietly { drafts.read(day.bondId, draftKind) }?.takeIf { it.belongsHere() }
+                _state.update { state ->
+                    if (draft == null) state.copy(restoringDraft = false) else state.copy(text = draft.text, restoringDraft = false)
+                }
+            }
+        }
+    }
+
     fun onAction(action: WriteAction) {
         when (action) {
             is WriteAction.OnTextChange -> {
                 // The words being sent are the words on screen: no edits in flight.
-                if (_state.value.submit == WriteSubmit.Sending) return
-                // TODO(logic): autosave the draft locally on every keystroke pause (debounced, about
-                //  500 ms; doc 13 §5, states.md §4 "Draft saved: silent"). No toast, no "saved". Owed.
+                if (_state.value.submit == WriteSubmit.Sending || _state.value.restoringDraft) return
                 _state.update { it.copy(text = action.text, submit = it.submit.afterEdit()) }
+                saveDraftAfterPause()
             }
             // A dismissed prompt sends no promptId with the entry (submit, below).
             WriteAction.OnDismissPrompt -> _state.update { it.copy(prompt = null) }
             WriteAction.OnSubmit -> submit()
             WriteAction.OnCloseClick -> requestClose()
             WriteAction.OnDiscardConfirm -> {
-                // TODO(logic): delete today's local draft (doc 13 §5) before closing. Owed.
                 _state.update { it.copy(confirmingDiscard = false) }
-                close()
+                // Discarding is the person's choice (D10): the draft goes with the words.
+                viewModelScope.launch {
+                    deleteDraft()
+                    _events.send(WriteEvent.Close)
+                }
             }
             WriteAction.OnDiscardDismiss -> _state.update { it.copy(confirmingDiscard = false) }
             WriteAction.OnAddPhotoClick -> {
@@ -114,6 +151,8 @@ class WriteViewModel(
         pending = Pending(payload, key)
         _state.update { it.copy(submit = WriteSubmit.Sending) }
         viewModelScope.launch {
+            // Kept before it leaves: if the app dies while the send is in flight, the words are still here.
+            saveDraftNow()
             val result = if (current.editing) {
                 loop.edit(payload.text, key)
             } else {
@@ -122,10 +161,13 @@ class WriteViewModel(
             when (result) {
                 WriteResult.Saved -> {
                     pending = null
+                    // The server has the words: a draft left behind would come back as a second entry.
+                    deleteDraft()
                     // The state stays Sending until the composer closes: the words are saved, and a
                     // close tapped in the moment before it goes must not ask to discard them (D10).
                     _events.send(WriteEvent.Close)
                 }
+                // The draft stays: the words are still unsent (states.md §10, Save failed).
                 WriteResult.Failed -> _state.update { it.copy(submit = WriteSubmit.Failed) }
             }
         }
@@ -144,8 +186,71 @@ class WriteViewModel(
         }
     }
 
+    /** Closing loses nothing here (blank, or an edit that changed nothing), so the draft is settled first. */
     private fun close() {
-        viewModelScope.launch { _events.send(WriteEvent.Close) }
+        viewModelScope.launch {
+            saveDraftNow()
+            _events.send(WriteEvent.Close)
+        }
+    }
+
+    /** Debounce: each keystroke replaces the waiting write, so it lands only once typing pauses. */
+    private fun saveDraftAfterPause() {
+        draftSave?.cancel()
+        draftSave = viewModelScope.launch {
+            delay(DRAFT_PAUSE)
+            writeDraft()
+        }
+    }
+
+    /** Writes what is on screen now, after any write still waiting for its pause. */
+    private suspend fun saveDraftNow() {
+        draftSave?.cancelAndJoin()
+        draftSave = null
+        writeDraft()
+    }
+
+    /**
+     * Cancels the waiting write and waits for it, so it cannot land after the delete and
+     * bring the draft back.
+     */
+    private suspend fun deleteDraft() {
+        draftSave?.cancelAndJoin()
+        draftSave = null
+        val day = day ?: return
+        quietly { drafts.delete(day.bondId, draftKind) }
+    }
+
+    /**
+     * Keeps the words worth keeping: not blank, and for an edit, not the words already
+     * saved. Anything else deletes the draft, so emptying the field leaves none behind.
+     */
+    private suspend fun writeDraft() {
+        val day = day ?: return
+        if (debugStep != 0) return // The debug frames are FakeCopy, never a draft.
+        val current = _state.value
+        quietly {
+            if (current.text.isNotBlank() && current.text != current.originalText) {
+                drafts.write(Draft(day.bondId, draftKind, current.text, day.date.toString(), day.myEntryId.takeIf { editing }))
+            } else {
+                drafts.delete(day.bondId, draftKind)
+            }
+        }
+    }
+
+    /** A new-entry draft belongs to any day (see the class note); an edit draft only to its own entry. */
+    private fun Draft.belongsHere(): Boolean = kind == DraftKind.NewEntry || entryId == day?.myEntryId
+
+    /**
+     * A draft that cannot be read or written must never stop the composer: the words are
+     * still on screen and still sendable. Cancellation is not a failure and goes through.
+     */
+    private suspend fun <T> quietly(block: suspend () -> T): T? = try {
+        block()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (ignored: Exception) {
+        null
     }
 
     /** Typing after a failure or while queued keeps the state honest: the words changed. */
@@ -191,6 +296,13 @@ class WriteViewModel(
     private class Pending(val payload: Payload, val key: String)
 
     companion object {
+        /**
+         * How long typing must pause before the draft is written. A steady typist leaves
+         * 150 to 300 ms between keys, so this writes once per pause, not per letter, and a
+         * force-quit loses at most the last half second of words.
+         */
+        const val DRAFT_PAUSE = 500L
+
         private const val DEBUG_STEPS = 7
         private const val PAST_400 = 412
         private const val OVER_LIMIT = 512
