@@ -43,6 +43,8 @@ class AuthRepositoryImpl(
     publicClient: PublicHttpClient,
     config: ApiConfig,
     private val sessionManager: SessionManager,
+    /** Asked to forget this device's push token first, on a voluntary sign-out; null in tests that do not need it. */
+    private val pushTokens: PushTokenRegistrar? = null,
     private val deviceInfo: DeviceInfoProvider,
 ) : AuthRepository {
     private val registration = RegistrationControllerApi(config.origin, publicClient.client)
@@ -110,7 +112,8 @@ class AuthRepositoryImpl(
     }
 
     /**
-     * Ends the session here first, then tells the server (best effort; it
+     * Forgets this device's push token while the session can still ask
+     * ([PushTokenRegistrar.forget], bounded). Then ends the session here, then tells the server (best effort; it
      * answers `204` whatever the token). The local wipe cannot be skipped by
      * a dead network or a closed screen: the read and the wipe, including the
      * wait for a refresh that holds the session lock, run [NonCancellable].
@@ -118,6 +121,9 @@ class AuthRepositoryImpl(
      * server call is skipped.
      */
     override suspend fun logout() {
+        // First, while the session still holds its tokens: the push token's DELETE needs the
+        // bearer (ADR-0044). Bounded, never throws, and not abandoned if the caller goes away.
+        withContext(NonCancellable) { pushTokens?.forget() }
         val refreshToken = withContext(NonCancellable) {
             sessionManager.storedRefreshToken().also {
                 sessionManager.endSession(SessionEndReason.SignedOut)

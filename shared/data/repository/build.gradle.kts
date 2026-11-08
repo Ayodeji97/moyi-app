@@ -13,6 +13,7 @@ kotlin {
             implementation(project(":shared:data:database"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
+            implementation(libs.kermit)
         }
         androidMain.dependencies {
             implementation(libs.koin.android)

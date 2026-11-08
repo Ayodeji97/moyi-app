@@ -6,6 +6,7 @@ import co.touchlab.kermit.Logger
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
+import com.moyi.app.domain.notification.PushTokenRegistration
 import com.moyi.app.domain.today.OutboxSender
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -25,11 +26,14 @@ import kotlinx.coroutines.launch
  * store is not the same as no session.
  *
  * It also wakes the outbox (doc 13 §5): its connectivity watch starts with the shell, and
- * every foreground tries the queued entries again, whatever screen is showing.
+ * every foreground tries the queued entries again, whatever screen is showing. The push
+ * token's registration starts with it too, and a failed one is tried again on foreground.
  */
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val outbox: OutboxSender,
+    /** Tells the server this phone's push token while someone is signed in (none until Firebase). */
+    private val pushTokens: PushTokenRegistration,
 ) : ViewModel() {
     val session: StateFlow<SessionState> = authRepository.session
 
@@ -41,12 +45,14 @@ class AppViewModel(
     init {
         restore()
         outbox.start()
+        pushTokens.start()
     }
 
     /** The app came to the foreground (ON_START). */
     fun onForeground() {
         if (session.value == SessionState.Unknown) restore()
         outbox.retrySoon()
+        pushTokens.retry()
     }
 
     /**

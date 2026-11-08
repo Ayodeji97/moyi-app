@@ -124,6 +124,10 @@ class BondSettingsViewModel(
                 save(SettingsField.RestDays, BondSettingsChange(strictMode = !settings.strictMode))
             }
             BondSettingsAction.OnSignOutClick -> signOut()
+            BondSettingsAction.OnNotificationsClick -> if (canEdit()) {
+                _state.update { it.copy(error = null) }
+                send(BondSettingsEvent.OpenNotifications)
+            }
             BondSettingsAction.OnSignOutUnsentConfirm -> {
                 _state.update { it.copy(confirmingUnsentSignOut = false, signingOut = true) }
                 viewModelScope.launch { auth.logout() }

@@ -115,6 +115,7 @@ sealed interface BondSettingsAction {
     data object OnRevealTimeDismiss : BondSettingsAction
     data object OnRestDaysToggle : BondSettingsAction
     data object OnSignOutClick : BondSettingsAction
+    data object OnNotificationsClick : BondSettingsAction
 
     /** Sign out anyway: the unsent entries are deleted with the session. */
     data object OnSignOutUnsentConfirm : BondSettingsAction
@@ -170,6 +171,7 @@ sealed interface BondSettingsEvent {
     data object OpenLeave : BondSettingsEvent
     data object OpenBlock : BondSettingsEvent
     data object OpenCloseBox : BondSettingsEvent
+    data object OpenNotifications : BondSettingsEvent
 
     /**
      * Open the OS share sheet with the invite. Fire and forget: the sheet closing is never

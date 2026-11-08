@@ -163,11 +163,22 @@ class FakeBondSettingsRepository(var server: BondSettings = settingsV1) : BondSe
 
     private fun bump(): String = "\"${server.version.trim('"').toInt() + 1}\""
 
-    override suspend fun memberSettings(bondId: String): Result<MemberSettings, DataError.Network> =
-        Result.Success(MemberSettings(TimeOfDay(20, 0), "Africa/Lagos"))
+    /** The member's own settings as the server holds them; [memberReads] and [memberWrites] answer first when queued. */
+    var member = MemberSettings(TimeOfDay(20, 0), "Africa/Lagos", nicknameForOther = "Tee")
+    val memberReads = ArrayDeque<Result<MemberSettings, DataError.Network>>()
+    val memberWrites = ArrayDeque<Result<MemberSettings, DataError.Network>>()
+    val memberReplaced = mutableListOf<MemberSettings>()
 
-    override suspend fun replaceMemberSettings(bondId: String, settings: MemberSettings): Result<MemberSettings, DataError.Network> =
-        Result.Success(settings)
+    override suspend fun memberSettings(bondId: String): Result<MemberSettings, DataError.Network> =
+        memberReads.removeFirstOrNull() ?: Result.Success(member)
+
+    override suspend fun replaceMemberSettings(bondId: String, settings: MemberSettings): Result<MemberSettings, DataError.Network> {
+        memberReplaced += settings
+        gate?.await()
+        memberWrites.removeFirstOrNull()?.let { return it }
+        member = settings
+        return Result.Success(settings)
+    }
 }
 
 val askLapses: Instant = Instant.parse("2026-11-13T10:00:00Z")

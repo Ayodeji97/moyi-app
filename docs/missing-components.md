@@ -525,3 +525,28 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   Cancel (Keep writing) at the bottom.
 - **The open question:** the string (PROPOSED `write_discard_keep_draft` "Keep as a draft") and
   whether the design system should list the three-answer dialog as a component variant.
+
+## Notifications (push, part A)
+
+### 39. Bond settings › Notifications
+
+- **Today:** not drawn. `states.md` §8 lists *Reminder* ("per-member, respects each member's quiet
+  hours") among Bond settings' controls and draws a *Your reminder* row that opens the OS time
+  picker; nothing draws the six kinds of push ADR-0045 lets a member turn off, quiet hours, or what
+  the screen says when the phone does not allow notifications.
+- **Here:** a screen of its own, reached from a **Notifications** row in *Just you* (Navigates),
+  built only from Bond settings' own rows so it adds no component: the heading, one muted line
+  (PROPOSED `notifications_line`), then *This phone* (only while the phone was never asked or said
+  no), *What to hear about* (six `SettingsToggleRow`s, the reminder's time under the reminder as an
+  Opens row), and *Quiet hours* (a toggle, and when on, From and Until as Opens rows). Every string
+  is PROPOSED (`notifications_*`, `settings_row_notifications`). The *Your reminder* row is no
+  longer on the root: the reminder's time lives with the reminder.
+- **The permission, when:** only on this screen, when the person turns a kind of notification on
+  while the phone has never been asked, or taps *Allow notifications*. Never at launch or in
+  onboarding (doc 13 §7). Denied is said once, with *Open phone settings*, and never asked again.
+- **Open questions for the owner:** the copy; quiet hours' default when first turned on (PROPOSED
+  22:00 to 07:00); whether the prompt should also come after the first entry is sent (doc 13 §7,
+  "after the user has seen the value"; `states.md` §3a says onboarding "already spends a prompt on
+  notifications", which this build does not do); iOS provisional authorisation (doc 13 §7), not
+  used here.
+

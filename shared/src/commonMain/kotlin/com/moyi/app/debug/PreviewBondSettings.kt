@@ -18,6 +18,9 @@ import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
+import com.moyi.app.domain.notification.NotificationCategory
+import com.moyi.app.domain.notification.NotificationPreferences
+import com.moyi.app.domain.notification.NotificationSettingsRepository
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -175,4 +178,17 @@ internal class PreviewSettingsBondRepository(private val settings: PreviewBondSe
     override suspend fun acceptInvite(code: String): Result<Bond, DataError.Network> = unused
 
     private val unused = Result.Failure(DataError.Network.Unknown)
+}
+
+/** DEBUG ONLY. Notifications on the preview bond, kept in memory: the preview's member never chose, so the defaults. */
+class PreviewNotificationSettingsRepository : NotificationSettingsRepository {
+    private var preferences = NotificationPreferences(NotificationCategory.entries.toSet() - NotificationCategory.OnThisDay)
+
+    override suspend fun preferences(bondId: String): Result<NotificationPreferences, DataError.Network> = Result.Success(preferences)
+
+    override suspend fun change(bondId: String, category: NotificationCategory, on: Boolean): Result<NotificationPreferences, DataError.Network> {
+        delay(600.milliseconds) // long enough to see Saving
+        preferences = NotificationPreferences(if (on) preferences.on + category else preferences.on - category)
+        return Result.Success(preferences)
+    }
 }

@@ -12,6 +12,8 @@ kotlin {
         // Chrome Custom Tabs for the in-app browser (InAppBrowser, D8).
         androidMain.dependencies {
             implementation(libs.androidx.browser)
+            // The POST_NOTIFICATIONS request needs an ActivityResult launcher (NotificationPermission.android.kt).
+            implementation(libs.androidx.activity.compose)
         }
         // Compose UI tests run on iOS (Skiko, no device needed beyond the test
         // runner); on the Android host they would need Robolectric.
