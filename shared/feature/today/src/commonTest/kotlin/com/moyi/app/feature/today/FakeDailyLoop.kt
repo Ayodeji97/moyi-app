@@ -54,7 +54,7 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
     var deleteAfterResult = DeleteResult.Deleted
     var gate: CompletableDeferred<Unit>? = null
 
-    data class Submit(val text: String, val promptId: String?, val key: String, val intendedAt: Instant)
+    data class Submit(val text: String, val promptId: String?, val key: String, val intendedAt: Instant, val imageMediaId: String? = null)
     data class Edit(val text: String, val key: String)
 
     var refreshes = 0
@@ -79,8 +79,14 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
         refusalDismissals++
     }
 
-    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult {
-        submits += Submit(text, promptId, idempotencyKey, intendedAt)
+    override suspend fun submit(
+        text: String,
+        promptId: String?,
+        idempotencyKey: String,
+        intendedAt: Instant,
+        imageMediaId: String?,
+    ): WriteResult {
+        submits += Submit(text, promptId, idempotencyKey, intendedAt, imageMediaId)
         gate?.await()
         return submitResult
     }

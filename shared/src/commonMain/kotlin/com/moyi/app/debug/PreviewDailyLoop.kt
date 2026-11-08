@@ -43,7 +43,13 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
 
     override suspend fun refresh() = Unit
 
-    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult {
+    override suspend fun submit(
+        text: String,
+        promptId: String?,
+        idempotencyKey: String,
+        intendedAt: Instant,
+        imageMediaId: String?,
+    ): WriteResult {
         delay(latency)
         myEntry = text
         show(TodayStatus.Waiting)

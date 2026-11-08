@@ -9,6 +9,7 @@ import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
+import com.moyi.app.domain.media.MediaRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
 import com.moyi.app.domain.notification.PushTokenRegistration
 import com.moyi.app.domain.notification.PushTokenSource
@@ -37,6 +38,8 @@ val repositoryModule = module {
     single<BondRepository> { BondRepositoryImpl(get(), get()) }
     single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get()) }
     single<TodayRepository> { TodayRepositoryImpl(get(), get()) }
+    // Photos (and voice notes, later): the media endpoints and the direct upload to storage.
+    single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ArchiveRepository> { ArchiveRepositoryImpl(get(), get()) }
     single<StreakRepository> { StreakRepositoryImpl(get(), get()) }
     // Today's cache-then-network (doc 13 §5), keyed by the signed-in person.

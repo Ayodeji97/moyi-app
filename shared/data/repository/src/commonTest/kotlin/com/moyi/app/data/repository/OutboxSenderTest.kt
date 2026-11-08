@@ -272,6 +272,7 @@ class OutboxSenderTest {
             promptId: String?,
             idempotencyKey: String,
             intendedAt: Instant?,
+            imageMediaId: String?,
         ): Result<MyEntry, DataError.Network> {
             at += currentCoroutineContext()[TestCoroutineScheduler]?.currentTime ?: -1
             sent += idempotencyKey to intendedAt

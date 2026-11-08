@@ -2,6 +2,14 @@ package com.moyi.app.feature.today.write
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moyi.app.designsystem.platform.PhotoPick
+import com.moyi.app.designsystem.platform.PickedPhoto
+import com.moyi.app.domain.media.MediaBytes
+import com.moyi.app.domain.media.MediaKind
+import com.moyi.app.domain.media.MediaUploader
+import com.moyi.app.domain.media.UploadFailure
+import com.moyi.app.domain.media.UploadOutcome
+import com.moyi.app.domain.media.UploadProgress
 import com.moyi.app.domain.today.Draft
 import com.moyi.app.domain.today.DraftKind
 import com.moyi.app.domain.today.DraftStore
@@ -48,8 +56,17 @@ import kotlin.uuid.Uuid
  * tap, not by the day the draft was begun. An edit draft is restored only into
  * the entry it was written for: put into another entry, its Save would change the wrong words.
  *
+ * **A photo** (docs/missing-components.md §40) is prepared on the phone when picked and
+ * uploaded at the Send tap, before the words: intent, a PUT straight to storage, complete,
+ * then a wait until the server has processed it ([MediaUploader]). The action reads
+ * "Sending your photo" meanwhile, then "Sending". Only a processed photo can be attached,
+ * so the entry is sent with its id after that. A photo entry is never queued offline: a
+ * failure anywhere keeps the words and the photo, and Try again resumes where it stopped
+ * (bytes already in storage are not sent twice). The photo is not part of the draft.
+ *
  * @param editing true when reached from "Edit what you wrote" (before the reveal).
  * @param drafts where the unsent words are kept, on this device only.
+ * @param uploader sends a photo; null offers no photo (the debug preview).
  * @param newIdempotencyKey mints the `Idempotency-Key` at the tap; tests pass a counter.
  * @param clock reads the instant of the Send tap, sent as `intendedAt`; tests pass a fixed one.
  */
@@ -57,6 +74,7 @@ class WriteViewModel(
     private val editing: Boolean,
     private val loop: DailyLoop,
     private val drafts: DraftStore,
+    private val uploader: MediaUploader? = null,
     private val newIdempotencyKey: () -> String = ::randomIdempotencyKey,
     private val clock: Clock = Clock.System,
 ) : ViewModel() {
@@ -73,7 +91,7 @@ class WriteViewModel(
             day?.myEntry.orEmpty().let { mine -> WriteState(text = mine, prompt = null, editing = true, originalText = mine) }
         } else {
             WriteState(prompt = day?.prompt?.text)
-        }.copy(restoringDraft = day != null),
+        }.copy(restoringDraft = day != null, photosOffered = uploader != null && !editing),
     )
     val state: StateFlow<WriteState> = _state.asStateFlow()
 
@@ -98,6 +116,9 @@ class WriteViewModel(
 
     /** The draft write waiting for the keystroke pause; replaced by every keystroke. */
     private var draftSave: Job? = null
+
+    /** How far the attached photo's upload got: a retry resumes from here. Reset with every new photo. */
+    private var upload: UploadProgress = UploadProgress.None
 
     init {
         if (day != null) {
@@ -126,6 +147,7 @@ class WriteViewModel(
                 _state.update { it.copy(confirmingDiscard = false) }
                 // Discarding is the person's choice (D10): the draft goes with the words.
                 viewModelScope.launch {
+                    discardUpload()
                     deleteDraft()
                     _events.send(WriteEvent.Close)
                 }
@@ -137,9 +159,18 @@ class WriteViewModel(
                 // the pause, which closing would cancel), so they are there when Write reopens.
                 close()
             }
-            WriteAction.OnAddPhotoClick -> {
-                // TODO(logic): pick a photo and send its id as `imageMediaId` (POST and PATCH both take it).
-                //  Optional (NFR-103). The contract has no media upload endpoint yet, so there is no id to send.
+            is WriteAction.OnAddPhotoClick -> when {
+                !_state.value.photosOffered || _state.value.submit == WriteSubmit.Sending -> Unit
+                action.canTakePhoto -> _state.update { it.copy(choosingPhotoSource = true) }
+                else -> pickPhoto(PhotoSource.Library)
+            }
+            WriteAction.OnChooseFromLibrary -> pickPhoto(PhotoSource.Library)
+            WriteAction.OnTakePhoto -> pickPhoto(PhotoSource.Camera)
+            WriteAction.OnPhotoSourceDismiss -> _state.update { it.copy(choosingPhotoSource = false) }
+            is WriteAction.OnPhotoPicked -> onPhotoPicked(action.pick)
+            WriteAction.OnRemovePhoto -> {
+                if (_state.value.submit == WriteSubmit.Sending) return
+                replacePhoto(null)
             }
             WriteAction.OnRecordVoiceClick -> {
                 // TODO(logic): record a voice note and send its id as `voiceMediaId` (POST and PATCH both take
@@ -160,25 +191,32 @@ class WriteViewModel(
     private fun submit() {
         val current = _state.value
         if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
-        // An edit (PATCH) sends only the words; a new entry sends the prompt id unless dismissed.
-        val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null })
-        val reused = pending?.takeIf { it.payload == payload }
-        val key = reused?.key ?: newIdempotencyKey()
-        val intendedAt = reused?.intendedAt ?: tapInstant()
-        pending = Pending(payload, key, intendedAt)
-        _state.update { it.copy(submit = WriteSubmit.Sending) }
+        val photo = current.photo?.takeIf { !current.editing }
+        // Taken at the tap, before any upload: the instant the person sent it.
+        val tap = tapInstant()
+        _state.update { it.copy(submit = WriteSubmit.Sending, sendingPhoto = photo != null, photoNotice = null) }
         viewModelScope.launch {
             // Kept before it leaves: if the app dies while the send is in flight, the words are still here.
             saveDraftNow()
+            val imageMediaId = if (photo == null) null else sendPhoto(photo) ?: return@launch
+            _state.update { it.copy(sendingPhoto = false) }
+            // An edit (PATCH) sends only the words; a new entry sends the prompt id unless dismissed.
+            val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null }, imageMediaId)
+            val reused = pending?.takeIf { it.payload == payload }
+            val key = reused?.key ?: newIdempotencyKey()
+            val intendedAt = reused?.intendedAt ?: tap
+            pending = Pending(payload, key, intendedAt)
             val result = if (current.editing) {
                 loop.edit(payload.text, key)
             } else {
-                loop.submit(payload.text, payload.promptId, key, intendedAt)
+                loop.submit(payload.text, payload.promptId, key, intendedAt, imageMediaId)
             }
             when (result) {
                 // Queued: the outbox holds the words now, with this key, and sends them later.
                 WriteResult.Saved, WriteResult.Queued -> {
                     pending = null
+                    // Attached to the entry now: nothing left to discard.
+                    upload = UploadProgress.None
                     // The server (or the outbox) has the words: a draft left behind would come back as a second entry.
                     deleteDraft()
                     // The state stays Sending until the composer closes: the words are saved, and a
@@ -187,8 +225,66 @@ class WriteViewModel(
                 }
                 // The draft stays: the words are still unsent (states.md §10, Save failed).
                 WriteResult.Failed -> _state.update { it.copy(submit = WriteSubmit.Failed) }
+                // The server would not attach it: the next photo, or none, starts a new upload.
+                WriteResult.PhotoRefused -> {
+                    upload = UploadProgress.None
+                    _state.update { it.copy(submit = WriteSubmit.Idle, photoNotice = PhotoNotice.Refused) }
+                }
             }
         }
+    }
+
+    /**
+     * Uploads [photo], resuming [upload]; its media id once processed, or null after
+     * setting the failure, when the words must not be sent yet.
+     */
+    private suspend fun sendPhoto(photo: PickedPhoto): String? {
+        val uploader = uploader ?: return null.also { _state.update { it.copy(submit = WriteSubmit.Failed, sendingPhoto = false) } }
+        val outcome = uploader.send(MediaBytes(MediaKind.Image, photo.contentType, photo.bytes), upload)
+        // A newer photo may have been attached meanwhile: only this photo's progress is kept.
+        if (_state.value.photo !== photo) return null
+        upload = outcome.progress
+        return when (outcome) {
+            is UploadOutcome.Ready -> outcome.mediaId
+            is UploadOutcome.Failed -> {
+                _state.update {
+                    when (outcome.failure) {
+                        UploadFailure.Retryable -> it.copy(submit = WriteSubmit.Failed, sendingPhoto = false)
+                        UploadFailure.Refused -> it.copy(submit = WriteSubmit.Idle, sendingPhoto = false, photoNotice = PhotoNotice.Refused)
+                    }
+                }
+                null
+            }
+        }
+    }
+
+    private fun pickPhoto(source: PhotoSource) {
+        _state.update { it.copy(choosingPhotoSource = false) }
+        if (!_state.value.photosOffered || _state.value.submit == WriteSubmit.Sending) return
+        viewModelScope.launch { _events.send(WriteEvent.PickPhoto(source)) }
+    }
+
+    private fun onPhotoPicked(pick: PhotoPick) {
+        if (!_state.value.photosOffered || _state.value.submit == WriteSubmit.Sending) return
+        when (pick) {
+            is PhotoPick.Picked -> replacePhoto(pick.photo)
+            // Whatever was attached stays; the line says this one could not be opened.
+            PhotoPick.Unreadable -> _state.update { it.copy(photoNotice = PhotoNotice.Unreadable) }
+        }
+    }
+
+    /** Attaches [photo] (or none) in place of the one attached, whose upload, if any, is deleted. */
+    private fun replacePhoto(photo: PickedPhoto?) {
+        val previous = upload
+        upload = UploadProgress.None
+        _state.update { it.copy(photo = photo, photoNotice = null, submit = it.submit.afterEdit()) }
+        if (previous.mediaId != null) viewModelScope.launch { quietly { uploader?.discard(previous) } }
+    }
+
+    private suspend fun discardUpload() {
+        val previous = upload
+        upload = UploadProgress.None
+        if (previous.mediaId != null) quietly { uploader?.discard(previous) }
     }
 
     /**
@@ -207,6 +303,8 @@ class WriteViewModel(
     /** Closing loses nothing here (blank, or an edit that changed nothing), so the draft is settled first. */
     private fun close() {
         viewModelScope.launch {
+            // The photo is not part of the draft (§40): an upload it left is deleted, not orphaned.
+            discardUpload()
             saveDraftNow()
             _events.send(WriteEvent.Close)
         }
@@ -301,14 +399,14 @@ class WriteViewModel(
         return words.repeat(length / words.length + 1).take(length)
     }
 
-    /** The request body a key is bound to. Never prints the words. */
-    private class Payload(val text: String, val promptId: String?) {
+    /** The request body a key is bound to, the photo's id included. Never prints the words. */
+    private class Payload(val text: String, val promptId: String?, val imageMediaId: String? = null) {
         override fun equals(other: Any?): Boolean =
-            other is Payload && other.text == text && other.promptId == promptId
+            other is Payload && other.text == text && other.promptId == promptId && other.imageMediaId == imageMediaId
 
-        override fun hashCode(): Int = 31 * text.hashCode() + promptId.hashCode()
+        override fun hashCode(): Int = 31 * (31 * text.hashCode() + promptId.hashCode()) + imageMediaId.hashCode()
 
-        override fun toString(): String = "Payload(promptId=$promptId)"
+        override fun toString(): String = "Payload(promptId=$promptId, imageMediaId=$imageMediaId)"
     }
 
     private class Pending(val payload: Payload, val key: String, val intendedAt: Instant)

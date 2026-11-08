@@ -27,6 +27,10 @@ interface TodayRepository {
      * instant of the Send tap (BR-3a), sent on the first try as on every retry, because the
      * server binds the key to the whole body: a first try without it and a queued retry
      * with it would be two different requests under one key.
+     *
+     * [imageMediaId] is a photo already uploaded and processed (`READY`); the server
+     * attaches it in the entry's own transaction, or refuses the entry with
+     * `422 VALIDATION_FAILED` on `imageMediaId` (`MEDIA_NOT_ATTACHABLE`).
      */
     suspend fun submitEntry(
         bondId: String,
@@ -34,6 +38,7 @@ interface TodayRepository {
         promptId: String?,
         idempotencyKey: String,
         intendedAt: Instant? = null,
+        imageMediaId: String? = null,
     ): Result<MyEntry, DataError.Network>
 
     /** Replaces the words of my entry before the reveal. [idempotencyKey] as for [submitEntry]. */

@@ -550,3 +550,90 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   notifications", which this build does not do); iOS provisional authorisation (doc 13 §7), not
   used here.
 
+
+## Photos on entries
+
+### 40. A photo on an EntryCard, and what a photo entry does offline
+
+- **Today:** not drawn. `tokens.md` §4 gives `EntryCard` "author label, text" and no media slot;
+  `states.md` §4 says only "Voice note and photo are optional and secondary. Text is always
+  sufficient (NFR-103)". Nothing draws a photo on a card, its loading state, the partner's
+  *processing* state (`EntryImageResponse.PROCESSING`), the author's *not shared* state
+  (`NOT_SHARED`, owner ruling Q10), or the *sensitive* cover (Q16: "blurred, behind a tap to
+  view").
+- **Here (interim, the most conservative reading):** the photo sits **under the words**, the
+  card's full inner width, its own shape kept between 3:4 and 2:1 (4:3 when the server gives no
+  size), the card's 12 radius, on `surface` until it loads: no spinner, no shimmer, no fade.
+  Processing is one muted line and no image (PROPOSED `ds_entry_photo_on_its_way`, "A photo is on
+  its way."); not shared is the photo (when the server still gives it) with one muted line under
+  it (PROPOSED `ds_entry_photo_not_shared`, "This photo is not shared."); sensitive is the same
+  `surface` frame with one muted line instead of the photo (PROPOSED `ds_entry_photo_sensitive`,
+  "This photo may be sensitive. Tap to see it."), uncovered by a tap. No blur: a blur would
+  still show the shape of what is in it, and Compose has no blur below Android 12. The same block
+  is used on Today, the reveal, the Archive's day view and, under the two-line excerpt, the
+  Archive list's day card. A locked or deleted card draws no photo and says nothing of one.
+- **Capture protection:** the partner's photo is inside their EntryCard, so the card's existing
+  protection covers it. In the Archive list it is drawn outside an EntryCard, so it protects the
+  screen itself (`EntryPhotoView(protectFromCapture = true)`); the list's partner **words** are
+  still unprotected (the existing `TODO(#17)` on `DayCard`).
+- **Offline (doc 13 §5 says media is "uploaded directly to R2 from the background worker; the
+  entry references the media id once complete"):** this PR takes the conservative reading. A
+  photo entry is **not queued**. The upload runs at the Send tap, in the composer, and the words
+  are sent only once the server has processed the photo, because an entry can attach only a
+  `READY` asset (backend `MediaAssetStore.claim`, read only). Any failure, the upload's or the
+  entry's, offline or not, keeps the words and the photo in the composer with "That didn't save.
+  Your words and your photo are still here." (PROPOSED `write_save_failed_photo`) and Try again,
+  which resumes where it stopped (bytes already in storage are not sent again; the completion is
+  replayed with its key; the entry is resent with the same key and `intendedAt`). The outbox still
+  holds words only. The **draft** keeps the words, not the photo: closing asks first (D10) when a
+  photo is attached, and *Keep as a draft* keeps the words only.
+- **Why not the outbox:** queuing the photo means keeping it on disk until the network returns.
+  The local database is SQLCipher-encrypted (#40); a photo file beside it would not be, unless it
+  is encrypted too, and the worker would then need to upload it in the background on both
+  platforms (WorkManager, BGTaskScheduler) and survive the 24-hour reaper of unattached uploads.
+  That is a privacy and a scope decision, so it is the owner's.
+- **No disk cache for photos:** Coil keeps photos in memory only, for the same reason (a disk
+  cache would hold the partner's photos as plain files). A photo is loaded again after the app
+  restarts, and is not shown offline. The Today and Archive caches do not keep the photo or its
+  URL (the URL is a credential that lasts 24 hours).
+- **Open questions for the owner:** (1) the card layout, the four states and their copy; (2)
+  queue photo entries offline (an encrypted file in the outbox) or keep failing them in the
+  composer; (3) keep the photo with the draft (same encryption question); (4) an encrypted disk
+  cache for photos, so they show offline; (5) whether the Archive list shows the photo at all, or
+  only the day view; (6) "reduce data usage" (`SKILL.md` §11) when the list loads many photos.
+
+### 41. Adding a photo in the composer
+
+- **Today:** `ComposeField` draws the "Add a photo" icon (tokens.md §6) and nothing after the tap:
+  no source choice, no attached-photo preview, no remove control, no upload state, no copy for a
+  photo the phone could not open or the server would not take.
+- **Here (interim):**
+  - **Source:** when the phone has a camera, the platform dialog (`ConfirmDialog`, as D10's
+    question) asks: title "Add a photo", answers "Choose a photo", "Take a photo", "Cancel" (all
+    PROPOSED `write_photo_source_*`). Without a camera (the iOS simulator) the library opens at
+    once. The pickers are the system's: Android's Photo Picker (no storage permission) and the
+    camera app (no camera permission declared); iOS PHPicker (no library permission) and
+    `UIImagePickerController` (PROPOSED `NSCameraUsageDescription`: "Moyi uses the camera only
+    when you take a photo to add to your entry.").
+  - **Attached:** inside the composer's box, above the toolbar, a 96 dp-tall preview at the
+    card's radius with a 48 target beside it that removes it (PROPOSED spoken names
+    `ds_compose_attached_photo`, `ds_compose_remove_photo`). Picking again replaces it. Hidden
+    while editing: an edit sends words only (`PATCH` with `imageMediaId` is not used yet).
+  - **Sending:** `PrimaryAction` Sending reads "Sending your photo" (PROPOSED
+    `write_sending_photo`) while the photo uploads and is processed, then "Sending". The remove
+    control is hidden while it is on its way.
+  - **Refused** (the server failed to process it, or moderation held it before it was
+    attached): "This photo can't be sent. Remove it to send your words." (PROPOSED
+    `write_photo_refused`), and Send is disabled until it is removed. **Unreadable** (the phone
+    could not open it): "That photo couldn't be opened. Try another one." (PROPOSED
+    `write_photo_unreadable`); whatever was attached stays.
+- **Open questions for the owner:** the source choice as a dialog or a sheet; the preview's size
+  and place; the copy.
+
+### 42. Viewing a photo larger
+
+- **Today:** not drawn. Nothing in `states.md` or Figma opens a photo full-screen.
+- **Here:** nothing; tapping a photo does nothing (except uncovering a sensitive one). Not
+  improvised.
+- **Open question for the owner:** a full-screen viewer (with pinch to zoom, and the capture
+  protection a partner's photo needs) or none.

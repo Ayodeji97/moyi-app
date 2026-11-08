@@ -55,12 +55,14 @@ data class MyEntry(
     val id: String,
     val text: String?,
     val status: EntryStatus,
+    /** The photo on it, as the server shows it to me; null when it has none, or when read from the cache. */
+    val image: EntryImage? = null,
 ) {
     /** Written and not withdrawn. */
     val isLive: Boolean get() = status != EntryStatus.DELETED
 
     /** Never the words: a data class would print them into any log that printed this. */
-    override fun toString(): String = "MyEntry(id=$id, text=${if (text == null) "null" else "(redacted)"}, status=$status)"
+    override fun toString(): String = "MyEntry(id=$id, text=${if (text == null) "null" else "(redacted)"}, status=$status, image=$image)"
 }
 
 /** An entry's own status, as an entry read in full carries it. */
@@ -73,13 +75,13 @@ enum class EntryStatus { SUBMITTED, REVEALED, DELETED }
  */
 sealed interface PartnerEntry {
     /** Read in full while its status is still SUBMITTED: a solo day unlocked at rollover (FR-063). */
-    data class Submitted(val id: String, val text: String) : PartnerEntry {
-        override fun toString(): String = "Submitted(id=$id, text=(redacted))"
+    data class Submitted(val id: String, val text: String, val image: EntryImage? = null) : PartnerEntry {
+        override fun toString(): String = "Submitted(id=$id, text=(redacted), image=$image)"
     }
 
     /** Read in full: the day opened. */
-    data class Revealed(val id: String, val text: String) : PartnerEntry {
-        override fun toString(): String = "Revealed(id=$id, text=(redacted))"
+    data class Revealed(val id: String, val text: String, val image: EntryImage? = null) : PartnerEntry {
+        override fun toString(): String = "Revealed(id=$id, text=(redacted), image=$image)"
     }
 
     /** Its tombstone: the partner deleted it after I had been shown it. */
@@ -98,3 +100,36 @@ data class Prompt(
     val id: String,
     val text: String,
 )
+
+/**
+ * An entry's photo as the server shows it to the person asking (`EntryImageResponse`,
+ * spec §4 D2). [url], [width] and [height] are present when [status] is
+ * [EntryImageStatus.Ready], and on [EntryImageStatus.NotShared] unless the photo was
+ * blocked outright. [sensitive] is true only on a ready photo that passed moderation with
+ * adult nudity found: shown covered, behind a tap.
+ *
+ * The [url] is a signed GET, valid for at least 24 hours: a credential for the photo. It
+ * is never logged ([toString]) and never written to the device's cache.
+ */
+data class EntryImage(
+    val id: String,
+    val status: EntryImageStatus,
+    val url: String?,
+    val width: Int?,
+    val height: Int?,
+    val sensitive: Boolean,
+) {
+    override fun toString(): String =
+        "EntryImage(id=$id, status=$status, url=${url?.let { "(redacted)" }}, width=$width, height=$height, sensitive=$sensitive)"
+}
+
+enum class EntryImageStatus {
+    /** Shown: [EntryImage.url] reaches it. */
+    Ready,
+
+    /** Not shown to this reader yet. Never says why: not processed, not moderated, or kept from them. */
+    Processing,
+
+    /** Its author's alone: held back from the partner, who is shown [Processing] and never told (Q10). */
+    NotShared,
+}

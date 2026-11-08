@@ -107,6 +107,7 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
                     authorLabel = stringResource(Res.string.today_author_partner, state.partnerName.orEmpty()),
                     text = words,
                     variant = EntryCardVariant.Partner,
+                    photo = day.partnerPhoto,
                 )
             }
         }
@@ -116,7 +117,7 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
                 failed = state.markFailed == FavouriteTarget.Mine,
                 onToggle = { onAction(ArchiveDayAction.OnFavouriteClick(FavouriteTarget.Mine)) },
             ) {
-                EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry)
+                EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry, photo = day.myPhoto)
             }
         } else if (day.myTombstone) {
             // states.md Appendix: the tombstone is labelled "From you", never the partner.

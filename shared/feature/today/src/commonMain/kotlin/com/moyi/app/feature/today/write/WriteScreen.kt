@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.AttachedPhoto
 import com.moyi.app.designsystem.component.ComposeField
 import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.InlineError
@@ -25,6 +26,7 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.platform.NoArrowBackHandler
+import com.moyi.app.designsystem.platform.rememberPhotoPicker
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.resources.Res
@@ -35,13 +37,22 @@ import com.moyi.app.feature.today.resources.write_discard_keep
 import com.moyi.app.feature.today.resources.write_discard_keep_draft
 import com.moyi.app.feature.today.resources.write_discard_title
 import com.moyi.app.feature.today.resources.write_discard_title_editing
+import com.moyi.app.feature.today.resources.write_photo_refused
+import com.moyi.app.feature.today.resources.write_photo_source_camera
+import com.moyi.app.feature.today.resources.write_photo_source_cancel
+import com.moyi.app.feature.today.resources.write_photo_source_library
+import com.moyi.app.feature.today.resources.write_photo_source_title
+import com.moyi.app.feature.today.resources.write_photo_unreadable
 import com.moyi.app.feature.today.resources.write_queued
 import com.moyi.app.feature.today.resources.write_save
 import com.moyi.app.feature.today.resources.write_save_failed
+import com.moyi.app.feature.today.resources.write_save_failed_photo
 import com.moyi.app.feature.today.resources.write_saving
 import com.moyi.app.feature.today.resources.write_send
 import com.moyi.app.feature.today.resources.write_sending
+import com.moyi.app.feature.today.resources.write_sending_photo
 import com.moyi.app.feature.today.resources.write_try_again
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -59,9 +70,14 @@ fun WriteRoot(
     viewModel: WriteViewModel = koinViewModel { parametersOf(editing) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val photoPicker = rememberPhotoPicker { pick -> viewModel.onAction(WriteAction.OnPhotoPicked(pick)) }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             WriteEvent.Close -> onClose()
+            is WriteEvent.PickPhoto -> when (event.source) {
+                PhotoSource.Library -> photoPicker.chooseFromLibrary()
+                PhotoSource.Camera -> photoPicker.takePhoto()
+            }
         }
     }
     NoArrowBackHandler { viewModel.onAction(WriteAction.OnCloseClick) }
@@ -70,7 +86,7 @@ fun WriteRoot(
         // spinner. The composer then opens with the words in it, focused, cursor at their end.
         Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
     } else {
-        WriteScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
+        WriteScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools, canTakePhoto = photoPicker.canTakePhoto)
     }
 }
 
@@ -89,6 +105,7 @@ fun WriteScreen(
     state: WriteState,
     onAction: (WriteAction) -> Unit,
     debugTools: Boolean = false,
+    canTakePhoto: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
     // The composer opens ready to type: the keyboard is up in every Write frame.
@@ -99,8 +116,8 @@ fun WriteScreen(
         onClose = { onAction(WriteAction.OnCloseClick) },
         scrollContent = false,
         action = {
-            if (state.submit == WriteSubmit.Failed) {
-                InlineError(stringResource(Res.string.write_save_failed))
+            errorLine(state)?.let { line ->
+                InlineError(stringResource(line))
                 Spacer(Modifier.height(MoyiTheme.spacing.sm))
             }
             Box(
@@ -128,9 +145,18 @@ fun WriteScreen(
             invalid = state.overLimit,
             // Never disabled or read-only while sending: either drops focus and the keyboard
             // (419:193 keeps it up). The ViewModel ignores edits in flight instead.
-            onAddPhoto = { onAction(WriteAction.OnAddPhotoClick) },
+            onAddPhoto = if (state.photosOffered) ({ onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }) else null,
             onRecordVoice = { onAction(WriteAction.OnRecordVoiceClick) },
             focusRequester = focusRequester,
+            attachment = state.photo?.let { photo ->
+                {
+                    AttachedPhoto(
+                        photo = photo,
+                        // Not while it is being sent: the photo on its way is the one shown.
+                        onRemove = if (state.submit == WriteSubmit.Sending) null else ({ onAction(WriteAction.OnRemovePhoto) }),
+                    )
+                }
+            },
             modifier = Modifier
                 .weight(1f)
                 .then(if (state.editing) Modifier.semantics { paneTitle = editingAnnounce } else Modifier),
@@ -139,6 +165,18 @@ fun WriteScreen(
         // field to 456, button at 480; 384:229: field to 424, error at 448): the
         // scaffold's 16 plus these 8.
         Spacer(Modifier.height(MoyiTheme.spacing.sm))
+    }
+    if (state.choosingPhotoSource) {
+        // Interim (docs/missing-components.md §41): no frame draws the choice, so the platform dialog asks.
+        ConfirmDialog(
+            title = stringResource(Res.string.write_photo_source_title),
+            confirmLabel = stringResource(Res.string.write_photo_source_library),
+            dismissLabel = stringResource(Res.string.write_photo_source_cancel),
+            onConfirm = { onAction(WriteAction.OnChooseFromLibrary) },
+            onDismiss = { onAction(WriteAction.OnPhotoSourceDismiss) },
+            alternativeLabel = stringResource(Res.string.write_photo_source_camera),
+            onAlternative = { onAction(WriteAction.OnTakePhoto) },
+        )
     }
     if (state.confirmingDiscard) {
         ConfirmDialog(
@@ -154,6 +192,14 @@ fun WriteScreen(
     }
 }
 
+/** The one line above the action: a photo's own problem first, then Save failed. */
+private fun errorLine(state: WriteState): StringResource? = when {
+    state.photoNotice == PhotoNotice.Refused -> Res.string.write_photo_refused
+    state.photoNotice == PhotoNotice.Unreadable -> Res.string.write_photo_unreadable
+    state.submit == WriteSubmit.Failed -> if (state.photo != null) Res.string.write_save_failed_photo else Res.string.write_save_failed
+    else -> null
+}
+
 private fun actionLabel(state: WriteState) = when {
     state.submit == WriteSubmit.Failed -> Res.string.write_try_again
     state.editing -> Res.string.write_save
@@ -162,7 +208,15 @@ private fun actionLabel(state: WriteState) = when {
 
 @Composable
 private fun actionState(state: WriteState): PrimaryActionState = when (state.submit) {
-    WriteSubmit.Sending -> PrimaryActionState.Sending(stringResource(if (state.editing) Res.string.write_saving else Res.string.write_sending))
+    WriteSubmit.Sending -> PrimaryActionState.Sending(
+        stringResource(
+            when {
+                state.editing -> Res.string.write_saving
+                state.sendingPhoto -> Res.string.write_sending_photo
+                else -> Res.string.write_sending
+            },
+        ),
+    )
     WriteSubmit.Queued -> PrimaryActionState.QueuedOffline(stringResource(Res.string.write_queued))
     // Over the limit or empty: not sendable (181:83's state was not read; Disabled is the reading).
     WriteSubmit.Idle, WriteSubmit.Failed -> if (state.canSubmit) PrimaryActionState.Idle else PrimaryActionState.Disabled

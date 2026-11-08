@@ -1,5 +1,6 @@
 package com.moyi.app.feature.today.di
 
+import com.moyi.app.domain.media.MediaUploader
 import com.moyi.app.feature.today.archive.ArchiveDayViewModel
 import com.moyi.app.feature.today.archive.ArchiveFeed
 import com.moyi.app.feature.today.archive.ArchiveViewModel
@@ -12,6 +13,7 @@ import com.moyi.app.feature.today.reveal.RevealViewModel
 import com.moyi.app.feature.today.streak.StreakViewModel
 import com.moyi.app.feature.today.today.TodayViewModel
 import com.moyi.app.feature.today.write.WriteViewModel
+import com.moyi.app.feature.today.write.randomIdempotencyKey
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -27,7 +29,9 @@ val todayFeatureModule = module {
     single { RevealLedger { (get<AuthRepository>().session.value as? SessionState.SignedIn)?.user?.id } }
     // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.
     viewModel { TodayViewModel(get(), get(), get(), get()) }
-    viewModel { (editing: Boolean) -> WriteViewModel(editing, get(), get()) }
+    viewModel { (editing: Boolean) ->
+        WriteViewModel(editing, get(), get(), uploader = MediaUploader(get(), newIdempotencyKey = ::randomIdempotencyKey))
+    }
     viewModel { RevealViewModel(get()) }
     // The Archive: one feed shared by the list and the day view, over the domain's ArchiveRepository and ArchiveCache.
     single { ArchiveFeed(get(), get(), get()) }

@@ -60,6 +60,9 @@ enum class EntryCardVariant {
  * @param protectFromCapture on by default for [EntryCardVariant.Partner]. Turn it off
  *   only for words no partner wrote (the promise screen's made-up samples), so that
  *   leaving a real partner card unprotected has to be written at the call site.
+ *   A partner's photo is drawn inside the same card, so the same protection covers it.
+ * @param photo the entry's photo, under the words; drawn only on Own and Partner. Not a
+ *   drawn slot yet (docs/missing-components.md §40).
  */
 @Composable
 fun EntryCard(
@@ -68,6 +71,7 @@ fun EntryCard(
     modifier: Modifier = Modifier,
     variant: EntryCardVariant = EntryCardVariant.Own,
     protectFromCapture: Boolean = variant == EntryCardVariant.Partner,
+    photo: EntryPhoto? = null,
 ) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
@@ -89,12 +93,18 @@ fun EntryCard(
             EntryCardVariant.Own, EntryCardVariant.Partner -> {
                 Spacer(Modifier.height(MoyiDimens.EntryCard.LabelGap))
                 MoyiText(text = text, role = TextRole.Entry)
+                // Under the words: text is always sufficient (NFR-103), the photo is secondary.
+                if (photo != null) {
+                    Spacer(Modifier.height(MoyiDimens.EntryCard.LabelGap))
+                    EntryPhotoView(photo)
+                }
             }
             EntryCardVariant.Tombstone -> {
                 Spacer(Modifier.height(MoyiDimens.EntryCard.LabelGap))
                 MoyiText(text = text, tone = TextTone.Muted)
             }
-            // Nothing: not the text, its length, or whether it has media.
+            // Nothing: not the text, its length, or whether it has media. A photo passed with a
+            // locked or deleted card is not drawn either.
             EntryCardVariant.Locked -> Unit
         }
     }

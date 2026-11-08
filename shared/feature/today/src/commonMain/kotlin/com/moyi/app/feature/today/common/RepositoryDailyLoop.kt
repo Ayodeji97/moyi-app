@@ -96,10 +96,16 @@ class RepositoryDailyLoop(
         }
     }
 
-    override suspend fun submit(text: String, promptId: String?, idempotencyKey: String, intendedAt: Instant): WriteResult = mutex.withLock {
+    override suspend fun submit(
+        text: String,
+        promptId: String?,
+        idempotencyKey: String,
+        intendedAt: Instant,
+        imageMediaId: String?,
+    ): WriteResult = mutex.withLock {
         val currentBond = bond ?: return@withLock WriteResult.Failed
         val day = today ?: return@withLock WriteResult.Failed
-        when (val result = entries.submitEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt)) {
+        when (val result = entries.submitEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt, imageMediaId)) {
             is Result.Success -> {
                 // Shown at once, so a refresh that fails next cannot put "Write" back under a sent entry.
                 withMine(result.data)
@@ -107,6 +113,10 @@ class RepositoryDailyLoop(
                 WriteResult.Saved
             }
             is Result.Failure -> when {
+                // A photo entry is not queued: the outbox keeps words only, and an uploaded photo
+                // left unattached is deleted by the server after a day. The composer keeps both.
+                imageMediaId != null && result.error.isConnectionFailure() -> WriteResult.Failed
+                imageMediaId != null && result.error.isPhotoNotAttachable() -> WriteResult.PhotoRefused
                 // No answer: kept on the device, sent later with the same key and body.
                 result.error.isConnectionFailure() -> {
                     val queued = QueuedEntry(currentBond.id, text, promptId, idempotencyKey, intendedAt, day.date)
@@ -335,6 +345,10 @@ class RepositoryDailyLoop(
     }
 
     private fun DataError.Network.isNotFound(): Boolean = this is DataError.Network.Api && problem.status == 404
+
+    /** `422 VALIDATION_FAILED` naming `imageMediaId` (`MEDIA_NOT_ATTACHABLE`, backend `GratitudeErrors`). */
+    private fun DataError.Network.isPhotoNotAttachable(): Boolean =
+        this is DataError.Network.Api && problem.fieldErrors.any { it.field == "imageMediaId" }
 
     private fun DataError.Network.isConflictOrGone(): Boolean =
         this is DataError.Network.Api && (problem.status == 409 || problem.status == 404)

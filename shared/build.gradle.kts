@@ -54,6 +54,9 @@ kotlin {
             api(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
+            // App() sets Coil's one ImageLoader: Ktor over the storage client, no disk cache.
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
         }
         commonTest.dependencies {
             implementation(libs.kotlinx.coroutines.test)

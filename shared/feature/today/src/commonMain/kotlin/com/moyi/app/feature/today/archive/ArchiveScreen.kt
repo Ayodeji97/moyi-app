@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,6 +50,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Chip
 import com.moyi.app.designsystem.component.ChipRow
+import com.moyi.app.designsystem.component.EntryPhoto
+import com.moyi.app.designsystem.component.EntryPhotoView
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
@@ -70,24 +72,24 @@ import com.moyi.app.feature.today.common.weekdayAndDay
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.archive_day_favourited
 import com.moyi.app.feature.today.resources.archive_empty_heading
+import com.moyi.app.feature.today.resources.archive_empty_line
 import com.moyi.app.feature.today.resources.archive_favourites_empty_heading
 import com.moyi.app.feature.today.resources.archive_favourites_empty_line
 import com.moyi.app.feature.today.resources.archive_favourites_empty_privacy
 import com.moyi.app.feature.today.resources.archive_filter_all
 import com.moyi.app.feature.today.resources.archive_filter_favourites
 import com.moyi.app.feature.today.resources.archive_filter_search
-import com.moyi.app.feature.today.resources.archive_search_helper
-import com.moyi.app.feature.today.resources.archive_search_label
-import com.moyi.app.feature.today.resources.archive_search_none_heading
-import com.moyi.app.feature.today.resources.archive_search_none_line
-import com.moyi.app.feature.today.resources.archive_empty_line
 import com.moyi.app.feature.today.resources.archive_month_jump
 import com.moyi.app.feature.today.resources.archive_month_newest
 import com.moyi.app.feature.today.resources.archive_month_picker_title
 import com.moyi.app.feature.today.resources.archive_month_row_description
-import com.moyi.app.feature.today.resources.delete_cancel
+import com.moyi.app.feature.today.resources.archive_search_helper
+import com.moyi.app.feature.today.resources.archive_search_label
+import com.moyi.app.feature.today.resources.archive_search_none_heading
+import com.moyi.app.feature.today.resources.archive_search_none_line
 import com.moyi.app.feature.today.resources.archive_streak_link
 import com.moyi.app.feature.today.resources.archive_title
+import com.moyi.app.feature.today.resources.delete_cancel
 import com.moyi.app.feature.today.resources.today_action_failed
 import com.moyi.app.feature.today.resources.today_author_partner
 import com.moyi.app.feature.today.resources.today_author_you
@@ -501,6 +503,10 @@ private fun MonthHeading(month: LocalDate) {
  *
  * TODO(#17): R3. The partner's words here are not protected from screen capture on this
  *  branch; when #17 merges, give this card the protection EntryCard Partner gets there.
+ *  The partner's **photo** is protected (EntryPhotoView's protectFromCapture).
+ *
+ * A photo is drawn under its excerpt, as on the EntryCard (interim, not drawn:
+ * docs/missing-components.md §40).
  */
 @Composable
 private fun DayCard(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) {
@@ -532,12 +538,12 @@ private fun DayCard(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit)
         }
         day.partnerEntry?.let { words ->
             Spacer(Modifier.height(MoyiTheme.spacing.md))
-            CardEntry(stringResource(Res.string.today_author_partner, partnerName), words)
+            CardEntry(stringResource(Res.string.today_author_partner, partnerName), words, day.partnerPhoto, partner = true)
         }
         when {
             day.myEntry != null -> {
                 Spacer(Modifier.height(MoyiTheme.spacing.md))
-                CardEntry(stringResource(Res.string.today_author_you), day.myEntry)
+                CardEntry(stringResource(Res.string.today_author_you), day.myEntry, day.myPhoto)
             }
             day.myTombstone -> {
                 Spacer(Modifier.height(MoyiTheme.spacing.md))
@@ -550,10 +556,14 @@ private fun DayCard(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit)
 }
 
 @Composable
-private fun CardEntry(author: String, words: String) {
+private fun CardEntry(author: String, words: String, photo: EntryPhoto?, partner: Boolean = false) {
     MoyiText(text = author, role = TextRole.Label)
     Spacer(Modifier.height(MoyiTheme.spacing.xs))
     MoyiText(text = words, role = TextRole.Title, maxLines = 2, ellipsis = true)
+    if (photo != null) {
+        Spacer(Modifier.height(MoyiTheme.spacing.sm))
+        EntryPhotoView(photo, protectFromCapture = partner)
+    }
 }
 
 /** states.md §6: "the 56 pt month-jump row" (Figma's frame 257:9 is 80; see archive-check.md). */

@@ -126,7 +126,7 @@ class FakeEntries : TodayRepository {
     val deletes = mutableListOf<String>()
 
     override suspend fun today(bondId: String): Result<Today, DataError.Network> = error("not the Archive's")
-    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: kotlin.time.Instant?) = error("not the Archive's")
+    override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: kotlin.time.Instant?, imageMediaId: String?) = error("not the Archive's")
     override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String) = error("not the Archive's")
 
     override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> {

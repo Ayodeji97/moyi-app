@@ -158,6 +158,22 @@
     <string name="write_discard_keep">Keep writing</string>
     <!-- Approved (2026-11-08, strings-proposed.md §13). The dialog's third answer: close Write and keep the words as the draft, restored the next time Write opens. -->
     <string name="write_discard_keep_draft">Keep as a draft</string>
+    <!-- PROPOSED (photos). PrimaryAction State=Sending while the photo uploads and is processed, before the words are sent (states.md §4: the control says what it is doing, no spinner). -->
+    <string name="write_sending_photo">Sending your photo</string>
+    <!-- PROPOSED (photos). Save failed with a photo attached (384:229's line, which names the words only). -->
+    <string name="write_save_failed_photo">That didn't save. Your words and your photo are still here.</string>
+    <!-- PROPOSED (photos). The server will not take this photo (its processing failed, or moderation held it before it was attached). Names the next action (owner: copy names the next action). -->
+    <string name="write_photo_refused">This photo can't be sent. Remove it to send your words.</string>
+    <!-- PROPOSED (photos). The picked photo could not be read or prepared on the phone. -->
+    <string name="write_photo_unreadable">That photo couldn't be opened. Try another one.</string>
+    <!-- PROPOSED (photos). The platform dialog that opens from "Add a photo" when the phone has a camera (no frame draws a chooser). -->
+    <string name="write_photo_source_title">Add a photo</string>
+    <!-- PROPOSED (photos). The chooser's answer that opens the system photo picker. -->
+    <string name="write_photo_source_library">Choose a photo</string>
+    <!-- PROPOSED (photos). The chooser's answer that opens the camera. -->
+    <string name="write_photo_source_camera">Take a photo</string>
+    <!-- PROPOSED (photos). The chooser's way out. -->
+    <string name="write_photo_source_cancel">Cancel</string>
 
     <!-- ===== Delete after reveal: the platform's confirm dialog (D11; Figma 420:64 drew a full screen) ===== -->
 
