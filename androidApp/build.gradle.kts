@@ -12,6 +12,8 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    // PushKind and PushPayload: the channel ids and the keys a tapped push carries.
+    implementation(project(":shared:domain"))
 
     implementation(libs.androidx.activity.compose)
     // androidContext() for initKoin in MoyiApplication.
@@ -19,6 +21,9 @@ dependencies {
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.testJunit)
 }
 
 android {

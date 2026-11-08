@@ -28,12 +28,23 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Moyi">
+        <!-- The channel FCM shows a push in when the push names none: every push until the
+             server sends android.notification.channel_id (backend issue #134). The reveal's
+             channel (NotificationChannels.DEFAULT_CHANNEL_ID; NotificationChannelsTest
+             checks the two agree). Read by the Firebase SDK, which a later PR adds. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="reveal" />
         <!-- adjustResize: the window keeps its size and Compose reads the keyboard as an
              inset (MoyiScaffold's safeDrawing), so the action rides on the keyboard.
              Without it Android may pan the whole window up when a field takes focus,
-             pushing the header off the top (found on the composer, PR #8). -->
+             pushing the header off the top (found on the composer, PR #8).
+             singleTop: a tapped push opens the app with FLAG_ACTIVITY_CLEAR_TOP; standard
+             would destroy and recreate the running activity, singleTop hands the tap to
+             onNewIntent and keeps the screen and its state (MainActivity). -->
         <activity
             android:exported="true"
+            android:launchMode="singleTop"
             android:name=".MainActivity"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

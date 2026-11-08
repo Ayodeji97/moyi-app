@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What a push shows, and the channels it is shown in.
+
+  push_*_title / push_*_body: FCM shows a notification message's title and body by looking
+  up the resource NAMED by the push's android.notification.title_loc_key and body_loc_key,
+  in this app's own resources (FcmPushSender.locKeys in moyi-backend: push_<category in
+  lower case>_title and _body). Nothing in the code refers to them, hence UnusedResources.
+  The server sends no text and no name, so nothing anybody wrote can reach a lock screen
+  (FR-084, T-14). The same words are iosApp/iosApp/en.lproj/Localizable.strings.
+
+  channel_*: the name and description Android shows in the app's notification settings,
+  one channel per push category (NotificationChannels.kt).
+
+  All PROPOSED copy (copy.md "Notification copy"), awaiting the owner's ruling.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <!-- The daily reminder: an invitation, never pressure (copy.md). -->
+    <string name="push_reminder_title">A moment for today?</string>
+    <string name="push_reminder_body">Write one thing you are grateful for, when it suits you.</string>
+
+    <!-- The person you invited joined the bond. -->
+    <string name="push_partner_joined_title">Your invite is accepted</string>
+    <string name="push_partner_joined_body">You are both here now. You can each write from today.</string>
+
+    <!-- The day's entries opened (copy.md: "Your day is open."). -->
+    <string name="push_reveal_title">Your day is open.</string>
+    <string name="push_reveal_body">Both entries are there to read.</string>
+
+    <!-- A day closed with one entry, opened to the other member: an opening, never a miss (FR-076). -->
+    <string name="push_solo_unlock_title">Your day is open.</string>
+    <string name="push_solo_unlock_body">One entry is there to read.</string>
+
+    <!-- 7, 30, 100 or 365 days written together: restrained (copy.md). -->
+    <string name="push_milestone_title">A milestone together</string>
+    <string name="push_milestone_body">See it in your streak.</string>
+
+    <!-- An earlier year's day on this date: gentle (copy.md). -->
+    <string name="push_on_this_day_title">On this day</string>
+    <string name="push_on_this_day_body">A day from an earlier year is there to read again.</string>
+
+    <!-- A change the other member proposed, waiting on this one. -->
+    <string name="push_proposal_opened_title">A change to agree to</string>
+    <string name="push_proposal_opened_body">Open Bond settings to see it and answer.</string>
+
+    <!-- Channels: the names follow the toggles in Bond settings > Notifications. -->
+    <string name="channel_reminder_name">Daily reminder</string>
+    <string name="channel_reminder_description">The reminder to write, at the time you chose.</string>
+    <string name="channel_partner_joined_name">Your invite is accepted</string>
+    <string name="channel_partner_joined_description">When the person you invited joins your bond.</string>
+    <string name="channel_reveal_name">Your day opens</string>
+    <string name="channel_reveal_description">When both entries for the day can be read.</string>
+    <string name="channel_solo_unlock_name">A day opens with one entry</string>
+    <string name="channel_solo_unlock_description">When a day closes with one entry and it can be read.</string>
+    <string name="channel_milestone_name">Milestones</string>
+    <string name="channel_milestone_description">7, 30, 100 and 365 days written together.</string>
+    <string name="channel_on_this_day_name">On this day</string>
+    <string name="channel_on_this_day_description">A day from an earlier year, at most once a week.</string>
+    <string name="channel_proposal_opened_name">Changes to agree to</string>
+    <string name="channel_proposal_opened_description">A change proposed to your bond, waiting for your answer.</string>
+</resources>
