@@ -9,7 +9,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.moyi.app.designsystem.platform.taskEnterTransition
 import com.moyi.app.designsystem.platform.taskExitTransition
+import com.moyi.app.feature.today.archive.ArchiveDayRoot
+import com.moyi.app.feature.today.archive.ArchiveRoot
 import com.moyi.app.feature.today.reveal.RevealRoot
+import com.moyi.app.feature.today.streak.StreakRoot
 import com.moyi.app.feature.today.today.TodayRoot
 import com.moyi.app.feature.today.write.WriteRoot
 import kotlinx.serialization.Serializable
@@ -26,6 +29,18 @@ data class WriteRoute(val editing: Boolean = false)
 @Serializable
 data object RevealRoute
 
+/** The Archive, from Today's calendar target. Back returns to Today. */
+@Serializable
+data object ArchiveRoute
+
+/** One day of the Archive, [date] in ISO form (`2026-09-14`), from a day card. Back returns to the list. */
+@Serializable
+data class ArchiveDayRoute(val date: String)
+
+/** The Streak screen, from the Archive's "Your streak". Back returns to the Archive. */
+@Serializable
+data object StreakRoute
+
 /**
  * The daily loop. Back stack, from Today:
  *
@@ -38,7 +53,11 @@ data object RevealRoute
  *   the reveal replaced Today, so Back closed the app mid-moment. The iOS edge
  *   swipe does nothing: the reveal has no arrow, and settles on its own.
  * - Deleting a revealed entry confirms in a dialog over Today (D11): no destination.
- * - Settings and Archive leave the feature through callbacks; the shell decides where.
+ * - Today → Archive (push), from the calendar target → a day (push), from a card. Back
+ *   (the arrow, Android Back, the iOS edge swipe) goes one step down each time. The
+ *   empty Archive's Write opens the composer over it; Write closing lands on Today.
+ * - Archive → Streak (push), from "Your streak". Back returns to the Archive.
+ * - Settings leaves the feature through a callback; the shell decides where.
  *
  * Every transition is instant (the NavHost sets none), with one exception: on iOS,
  * Write slides up and down as a sheet (owner approval, 2026-10-29), and not under
@@ -69,6 +88,7 @@ fun NavGraphBuilder.todayGraph(
             onNavigateToWrite = { editing -> navController.navigate(WriteRoute(editing)) },
             onNavigateToReveal = { navController.openReveal() },
             onNavigateToSettings = onOpenSettings,
+            onNavigateToArchive = { navController.navigate(ArchiveRoute) { launchSingleTop = true } },
             onNoOpenBond = onNoOpenBond,
             debugTools = debugTools,
         )
@@ -84,6 +104,24 @@ fun NavGraphBuilder.todayGraph(
             editing = route.editing,
             onClose = { navController.backToToday() },
             debugTools = debugTools,
+        )
+    }
+    composable<ArchiveRoute> {
+        ArchiveRoot(
+            onBack = { navController.backToToday() },
+            onOpenDay = { date -> navController.navigate(ArchiveDayRoute(date.toString())) { launchSingleTop = true } },
+            onWrite = { navController.navigate(WriteRoute()) },
+            onOpenStreak = { navController.navigate(StreakRoute) { launchSingleTop = true } },
+            debugTools = debugTools,
+        )
+    }
+    composable<StreakRoute> {
+        StreakRoot(onBack = { navController.popBackStack() }, debugTools = debugTools)
+    }
+    composable<ArchiveDayRoute> { entry ->
+        ArchiveDayRoot(
+            date = entry.toRoute<ArchiveDayRoute>().date,
+            onBack = { navController.popBackStack() },
         )
     }
     composable<RevealRoute> {

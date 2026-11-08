@@ -38,7 +38,9 @@ enum class TextTone { Ink, Muted, Danger }
  *   readers spell short all-caps words letter by letter.
  * - The default tone is `Muted` for labels and `Ink` for everything else.
  * - No `maxLines` by default: at 200 % font scale text wraps, it never
- *   truncates (NFR-102).
+ *   truncates (NFR-102). The one place that cuts text is the Archive list
+ *   (states.md §6: two lines with an ellipsis, the day view shows it all);
+ *   it passes [maxLines] with [ellipsis].
  */
 @Composable
 fun MoyiText(
@@ -48,6 +50,8 @@ fun MoyiText(
     tone: TextTone = if (role == TextRole.Label) TextTone.Muted else TextTone.Ink,
     textAlign: TextAlign? = null,
     maxLines: Int = Int.MAX_VALUE,
+    /** End a cut line with an ellipsis instead of clipping it. Ignored for labels. */
+    ellipsis: Boolean = false,
 ) {
     val style = MoyiTheme.type.styleFor(role)
     val color = MoyiTheme.colors.colorFor(tone)
@@ -69,6 +73,7 @@ fun MoyiText(
             color = color,
             textAlign = textAlign,
             maxLines = maxLines,
+            overflow = if (ellipsis) TextOverflow.Ellipsis else TextOverflow.Clip,
         )
     }
 }

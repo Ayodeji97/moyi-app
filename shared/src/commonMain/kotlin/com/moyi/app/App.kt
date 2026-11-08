@@ -50,7 +50,8 @@ import org.koin.compose.viewmodel.koinViewModel
  *   A sign-out or an ended session still lands on sign in (below).
  * - **UI preview** (debug builds only), chosen before the session is known:
  *   `-PmoyiUiPreview=onboarding` opens a preview index (see `UiPreviewIndex`);
- *   `-PmoyiUiPreview=today` opens Today on a preview day (PreviewDailyLoop), no backend.
+ *   `-PmoyiUiPreview=today` opens Today on a preview day (PreviewDailyLoop), no backend;
+ *   its calendar target opens the Archive on thirty preview days (PreviewArchive.kt).
  *
  * The start destination is chosen once, when the state first leaves Unknown.
  * Later changes are navigation: a sign-in navigates from the screen, and a
