@@ -5,9 +5,11 @@ import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
+import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.joinPage
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
@@ -49,7 +51,11 @@ class FakeArchiveRepository : ArchiveRepository {
     var markGate: CompletableDeferred<Unit>? = null
     val marks = mutableListOf<Pair<String, Boolean>>()
     var failNext = false
-    var dayAnswer: Result<ArchiveDay, DataError.Network> = Result.Failure(NOT_FOUND)
+
+    /** Holds the answer to every `days` call until completed: the cached days show meanwhile. */
+    var daysGate: CompletableDeferred<Unit>? = null
+    /** The answer to `day`; when null, the day as any of the pages here list it, else 404. */
+    var dayAnswer: Result<ArchiveDay, DataError.Network>? = null
     val cursors = mutableListOf<String?>()
     val dayCalls = mutableListOf<String>()
 
@@ -57,6 +63,7 @@ class FakeArchiveRepository : ArchiveRepository {
         cursors += cursor
         requests += cursor to favourites
         untils += until
+        daysGate?.await()
         if (failNext) {
             failNext = false
             return Result.Failure(DataError.Network.NoInternet)
@@ -101,7 +108,9 @@ class FakeArchiveRepository : ArchiveRepository {
 
     override suspend fun day(bondId: String, date: String): Result<ArchiveDay, DataError.Network> {
         dayCalls += date
-        return dayAnswer
+        dayAnswer?.let { return it }
+        val listed = (pages.values + favouritePages.values + untilPages.values + searchPages.values).flatMap { it.days }
+        return listed.firstOrNull { it.date == date }?.let { Result.Success(it) } ?: Result.Failure(NOT_FOUND)
     }
 }
 
@@ -123,3 +132,47 @@ class FakeEntries : TodayRepository {
 }
 
 val NOT_FOUND = DataError.Network.Api(ApiProblem(404, ApiErrorCode.NOT_FOUND))
+
+/**
+ * An in-memory [ArchiveCache] for the ViewModel tests, one bond's run, joining pages by
+ * the domain's own rule ([joinPage]); the SQL one is tested against SQLite in the data layer.
+ */
+class FakeArchiveCache : ArchiveCache {
+    var run: ArchivePage? = null
+    val putPages = mutableListOf<Pair<ArchivePage, String?>>()
+    val updates = mutableListOf<ArchiveDay>()
+    val marks = mutableListOf<Triple<String, String, Boolean>>()
+    val removed = mutableListOf<String>()
+
+    override suspend fun read(bondId: String): ArchivePage? = run?.takeIf { it.days.isNotEmpty() }
+
+    override suspend fun day(bondId: String, date: String): ArchiveDay? = run?.days?.firstOrNull { it.date == date }
+
+    override suspend fun putPage(bondId: String, page: ArchivePage, after: String?) {
+        putPages += page to after
+        val current = run
+        val joined = joinPage(current?.days.orEmpty(), page, after) ?: if (after == null) page.days else return
+        val keptOlder = current != null && joined.lastOrNull()?.let { last -> page.days.none { it.date == last.date } } == true
+        run = ArchivePage(joined, if (keptOlder) current?.nextCursor else page.nextCursor)
+    }
+
+    override suspend fun update(bondId: String, days: List<ArchiveDay>) {
+        updates += days
+        val current = run ?: return
+        run = current.copy(days = current.days.map { old -> days.firstOrNull { it.date == old.date } ?: old })
+    }
+
+    override suspend fun setMark(bondId: String, date: String, entryId: String, marked: Boolean) {
+        marks += Triple(date, entryId, marked)
+        val current = run ?: return
+        run = current.copy(
+            days = current.days.map { if (it.date == date) it.copy(markedByMe = if (marked) it.markedByMe + entryId else it.markedByMe - entryId) else it },
+        )
+    }
+
+    override suspend fun remove(bondId: String, date: String) {
+        removed += date
+        val current = run ?: return
+        run = current.copy(days = current.days.filterNot { it.date == date })
+    }
+}

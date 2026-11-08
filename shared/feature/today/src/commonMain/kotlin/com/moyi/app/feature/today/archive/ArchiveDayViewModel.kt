@@ -21,17 +21,22 @@ import kotlinx.coroutines.launch
 /**
  * One day of the Archive, [date] in ISO form.
  *
- * - **Loading**: the day the list already loaded shows at once; otherwise
- *   `GET …/days/{date}`, with the bare surface until it answers, and the Generic
- *   error with Try again if it does not (a `404 DAY_NOT_FOUND` included).
+ * - **Loading, cache-then-network**: the day the list already loaded shows at once, or
+ *   else the cached day ([ArchiveFeed.cached]); then `GET …/days/{date}` is always asked,
+ *   and its answer replaces what is shown and what is cached (the server wins). With
+ *   nothing to show, the bare surface until it answers, and the Generic error with Try
+ *   again if it does not. Offline over a shown day, nothing changes and nothing is said.
+ *   A `404 DAY_NOT_FOUND` means the day is not in the archive any more: it leaves the
+ *   list and the cache, and the day view shows the Generic error.
  * - **Delete after reveal**, exactly as on Today (states.md §5, D11): the platform's
  *   confirm, then the call, **not optimistic**: the tombstone shows only after the 204,
- *   in the day view and in the list. A failure keeps the entry and says so; a 404 (already
+ *   in the day view, in the list and in the cache. A failure keeps the entry and says so; a 404 (already
  *   gone) reads the day again and says nothing. If the day is the one Today shows, Today
  *   is refreshed, so it shows the tombstone too.
  * - **Favourites** (states.md §6): a FavouriteToggle under each revealed entry, mine and
  *   theirs, **absent** before the reveal. **Optimistic**: the mark changes at once, here
- *   and in the list (the shared feed); a failure puts it back and shows the Generic
+ *   and in the list (the shared feed); the cache only once the server confirms it. A
+ *   refresh answering while a mark is on its way keeps that mark as tapped. A failure puts it back and shows the Generic
  *   failure line under that toggle. A tap while that entry's call is in flight is
  *   ignored, so one tap is one call and the calls for an entry can never cross.
  */
@@ -56,7 +61,11 @@ class ArchiveDayViewModel(
 
     init {
         val loaded = feed.find(date)
-        if (loaded == null || !show(loaded)) viewModelScope.launch { load() }
+        val shown = loaded != null && show(loaded)
+        viewModelScope.launch {
+            if (!shown) feed.cached(date)?.let { show(it) }
+            load()
+        }
     }
 
     fun onAction(action: ArchiveDayAction) {
@@ -72,11 +81,35 @@ class ArchiveDayViewModel(
         }
     }
 
+    /** Asks for the day; a day already shown stays shown until the answer replaces it. */
     private suspend fun load() {
-        _state.update { it.copy(load = ArchiveLoad.Loading) }
+        val showing = _state.value.load == ArchiveLoad.Ready
+        if (!showing) _state.update { it.copy(load = ArchiveLoad.Loading) }
         val bondId = feed.state.value.bondId ?: (loop.state.value as? DailyLoopState.Ready)?.day?.bondId
         val answer = bondId?.let { archive.day(it, date) }
-        if (answer !is Result.Success || !show(answer.data)) _state.update { it.copy(load = ArchiveLoad.Failed) }
+        when {
+            answer is Result.Success -> {
+                // A delete on its way decides the day itself, from its own answer.
+                if (_state.value.deleting) return
+                val fresh = answer.data
+                feed.keep(fresh)
+                val shownAs = fresh.withMarksInFlight()
+                if (show(shownAs)) feed.replace(shownAs) else _state.update { it.copy(load = ArchiveLoad.Failed) }
+            }
+            answer is Result.Failure && answer.error.isNotFound() -> {
+                day = null
+                feed.forget(date)
+                _state.update { it.copy(load = ArchiveLoad.Failed, day = null) }
+            }
+            !showing -> _state.update { it.copy(load = ArchiveLoad.Failed) }
+        }
+    }
+
+    /** [this], with my marks on the entries whose call is still on its way as I tapped them. */
+    private fun ArchiveDay.withMarksInFlight(): ArchiveDay {
+        val shown = day ?: return this
+        if (marking.isEmpty()) return this
+        return copy(markedByMe = (markedByMe - marking) + (shown.markedByMe intersect marking))
     }
 
     /** False when the day has nothing to draw: the caller shows the error rather than a blank day. */
@@ -111,6 +144,7 @@ class ArchiveDayViewModel(
                     )
                     show(tombstoned)
                     feed.replace(tombstoned)
+                    feed.keep(tombstoned)
                     _state.update { it.copy(deleting = false) }
                     refreshTodayIfShowing()
                 }
@@ -138,9 +172,12 @@ class ArchiveDayViewModel(
         viewModelScope.launch {
             val result = archive.setFavourite(entryId, favourite = !marked)
             marking -= entryId
-            if (result is Result.Failure) {
-                setMark(entryId, marked)
-                _state.update { it.copy(markFailed = target) }
+            when (result) {
+                is Result.Success -> feed.keepMark(date, entryId, !marked)
+                is Result.Failure -> {
+                    setMark(entryId, marked)
+                    _state.update { it.copy(markFailed = target) }
+                }
             }
         }
     }

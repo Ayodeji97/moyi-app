@@ -3,6 +3,7 @@ package com.moyi.app.data.repository
 import com.moyi.app.data.database.LocalDatabase
 import com.moyi.app.data.session.PersonalData
 import com.moyi.app.data.session.SessionManager
+import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
@@ -30,6 +31,7 @@ val repositoryModule = module {
     single<StreakRepository> { StreakRepositoryImpl(get(), get()) }
     // Today's cache-then-network (doc 13 §5), keyed by the signed-in person.
     single<TodayCache> { SqlTodayCache(get(), get<SessionManager>().sessionState) }
+    single<ArchiveCache> { SqlArchiveCache(get(), get<SessionManager>().sessionState) }
     // The composer's drafts (doc 13 §5: local first, always), keyed by the signed-in person.
     single<DraftStore> { SqlDraftStore(get(), get<SessionManager>().sessionState) }
     // New entries sent while offline, and the one sender that retries them (doc 13 §5). The

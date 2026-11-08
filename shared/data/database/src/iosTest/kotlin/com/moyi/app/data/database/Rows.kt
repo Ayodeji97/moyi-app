@@ -43,4 +43,20 @@ internal object Rows {
         day_date = "2026-09-14",
         refused = null,
     )
+
+    val archived = Archive_day(
+        user_id = "ada",
+        bond_id = "bond-1",
+        day_date = "2026-09-13",
+        day_status = "REVEALED",
+        my_entry_id = "e3",
+        my_entry_text = SECRET,
+        my_entry_status = "REVEALED",
+        my_entry_marked = 1L,
+        partner_entry_shape = "REVEALED",
+        partner_entry_id = "e4",
+        partner_entry_text = "You waited up.",
+        partner_entry_marked = 0L,
+        page_cursor = "cursor-1",
+    )
 }
