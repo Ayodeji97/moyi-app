@@ -401,11 +401,22 @@ private fun Refusal(state: TodayState, onAction: (TodayAction) -> Unit) {
                 OutboxRefusal.NotAccepted -> Res.string.today_queued_refused
             },
         ),
-        actions = listOf(
-            NoteAction(stringResource(Res.string.today_queued_refused_open_write), { onAction(TodayAction.OnWriteClick) }, outlined = true),
-        ),
+        actions = if (offersOpenWrite(refusal, state.status)) {
+            listOf(NoteAction(stringResource(Res.string.today_queued_refused_open_write), { onAction(TodayAction.OnWriteClick) }, outlined = true))
+        } else {
+            emptyList()
+        },
     )
 }
+
+/**
+ * Whether a refusal offers "Open Write". Never for [OutboxRefusal.AlreadyWritten]: that day
+ * has its entry, so Send could only fail again with 409, and the line itself says the words
+ * wait "for your next entry". Never where Today already draws Write ([TodayStatus.NotWritten]):
+ * that button opens the same kept words, and a second one beside it is noise.
+ */
+internal fun offersOpenWrite(refusal: OutboxRefusal, status: TodayStatus): Boolean =
+    refusal == OutboxRefusal.NotAccepted && status != TodayStatus.NotWritten
 
 @Composable
 internal fun OwnCard(state: TodayState) {
