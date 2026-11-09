@@ -6,6 +6,7 @@ import com.moyi.app.api.models.UploadIntentRequest
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
+import com.moyi.app.core.map
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.StorageHttpClient
@@ -50,11 +51,11 @@ class MediaRepositoryImpl(
             kind = media.kind.wireName,
             sizeBytes = media.bytes.size.toLong(),
         )
-        return safeApiCall { api.createMediaUploadIntent(request) }.mapOrSerialization { response ->
+        return safeApiCall { api.createMediaUploadIntent(request) }.map { response ->
             UploadTicket(
-                mediaId = response.mediaId ?: return@mapOrSerialization null,
-                uploadUrl = response.uploadUrl ?: return@mapOrSerialization null,
-                requiredHeaders = response.requiredHeaders.orEmpty(),
+                mediaId = response.mediaId,
+                uploadUrl = response.uploadUrl,
+                requiredHeaders = response.requiredHeaders,
             )
         }
     }
@@ -72,10 +73,10 @@ class MediaRepositoryImpl(
     }
 
     override suspend fun complete(mediaId: String, idempotencyKey: String): Result<MediaStatus, DataError.Network> =
-        safeApiCall { api.completeMediaUpload(mediaId, idempotencyKey) }.mapOrSerialization { it.status?.toDomain() }
+        safeApiCall { api.completeMediaUpload(mediaId, idempotencyKey) }.map { it.status.toDomain() }
 
     override suspend fun status(mediaId: String): Result<MediaStatus, DataError.Network> =
-        safeApiCall { api.getMedia(mediaId) }.mapOrSerialization { it.status?.toDomain() }
+        safeApiCall { api.getMedia(mediaId) }.map { it.status.toDomain() }
 
     override suspend fun delete(mediaId: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { api.deleteMedia(mediaId) }

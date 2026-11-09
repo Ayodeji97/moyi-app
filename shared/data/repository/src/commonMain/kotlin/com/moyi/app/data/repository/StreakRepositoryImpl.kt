@@ -5,6 +5,7 @@ import com.moyi.app.api.models.StreakDayResponse
 import com.moyi.app.api.models.StreakResponse
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
+import com.moyi.app.core.map
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.safeApiCall
@@ -24,33 +25,28 @@ class StreakRepositoryImpl(
     private val api = StreakControllerApi(config.origin, authedClient.client)
 
     override suspend fun streak(bondId: String): Result<Streak, DataError.Network> =
-        safeApiCall { api.streak(bondId) }.mapOrSerialization { it.toStreak() }
+        safeApiCall { api.streak(bondId) }.map { it.toStreak() }
 }
 
 /**
- * The contract declares no `required` on `StreakResponse` (docs/backend-contract-gaps.md,
- * row 15), so every field is nullable in the generated type. The numbers and the cells are
- * what the screen is about: a response missing any of them is unreadable (null, so a
- * Serialization failure), never drawn as zero. `freezeProgress`, `totalCompleteDays` and
- * `lastCompleteDate` are not drawn, so they are allowed to be absent.
+ * The contract marks `StreakResponse`'s numbers and cells required, so a response missing
+ * one fails to decode (a Serialization failure), never drawn as zero. Only
+ * `lastCompleteDate` may be absent: there is none before the first complete day.
  */
-internal fun StreakResponse.toStreak(): Streak? {
-    val cells = days?.map { it.toStreakDay() ?: return null } ?: return null
-    return Streak(
-        current = current ?: return null,
-        longest = longest ?: return null,
-        freezesAvailable = freezesAvailable ?: return null,
-        freezeProgress = freezeProgress ?: 0,
-        strictMode = strictMode ?: return null,
-        totalCompleteDays = totalCompleteDays ?: 0,
-        lastCompleteDate = lastCompleteDate?.toString(),
-        days = cells,
-    )
-}
+internal fun StreakResponse.toStreak(): Streak = Streak(
+    current = current,
+    longest = longest,
+    freezesAvailable = freezesAvailable,
+    freezeProgress = freezeProgress,
+    strictMode = strictMode,
+    totalCompleteDays = totalCompleteDays,
+    lastCompleteDate = lastCompleteDate?.toString(),
+    days = days.map { it.toStreakDay() },
+)
 
-private fun StreakDayResponse.toStreakDay(): StreakDay? = StreakDay(
-    date = (date ?: return null).toString(),
-    status = when (status ?: return null) {
+private fun StreakDayResponse.toStreakDay(): StreakDay = StreakDay(
+    date = date.toString(),
+    status = when (status) {
         StreakDayResponse.Status.COMPLETE -> StreakDayStatus.COMPLETE
         StreakDayResponse.Status.FROZEN -> StreakDayStatus.FROZEN
         StreakDayResponse.Status.SOLO -> StreakDayStatus.SOLO

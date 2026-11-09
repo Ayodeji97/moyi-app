@@ -107,34 +107,33 @@ class BondSettingsRepositoryImpl(
     }
 }
 
-/** Every field the settings screen shows is required; a reveal time that is not `HH:mm` is malformed, not absent. */
+/**
+ * The contract makes every field the settings screen shows required, so the body
+ * fails to decode without one. What is still checked here: a reveal time that is not
+ * `HH:mm` is malformed, not absent, and a response without an ETag has no version.
+ */
 internal fun BondResponse.toSettings(etag: String?): BondSettings? = BondSettings(
-    bondId = id ?: return null,
-    name = name ?: return null,
-    type = type?.let { BondType.valueOf(it.name) } ?: return null,
-    status = status?.let { BondStatus.valueOf(it.name) } ?: return null,
-    anchorTimezone = anchorTimezone ?: return null,
+    bondId = id,
+    name = name,
+    type = BondType.valueOf(type.name),
+    status = BondStatus.valueOf(status.name),
+    anchorTimezone = anchorTimezone,
     revealTime = revealTimeLocal?.let { TimeOfDay.parse(it) ?: return null },
-    strictMode = strictMode ?: return null,
+    strictMode = strictMode,
     version = etag ?: return null,
     pendingTimezone = pendingTimezoneChange?.let { pending ->
         PendingTimezoneChange(
-            id = pending.id ?: return null,
-            timezone = pending.proposedTimezone ?: return null,
-            // Without the caller's member id the app cannot tell who proposed it. It then
-            // offers only Cancel, which either member may do; never Agree, which the
-            // proposer may not (BR-6), so a wrong guess cannot be the one that agrees.
-            proposedByMe = me?.memberId == null || pending.proposedByMemberId == me?.memberId,
+            id = pending.id,
+            timezone = pending.proposedTimezone,
+            proposedByMe = pending.proposedByMemberId == me.memberId,
             expiresAt = pending.expiresAt,
         )
     },
     invite = invite?.toInvite(),
-    partnerName = partnerName(members, me?.memberId),
+    partnerName = partnerName(members, me.memberId),
     pendingDeletion = pendingDeletionRequest?.let { pending ->
         PendingDeletionRequest(
-            // As with the zone: without the caller's member id, treat it as theirs, so the
-            // screen offers only withdrawing it, never agreeing to what may be their own ask.
-            requestedByMe = me?.memberId == null || pending.requestedByMemberId == me?.memberId,
+            requestedByMe = pending.requestedByMemberId == me.memberId,
             expiresAt = pending.expiresAt,
         )
     },
@@ -142,8 +141,8 @@ internal fun BondResponse.toSettings(etag: String?): BondSettings? = BondSetting
 )
 
 private fun MemberSettingsResponse.toDomain(): MemberSettings? = MemberSettings(
-    reminderTime = reminderTimeLocal?.let(TimeOfDay::parse) ?: return null,
-    reminderTimezone = reminderTimezone ?: return null,
+    reminderTime = TimeOfDay.parse(reminderTimeLocal) ?: return null,
+    reminderTimezone = reminderTimezone,
     quietHoursStart = quietHoursStart?.let { TimeOfDay.parse(it) ?: return null },
     quietHoursEnd = quietHoursEnd?.let { TimeOfDay.parse(it) ?: return null },
     nicknameForOther = nicknameForOther,
