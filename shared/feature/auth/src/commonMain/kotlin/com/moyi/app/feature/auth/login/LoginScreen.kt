@@ -48,6 +48,7 @@ import com.moyi.app.feature.auth.resources.login_eyebrow
 import com.moyi.app.feature.auth.resources.login_forgot
 import com.moyi.app.feature.auth.resources.login_heading
 import com.moyi.app.feature.auth.resources.login_session_ended
+import com.moyi.app.feature.auth.resources.login_password_changed
 import com.moyi.app.feature.auth.resources.login_verified
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -58,6 +59,7 @@ fun LoginRoot(
     initialEmail: String,
     sessionEnded: Boolean,
     verified: Boolean = false,
+    passwordChanged: Boolean = false,
     onNavigateToHome: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: (email: String) -> Unit,
@@ -72,7 +74,7 @@ fun LoginRoot(
             is LoginEvent.NavigateToForgotPassword -> onNavigateToForgotPassword(event.email)
         }
     }
-    LoginScreen(state = state, onAction = viewModel::onAction, onBack = onBack, verified = verified)
+    LoginScreen(state = state, onAction = viewModel::onAction, onBack = onBack, verified = verified, passwordChanged = passwordChanged)
 }
 
 /**
@@ -91,6 +93,7 @@ fun LoginScreen(
     onAction: (LoginAction) -> Unit,
     onBack: (() -> Unit)? = null,
     verified: Boolean = false,
+    passwordChanged: Boolean = false,
 ) {
     val spacing = MoyiTheme.spacing
     val failed = state.submit as? SubmitStatus.Failed
@@ -131,6 +134,15 @@ fun LoginScreen(
             Spacer(Modifier.height(spacing.md))
             MoyiText(
                 stringResource(Res.string.login_verified),
+                tone = TextTone.Muted,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        } else if (passwordChanged) {
+            // Placed as the verified line. Without it, sign in after "Save and sign in" reads
+            // as if the new password was not kept.
+            Spacer(Modifier.height(spacing.md))
+            MoyiText(
+                stringResource(Res.string.login_password_changed),
                 tone = TextTone.Muted,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
