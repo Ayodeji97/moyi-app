@@ -22,6 +22,8 @@ import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.component.TrailingNavRow
+import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.feature.onboarding.resources.Res
@@ -30,12 +32,14 @@ import com.moyi.app.feature.onboarding.resources.gate_heading
 import com.moyi.app.feature.onboarding.resources.gate_line
 import com.moyi.app.feature.onboarding.resources.gate_resend
 import com.moyi.app.feature.onboarding.resources.gate_resent
+import com.moyi.app.feature.onboarding.resources.onboarding_your_account
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun UnverifiedGateRoot(
     onNavigateToOnboarding: () -> Unit,
+    onNavigateToAccount: () -> Unit,
     viewModel: UnverifiedGateViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -43,6 +47,7 @@ fun UnverifiedGateRoot(
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             UnverifiedGateEvent.NavigateToOnboarding -> onNavigateToOnboarding()
+            UnverifiedGateEvent.NavigateToAccount -> onNavigateToAccount()
         }
     }
     UnverifiedGateScreen(state = state, onAction = viewModel::onAction)
@@ -54,6 +59,11 @@ fun UnverifiedGateRoot(
  * block holds one centred secondary affordance at 772, "Send it again",
  * which becomes the muted acknowledgement once sent (the verify screen's
  * Resent sub-state, 362:95). Drawn as a plain screen, not a StateBlock.
+ *
+ * PROPOSED (docs/missing-components.md §57, owner ruling 2026-11-09): the account target,
+ * a person glyph at the top right ([TrailingNavRow], announced "Your account"), which pushes
+ * Account. An unverified person has no bond, so no Bond settings, and must still be able to
+ * export, delete their account or sign out.
  */
 @Composable
 fun UnverifiedGateScreen(
@@ -87,6 +97,13 @@ fun UnverifiedGateScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        },
+        header = {
+            TrailingNavRow(
+                icon = MoyiIcons.User,
+                contentDescription = stringResource(Res.string.onboarding_your_account),
+                onClick = { onAction(UnverifiedGateAction.OnAccountClick) },
+            )
         },
     ) {
         ScreenHeader(

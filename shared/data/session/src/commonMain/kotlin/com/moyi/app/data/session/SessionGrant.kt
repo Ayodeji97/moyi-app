@@ -45,7 +45,7 @@ fun UserResponse.toUser(): User? = User(
 
 /**
  * `GET /me` answers with the profile: the user plus which legal versions they accepted.
- * The app reads only the user here; `legalAccepted` waits for the consent screen.
+ * The user only; `legalAccepted` is read by LegalRepositoryImpl, for the re-consent check.
  */
 fun ProfileResponse.toUser(): User = User(
     id = id,

@@ -464,7 +464,7 @@ internal fun OwnCard(state: TodayState) {
 private fun PartnerReactionLine(state: TodayState) {
     val reaction = state.partnerReaction ?: return
     Spacer(Modifier.height(MoyiTheme.spacing.sm))
-    PartnerReaction(reaction = reaction, partnerName = state.partnerName.orEmpty(), modifier = Modifier.fillMaxWidth())
+    PartnerReaction(reaction = reaction, partnerName = state.partnerName.orEmpty())
 }
 
 /**

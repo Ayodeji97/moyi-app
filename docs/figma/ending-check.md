@@ -88,6 +88,11 @@ layout (one secondary at 785.5). Neither is drawn (missing-components §30).
 | line 399:30 | 156 | 155.0 | match |
 | PrimaryAction 399:32 / 614:1838 | 628 / 700 | label 785.5 | lower: both secondaries are absent (Close the box refused, export not built) |
 
+Measured before the owner rulings of 2026-11-09 (missing-components §57), not re-measured:
+the account target (a person glyph in a 48 row at the top right, not drawn in Figma) now
+moves the eyebrow, heading and line down by 64, and "Export your archive" is drawn as the
+secondary link under Start a new bond, as the frames place it.
+
 No back target. System Back on it leaves the app, as on Today.
 
 ## Walked on the emulator (preview build)

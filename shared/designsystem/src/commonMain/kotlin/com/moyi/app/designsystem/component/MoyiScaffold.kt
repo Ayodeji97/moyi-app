@@ -119,6 +119,12 @@ fun MoyiScaffold(
      */
     backLabel: String? = null,
     /**
+     * One discreet action at the end of the back row, across from the back target: the
+     * Archive day view's Report (Figma 617:1835, x 302, 56 wide, `26` §3.2). Only drawn
+     * with [onBack]. Pass a [TextLink]: it brings its own 48 target.
+     */
+    backAction: (@Composable () -> Unit)? = null,
+    /**
      * False when the screen lays out and scrolls its content itself, for example
      * to centre it vertically when it fits (Today, Reveal). The content then gets
      * the full remaining height with no scroll from here.
@@ -150,12 +156,15 @@ fun MoyiScaffold(
                 ),
         ) {
             if (onBack != null) {
-                if (backLabel == null) {
+                if (backLabel == null && backAction == null) {
                     BackAffordance(onBack)
                 } else {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         BackAffordance(onBack)
-                        MoyiText(text = backLabel, role = TextRole.Label)
+                        Box(Modifier.weight(1f)) {
+                            if (backLabel != null) MoyiText(text = backLabel, role = TextRole.Label)
+                        }
+                        backAction?.invoke()
                     }
                 }
                 Spacer(Modifier.height(itemSpacing))

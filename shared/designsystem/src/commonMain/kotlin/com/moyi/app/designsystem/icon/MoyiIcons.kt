@@ -131,6 +131,19 @@ object MoyiIcons {
         )
     }
 
+    /**
+     * **PROPOSED** (docs/missing-components.md §57): the account target at the top right of the
+     * screens a person with no open bond lands on (owner ruling 2026-11-09). lucide `user`: one
+     * `<path>` and `<circle cx12 cy7 r4>`, written as a path.
+     */
+    val User: ImageVector by lazy {
+        lucide(
+            "User",
+            "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2",
+            "M16 7a4 4 0 1 1-8 0a4 4 0 1 1 8 0",
+        )
+    }
+
     /** ComposeField: dismisses the prompt. `x`. */
     val Close: ImageVector by lazy { lucide("Close", "M18 6 6 18", "m6 6 12 12") }
 

@@ -100,6 +100,19 @@ class SignedInStartViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun getHelpOnTheGenericErrorOpensSupportWithoutAskingAgain() = runTest {
+        bonds.bondsResult = Result.Failure(DataError.Network.NoInternet)
+        val viewModel = SignedInStartViewModel(bonds, account, cache)
+
+        viewModel.events.test {
+            viewModel.onAction(SignedInStartAction.OnGetHelpClick)
+            assertEquals(SignedInStartEvent.NavigateToSupport, awaitItem())
+        }
+        assertEquals(SignedInStartState.Failed, viewModel.state.value)
+        assertEquals(1, bonds.bondsCalls)
+    }
+
+    @Test
     fun noBondAndAnUnreadableAccountIsAFailureNotAGuess() = runTest {
         account.result = Result.Failure(DataError.Network.Server(500))
         val viewModel = SignedInStartViewModel(bonds, account, cache)

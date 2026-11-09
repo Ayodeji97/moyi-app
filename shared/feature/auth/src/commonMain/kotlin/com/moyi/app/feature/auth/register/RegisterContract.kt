@@ -1,6 +1,7 @@
 package com.moyi.app.feature.auth.register
 
 import androidx.compose.runtime.Immutable
+import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.LegalDocument
 import com.moyi.app.feature.auth.common.RegisterField
@@ -14,6 +15,8 @@ data class RegisterState(
     val password: FieldInput = FieldInput(),
     val consent: Boolean = false,
     val submit: SubmitStatus = SubmitStatus.Idle,
+    /** A Terms or Privacy link could not be opened (`GET /meta/legal` failed): shown under the links. */
+    val legalError: UiText? = null,
 ) {
     /** Figma draws the action Disabled until consent is given (auth-placement-spec D4). */
     val canSubmit: Boolean get() = consent && submit != SubmitStatus.Sending
@@ -31,7 +34,7 @@ sealed interface RegisterAction {
     data object OnHaveAccountClick : RegisterAction
     data object OnBackClick : RegisterAction
 
-    /** Terms or Privacy Policy: opens in the in-app browser when its URL is configured. */
+    /** Terms or Privacy Policy: opens in the in-app browser, at the URL `GET /meta/legal` names. */
     data class OnLegalLinkClick(val document: LegalDocument) : RegisterAction
 }
 

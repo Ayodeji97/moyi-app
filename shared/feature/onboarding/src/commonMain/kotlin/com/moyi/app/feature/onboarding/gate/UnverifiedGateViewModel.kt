@@ -47,6 +47,7 @@ class UnverifiedGateViewModel(
         when (action) {
             UnverifiedGateAction.OnResendClick -> resend()
             UnverifiedGateAction.OnResume -> recheck()
+            UnverifiedGateAction.OnAccountClick -> viewModelScope.launch { _events.send(UnverifiedGateEvent.NavigateToAccount) }
         }
     }
 

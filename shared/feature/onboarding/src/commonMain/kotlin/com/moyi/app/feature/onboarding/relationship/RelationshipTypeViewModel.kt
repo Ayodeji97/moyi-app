@@ -30,6 +30,7 @@ class RelationshipTypeViewModel : ViewModel() {
             }
             RelationshipTypeAction.OnBackClick -> viewModelScope.launch { _events.send(RelationshipTypeEvent.NavigateBack) }
             RelationshipTypeAction.OnHaveCodeClick -> viewModelScope.launch { _events.send(RelationshipTypeEvent.NavigateToJoin) }
+            RelationshipTypeAction.OnAccountClick -> viewModelScope.launch { _events.send(RelationshipTypeEvent.NavigateToAccount) }
         }
     }
 }

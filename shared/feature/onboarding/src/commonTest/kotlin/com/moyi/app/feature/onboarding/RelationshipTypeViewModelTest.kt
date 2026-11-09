@@ -32,4 +32,13 @@ class RelationshipTypeViewModelTest : MainDispatcherTest() {
     fun theCardsAreTheThreeDrawnInOrder() {
         assertEquals(listOf(RelationshipType.Couple, RelationshipType.Friends, RelationshipType.Family), RelationshipType.entries)
     }
+
+    @Test
+    fun yourAccountOpensAccountAndSelectsNothing() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(RelationshipTypeAction.OnAccountClick)
+            assertEquals(RelationshipTypeEvent.NavigateToAccount, awaitItem())
+        }
+        assertNull(viewModel.state.value.selected)
+    }
 }

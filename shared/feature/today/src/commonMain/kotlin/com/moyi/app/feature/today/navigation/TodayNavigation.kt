@@ -65,6 +65,8 @@ data object StreakRoute
  *
  * @param onOpenSettings the settings target in Today's nav row, with the day's bond:
  *   the shell opens Bond settings.
+ * @param onReport the day view's Report: the shell opens the report flow over it (feature
+ *   bond), about the partner's entry when one is given, or the member.
  * @param onNoOpenBond the person is in no open bond any more (left or ended on the
  *   other phone). The shell sends them back to the signed-in start, which decides.
  * @param debugTools long-press switches that step the preview day. The shell passes
@@ -73,6 +75,7 @@ data object StreakRoute
 fun NavGraphBuilder.todayGraph(
     navController: NavController,
     onOpenSettings: (bondId: String) -> Unit,
+    onReport: (bondId: String, entryId: String?, partnerName: String?) -> Unit,
     onNoOpenBond: () -> Unit,
     debugTools: Boolean,
 ) {
@@ -121,6 +124,7 @@ fun NavGraphBuilder.todayGraph(
         ArchiveDayRoot(
             date = entry.toRoute<ArchiveDayRoute>().date,
             onBack = { navController.popBackStack() },
+            onReport = onReport,
         )
     }
     composable<RevealRoute> {

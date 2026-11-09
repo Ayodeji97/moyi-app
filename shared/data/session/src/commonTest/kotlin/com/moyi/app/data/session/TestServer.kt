@@ -4,6 +4,7 @@ package com.moyi.app.data.session
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.StaticConfig
+import com.moyi.app.api.apis.DeletionRequestControllerApi
 import com.moyi.app.api.apis.MeControllerApi
 import com.moyi.app.api.apis.RefreshControllerApi
 import com.moyi.app.data.network.HttpClientFactory
@@ -69,8 +70,10 @@ class TestServer(
     )
     val authedClient = HttpClientFactory.createAuthedClient(engine, sessionManager)
     val me = MeControllerApi(ORIGIN, authedClient)
+    val deletion = DeletionRequestControllerApi(ORIGIN, authedClient)
 }
 
 val HttpRequestData.bearer: String? get() = headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")
 val HttpRequestData.isRefresh: Boolean get() = url.encodedPath == "/api/v1/auth/refresh"
 val HttpRequestData.isMe: Boolean get() = url.encodedPath == "/api/v1/me"
+val HttpRequestData.isDeletionRequest: Boolean get() = url.encodedPath == "/api/v1/me/deletion-request"

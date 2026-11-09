@@ -8,11 +8,17 @@ import androidx.compose.ui.Modifier
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiText
+import com.moyi.app.designsystem.component.ReactionBadge
 import com.moyi.app.designsystem.component.ReactionChoices
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.reaction_chosen
+import com.moyi.app.feature.today.resources.reaction_emoji_heart
+import com.moyi.app.feature.today.resources.reaction_emoji_me_too
+import com.moyi.app.feature.today.resources.reaction_emoji_moved
+import com.moyi.app.feature.today.resources.reaction_emoji_smile
+import com.moyi.app.feature.today.resources.reaction_emoji_thank_you
 import com.moyi.app.feature.today.resources.reaction_from_partner_heart
 import com.moyi.app.feature.today.resources.reaction_from_partner_me_too
 import com.moyi.app.feature.today.resources.reaction_from_partner_moved
@@ -57,6 +63,7 @@ internal fun ReactionControl(
         )
         ReactionChoices(
             labels = all.map { stringResource(it.word) },
+            emoji = all.map { stringResource(it.emoji) },
             selected = mine?.let { all.indexOf(it) },
             onChoose = { onChoose(all[it]) },
             takeBackLabel = stringResource(Res.string.reaction_take_back),
@@ -65,11 +72,15 @@ internal fun ReactionControl(
     }
 }
 
-/** Under my live entry: the reaction the partner left on it, as one plain sentence. Nothing when none. */
+/**
+ * Under my live entry: the reaction the partner left on it, as the interim [ReactionBadge]
+ * (owner ruling 6, 2026-11-09): its emoji and one sentence, spoken as the sentence only.
+ * Nothing when none. Not a live region: it never announces itself.
+ */
 @Composable
 internal fun PartnerReaction(reaction: Reaction?, partnerName: String, modifier: Modifier = Modifier) {
     if (reaction == null) return
-    MoyiText(text = stringResource(reaction.fromPartner, partnerName), tone = TextTone.Muted, modifier = modifier)
+    ReactionBadge(emoji = stringResource(reaction.emoji), text = stringResource(reaction.fromPartner, partnerName), modifier = modifier)
 }
 
 private val Reaction.word: StringResource
@@ -79,6 +90,16 @@ private val Reaction.word: StringResource
         Reaction.SMILE -> Res.string.reaction_smile
         Reaction.MOVED -> Res.string.reaction_moved
         Reaction.ME_TOO -> Res.string.reaction_me_too
+    }
+
+/** Drawn before the word or sentence, never spoken (owner ruling 1, 2026-11-09). */
+private val Reaction.emoji: StringResource
+    get() = when (this) {
+        Reaction.HEART -> Res.string.reaction_emoji_heart
+        Reaction.THANK_YOU -> Res.string.reaction_emoji_thank_you
+        Reaction.SMILE -> Res.string.reaction_emoji_smile
+        Reaction.MOVED -> Res.string.reaction_emoji_moved
+        Reaction.ME_TOO -> Res.string.reaction_emoji_me_too
     }
 
 private val Reaction.fromPartner: StringResource

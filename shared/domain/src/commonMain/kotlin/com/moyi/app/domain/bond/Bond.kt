@@ -44,7 +44,23 @@ data class Bond(
 enum class BondType { COUPLE, FRIENDS, FAMILY, PARENT_CHILD }
 
 /** `Bond.status` (doc 04). */
-enum class BondStatus { PENDING_MEMBER, ACTIVE, ARCHIVED, PENDING_DELETION, DELETED }
+enum class BondStatus {
+    PENDING_MEMBER,
+    ACTIVE,
+    ARCHIVED,
+    PENDING_DELETION,
+    DELETED,
+    ;
+
+    /**
+     * The bond takes its members' writes: it is waiting for a member or active. The server's
+     * own rule (`BondMembership.takesWrites`): every other status answers a write, a reaction
+     * included, with `409 BOND_ARCHIVED`. Narrower than [Bond.isOpen], which also counts the
+     * deletion cooling-off, when the bond is still shown but takes nothing new.
+     */
+    val takesWrites: Boolean
+        get() = this == PENDING_MEMBER || this == ACTIVE
+}
 
 /**
  * A live invite: the six-character [code] and the [link] that carries it (FR-022).
