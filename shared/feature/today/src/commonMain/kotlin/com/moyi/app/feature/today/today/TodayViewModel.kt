@@ -88,12 +88,15 @@ class TodayViewModel(
                 ui.update { it.copy(failed = false) }
                 send(TodayEvent.NavigateToWrite(editing = true))
             }
-            TodayAction.OnDeleteBeforeRevealClick -> deleteBeforeReveal()
-            TodayAction.OnDeleteAfterRevealClick -> {
-                if (!ui.value.deleting) ui.update { it.copy(confirming = true, failed = false) }
+            TodayAction.OnDeleteBeforeRevealClick -> ask(DeleteQuestion.BeforeReveal)
+            TodayAction.OnDeleteAfterRevealClick -> ask(DeleteQuestion.AfterReveal)
+            TodayAction.OnDeleteConfirm -> when (ui.value.confirming) {
+                DeleteQuestion.BeforeReveal -> deleteBeforeReveal()
+                DeleteQuestion.AfterReveal -> deleteAfterReveal()
+                // No question is open (a second answer, or one from a dialog already gone): nothing to do.
+                null -> Unit
             }
-            TodayAction.OnDeleteConfirm -> deleteAfterReveal()
-            TodayAction.OnDeleteDismiss -> ui.update { it.copy(confirming = false) }
+            TodayAction.OnDeleteDismiss -> ui.update { it.copy(confirming = null) }
             is TodayAction.OnReactionClick -> react(action.reaction)
             TodayAction.OnArchiveClick -> send(TodayEvent.NavigateToArchive)
             // The target is drawn only on a loaded day, so there is always a bond to open.
@@ -153,13 +156,24 @@ class TodayViewModel(
         }
     }
 
-    /** Optimistic: the loop shows not-written at once and restores the entry if the server refuses. */
+    /** Opens the delete question, unless a delete is already on its way. Nothing is deleted yet. */
+    private fun ask(question: DeleteQuestion) {
+        if (!ui.value.deleting) ui.update { it.copy(confirming = question, failed = false) }
+    }
+
+    /**
+     * Only after the question is answered (owner ruling 2026-11-09). Then optimistic, as
+     * before: the loop shows not-written at once and restores the entry if the server
+     * refuses, when the Generic error line says so. The dialog has closed by then (an iOS
+     * alert closes on any answer), so there is no control left to say "Deleting".
+     */
     private fun deleteBeforeReveal() {
         if (ui.value.deleting) return
-        ui.update { it.copy(failed = false) }
+        ui.update { it.copy(confirming = null, deleting = true, failed = false) }
         viewModelScope.launch {
             // TODO(logic): whether the deleted words come back as a draft is not in states.md: owner ruling owed.
-            if (loop.deleteBeforeReveal() == DeleteResult.Failed) ui.update { it.copy(failed = true) }
+            val result = loop.deleteBeforeReveal()
+            ui.update { it.copy(deleting = false, failed = result == DeleteResult.Failed) }
         }
     }
 
@@ -234,7 +248,9 @@ class TodayViewModel(
                 refusal = view.refusal,
                 // Only a revealed entry can be deleted this way: a dialog left from a day
                 // that has since moved on must not open over a different layout.
-                confirmingDelete = ui.confirming && view.status == TodayStatus.Revealed,
+                confirmingDelete = ui.confirming == DeleteQuestion.AfterReveal && view.status == TodayStatus.Revealed,
+                // The same lock before the reveal: only over the waiting layout it was asked from.
+                confirmingDeleteBeforeReveal = ui.confirming == DeleteQuestion.BeforeReveal && view.status == TodayStatus.Waiting,
                 deleting = ui.deleting,
                 actionFailed = ui.failed,
                 canReact = view.canReact,
@@ -253,8 +269,12 @@ class TodayViewModel(
         loop.clear()
     }
 
+    /** Which of my entries the open delete dialog asks about: what deleting means differs. */
+    private enum class DeleteQuestion { BeforeReveal, AfterReveal }
+
     private data class TodayUi(
-        val confirming: Boolean = false,
+        /** The open delete question, or null when no dialog is open. */
+        val confirming: DeleteQuestion? = null,
         val deleting: Boolean = false,
         val failed: Boolean = false,
         /** An invite is being found or issued for the share sheet: a second tap waits for it. */

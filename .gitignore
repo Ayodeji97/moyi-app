@@ -26,3 +26,7 @@ node_modules/
 # Signing keys never enter the repository (issue #49)
 *.jks
 *.keystore
+
+# Firebase app configs stay on each Mac (issue #49); the repository is public.
+google-services.json
+GoogleService-Info.plist

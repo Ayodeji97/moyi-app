@@ -107,6 +107,26 @@ class TodayDecodeTest {
         assertEquals(UserStatus.ACTIVE, user.status)
     }
 
+    @Test
+    fun aPendingDeletionOnMeDecodesAndTheUserIsUnchanged() {
+        // `deletionRequest` is required and nullable since backend #162: `null` when none
+        // is pending, the dates while one is. Neither changes who the user is.
+        for (deletionRequest in listOf(
+            "null",
+            """{"requestedAt": "2026-11-09T10:00:00Z", "cancellableUntil": "2026-11-23T10:00:00Z", "deleteBy": "2026-12-09T10:00:00Z"}""",
+        )) {
+            val profile = MoyiJson.decodeFromString(
+                ProfileResponse.serializer(),
+                """
+                {"id": "u1", "email": "eve@example.test", "displayName": "Eve", "locale": "en", "emailVerified": true, "status": "ACTIVE",
+                 "legalAccepted": {"terms": null, "privacy": null}, "deletionRequest": $deletionRequest}
+                """.trimIndent(),
+            )
+            assertEquals(deletionRequest != "null", profile.deletionRequest != null)
+            assertEquals("u1", profile.toUser().id)
+        }
+    }
+
     private fun todayWith(partnerEntry: String) =
         """{"bondDay": {"date": "2026-11-09", "status": "REVEALED", "settlesAt": "2026-11-10T12:00:00Z"}, "myEntry": ${mine()}, "partnerEntry": $partnerEntry, "streak": $STREAK, "prompt": {"id": "p1", "text": "A prompt"}}"""
 

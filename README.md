@@ -159,6 +159,12 @@ identifier is `app.getmoyi.moyi`, registered to the owner's team; on another tea
 it in `Local.xcconfig` (`PRODUCT_BUNDLE_IDENTIFIER=...`) to run on your own phone. Without the file, simulator
 builds still work with ad hoc signing (`docs/session.md`).
 
+The app carries the Associated Domains entitlement `applinks:getmoyi.app`
+(`iosApp/iosApp/iosApp.entitlements`), so the App ID must have the Associated Domains
+capability: automatic signing turns it on for an ID on your own paid team, and a free
+Personal Team cannot sign it at all. To run on a phone from such a team, also set
+`CODE_SIGN_ENTITLEMENTS=` (empty) in `Local.xcconfig`.
+
 **Android release signing.** The release build is signed with the upload key only where
 these four Gradle properties exist, which is the owner's `~/.gradle/gradle.properties`,
 never the repository (issue #49). Without them, as on CI, `assembleRelease` still builds and

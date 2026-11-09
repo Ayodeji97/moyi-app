@@ -202,6 +202,11 @@
     <!-- copy.md warmth audit: bare "Cancel" dismisses a dialog (420:76, 57 wide). -->
     <string name="delete_cancel">Cancel</string>
 
+    <!-- ===== Delete before reveal: the same confirm dialog (owner ruling 2026-11-09, docs/missing-components.md §50; states.md §4 said no confirmation). Title, confirm and Cancel reuse delete_heading, delete_confirm and delete_cancel. ===== -->
+
+    <!-- PROPOSED (§50). The dialog's message before the reveal: what is lost (the words and anything attached; general, so one line serves every entry) and what is not. Verified against the backend: a pre-reveal delete erases the row and frees the day's slot, so a new entry is accepted (RevealTest), and the partner is shown nothing of it (ADR-0032 question 2). Never a read receipt: before the reveal there is nothing the partner could have read. Shortened at the owner's ask (2026-11-09): the title already says what goes. -->
+    <string name="delete_before_reveal_line">This cannot be undone. You can write again today.</string>
+
     <!-- ===== Streak (states.md §7; Figma 227:3, 401:70, 401:160, 401:250) ===== -->
 
     <!-- states.md §3: "a *Your streak* link beside its title". Figma 430:1435 draws it in label metrics; sentence case per D14. -->
