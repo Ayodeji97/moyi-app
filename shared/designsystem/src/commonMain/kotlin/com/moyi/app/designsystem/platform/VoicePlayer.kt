@@ -102,11 +102,13 @@ interface VoicePlayer {
  *
  * - **Android**: media3 `ExoPlayer`, which streams the Ogg Opus file from the signed URL
  *   as it plays (no cache), decodes Opus with the platform's codec, and holds audio focus
- *   (a call pauses it; unplugging headphones pauses it).
+ *   (a call pauses it; unplugging headphones pauses it). While it is in the composition
+ *   the volume keys set the media volume, not the ringer, even before play is pressed.
  * - **iOS**: AVFoundation cannot open Ogg, so the file (at most about 190 KB) is fetched
  *   into memory through an ephemeral `URLSession` (no disk cache), its Opus packets are
  *   moved into a CAF container in memory ([OggOpus.toCaf]), and `AVAudioPlayer` plays that.
- *   An interruption (a call) pauses it.
+ *   An interruption (a call) pauses it. The side buttons need nothing: with the
+ *   `Playback` audio session they already set the media volume.
  */
 @Composable
 expect fun rememberVoicePlayer(): VoicePlayer
