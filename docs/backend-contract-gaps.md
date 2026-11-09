@@ -58,3 +58,27 @@ backend's `breaking-api-change` review.
 Suggested backend fix for 10: give each partner-entry variant its own schema and one
 discriminator value (`LOCKED`, `REVEALED`, `ERASED`, and so on), so the generated sealed
 class has one subclass per value and the client needs no hand-written serializer.
+
+## Backend work the app depends on that is not done or not deployed (2026-11-09)
+
+One line each: what the app needs, and what it does meanwhile. Rows above are referenced,
+not repeated.
+
+- **moyi-backend#157, `apple-app-site-association` and `assetlinks.json` on getmoyi.app.** The
+  upload key's SHA-256 is posted on the issue; the Play App Signing SHA-256 is added there after
+  the first Play upload. Meanwhile: no universal links or App Links route anything (PR #54 adds
+  only the iOS entitlement), so verify, reset and invite links are copied and pasted into the app.
+- **Voice-note peaks (row 31).** Meanwhile: a voice note from the server is drawn with the
+  stand-in shape seeded by its media id; the recording phone's own levels are drawn only in Write.
+- **Removing a photo or a voice note with `PATCH /entries/{id}`.** `PatchEntryRequest` has
+  `imageMediaId` and `voiceMediaId`: an id replaces the media, an absent field keeps it, and a
+  null reads as absent (backend `EntryChangesController.PatchEntryRequest`, read), so nothing
+  says "remove". Meanwhile: an edit sends the words only and
+  hides the photo and voice controls, so media cannot be removed from a sent entry.
+- **The ~12 h late-entry grace before a Bond-day settles (row 25, FR-045 amended from 36 h).**
+  Partly met by `settlesAt` (backend #154). Meanwhile: the Queued line says an entry written on a
+  day that has ended counts for the day it sends, and `QueuedDay`'s offline window is still 36 h.
+- **Production on backend `30f5873` or later before any app release.** The contract was synced
+  to `30f5873` in #52, and the app now decodes the `required` fields and new shapes that commit
+  declares. Meanwhile: development builds talk only to a local backend; check the deployed commit
+  at api.getmoyi.app before a store build goes out.

@@ -8,11 +8,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
@@ -54,16 +56,24 @@ import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.navigation.RevealRoute
 import com.moyi.app.feature.today.navigation.TodayRoute
 import com.moyi.app.feature.today.navigation.todayGraph
+import com.moyi.app.splash.LaunchSplash
+import com.moyi.app.splash.StartScreen
+import com.moyi.app.splash.firstScreenDrawn
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * The app: the session decides the first screen.
  *
- * - **Unknown** (restoring): a blank `surface`, no spinner and no splash
- *   motion (states.md §0; CLAUDE.md "no spinner is invented"). It also covers
- *   a locked token store, which keeps the state Unknown until a foreground
- *   retry succeeds.
+ * - **Unknown** (restoring): the launch splash ([LaunchSplash], owner request
+ *   2026-11-09), which builds the logo over `surface` and then holds it, never a
+ *   spinner (CLAUDE.md). It also covers a locked token store, which keeps the
+ *   state Unknown until a foreground retry succeeds. Once the state is known the
+ *   first screen composes under the splash, and the splash waits until that screen
+ *   has drawn something ([firstScreenDrawn]: never a bare `surface`, so a signed-in
+ *   start goes from the logo straight to Today), then leaves by its hand-off rule
+ *   (`SplashTimeline.handOff`): signed out, when it has played (1.1 s); signed in,
+ *   at most 400 ms later. Then a 200 ms cross-fade.
  * - **SignedIn**: the signed-in start, which asks the server where this
  *   person is (`GET /bonds`, `GET /me`) and replaces itself with Today, the
  *   archived bond, the unverified gate or onboarding. Onboarding's last action calls
@@ -109,17 +119,43 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
             start = if (session is SessionState.SignedIn) SignedInStartRoute else PromiseRoute
         }
 
+        // Shown once per launch, from the first frame: a UI preview starts with its screen
+        // chosen and skips it, and saved state keeps a rotation from playing it again.
+        var splashDone by rememberSaveable { mutableStateOf(start != null) }
+        // Latched: once the first screen has drawn something, later screens change nothing.
+        var firstScreenDrawn by remember { mutableStateOf(false) }
+
         val startDestination = start
-        if (startDestination == null) {
-            Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
-        } else {
-            MoyiNavHost(startDestination = startDestination, viewModel = viewModel, session = session)
+        Box(Modifier.fillMaxSize()) {
+            if (startDestination == null) {
+                Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
+            } else {
+                // Composed under the splash at once: the first screen loads while it plays.
+                MoyiNavHost(
+                    startDestination = startDestination,
+                    viewModel = viewModel,
+                    session = session,
+                    onFirstScreenDrawn = { firstScreenDrawn = true },
+                )
+            }
+            if (!splashDone) {
+                LaunchSplash(
+                    ready = firstScreenDrawn,
+                    signedIn = session is SessionState.SignedIn,
+                    onFinished = { splashDone = true },
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session: SessionState) {
+private fun MoyiNavHost(
+    startDestination: Any,
+    viewModel: AppViewModel,
+    session: SessionState,
+    onFirstScreenDrawn: () -> Unit,
+) {
     val navController = rememberNavController()
     val pushTaps = koinInject<PushTapInbox>()
     val pendingTap by pushTaps.target.collectAsStateWithLifecycle()
@@ -130,7 +166,9 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session:
     // The Archive and the Streak read the bond from the day Today loads, so a tap opens
     // nothing above Today until that day is in.
     val dayLoop = koinInject<DailyLoop>()
-    val dayLoaded = dayLoop.state.collectAsStateWithLifecycle().value is DailyLoopState.Ready
+    val dayState by dayLoop.state.collectAsStateWithLifecycle()
+    val dayLoaded = dayState is DailyLoopState.Ready
+    var signedInStartFailed by remember { mutableStateOf(false) }
 
     // Composed after NavHost has its graph, so an event buffered during the
     // restore (a refresh token the server no longer accepts) navigates safely.
@@ -175,11 +213,16 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session:
             onOnboardingFinished = { navController.resetTo(TodayRoute) },
             // The bond has ended: the archived screen, a root with no back (SKILL.md).
             onBondArchived = { partnerName -> navController.resetTo(BondArchivedRoute(partnerName)) },
+            onSignedInStartError = { signedInStartFailed = true },
         )
         // Starting a new bond pushes onboarding over the archived screen, so back returns to it.
         bondArchivedDestination(onStartNewBond = { navController.navigate(OnboardingRoute) })
         if (UiPreview.onboarding) uiPreviewGraph(navController)
     }
+
+    // The launch splash hands over only once the screen under it has drawn something.
+    val drawn = firstScreenDrawn(currentEntry?.destination.startScreen(), dayState, signedInStartFailed)
+    LaunchedEffect(drawn) { if (drawn) onFirstScreenDrawn() }
 
     // After NavHost, so the graph is set. Runs again on every screen change and session
     // change while a tap waits, which is how a cold start or a sign-in reaches it.
@@ -264,6 +307,14 @@ private fun NavHostController.follow(routing: LinkRouting) {
             navigate(routing.route) { launchSingleTop = true }
         }
     }
+}
+
+/** Which kind of screen [this] is, for the launch splash ([firstScreenDrawn]). */
+private fun NavDestination?.startScreen(): StartScreen = when {
+    this == null -> StartScreen.None
+    hasRoute<SignedInStartRoute>() -> StartScreen.SignedInStart
+    hasRoute<TodayRoute>() -> StartScreen.Today
+    else -> StartScreen.Other
 }
 
 /** Where the shell is, for a waiting push tap (see [ShellPlace]). */
