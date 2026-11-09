@@ -1,6 +1,4 @@
 <resources>
     <!-- Rosewood `surface` (tokens.md §1), dark. -->
     <color name="surface">#171313</color>
-    <!-- Rosewood `ink`, dark. -->
-    <color name="ink">#F8EFE9</color>
 </resources>

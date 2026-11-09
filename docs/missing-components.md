@@ -892,3 +892,29 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
 - **Open questions for the owner:** (1) whether `tokens.md` §1 should name the recording mark as
   `danger`'s second use; (2) the spoken names "Delete this recording" and "Stop and keep the
   recording" for `copy.md`.
+
+### 50. The launch splash animates the logo (owner request 2026-11-09)
+
+- **Today:** `states.md` §0: "Splash: the wordmark on `surface`. Nothing else. **No motion.**"
+  iOS showed the wordmark (a PDF drawn by `scripts/render-wordmark.swift`), Android 12+ the
+  mark, and the first Compose frame was an empty `surface`, so iOS's wordmark vanished at the
+  hand-over.
+- **Owner request:** "a bit of luxury animation on the splash: the two big circles of the
+  logo, one coming first, the other on it, then the text; not too much." This amends §0's
+  "No motion", as the 2026-11-08 ruling (§33) amended `SKILL.md` §5.
+- **Here:** both native launch frames are `surface` alone and static (iOS `UILaunchScreen`
+  keeps only its colour; Android 31+ gets a transparent splash icon), and the first Compose
+  frame starts as that same surface. Over it the mark (96 high, `ink`) builds: the ring fades
+  in and grows from 92 % (0 to 300 ms), the dot fades in and settles into place under it (220
+  to 520 ms), both on `motion.push` (300 ms, `FastOutSlowIn`); the wordmark (Newsreader
+  Medium, 48, 24 below the mark) fades in on `motion.fadeIn` (610 to 820 ms); the lockup holds
+  to 1120 ms and cross-fades away (`motion.crossFade`, 200 ms). The app composes underneath
+  from the moment the session is known. **Hand-off** (`SplashTimeline.handOff`): signed out,
+  the splash plays out (1.3 s in all); signed in, it leaves at most 400 ms after the session
+  is restored, playing the rest of the entrance faster when it must. Reduce Motion / Remove
+  animations: the finished lockup, still, under the same rule. Decorative: screen readers
+  hear nothing from it, and it swallows touches while it shows.
+- **Removed:** the iOS wordmark PDFs and their script, Android's `splash_mark.xml` and the
+  `ink` colour resource that only it used.
+- **Open for the owner:** `states.md` §0 still says "No motion" and "the wordmark on
+  `surface`"; the lockup (mark above wordmark, 96 / 24 / 48) is not drawn in Figma.

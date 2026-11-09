@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -49,16 +50,20 @@ import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.navigation.RevealRoute
 import com.moyi.app.feature.today.navigation.TodayRoute
 import com.moyi.app.feature.today.navigation.todayGraph
+import com.moyi.app.splash.LaunchSplash
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * The app: the session decides the first screen.
  *
- * - **Unknown** (restoring): a blank `surface`, no spinner and no splash
- *   motion (states.md §0; CLAUDE.md "no spinner is invented"). It also covers
- *   a locked token store, which keeps the state Unknown until a foreground
- *   retry succeeds.
+ * - **Unknown** (restoring): the launch splash ([LaunchSplash], owner request
+ *   2026-11-09), which builds the logo over `surface` and then holds it, never a
+ *   spinner (CLAUDE.md). It also covers a locked token store, which keeps the
+ *   state Unknown until a foreground retry succeeds. Once the state is known the
+ *   first screen composes under the splash and the splash leaves by its hand-off
+ *   rule (`SplashTimeline.handOff`): signed out, when it has played (1.1 s);
+ *   signed in, at most 400 ms after the restore. Then a 200 ms cross-fade.
  * - **SignedIn**: the signed-in start, which asks the server where this
  *   person is (`GET /bonds`, `GET /me`) and replaces itself with Today, the
  *   archived bond, the unverified gate or onboarding. Onboarding's last action calls
@@ -100,11 +105,25 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
             start = if (session is SessionState.SignedIn) SignedInStartRoute else PromiseRoute
         }
 
+        // Shown once per launch, from the first frame: a UI preview starts with its screen
+        // chosen and skips it, and saved state keeps a rotation from playing it again.
+        var splashDone by rememberSaveable { mutableStateOf(start != null) }
+
         val startDestination = start
-        if (startDestination == null) {
-            Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
-        } else {
-            MoyiNavHost(startDestination = startDestination, viewModel = viewModel, session = session)
+        Box(Modifier.fillMaxSize()) {
+            if (startDestination == null) {
+                Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
+            } else {
+                // Composed under the splash at once: the first screen loads while it plays.
+                MoyiNavHost(startDestination = startDestination, viewModel = viewModel, session = session)
+            }
+            if (!splashDone) {
+                LaunchSplash(
+                    ready = startDestination != null,
+                    signedIn = session is SessionState.SignedIn,
+                    onFinished = { splashDone = true },
+                )
+            }
         }
     }
 }
