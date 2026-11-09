@@ -165,6 +165,20 @@ capability: automatic signing turns it on for an ID on your own paid team, and a
 Personal Team cannot sign it at all. To run on a phone from such a team, also set
 `CODE_SIGN_ENTITLEMENTS=` (empty) in `Local.xcconfig`.
 
+**Links that open the app.** `https://getmoyi.app/verify?token=…`, `/reset-password?token=…`
+and `/i/<code>` open their screens (`DeepLink.parse`, `LinkRouting`): on Android through the
+`autoVerify` intent filter in `AndroidManifest.xml`, verified against the site's
+`assetlinks.json`; on iOS through the entitlement above and the site's AASA, which must list
+the three paths (moyi-backend#157). Neither verification passes for a debug build (debug
+key, no AASA paths yet), so test them by hand:
+
+```sh
+# Android: name the package, so the unverified link still reaches the app
+adb shell am start -a android.intent.action.VIEW -d "https://getmoyi.app/i/7KQ4MZ" app.getmoyi.moyi
+# iOS simulator, debug builds only: a cold launch with the link handed over
+xcrun simctl launch --terminate-running-process booted app.getmoyi.moyi -moyiOpenLink "https://getmoyi.app/i/7KQ4MZ"
+```
+
 **Android release signing.** The release build is signed with the upload key only where
 these four Gradle properties exist, which is the owner's `~/.gradle/gradle.properties`,
 never the repository (issue #49). Without them, as on CI, `assembleRelease` still builds and
@@ -179,16 +193,10 @@ MOYI_UPLOAD_KEY_PASSWORD=...
 
 ## Legal page URLs
 
-Sign up's **Terms** and **Privacy Policy** links open in the in-app browser (Chrome Custom
-Tabs on Android, `SFSafariViewController` on iOS). No legal page is published yet, so the
-URLs are configuration and default to unset, which makes the links do nothing. Set them in
-`local.properties` or with `-P` once the pages exist; a value that is not an `https` URL
-fails the build:
-
-```properties
-moyi.termsUrl=https://...
-moyi.privacyUrl=https://...
-```
-
-They move to `GET /meta/legal` when the contract has it (`docs/backend-contract-gaps.md`,
-row 12).
+Sign up's **Terms** and **Privacy Policy** links, and the Terms and Privacy screen (from Bond
+settings, and the re-consent step over Today), open the URLs `GET /meta/legal` names, in the
+in-app browser (Chrome Custom Tabs on Android, `SFSafariViewController` on iOS). Nothing is
+configured on the app side: a deployment states its documents in the backend's
+`moyi.legal.*` settings (ADR-0056). The local backend names `http://localhost:3000/...`
+pages, which nothing serves, so on a simulator or emulator the browser opens and shows that
+the page cannot be reached.

@@ -1,11 +1,12 @@
 <resources>
-    <!-- API 31+: the system SplashScreen draws a background colour and a centred icon,
-         nothing else (states.md §0: Android cannot render the wordmark). The background
-         is `surface` and the icon is the mark in `ink`, both per system mode, no motion
-         (a static vector, not an animated one). -->
+    <!-- API 31+: the system SplashScreen draws a background colour and a centred icon.
+         Here it is `surface` alone, per system mode: the icon is transparent, so the
+         launch frame matches the first Compose frame, where the logo builds over the
+         same empty surface (LaunchSplash, owner request 2026-11-09). Without this item
+         the system would show the launcher icon instead. -->
     <style name="Theme.Moyi" parent="Base.Theme.Moyi">
         <item name="android:windowBackground">@color/surface</item>
         <item name="android:windowSplashScreenBackground">@color/surface</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
     </style>
 </resources>

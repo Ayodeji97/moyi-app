@@ -83,6 +83,8 @@ Recorded in PR #5 (design system), 2026-10-27.
 
 ### 6. Verify-email paste-token field
 
+- **Superseded by §58:** the field is now the code field, taking six digits or the link.
+
 - **Today:** not in Figma. `states.md` §1 screen 3 has instruction, resend, "Check again" and
   "Use a different address", with no input. Deep links are meant to make the token invisible.
 - **Here:** PR #6 adds a `Field` `Text` for pasting the token from the local backend log, as a
@@ -93,6 +95,8 @@ Recorded in PR #5 (design system), 2026-10-27.
   In the expired state the field is hidden. Decide whether it ships or is debug-only.
 
 ### 6a. Reset-password paste-code field
+
+- **Superseded by §58:** the field is now the code field, taking six digits or the link.
 
 - **Today:** not in Figma. Choose a new password (345:30) draws only the new password, the
   consequence line and "Save and sign in"; the token is meant to arrive by deep link from the
@@ -138,7 +142,7 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 | `register_action_sending` | Creating your account | Sending label (states.md §1c) |
 | `verify_token_label` / `_helper` | Code from the email / Paste the code from the link we sent, or the whole link. | Paste field (§6) |
 | `verify_token_error_blank` / `_invalid` | Paste the code from the email first. / That code does not match. Copy it again from the email. | `VERIFICATION_TOKEN_INVALID` |
-| `verify_expired_action_sending` | Sending a new link | Sending label for "Send a new link" |
+| `verify_expired_action_sending` | Sending a new email | Sending label for "Send a new email" (reworded by owner ruling 2026-11-09, §58) |
 | `login_password_error_blank` | Add your password to sign in. | Empty password |
 | `login_action_sending` | Signing in | Sending label |
 | `login_error_rate_limited` | Sign in is paused for a short while. Your account is fine. Try again in a few minutes. | `ratelimit.line` plus a "when" (states.md §1b); the full-screen 345:53 is not built |
@@ -161,7 +165,7 @@ In the same `strings.xml`, marked `PROPOSED`. The rest of the three screens' cop
 
 ### 7b. Destinations PR #6 draws but cannot reach yet
 
-- **Terms** and **Privacy Policy** on sign up: no published URL, so the links do nothing.
+- **Terms** and **Privacy Policy** on sign up: reached since the legal-consent PR (2026-11-09), at the URLs `GET /meta/legal` names (§54).
 - **I forgot my password** on sign in: reached since the password-reset PR (2026-11-05).
 - **Sign in is the root** while the promise screen (Onboarding 1) is unbuilt, so it has no
   back control and its eyebrow sits at the top of the content (as the unverified gate does).
@@ -747,40 +751,73 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   both leaving and taking back (question 11, `409 BOND_ARCHIVED`).
 - **Here (interim, the most conservative reading), built only from what the system has:**
   - **Where:** under the partner's revealed entry on Today (Revealed, and Tombstone, where my
-    entry is deleted but theirs still shows) and in the Archive day view. **Not on the reveal
-    screen**: the reveal is a moment (states.md §5a), and nothing says a control belongs in it.
-    Not on a solo day's unlocked entry (still `SUBMITTED`: FR-048 says revealed, though the
-    server would take one), not on a tombstone, never on my own entry.
-  - **The control:** a muted line, then the five as **words**, one `Chip` each (the Archive
-    filter's pill; uppercased there), wrapping at large text, at most one selected. Tapping
-    another replaces mine; tapping mine takes it back. No confirmation, no undo toast, as the
-    `FavouriteToggle`. The line names the next action: "React to what Tunde wrote." with none,
+    entry is deleted but theirs still shows), on the reveal screen once its motion has settled
+    (ruling 3 below), and in the Archive day view. Not on a solo day's unlocked entry (still
+    `SUBMITTED`: FR-048 says revealed, though the server would take one; ruling 4), not on a
+    tombstone, never on my own entry, and not on a bond that takes no writes (ruling 5).
+  - **The control:** a muted line, then the five as **emoji and word**, one `Chip` each (the
+    Archive filter's pill; the word uppercased there, the emoji drawn before it in `body` size),
+    wrapping inside the column (320 at the narrowest) and at large text, at most one selected.
+    Tapping another replaces mine; tapping mine takes it back. No confirmation, no undo toast, as
+    the `FavouriteToggle`. The line names the next action: "React to what Tunde wrote." with none,
     "Tap another to change it, or the same one to take it back." with one (PROPOSED
-    `reaction_prompt`, `reaction_chosen`). Words, not glyphs, because whether each is a glyph or
-    a word is left to the design (ADR-0037 question 1) and the system has no glyph for any of
-    them: "Heart", "Thank you", "Smile", "Moved", "Me too" (PROPOSED `reaction_*`).
+    `reaction_prompt`, `reaction_chosen`).
   - **Accessibility:** the set is a `selectableGroup` of radio buttons; each is spoken by its
-    word with its selected state; on the selected one, a double tap is announced as "Take back
-    your reaction" (PROPOSED `reaction_take_back`), since a radio button is not usually cleared.
-    48 pt targets (the Chip's), and selected differs by fill and border, not hue (NFR-104).
-  - **The partner's reaction on my entry:** one muted sentence under my card, "Tunde sent a
-    heart." / "Tunde said thank you." / "Tunde smiled at this." / "Tunde was moved by this." /
-    "Tunde is grateful for that too." (PROPOSED `reaction_from_partner_*`). Not a live region,
-    and nothing else changes: it does not announce itself when it arrives, so it is no "seen"
-    signal beyond the one the owner accepted (question 6).
+    **word only** (the emoji is drawn, never spoken) with its selected state; on the selected
+    one, a double tap is announced as "Take back your reaction" (PROPOSED `reaction_take_back`),
+    since a radio button is not usually cleared. 48 pt targets (the Chip's), and selected differs
+    by fill and border, not hue (NFR-104).
+  - **The partner's reaction on my entry:** the interim `ReactionBadge` under my card (ruling 6
+    below): "❤️ Tunde sent a heart." / "🙏 Tunde said thank you." / "😊 Tunde smiled at this." /
+    "🥺 Tunde was moved by this." / "🤝 Tunde is grateful for that too." (the sentences are
+    approved, `reaction_from_partner_*`). Spoken as the sentence only. Not a live region, and
+    nothing else changes: it does not announce itself when it arrives, so it is no "seen" signal
+    beyond the one the owner accepted (ADR-0037 question 6, decision 10).
   - **Waiting and failing:** optimistic, as a favourite (a reaction is reversible): the choice
     shows at once; the caches (Today's, the Archive's) keep it only once the server answers
     `204`. A failure (offline included) puts the previous choice back and shows the Generic error
     line under the set, "That didn't work. Nothing was lost. Try again in a moment." A refusal
     that means the day moved (`404`, any `409`) reads the day again. A tap while one is on its
     way is ignored. Never queued offline: a reaction needs the network.
-  - **An ended bond:** the Archive does not know a bond has ended, so the set is drawn and a tap
-    is refused (`409 BOND_ARCHIVED`): put back, the Generic line. Today never shows an ended
-    bond.
-- **Open questions for the owner:** (1) glyphs or words, and the five words themselves; (2) the
-  partner's-reaction sentences; (3) the set on the reveal screen; (4) the set on a solo day's
-  unlocked entry; (5) hiding the set on an ended bond (needs the bond's status in the Archive);
-  (6) whether the partner's reaction should be more than a muted line, or less.
+- **Owner rulings, 2026-11-09** (the six open questions of PR #50), and how each is applied:
+  1. **An emoji and the word on each chip.** The words are approved. The emoji are PROPOSED
+     (`reaction_emoji_*`): HEART ❤️ (U+2764 U+FE0F), THANK_YOU 🙏 (U+1F64F), SMILE 😊 (U+1F60A),
+     MOVED 🥺 (U+1F97A, pleading face; swapped from 🥹, Emoji 14, at the owner's word so
+     older Android phones do not draw an empty box), ME_TOO 🤝 (U+1F91D, handshake). They are set
+     in the system face (`FontFamily.Default`), so the platform's colour emoji font draws them
+     by fallback: Apple Color Emoji on iOS, Noto Color Emoji on Android (Compose's bundled
+     EmojiCompat brings newer emoji to older Android versions that have Google
+     Play services). The emoji is never in a chip's spoken label.
+  2. **The five partner sentences are approved**, as are the five chip words; their `strings.xml`
+     comments say so. The emoji, `reaction_prompt`, `reaction_chosen` and `reaction_take_back`
+     stay PROPOSED.
+  3. **The set is on the reveal screen too**, under the partner's entry as on Today. It is laid
+     out with the after frame from the turn, so nothing moves when it appears, but it is
+     invisible, silent to screen readers and ignores taps until the turn's motion has settled
+     (`RevealMotion.RevealMillis`, the longer of the two transitions). Then it fades in over
+     `MoyiMotion.CrossFadeMillis` (opacity only, no movement), or appears at once under Reduce
+     Motion / Remove animations. A tap goes to the daily loop as Today's does; the moment does
+     not settle into Today while a reaction is on its way (it waits for the answer, so leaving
+     cannot cancel the call). The reveal still settles on its own after its hold.
+  4. **Solo day: no reactions**, as built.
+  5. **No set on an ended bond.** The status comes from data the app already has: Today's day
+     carries its bond's status from `GET /bonds` (the domain `Bond`, mapped from the generated
+     `BondResponse`), or from the cached day offline (`cached_day.bond_status`). The Archive list
+     keeps the status it was loaded with, and the day view hides the set when that status (or
+     Today's) does not take writes. "Takes writes" is the server's own rule
+     (`BondMembership.takesWrites`): `PENDING_MEMBER` or `ACTIVE`. So the set is hidden on
+     `ARCHIVED` and `DELETED`, and also during the deletion cooling-off (`PENDING_DELETION`),
+     where the server refuses a reaction with `409 BOND_ARCHIVED` just the same. The same rule
+     now gates Today's and the reveal's set (`DayView.canReact`). Unknown status (nothing loaded,
+     nothing cached): the set is drawn as before. The partner's reaction on my entry is a read,
+     so it stays shown on an ended bond.
+  6. **The partner's reaction is more visible.** Proposed treatment, the interim `ReactionBadge`:
+     a pill (`shapes.full`) in `surfaceRaised` with an `outline` hairline (the EntryCard's own
+     pair, so it belongs to the card above it, and not `outlineStrong`, which marks a control:
+     this does nothing when tapped), padded `md` across and `sm` down, the emoji then the
+     sentence in `body` and `ink` (the old line was `inkMuted`), `sm` apart, wrapping and never
+     cut at large text. No new colour. Spoken as the sentence; not a live region, no announce on
+     arrival (ADR-0037 decision 10 stands).
 
 ## Voice waveforms and Today's action pair (owner request 2026-11-09)
 
@@ -929,6 +966,284 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   what is confirmed, need amending in the design system. Open question for the owner: the
   message string, for `copy.md`.
 
+## Links that open the app (universal links and App Links)
+
+### 52. Verify, reset and invite opened from a link
+
+- **Today:** `states.md` §2 draws the invite side: "Join · code from link" is the prefilled
+  code screen, a root with no back (`SKILL.md` §9), and the code resolves only after sign up or
+  sign in and verify. Nothing draws verify or reset reached from the emailed link: the
+  drawn verify screen (341:17) names the address it wrote to, and Choose a new password
+  (345:30) signs in with the address typed on Forgot password. A link opened on a phone that
+  never asked (the email read on another phone, or the app reinstalled) has neither.
+- **Here:** the link fills the existing paste field (§6, §6a), so every outcome is a state
+  the screens already have: verify checks it at once and lands on sign in ("Your email is
+  confirmed"), the expired layout, or the field's "does not match"; reset waits for the new
+  password and shows "That link has expired" under the field for a spent one. When the
+  address is not known:
+  - **Verify (PROPOSED copy):** the line drops the address, `verify_line_no_address` "Open the
+    email we sent, copy the link and paste it below."; "Send it again" and "Use a different
+    address" are not drawn (there is no address to send to or change). Expired says
+    `verify_expired_line_no_address` "Links last 24 hours and work once. Sign in and we can
+    send you a new one." and its action is "Sign in" (`login_action`, reused): signed in,
+    the unverified gate sends a new link.
+  - **Reset (PROPOSED copy):** the password is saved and sign in follows with
+    `login_password_changed` "Your new password is saved. Sign in with it." It is shown too
+    when the sign-in after a save fails, which until now landed on sign in with no word.
+- **Signed in as someone else:** `states.md` and `copy.md` say nothing. What this PR does:
+  an invite opens the prefilled code screen for whoever is signed in, and the confirm step
+  names the inviter and the bond before anything is accepted (`states.md` §2, "Why there is
+  a confirm step"), so a wrong account can back out. A verify link confirms the address it
+  was sent to (the token is the proof) and returns to the signed-in start, which changes
+  nothing for the signed-in account. A reset link opens Choose a new password; "Save and
+  sign in" signs in with the signed-in address, so for another account's link the save
+  succeeds and sign in follows, with the line above.
+- **No new component.** Every screen is an existing one; no spinner while a link is checked
+  (the action says "Checking", `states.md` §1c).
+- **Open questions for the owner:** (1) the three strings; (2) whether a reset link opened
+  while signed in should say whose password it changes; (3) §6 and §6a asked whether the
+  paste fields go "when deep links land": they stay here, as the fallback for an email read
+  on a computer and for the typed six-digit code the backend now sends (row 20 of
+  `backend-contract-gaps.md`).
+
+## Typed codes from the email (backend #155, gaps row 20)
+
+### 58. One code field for the six digits or the link
+
+- **Today:** the verify and reset emails carry a link **and** a six-digit code ("Or type this
+  code in the app. It works for 15 minutes", backend `VerificationEmailComposer`, read only).
+  `states.md` §1 draws verify with no input and Choose a new password (345:30) with only the
+  new password; §6 and §6a added a paste field for the link's token, and §52 kept it as the
+  fallback for an email read on a computer.
+- **Here: one field, not two.** The paste field becomes the code field, and it takes either:
+  six digits typed or pasted, or the whole link pasted. A paste containing `token=` is a
+  link and is sent as the link would be when opened; anything else is reduced to its digits,
+  six at most (so "123 456", "123-456" and "Your code: 123456" all work, and an Arabic or
+  Devanagari keyboard's numerals become ASCII). Why one: a person holding an email does not
+  know, and should not have to know, which box a link goes in and which a code goes in; one
+  field keeps one label, one error slot and one focus order, and the link case costs one
+  `token=` check. Two fields would put two empty inputs on a screen whose job is one thing.
+- **Component:** the design system's `Field` `Code` (`tokens.md` §4): one control in the
+  code style, not six boxes (six boxes announce as six controls, break paste and fail at 200 %
+  text). No new component. The keyboard is the number pad (`NumberPassword`) and the field is
+  marked a one-time code for autofill (`ContentType.SmsOtpCode`, iOS `.oneTimeCode`), so iOS
+  can offer a code it finds in Mail above the keyboard. Its name for a screen reader is its
+  label, "6-digit code"; a refusal is the field's error and a polite live region while it
+  shows, so a refusal that arrives with no button pressed is spoken.
+- **Verify:** the sixth digit checks the code at once, with `PrimaryAction` in Sending
+  ("Checking"); no spinner. A refused code is not sent again until it changes (each wrong try
+  spends one of five). "Check again" sends what is typed; with fewer than six it says so.
+  "Send it again" clears the field: a newer email voids the old code.
+- **Choose a new password:** the code field comes first, as §6a placed the paste field. The
+  sixth digit moves focus to the new password and sends nothing: the server checks a reset
+  code only with the new password (gaps row 39). A link that opened the app (§52) or was
+  pasted is held as the proof and the helper says so; typing a digit makes the code the proof.
+- **PROPOSED copy** (all in `strings.xml`, marked PROPOSED):
+  - `code_label` "6-digit code"; `code_helper` "It is in the email we sent. You can paste the
+    whole link here instead."
+  - `code_error_blank` "Type the 6 digits from the email first."; `code_error_short` "A code
+    has 6 digits. Check the email for the rest."
+  - `code_error_invalid` (422 `VERIFICATION_TOKEN_INVALID` / `PASSWORD_RESET_TOKEN_INVALID`
+    for a code), **approved 2026-11-09**: "That code did not work. Check the digits, or send a
+    new email." The server gives one answer for wrong, expired, too many wrong tries and
+    spent, on purpose (a distinct answer would say which addresses hold a live code), so the
+    sentence names the way out for all of them, without the numbers. **There is no separate
+    "too many attempts" message because the server never says so.**
+  - `code_error_link_invalid` (422 for a link): "That link did not work. Copy it again from
+    the email, or type the code."
+  - `code_error_no_address`: "A code needs the address it was sent to. Open the link in the
+    email instead." Shown when the screen was opened by a link on a phone that does not know
+    the address (§52): a code alone names no account.
+  - `code_error_rate_limited` (429 on a code: ten a day per address, ADR-0023 amended
+    2026-11-08), above the action: "That is a lot of codes for one day. Open the link in the
+    email instead, or try again tomorrow." A link's 429 keeps `auth_error_rate_limited`.
+  - `code_error_unavailable` (503 `CODE_CHECK_UNAVAILABLE`), above the action with a retry:
+    "We cannot check codes just now. Open the link in the email, or try again in a minute."
+  - `reset_link_ready`, the helper while a link is the proof: "The link from the email is
+    ready. Choose your new password."
+  - Rewritten (were approved interim lines that said to copy and paste the link):
+    `verify_line` "We sent a 6-digit code to %1$s. Type it below, or open the link in the same
+    email."; `verify_line_no_address` "Open the link in the email we sent on this phone, or
+    paste it below."; `reset_sent_line`, **approved 2026-11-09**: "If that address has an
+    account, we sent it a 6-digit code. Type it below with your new password." (still
+    identical whether or not the account exists).
+- **Removed:** `verify_token_label`, `_helper`, `_error_blank`, `_error_invalid` (§6, §6a),
+  replaced by the `code_*` strings above.
+- **Owner ruling, 2026-11-09:** (1) the invalid-code sentence drops the numbers (15 minutes,
+  5 tries): they are backend defaults and would drift if configured. `code_error_invalid` and
+  `reset_sent_line` are approved as written above. (2) The expired layout's action names the
+  email, since the new email carries a code too: `verify_expired_action` "Send a new email"
+  (was `copy.md`'s "Send a new link") and `verify_expired_action_sending` "Sending a new
+  email", approved. (3) Choose a new password stays one screen (the code field above the
+  password) until the backend can check a reset code alone (gaps row 39); a two-step flow is
+  reconsidered then. The other `code_*` strings and `reset_link_ready` stay PROPOSED.
+### 56. The launch splash animates the logo (owner request 2026-11-09)
+
+- **Today:** `states.md` §0: "Splash: the wordmark on `surface`. Nothing else. **No motion.**"
+  iOS showed the wordmark (a PDF drawn by `scripts/render-wordmark.swift`), Android 12+ the
+  mark, and the first Compose frame was an empty `surface`, so iOS's wordmark vanished at the
+  hand-over.
+- **Owner request:** "a bit of luxury animation on the splash: the two big circles of the
+  logo, one coming first, the other on it, then the text; not too much." This amends §0's
+  "No motion", as the 2026-11-08 ruling (§33) amended `SKILL.md` §5.
+- **Here:** both native launch frames are `surface` alone and static (iOS `UILaunchScreen`
+  keeps only its colour; Android 31+ gets a transparent splash icon), and the first Compose
+  frame starts as that same surface. Over it the mark (96 high, `ink`) builds: the ring fades
+  in and grows from 92 % (0 to 300 ms), the dot fades in and settles into place under it (220
+  to 520 ms), both on `motion.push` (300 ms, `FastOutSlowIn`); the wordmark (Newsreader
+  Medium, 48, 24 below the mark) fades in and rises 8 (`spacing.sm`) from 320 to 670 ms,
+  over the dot's last 200 ms (350 ms, `LinearOutSlowIn`; owner ruling 2026-11-09, PR #56: it
+  was easy to miss); logo and wordmark hold together to 1100 ms and fade out together into
+  the app (`motion.crossFade`, 200 ms). The app composes underneath
+  from the moment the session is known. **Hand-off** (`SplashTimeline.handOff`): signed out,
+  the splash plays out (1.3 s in all); signed in, it waits until the first screen has drawn
+  something (the cached day, Today's first answer, or another screen; never a bare surface)
+  and leaves at most 400 ms after that, playing the rest of the entrance faster when it must. Reduce Motion / Remove
+  animations: the finished lockup, still, under the same rule. Decorative: screen readers
+  hear nothing from it, and it swallows touches while it shows.
+- **Removed:** the iOS wordmark PDFs and their script, Android's `splash_mark.xml` and the
+  `ink` colour resource that only it used.
+- **Open for the owner:** `states.md` §0 still says "No motion" and "the wordmark on
+  `surface`"; the lockup (mark above wordmark, 96 / 24 / 48) is not drawn in Figma.
+## Reporting (FR-100, ADR-0053)
+
+### 53. The report flow, its reasons, and where it starts
+
+- **Today:** Figma's Safety section draws `Report · choose target` (607:1795), `compose` (599:1782,
+  with `KEYBOARD UP` 607:1825), `sent` (608:1811) and `failed · INPUT KEPT` (608:1841), and the
+  Archive day view's header action (617:1835). `26` §3.2 puts entry reporting there and only
+  there: "a report control cannot live" on Reveal, and never under an entry. The copy is
+  `strings-proposed.md` §10, "IN FILE, not decided".
+- **Built as drawn:** the day view's **Report** at the end of the back row (a `TextLink`, its own
+  48 target; `MoyiScaffold` gains a `backAction` slot for it), shown once the other member has a
+  name. It opens choose target when the day shows the partner's words (their entry, read in full),
+  else the form about the member. My own entry is never offered, and nothing on Today or the
+  reveal offers a report. The form is `Field` Select for the reason and `Field` **Multiline** for
+  the detail: Multiline is `tokens.md` §4's fifth type (box 140, top-aligned, no trailing icon),
+  built here for the first time. A failure keeps the form and puts the error line 8 above Send.
+  Sent is a root with one action, back to where the report started (SKILL.md §9).
+- **Not drawn, PROPOSED:**
+  - **The reasons.** The contract takes five (`NON_CONSENSUAL`, `MINOR_SEXUAL_CONTENT`,
+    `VIOLENCE_OR_SELF_HARM`, `HARASSMENT`, `OTHER`); §10 drew four others (contract gap row 36).
+    Words: "How they’re treating me" (§10's `treating`, for `HARASSMENT`, as ADR-0053 maps it),
+    "Something shared without my consent", "Violence, threats or self-harm", "Sexual content
+    involving a child", "Something else" (§10's `other`). The label is "Why are you reporting
+    this?", not §10's "What are you reporting?", which repeats choose target's heading and asks
+    what rather than why. Before a choice the field reads "Choose one". ADR-0053 question 4 gives
+    these words to the owner.
+  - **The reason picker.** The `Field` Select opens a pushed list of the five, each a settings
+    row; a tap chooses and returns. The time-zone picker's shape. Not drawn anywhere.
+  - **Bond settings › Report {partnerName}**, in Ending after Block and leave, underlined, not
+    `danger` (it ends nothing), straight to the form about the member. The design reaches the
+    member only from a day view; this row exists so a member with no day to open (or who is
+    reporting how they are treated, T-09, which is about no one day) can still reach it. It stays
+    enabled during the cooling-off: a report is never contact (ADR-0053 decision 14).
+  - **Sent, for an entry:** a second line, "If that entry has a photo or voice note, it stays
+    hidden from you until a person has looked at it." True by ADR-0053 decision 4 (held back from
+    the reporter at once). Without it, the photo turning to "processing" reads as a fault.
+  - **The errors:** no reason ("Choose a reason to send this."), a detail over 500 ("Keep it to
+    500 characters or fewer."), `429` ("Reports are paused for a while. Your report is still
+    here, and the ones you already sent are with us."), `404` ("This can no longer be reported
+    from here. Nothing was sent."), `409 REPORT_ON_OWN_ENTRY` (a guard: "That entry is yours, so
+    it cannot be reported. Nothing was sent."). Sending reads "Sending report".
+- **Deliberately not built:**
+  - **Block and leave on the sent screen.** ADR-0053 names leaving or blocking as the reporter's
+    remedy, but the drawn sent screen carries one action, and SKILL.md §9 rules a second out on
+    acknowledgement screens. Block and leave stays one row away in Bond settings. Whether sent
+    should mention it is the owner's question.
+  - **A partner tombstone.** The server lets a tombstone be reported (ADR-0053 decision 2), but
+    this day view does not draw the partner's tombstone, so it offers only the member then.
+  - **After the bond ends.** The archived screen links nowhere (§31), so neither the day view
+    nor Bond settings, and so no report, is reachable once a bond has ended, though the server
+    allows it then (ADR-0053: "a member who has just blocked their partner may need it most").
+    Owed with the archived screen's link to the Archive.
+- **Owed:** `KEYBOARD UP` (607:1825) is the scaffold's ordinary keyboard behaviour, not measured
+  against the frame. Neither TalkBack nor VoiceOver has walked the flow.
+## Terms and Privacy (legal consent, 2026-11-09)
+
+### 54. Terms and Privacy: the re-consent step and the settings row
+
+- **Today:** `states.md` §1 row 2 puts "18+ confirmation, Terms and Privacy consent (FR-011)"
+  on Sign up, and `SKILL.md` §12 says the documents are "versioned with recorded consent"
+  (FR-103). Nothing in `states.md`, `copy.md` or Figma draws what happens when the documents
+  change after someone accepted them, or where a signed-in person reads them again.
+- **Built (PROPOSED), from the house parts only:** one screen, `LegalScreen`
+  (feature:auth `legal/`), in two modes.
+  - **The re-consent step.** The shell opens it over Today, once per launch, when `GET /me`'s
+    `legalAccepted` differs from `GET /meta/legal`'s Terms or Privacy version. Back target,
+    ScreenHeader (heading "Our Terms and Privacy Policy have changed"; its eyebrow,
+    "Terms and Privacy", is not drawn under a back target, D1), a `body` `inkMuted` line naming the next step, the three documents as
+    TextLinks, then PrimaryAction **Accept** (Sending "Accepting") with **Not now** as a
+    centred TextLink under it. Not a gate: the backend refuses nothing for an old consent
+    (`docs/backend-contract-gaps.md` row 37), so blocking the app would be the client
+    inventing a rule.
+  - **The read view, from Bond settings.** A new row, **Terms and Privacy**, in *Just you*
+    between Notifications and Sign out (`RowKind.Navigates`, underlined). Also on the failed
+    load, beside Sign out, since it needs nothing the bond holds. Same screen, heading "What
+    you agreed to"; Accept appears only if the consent is out of date, and the screen stays
+    open after it.
+  - **Loading** is the bare `surface`; a failed load is the Generic error with Try again.
+  - **Offline:** the check runs only once Today shows with its day in (the cached day opens
+    straight to Today, owner ruling 2026-11-08); a check that cannot be made shows nothing
+    and is tried again on the next foreground.
+- **Sign up:** a link tapped before `GET /meta/legal` could be read shows an InlineError under
+  the two links (`register_legal_unavailable`).
+- **The data-processing summary** is the third link ("How we handle your data"): `/meta/legal`
+  serves it and says it is "shown, never accepted on its own". Sign up still shows only the
+  two Figma draws.
+- **Strings, all PROPOSED** (feature:auth `legal_*`, `register_legal_unavailable`; feature:bond
+  `settings_row_legal`): eyebrow "Terms and Privacy"; headings "Our Terms and Privacy Policy
+  have changed" and "What you agreed to"; lines "Read them below, then tap Accept to agree to
+  the new versions. Your entries stay exactly as they are." and "You have accepted the current
+  versions. Tap one to read it."; "How we handle your data"; "Accept" / "Accepting"; "Not now";
+  "That didn't go through. Check your connection, then try again."; "That page didn't open.
+  Check your connection, then tap the link again." The failed load reuses the Generic error.
+- **Owner questions:** (1) Is a non-blocking prompt right, or should a changed Terms block
+  until accepted (needs a backend refusal code first)? (2) Is *Just you* the right group for
+  the row, or does it belong on the unbuilt Account screen (`strings-proposed.md`
+  `settings.row.account`)? (3) The heading and line need a human pass for `copy.md`'s voice.
+## Contact support (FR-102)
+
+### 55. Get help: where it opens from, and the form's undrawn parts
+
+- **Today:** `strings-proposed.md` §9 has Support's copy (IN FILE, not decided) and `SKILL.md`
+  lists 14 Support screens plus `Account 7 · settings`, whose `account.help` "Get help" opens
+  Support. Figma's Support section was not read for this PR. The Account screen is not built
+  (Bond settings shows Sign out in its place in Just you).
+- **Built:**
+  - **Bond settings · Just you → Get help** (`settings_row_help`, `account.help`'s words), a
+    navigating row between Notifications and Sign out, on the loaded root and on the failed
+    load (it needs nothing from the bond). **PROPOSED placement**: in place of the Account
+    screen's row, until that screen exists.
+  - **The Generic error on the signed-in start → Get help**, a second `TextLink` under Try
+    again (`generic_error_get_help`). `StateBlock` gained the second action that its Waiting
+    variant already has (`tokens.md` §4), the same gap apart. **PROPOSED**: the Generic error is
+    drawn with one action. It is offered only there, the one Generic error with no other way
+    out (no back, no settings). Today's, the Archive's and the Streak's errors keep one action.
+  - **Support · form**: back, eyebrow Support, heading Get help, `support.privacy` as a muted
+    line, `Field · Text` Subject, `Field · Multiline` Message (the variant `tokens.md` §4 added
+    for this body; the same code as PR #58's, so the two merge cleanly), and Send, which says
+    **Sending** (PROPOSED word) while the request is out. A send that did not go is an
+    `InlineError` above the action (`support.failed.error`) and the action reads Try again
+    (`support.failed.retry`). The placeholders `support.subject.placeholder` and
+    `support.message.placeholder` are not shown: `Field` has no placeholder slot.
+  - **Support · sent** and **Support · paused** (`429`): a centred `StateBlock` with one action,
+    no header and no back (`SKILL.md`, acknowledgement screens). The action is
+    `support.back` "Back to settings" from settings, and **PROPOSED** "Go back" from the
+    Generic error, where "settings" would be untrue.
+  - **PROPOSED field errors**, checked before sending against the contract's limits (120 and
+    5000 code points): "Add a subject so we know what this is about.", "Tell us what is going
+    on.", "A subject can be up to %1$d characters.", "A message can be up to %1$d characters.",
+    and "Something in here can't be sent. Change it and try again." (a NUL or broken character,
+    or a `422` naming the field).
+- **Not built:** **Support · queued** (`support.queued`, "Saved. It'll send when you're back
+  online."). It needs an outbox for support messages; offline is the failed state instead,
+  with the words kept on screen (not across an app restart).
+- **Open questions for the owner:** (1) Get help's place until the Account screen exists, and
+  whether the Generic error should carry it; (2) `support.sent.line` promises "Usually within a
+  day", which nothing in the backend guarantees (the acknowledgement email is best effort and
+  goes only to a confirmed address); (3) the PROPOSED strings above; (4) whether offline should
+  queue (`support.queued`) or stay a failure.
 ## Account: export and deletion (PR feat/export-and-deletion, 2026-11-09)
 
 Every string below is **PROPOSED** unless it names its source in `strings.xml`.

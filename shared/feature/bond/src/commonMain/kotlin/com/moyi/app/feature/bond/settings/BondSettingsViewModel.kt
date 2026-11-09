@@ -130,6 +130,7 @@ class BondSettingsViewModel(
                 _state.update { it.copy(error = null) }
                 send(BondSettingsEvent.OpenNotifications)
             }
+            BondSettingsAction.OnGetHelpClick -> if (!_state.value.signingOut) send(BondSettingsEvent.OpenSupport)
             BondSettingsAction.OnAccountClick -> if (!_state.value.signingOut) send(BondSettingsEvent.OpenAccount)
             BondSettingsAction.OnSignOutUnsentConfirm -> {
                 _state.update { it.copy(confirmingUnsentSignOut = false, signingOut = true) }
@@ -150,6 +151,15 @@ class BondSettingsViewModel(
             }
             BondSettingsAction.OnBlockWithdrawToggle -> if (_state.value.saving == null) _state.update { it.copy(withdrawOnBlock = !it.withdrawOnBlock) }
             BondSettingsAction.OnBlockConfirm -> endBond(SettingsField.Block)
+            // Not an edit: a report is never contact, so it stays open during the cooling-off
+            // (ADR-0053 decision 14). Only once the other member is known: before that, `404`.
+            BondSettingsAction.OnReportClick -> {
+                val settings = _state.value.settings
+                val partner = settings?.partnerName
+                if (settings != null && partner != null && _state.value.saving == null && !_state.value.signingOut) {
+                    send(BondSettingsEvent.OpenReport(settings.bondId, partner))
+                }
+            }
             BondSettingsAction.OnCloseBoxClick -> if (canEdit()) {
                 _state.update { it.copy(error = null) }
                 send(BondSettingsEvent.OpenCloseBox)

@@ -42,6 +42,10 @@ import com.moyi.app.designsystem.theme.MoyiDimens
  * [role] is a filter's [Role.Tab] unless the caller's set is something else (the interim
  * reaction set, [ReactionChoices], uses [Role.RadioButton]). [onClickLabel], when given, is
  * what a screen reader says a double tap will do.
+ *
+ * [leading], when given, is drawn before the words in `body` size (an emoji, for the
+ * reaction set: owner ruling 2026-11-09) and is **never spoken**: the words are the label.
+ * It is set in the system face, so the platform's colour emoji font draws it.
  */
 @Composable
 fun Chip(
@@ -51,6 +55,7 @@ fun Chip(
     modifier: Modifier = Modifier,
     role: Role = Role.Tab,
     onClickLabel: String? = null,
+    leading: String? = null,
 ) {
     val colors = MoyiTheme.colors
     val pill = MoyiTheme.shapes.full
@@ -80,13 +85,26 @@ fun Chip(
                 .padding(horizontal = MoyiDimens.Chip.PaddingHorizontal),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = text.toUpperCase(Locale.current),
-                modifier = Modifier.clearAndSetSemantics { this.text = AnnotatedString(text) },
-                style = MoyiTheme.type.label,
-                color = if (selected) colors.surface else colors.ink,
-                maxLines = 1,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (leading != null) {
+                    Text(
+                        text = leading,
+                        modifier = Modifier.clearAndSetSemantics { },
+                        style = MoyiTheme.type.body,
+                        maxLines = 1,
+                    )
+                }
+                Text(
+                    text = text.toUpperCase(Locale.current),
+                    modifier = Modifier.clearAndSetSemantics { this.text = AnnotatedString(text) },
+                    style = MoyiTheme.type.label,
+                    color = if (selected) colors.surface else colors.ink,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +20,7 @@ import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.generic_error_action
 import com.moyi.app.feature.onboarding.resources.generic_error_heading
 import com.moyi.app.feature.onboarding.resources.generic_error_line
+import com.moyi.app.feature.onboarding.resources.generic_error_get_help
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -28,15 +30,21 @@ fun SignedInStartRoot(
     onNavigateToOnboarding: () -> Unit,
     onNavigateToGate: () -> Unit,
     onNavigateToArchived: (partnerName: String?) -> Unit,
+    onShowingError: () -> Unit = {},
+    onNavigateToSupport: () -> Unit,
     viewModel: SignedInStartViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // The shell's launch splash waits for a screen with something on it; Checking is the
+    // bare surface, the Generic error is not (App, `firstScreenDrawn`).
+    if (state == SignedInStartState.Failed) LaunchedEffect(Unit) { onShowingError() }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             SignedInStartEvent.NavigateToToday -> onNavigateToToday()
             SignedInStartEvent.NavigateToOnboarding -> onNavigateToOnboarding()
             SignedInStartEvent.NavigateToGate -> onNavigateToGate()
             is SignedInStartEvent.NavigateToArchived -> onNavigateToArchived(event.partnerName)
+            SignedInStartEvent.NavigateToSupport -> onNavigateToSupport()
         }
     }
     SignedInStartScreen(state = state, onAction = viewModel::onAction)
@@ -47,7 +55,8 @@ fun SignedInStartRoot(
  * come back before a frame is worth drawing, and a spinner is never invented.
  *
  * Failed: the Generic error (Figma 384:341): a StateBlock centred in the
- * content, no header and no back, its action "Try again".
+ * content, no header and no back, its action "Try again". Under it, Get help (PROPOSED,
+ * docs/missing-components.md §55): the one place a person stuck here can say so.
  */
 @Composable
 fun SignedInStartScreen(
@@ -63,6 +72,8 @@ fun SignedInStartScreen(
                     line = stringResource(Res.string.generic_error_line),
                     actionLabel = stringResource(Res.string.generic_error_action),
                     onAction = { onAction(SignedInStartAction.OnRetryClick) },
+                    secondActionLabel = stringResource(Res.string.generic_error_get_help),
+                    onSecondAction = { onAction(SignedInStartAction.OnGetHelpClick) },
                 )
             }
         }

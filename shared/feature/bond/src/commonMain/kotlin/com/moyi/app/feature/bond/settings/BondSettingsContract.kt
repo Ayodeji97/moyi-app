@@ -118,6 +118,9 @@ sealed interface BondSettingsAction {
     data object OnNotificationsClick : BondSettingsAction
     data object OnAccountClick : BondSettingsAction
 
+    /** Get help: Support, pushed over settings. Needs nothing from the bond, so it works on a failed load too. */
+    data object OnGetHelpClick : BondSettingsAction
+
     /** Sign out anyway: the unsent entries are deleted with the session. */
     data object OnSignOutUnsentConfirm : BondSettingsAction
 
@@ -131,6 +134,9 @@ sealed interface BondSettingsAction {
     data object OnBlockClick : BondSettingsAction
     data object OnBlockWithdrawToggle : BondSettingsAction
     data object OnBlockConfirm : BondSettingsAction
+
+    /** Report the other member (FR-100): the report flow, about the member. */
+    data object OnReportClick : BondSettingsAction
 
     // Close the box (FR-028)
     data object OnCloseBoxClick : BondSettingsAction
@@ -172,7 +178,11 @@ sealed interface BondSettingsEvent {
     data object OpenLeave : BondSettingsEvent
     data object OpenBlock : BondSettingsEvent
     data object OpenCloseBox : BondSettingsEvent
+
+    /** The report flow about the other member of [bondId], named [partnerName]. */
+    data class OpenReport(val bondId: String, val partnerName: String) : BondSettingsEvent
     data object OpenNotifications : BondSettingsEvent
+    data object OpenSupport : BondSettingsEvent
 
     /** Account (export, delete your account): needs nothing the bond holds, so it opens even when the bond did not load. */
     data object OpenAccount : BondSettingsEvent

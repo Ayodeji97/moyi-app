@@ -53,6 +53,8 @@
     <!-- Figma 389:205, the legal links. -->
     <string name="register_terms">Terms</string>
     <string name="register_privacy">Privacy Policy</string>
+    <!-- PROPOSED. Under the two links when GET /meta/legal could not be read, so neither URL is known. Names the next step. -->
+    <string name="register_legal_unavailable">That page didn't open. Check your connection, then tap the link again.</string>
     <!-- signup.action. -->
     <string name="register_action">Create account</string>
     <!-- PROPOSED. The button while the request is in flight (states.md §1c: the control says what it is doing). -->
@@ -65,16 +67,26 @@
     <string name="verify_eyebrow">New account</string>
     <!-- verify.heading. -->
     <string name="verify_heading">Check your email</string>
-    <!-- verify.line. %1$s is {email}, the address the person registered with. Approved (2026-11-08, strings-proposed.md §11) rewording from the 2026-11-08 smoke test, matching the owner's reset_sent_line ruling of 2026-11-06: the link opens the website, so the line says the step that works, paste it here. Interim until the short typed code (docs/backend-contract-gaps.md row 20). -->
-    <string name="verify_line">We sent a link to %1$s. Open the email, copy the link and paste it below.</string>
-    <!-- PROPOSED. The paste-token field is not in Figma; a stand-in until deep links (docs/missing-components.md §6). -->
-    <string name="verify_token_label">Code from the email</string>
-    <!-- PROPOSED. Helper under the token field. The whole link may be pasted; the app takes the code out of it. -->
-    <string name="verify_token_helper">Paste the code from the link we sent, or the whole link.</string>
-    <!-- PROPOSED. Check again pressed with nothing pasted. -->
-    <string name="verify_token_error_blank">Paste the code from the email first.</string>
-    <!-- PROPOSED. 422 VERIFICATION_TOKEN_INVALID. No blame: the code did not match, not "you entered". -->
-    <string name="verify_token_error_invalid">That code does not match. Copy it again from the email.</string>
+    <!-- PROPOSED (docs/missing-components.md §58), replacing the approved 2026-11-08 line, which said to copy and paste the link: the email now carries a 6-digit code (backend-contract-gaps.md row 20), and the link opens the app (#57). %1$s is {email}, the address the person registered with. -->
+    <string name="verify_line">We sent a 6-digit code to %1$s. Type it below, or open the link in the same email.</string>
+    <!-- PROPOSED (§58). The one code field's label, on verify and on Choose a new password. A screen reader reads it as the field's name. -->
+    <string name="code_label">6-digit code</string>
+    <!-- PROPOSED (§58). Under the code field. A pasted link works too; the app takes it. -->
+    <string name="code_helper">It is in the email we sent. You can paste the whole link here instead.</string>
+    <!-- PROPOSED (§58). The action pressed with the field empty. -->
+    <string name="code_error_blank">Type the 6 digits from the email first.</string>
+    <!-- PROPOSED (§58). The action pressed with fewer than six digits. -->
+    <string name="code_error_short">A code has 6 digits. Check the email for the rest.</string>
+    <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58). 422 VERIFICATION_TOKEN_INVALID or PASSWORD_RESET_TOKEN_INVALID for a typed code. The server gives one answer for a wrong code, an expired one and one stopped after too many wrong tries, on purpose, so this names the way out for all of them. No numbers: the code lifetime and try limit are backend defaults that can drift. No blame. -->
+    <string name="code_error_invalid">That code did not work. Check the digits, or send a new email.</string>
+    <!-- PROPOSED (§58). 422 for a pasted or opened link that matches nothing. -->
+    <string name="code_error_link_invalid">That link did not work. Copy it again from the email, or type the code.</string>
+    <!-- PROPOSED (§58). A code typed on a phone that does not know the address (the screen was opened by a link, signed out): a code alone names no account. -->
+    <string name="code_error_no_address">A code needs the address it was sent to. Open the link in the email instead.</string>
+    <!-- PROPOSED (§58). 429 on a typed code: ten codes a day per address (ADR-0023 amended 2026-11-08). The link has no such limit. -->
+    <string name="code_error_rate_limited">That is a lot of codes for one day. Open the link in the email instead, or try again tomorrow.</string>
+    <!-- PROPOSED (§58). 503 CODE_CHECK_UNAVAILABLE, Retry-After 60: nothing was checked or counted, and the link still works. -->
+    <string name="code_error_unavailable">We cannot check codes just now. Open the link in the email, or try again in a minute.</string>
     <!-- verify.action. Submits the pasted code (auth-placement-spec §7). -->
     <string name="verify_action">Check again</string>
     <!-- states.md §1c "Checking": PrimaryAction State=Sending. -->
@@ -89,10 +101,14 @@
     <string name="verify_expired_heading">That link has expired</string>
     <!-- verify.expired.line. -->
     <string name="verify_expired_line">Links last 24 hours and work once. We can send you a new one.</string>
-    <!-- verify.expired.action. -->
-    <string name="verify_expired_action">Send a new link</string>
-    <!-- PROPOSED. The expired action while the new link is being requested. -->
-    <string name="verify_expired_action_sending">Sending a new link</string>
+    <!-- verify.expired.action, reworded by owner ruling 2026-11-09 (docs/missing-components.md §58): the new email carries a link and a code, so the action names the email. -->
+    <string name="verify_expired_action">Send a new email</string>
+    <!-- Approved (owner ruling 2026-11-09, §58). The expired action while the new email is being requested. -->
+    <string name="verify_expired_action_sending">Sending a new email</string>
+    <!-- PROPOSED (docs/missing-components.md §52, reworded §58). verify.line when the emailed link opened the app on a phone that does not know the address (a cold start, signed out). The link was checked at once; this is what the screen says if it did not work. A code cannot be used without the address, so the line names the link. -->
+    <string name="verify_line_no_address">Open the link in the email we sent on this phone, or paste it below.</string>
+    <!-- PROPOSED (docs/missing-components.md §52). verify.expired.line when the address is not known, so nothing can be resent from here: sign in (login_action), and the unverified gate sends a new link. -->
+    <string name="verify_expired_line_no_address">Links last 24 hours and work once. Sign in and we can send you a new one.</string>
 
     <!-- ===== Sign in (Account 1, Figma 344:18) ===== -->
 
@@ -118,6 +134,8 @@
     <string name="login_session_ended">You have been signed out. Sign in again to continue.</string>
     <!-- Approved (2026-11-08, strings-proposed.md §11). Shown on sign in right after the email link is accepted: names what happened and the one step left. -->
     <string name="login_verified">Your email is confirmed. Sign in to start.</string>
+    <!-- PROPOSED (docs/missing-components.md §52). Shown on sign in after Choose a new password saved the password but did not sign the person in: the emailed link opened the app without the address, or the sign-in after the save failed. Names what happened and the one step left, as login_verified does. -->
+    <string name="login_password_changed">Your new password is saved. Sign in with it.</string>
 
     <!-- ===== Session ended (TOKEN_REUSE_DETECTED, ADR-0021; no Figma frame, auth-placement-spec §7) ===== -->
 
@@ -129,7 +147,7 @@
     <!-- ===== Password reset (Account 2 to 4, Figma 344:41, 345:23, 345:30) ===== -->
     <!-- Reused, not repeated: the eyebrow is login_eyebrow ("Account"), the sent heading is
          verify_heading ("Check your email", states.md §1b), the email field is auth_email_label,
-         the paste field is verify_token_label / _helper / _error_blank / _error_invalid, and the
+         the code field is code_label / code_helper / code_error_*, and the
          new password is auth_password_label with register_password_helper and register's errors. -->
 
     <!-- reset.request.heading. Forgot password (344:41). -->
@@ -140,8 +158,8 @@
     <string name="reset_request_action">Send the link</string>
     <!-- PROPOSED. The action while the request is in flight (states.md §1c). -->
     <string name="reset_request_action_sending">Sending the link</string>
-    <!-- reset.sent.line. Owner ruling 2026-11-06, PR 30 smoke test: a screen where the person must act says what to do next. The emailed link points at the website, so the real flow is paste it into Moyi. Interim until the backend sends a short code (docs/backend-contract-gaps.md). MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
-    <string name="reset_sent_line">If that address has an account, we sent it a link. Open the email, copy the link and paste it in Moyi. It works for an hour.</string>
+    <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58), replacing the owner's 2026-11-06 interim line ("copy the link and paste it in Moyi"): the email now carries a 6-digit code. Still names the next step (owner ruling 2026-11-06). No lifetime: it is a backend default that can drift. MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
+    <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Type it below with your new password.</string>
     <!-- reset.new.heading. The Reset password heading (345:30), and the link on Reset link sent that opens it. -->
     <string name="reset_new_heading">Choose a new password</string>
     <!-- reset.consequence. Placed before the action (states.md §1b: announce the consequence before the action). -->
@@ -150,8 +168,38 @@
     <string name="reset_action">Save and sign in</string>
     <!-- PROPOSED. The action while the new password is saved and the person signed in (states.md §1c). -->
     <string name="reset_action_sending">Saving</string>
-    <!-- PROPOSED. 410 PASSWORD_RESET_TOKEN_EXPIRED (expired, or already used), under the paste field. -->
+    <!-- PROPOSED. 410 PASSWORD_RESET_TOKEN_EXPIRED (expired, or already used), under the code field. Only a link is ever answered 410. -->
     <string name="reset_token_error_expired">That link has expired. Go back and ask for a new one.</string>
+    <!-- PROPOSED (§58). Under the code field on Choose a new password when the reset link opened the app or was pasted: the link is the proof, so nothing needs typing. -->
+    <string name="reset_link_ready">The link from the email is ready. Choose your new password.</string>
 
     
+
+    <!-- ===== Terms and Privacy (re-consent prompt and settings), PROPOSED: no frame draws it (docs/missing-components.md §54) ===== -->
+
+    <!-- PROPOSED. Eyebrow, label style. -->
+    <string name="legal_eyebrow">Terms and Privacy</string>
+    <!-- PROPOSED. Heading when opened from Bond settings and the consent is current. -->
+    <string name="legal_heading">What you agreed to</string>
+    <!-- PROPOSED. Heading when the Terms or the Privacy Policy changed since the person accepted them. -->
+    <string name="legal_heading_changed">Our Terms and Privacy Policy have changed</string>
+    <!-- PROPOSED. The line under the changed heading: names the next step. Nothing is blocked, so it never threatens. -->
+    <string name="legal_line_changed">Read them below, then tap Accept to agree to the new versions. Your entries stay exactly as they are.</string>
+    <!-- PROPOSED. The line when the consent is current. -->
+    <string name="legal_line_current">You have accepted the current versions. Tap one to read it.</string>
+    <!-- PROPOSED. The third link: the data-processing summary (GET /meta/legal), shown and never accepted on its own. -->
+    <string name="legal_data_processing">How we handle your data</string>
+    <!-- PROPOSED. The action: POST /me/legal-consent. -->
+    <string name="legal_accept">Accept</string>
+    <!-- PROPOSED. The action while the request is in flight (the control says what it is doing). -->
+    <string name="legal_accept_sending">Accepting</string>
+    <!-- PROPOSED. Under Accept on the prompt only: closes it, records nothing; the app asks again next launch. -->
+    <string name="legal_not_now">Not now</string>
+    <!-- PROPOSED. Accept never reached the server. -->
+    <string name="legal_error_offline">That didn't go through. Check your connection, then try again.</string>
+    <!-- states.md §10 "Generic error", its two lines, for a failed load (GET /meta/legal or GET /me). -->
+    <string name="legal_load_error_heading">That didn't work.</string>
+    <string name="legal_load_error_line">Nothing was lost. Try again in a moment.</string>
+    <!-- states.md §1c. -->
+    <string name="legal_load_error_action">Try again</string>
 </resources>

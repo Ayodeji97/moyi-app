@@ -1,5 +1,7 @@
 package com.moyi.app
 
+import com.moyi.app.domain.legal.LegalRepository
+import com.moyi.app.feature.auth.legal.LegalViewModel
 import com.moyi.app.debug.PreviewNotificationSettingsRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
 import com.moyi.app.domain.notification.PushTokenRegistration
@@ -8,6 +10,7 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
@@ -20,6 +23,10 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.feature.auth.di.authFeatureModule
 import com.moyi.app.feature.bond.di.bondFeatureModule
+import com.moyi.app.feature.support.SupportViewModel
+import com.moyi.app.feature.support.di.supportFeatureModule
+import com.moyi.app.domain.support.SupportRepository
+import com.moyi.app.domain.support.SupportTicket
 import com.moyi.app.feature.bond.settings.BondSettingsViewModel
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
@@ -80,16 +87,24 @@ class AppKoinTest {
                 authFeatureModule,
                 onboardingFeatureModule,
                 bondFeatureModule,
+                supportFeatureModule,
                 appModule,
                 module {
                     single<AuthRepository> { repo }
                     single<BondRepository> { PreviewBondRepository() }
                     single<BondSettingsRepository> { PreviewBondSettingsRepository() }
                     single<AccountRepository> { StubAccountRepository }
+                    single<LegalRepository> { StubLegalRepository() }
                     single<TodayCache> { NoCachedDay }
                     single<OutboxSender> { StubOutbox() }
                     single<EntryOutbox> { StubOutbox() }
                     single<NotificationSettingsRepository> { PreviewNotificationSettingsRepository() }
+                    single<SupportRepository> {
+                        object : SupportRepository {
+                            override suspend fun send(subject: String, body: String, idempotencyKey: String) =
+                                Result.Success(SupportTicket("t", kotlin.time.Instant.fromEpochSeconds(0)))
+                        }
+                    }
                     single<PushTokenRegistration> {
                         object : PushTokenRegistration {
                             override fun start() = Unit
@@ -102,13 +117,15 @@ class AppKoinTest {
         }.koin
         try {
             koin.get<RegisterViewModel>()
-            koin.get<VerifyViewModel> { parametersOf("amara@example.com") }
+            koin.get<VerifyViewModel> { parametersOf("amara@example.com", null) }
+            assertEquals(true, koin.get<LegalViewModel> { parametersOf(true) }.state.value.prompt)
             val login = koin.get<LoginViewModel> { parametersOf("amara@example.com", true) }
             assertEquals("amara@example.com", login.state.value.email.value)
             koin.get<SignedInStartViewModel>()
             koin.get<UnverifiedGateViewModel>()
             koin.get<BondSettingsViewModel> { parametersOf("preview-bond") }
             koin.get<NotificationSettingsViewModel> { parametersOf("preview-bond") }
+            koin.get<SupportViewModel>()
             koin.get<RelationshipTypeViewModel>()
             koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }
             koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD") }
@@ -156,17 +173,17 @@ internal class StubAuthRepository(private val onRestore: () -> Unit) : AuthRepos
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-    override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun login(email: String, password: String): Result<User, DataError> =
         Result.Failure(DataError.Network.Unknown)

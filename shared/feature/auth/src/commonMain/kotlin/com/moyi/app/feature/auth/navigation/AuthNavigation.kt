@@ -6,6 +6,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.moyi.app.domain.auth.SessionEndReason
+import com.moyi.app.feature.auth.legal.LegalRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
 import com.moyi.app.feature.auth.reset.ForgotPasswordRoot
@@ -18,10 +19,16 @@ import kotlinx.serialization.Serializable
 /**
  * Sign in. [email] is prefilled after verifying; [sessionEnded] explains an involuntary
  * sign-out; [verified] confirms the address was just verified, so the person knows the
- * link worked and that signing in is the last step.
+ * link worked and that signing in is the last step; [passwordChanged] says the same after
+ * a reset that saved the password without signing in.
  */
 @Serializable
-data class LoginRoute(val email: String = "", val sessionEnded: Boolean = false, val verified: Boolean = false)
+data class LoginRoute(
+    val email: String = "",
+    val sessionEnded: Boolean = false,
+    val verified: Boolean = false,
+    val passwordChanged: Boolean = false,
+)
 
 @Serializable
 data object RegisterRoute
@@ -44,8 +51,23 @@ fun routeAfterSessionEnd(reason: SessionEndReason): Any = when (reason) {
     SessionEndReason.SignedOut -> LoginRoute()
 }
 
+/**
+ * Verify email. [email] is the address the link went to; empty when an emailed link opened
+ * the app on a phone that does not know it. [linkToken] is that link's token (checked at
+ * once), null when the person arrived from sign up. [signedIn]: the link opened over a
+ * signed-in session (the unverified gate, or anywhere), so a confirmed address goes back to
+ * the signed-in start rather than to sign in.
+ */
 @Serializable
-data class VerifyRoute(val email: String)
+data class VerifyRoute(val email: String, val linkToken: String? = null, val signedIn: Boolean = false)
+
+/**
+ * Terms and Privacy, pushed over the signed-in app. [prompt] is the re-consent step the
+ * shell opens over Today when the documents changed; false is the read view from Bond
+ * settings. Either way back pops it.
+ */
+@Serializable
+data class LegalRoute(val prompt: Boolean = false)
 
 /** Forgot password. [email] is prefilled from sign in's email field (possibly empty). */
 @Serializable
@@ -59,9 +81,13 @@ data class ForgotPasswordRoute(val email: String = "")
 @Serializable
 data class ResetLinkSentRoute(val email: String)
 
-/** Choose a new password. [email] is the address the link was asked for, used to sign in after. */
+/**
+ * Choose a new password. [email] is the address the link was asked for, used to sign in
+ * after; empty when an emailed link opened the app without it. [linkToken] fills the paste
+ * field when the emailed link opened the app.
+ */
 @Serializable
-data class ResetPasswordRoute(val email: String)
+data class ResetPasswordRoute(val email: String, val linkToken: String? = null)
 
 /**
  * The auth screens. Back stack, from the start destination (sign in):
@@ -94,6 +120,7 @@ fun NavGraphBuilder.authGraph(
             initialEmail = route.email,
             sessionEnded = route.sessionEnded,
             verified = route.verified,
+            passwordChanged = route.passwordChanged,
             onNavigateToHome = onSignedIn,
             onNavigateToRegister = { navController.navigate(RegisterRoute) },
             onNavigateToForgotPassword = { email -> navController.navigate(ForgotPasswordRoute(email)) },
@@ -111,7 +138,13 @@ fun NavGraphBuilder.authGraph(
         val route = entry.toRoute<VerifyRoute>()
         VerifyRoot(
             email = route.email,
-            onNavigateToLogin = { email -> navController.replaceStackWithLogin(email, verified = true) },
+            linkToken = route.linkToken,
+            // Signed in already (a link opened over the session): the signed-in start reads
+            // GET /me again and moves on from the gate.
+            onNavigateToLogin = { email ->
+                if (route.signedIn) onSignedIn() else navController.replaceStackWithLogin(email, verified = true)
+            },
+            onNavigateToSignIn = { navController.navigate(LoginRoute()) { launchSingleTop = true } },
             onNavigateBack = { navController.navigateUp() },
         )
     }
@@ -134,13 +167,17 @@ fun NavGraphBuilder.authGraph(
         val route = entry.toRoute<ResetPasswordRoute>()
         ResetPasswordRoot(
             email = route.email,
+            linkToken = route.linkToken,
             onNavigateToHome = onSignedIn,
-            onNavigateToLogin = { email -> navController.replaceStackWithLogin(email) },
+            onNavigateToLogin = { email -> navController.replaceStackWithLogin(email, passwordChanged = true) },
             onNavigateBack = { navController.navigateUp() },
         )
     }
     composable<SessionEndedRoute> {
         SessionEndedScreen(onSignIn = { navController.signInAfterSessionEnded() })
+    }
+    composable<LegalRoute> { entry ->
+        LegalRoot(prompt = entry.toRoute<LegalRoute>().prompt, onClose = { navController.popBackStack() })
     }
 }
 
@@ -168,8 +205,8 @@ internal fun NavController.signInAfterSessionEnded() {
 }
 
 /** Sign in, email prefilled, as the only screen: after verifying, or after a reset whose sign-in failed. */
-internal fun NavController.replaceStackWithLogin(email: String, verified: Boolean = false) {
-    navigate(LoginRoute(email = email, verified = verified)) {
+internal fun NavController.replaceStackWithLogin(email: String, verified: Boolean = false, passwordChanged: Boolean = false) {
+    navigate(LoginRoute(email = email, verified = verified, passwordChanged = passwordChanged)) {
         popUpTo(graph.id) { inclusive = true }
     }
 }
