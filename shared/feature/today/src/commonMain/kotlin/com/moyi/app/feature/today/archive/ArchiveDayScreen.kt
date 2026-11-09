@@ -132,7 +132,7 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
                 onToggle = { onAction(ArchiveDayAction.OnFavouriteClick(FavouriteTarget.Mine)) },
             ) {
                 EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry, photo = day.myPhoto, voice = day.myVoice)
-                PartnerReaction(reaction = day.partnerReaction, partnerName = state.partnerName.orEmpty(), modifier = Modifier.fillMaxWidth())
+                PartnerReaction(reaction = day.partnerReaction, partnerName = state.partnerName.orEmpty())
             }
         } else if (day.myTombstone) {
             // states.md Appendix: the tombstone is labelled "From you", never the partner.

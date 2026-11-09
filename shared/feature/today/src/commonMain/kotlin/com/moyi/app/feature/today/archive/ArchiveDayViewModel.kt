@@ -43,8 +43,8 @@ import kotlinx.coroutines.launch
  *   failure line under that toggle. A tap while that entry's call is in flight is
  *   ignored, so one tap is one call and the calls for an entry can never cross.
  * - **Reactions** (FR-048, ADR-0037; interim control, docs/missing-components.md §45): under
- *   the partner's revealed entry only. Optimistic, as a favourite: shown at once here and in
- *   the list, cached only once the server confirms it, put back with the Generic failure line
+ *   the partner's revealed entry only, while the bond takes writes (owner ruling 5).
+ *   Optimistic, as a favourite: shown at once here and in the list, cached only once the server confirms it, put back with the Generic failure line
  *   if it does not. A tap while one is on its way is ignored. A refusal that means the day is
  *   not what is shown (`404`, `409`) reads the day again. If the day is the one Today shows,
  *   Today is refreshed once the server has it.
@@ -133,7 +133,10 @@ class ArchiveDayViewModel(
 
     /** False when the day has nothing to draw: the caller shows the error rather than a blank day. */
     private fun show(loaded: ArchiveDay): Boolean {
-        val ui = loaded.toArchiveDayUi() ?: return false
+        val drawn = loaded.toArchiveDayUi() ?: return false
+        // Owner ruling 5 (2026-11-09): no reaction set on a bond that takes no writes (ended, or
+        // in its cooling-off), where the server would refuse every tap. Unknown: drawn as before.
+        val ui = if (bondTakesWrites()) drawn else drawn.copy(canReact = false)
         day = loaded
         _state.update {
             it.copy(
@@ -144,6 +147,16 @@ class ArchiveDayViewModel(
             )
         }
         return true
+    }
+
+    /**
+     * Whether the bond takes writes, from what the app already holds: the status the list was
+     * loaded with, else Today's (both from `GET /bonds`, or the cached day offline). True when
+     * neither knows, which keeps the set as it was before the ruling.
+     */
+    private fun bondTakesWrites(): Boolean {
+        val status = feed.state.value.bondStatus ?: (loop.state.value as? DailyLoopState.Ready)?.day?.bondStatus
+        return status?.takesWrites ?: true
     }
 
     private fun delete() {

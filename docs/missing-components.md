@@ -743,40 +743,72 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   both leaving and taking back (question 11, `409 BOND_ARCHIVED`).
 - **Here (interim, the most conservative reading), built only from what the system has:**
   - **Where:** under the partner's revealed entry on Today (Revealed, and Tombstone, where my
-    entry is deleted but theirs still shows) and in the Archive day view. **Not on the reveal
-    screen**: the reveal is a moment (states.md §5a), and nothing says a control belongs in it.
-    Not on a solo day's unlocked entry (still `SUBMITTED`: FR-048 says revealed, though the
-    server would take one), not on a tombstone, never on my own entry.
-  - **The control:** a muted line, then the five as **words**, one `Chip` each (the Archive
-    filter's pill; uppercased there), wrapping at large text, at most one selected. Tapping
-    another replaces mine; tapping mine takes it back. No confirmation, no undo toast, as the
-    `FavouriteToggle`. The line names the next action: "React to what Tunde wrote." with none,
+    entry is deleted but theirs still shows), on the reveal screen once its motion has settled
+    (ruling 3 below), and in the Archive day view. Not on a solo day's unlocked entry (still
+    `SUBMITTED`: FR-048 says revealed, though the server would take one; ruling 4), not on a
+    tombstone, never on my own entry, and not on a bond that takes no writes (ruling 5).
+  - **The control:** a muted line, then the five as **emoji and word**, one `Chip` each (the
+    Archive filter's pill; the word uppercased there, the emoji drawn before it in `body` size),
+    wrapping inside the column (320 at the narrowest) and at large text, at most one selected.
+    Tapping another replaces mine; tapping mine takes it back. No confirmation, no undo toast, as
+    the `FavouriteToggle`. The line names the next action: "React to what Tunde wrote." with none,
     "Tap another to change it, or the same one to take it back." with one (PROPOSED
-    `reaction_prompt`, `reaction_chosen`). Words, not glyphs, because whether each is a glyph or
-    a word is left to the design (ADR-0037 question 1) and the system has no glyph for any of
-    them: "Heart", "Thank you", "Smile", "Moved", "Me too" (PROPOSED `reaction_*`).
+    `reaction_prompt`, `reaction_chosen`).
   - **Accessibility:** the set is a `selectableGroup` of radio buttons; each is spoken by its
-    word with its selected state; on the selected one, a double tap is announced as "Take back
-    your reaction" (PROPOSED `reaction_take_back`), since a radio button is not usually cleared.
-    48 pt targets (the Chip's), and selected differs by fill and border, not hue (NFR-104).
-  - **The partner's reaction on my entry:** one muted sentence under my card, "Tunde sent a
-    heart." / "Tunde said thank you." / "Tunde smiled at this." / "Tunde was moved by this." /
-    "Tunde is grateful for that too." (PROPOSED `reaction_from_partner_*`). Not a live region,
-    and nothing else changes: it does not announce itself when it arrives, so it is no "seen"
-    signal beyond the one the owner accepted (question 6).
+    **word only** (the emoji is drawn, never spoken) with its selected state; on the selected
+    one, a double tap is announced as "Take back your reaction" (PROPOSED `reaction_take_back`),
+    since a radio button is not usually cleared. 48 pt targets (the Chip's), and selected differs
+    by fill and border, not hue (NFR-104).
+  - **The partner's reaction on my entry:** the interim `ReactionBadge` under my card (ruling 6
+    below): "❤️ Tunde sent a heart." / "🙏 Tunde said thank you." / "😊 Tunde smiled at this." /
+    "🥹 Tunde was moved by this." / "🤝 Tunde is grateful for that too." (the sentences are
+    approved, `reaction_from_partner_*`). Spoken as the sentence only. Not a live region, and
+    nothing else changes: it does not announce itself when it arrives, so it is no "seen" signal
+    beyond the one the owner accepted (ADR-0037 question 6, decision 10).
   - **Waiting and failing:** optimistic, as a favourite (a reaction is reversible): the choice
     shows at once; the caches (Today's, the Archive's) keep it only once the server answers
     `204`. A failure (offline included) puts the previous choice back and shows the Generic error
     line under the set, "That didn't work. Nothing was lost. Try again in a moment." A refusal
     that means the day moved (`404`, any `409`) reads the day again. A tap while one is on its
     way is ignored. Never queued offline: a reaction needs the network.
-  - **An ended bond:** the Archive does not know a bond has ended, so the set is drawn and a tap
-    is refused (`409 BOND_ARCHIVED`): put back, the Generic line. Today never shows an ended
-    bond.
-- **Open questions for the owner:** (1) glyphs or words, and the five words themselves; (2) the
-  partner's-reaction sentences; (3) the set on the reveal screen; (4) the set on a solo day's
-  unlocked entry; (5) hiding the set on an ended bond (needs the bond's status in the Archive);
-  (6) whether the partner's reaction should be more than a muted line, or less.
+- **Owner rulings, 2026-11-09** (the six open questions of PR #50), and how each is applied:
+  1. **An emoji and the word on each chip.** The words are approved. The emoji are PROPOSED
+     (`reaction_emoji_*`): HEART ❤️ (U+2764 U+FE0F), THANK_YOU 🙏 (U+1F64F), SMILE 😊 (U+1F60A),
+     MOVED 🥹 (U+1F979, face holding back tears), ME_TOO 🤝 (U+1F91D, handshake). They are set
+     in the system face (`FontFamily.Default`), so the platform's colour emoji font draws them
+     by fallback: Apple Color Emoji on iOS, Noto Color Emoji on Android (Compose's bundled
+     EmojiCompat brings newer emoji, 🥹 included, to older Android versions that have Google
+     Play services). The emoji is never in a chip's spoken label.
+  2. **The five partner sentences are approved**, as are the five chip words; their `strings.xml`
+     comments say so. The emoji, `reaction_prompt`, `reaction_chosen` and `reaction_take_back`
+     stay PROPOSED.
+  3. **The set is on the reveal screen too**, under the partner's entry as on Today. It is laid
+     out with the after frame from the turn, so nothing moves when it appears, but it is
+     invisible, silent to screen readers and ignores taps until the turn's motion has settled
+     (`RevealMotion.RevealMillis`, the longer of the two transitions). Then it fades in over
+     `MoyiMotion.CrossFadeMillis` (opacity only, no movement), or appears at once under Reduce
+     Motion / Remove animations. A tap goes to the daily loop as Today's does; the moment does
+     not settle into Today while a reaction is on its way (it waits for the answer, so leaving
+     cannot cancel the call). The reveal still settles on its own after its hold.
+  4. **Solo day: no reactions**, as built.
+  5. **No set on an ended bond.** The status comes from data the app already has: Today's day
+     carries its bond's status from `GET /bonds` (the domain `Bond`, mapped from the generated
+     `BondResponse`), or from the cached day offline (`cached_day.bond_status`). The Archive list
+     keeps the status it was loaded with, and the day view hides the set when that status (or
+     Today's) does not take writes. "Takes writes" is the server's own rule
+     (`BondMembership.takesWrites`): `PENDING_MEMBER` or `ACTIVE`. So the set is hidden on
+     `ARCHIVED` and `DELETED`, and also during the deletion cooling-off (`PENDING_DELETION`),
+     where the server refuses a reaction with `409 BOND_ARCHIVED` just the same. The same rule
+     now gates Today's and the reveal's set (`DayView.canReact`). Unknown status (nothing loaded,
+     nothing cached): the set is drawn as before. The partner's reaction on my entry is a read,
+     so it stays shown on an ended bond.
+  6. **The partner's reaction is more visible.** Proposed treatment, the interim `ReactionBadge`:
+     a pill (`shapes.full`) in `surfaceRaised` with an `outline` hairline (the EntryCard's own
+     pair, so it belongs to the card above it, and not `outlineStrong`, which marks a control:
+     this does nothing when tapped), padded `md` across and `sm` down, the emoji then the
+     sentence in `body` and `ink` (the old line was `inkMuted`), `sm` apart, wrapping and never
+     cut at large text. No new colour. Spoken as the sentence; not a live region, no announce on
+     arrival (ADR-0037 decision 10 stands).
 
 ## Voice waveforms and Today's action pair (owner request 2026-11-09)
 
