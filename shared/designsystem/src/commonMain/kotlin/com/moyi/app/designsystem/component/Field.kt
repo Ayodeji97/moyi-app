@@ -64,8 +64,11 @@ import org.jetbrains.compose.resources.stringResource
  *   fail at 200 % scale). Capitalises characters, no autocorrect.
  * - [Select]: the box is a button showing the chosen value with a trailing
  *   chevron; tapping it opens a picker the screen owns (`onClick`).
+ * - [Multiline]: a paragraph (`tokens.md` §4, added 2026-09-05 for the support
+ *   body; first built for a report's detail). The box is at least 140 tall, its
+ *   text top-aligned and wrapping, with no trailing icon. Return is a new line.
  */
-enum class FieldType { Text, Secure, Code, Select }
+enum class FieldType { Text, Secure, Code, Select, Multiline }
 
 /** `Field`'s four visual states (`tokens.md` §4). Derived, never passed in. */
 enum class FieldState { Idle, Focus, Error, Disabled }
@@ -152,6 +155,7 @@ fun Field(
     val textColor = colors.fieldText(state)
     val secure = type == FieldType.Secure
     val code = type == FieldType.Code
+    val multiline = type == FieldType.Multiline
     val effectiveKeyboard = when {
         keyboardOptions != KeyboardOptions.Default -> keyboardOptions
         secure -> KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
@@ -161,6 +165,8 @@ fun Field(
             autoCorrectEnabled = false,
             keyboardType = KeyboardType.Ascii,
         )
+        // A paragraph: sentences capitalised, and Return is a new line, not "done".
+        multiline -> KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
         else -> keyboardOptions
     }
 
@@ -193,7 +199,7 @@ fun Field(
             .fillMaxWidth()
             .semantics { if (error != null) error(error) },
         enabled = enabled,
-        singleLine = true,
+        singleLine = !multiline,
         textStyle = (if (code) MoyiTheme.type.code else MoyiTheme.type.body).copy(color = textColor),
         cursorBrush = SolidColor(colors.ink),
         keyboardOptions = effectiveKeyboard,
@@ -211,14 +217,21 @@ fun Field(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = if (code) MoyiDimens.Field.CodeBoxMinHeight else MoyiDimens.Field.BoxMinHeight)
+                        .heightIn(
+                            min = when {
+                                code -> MoyiDimens.Field.CodeBoxMinHeight
+                                multiline -> MoyiDimens.Field.MultilineBoxMinHeight
+                                else -> MoyiDimens.Field.BoxMinHeight
+                            },
+                        )
                         .background(colors.fieldFill(state), shapes.radius)
                         .border(stroke.width, stroke.color, shapes.radius)
                         // Vertical padding sits on the value, not the row, so the
                         // eye target can take the box's full height.
                         .padding(horizontal = MoyiDimens.Field.Padding),
                     horizontalArrangement = Arrangement.spacedBy(MoyiDimens.Field.ItemGap),
-                    verticalAlignment = Alignment.CenterVertically,
+                    // A paragraph starts at the top of its box, as Figma draws Field · detail.
+                    verticalAlignment = if (multiline) Alignment.Top else Alignment.CenterVertically,
                 ) {
                     // A Code value (32.5 line) is centred in its 65 box rather than padded.
                     val verticalPadding = if (code) Modifier else Modifier.padding(vertical = MoyiDimens.Field.Padding)
@@ -366,6 +379,14 @@ private fun FieldStates(darkTheme: Boolean) {
                 label = "Shared time zone",
                 type = FieldType.Select,
                 helper = "Your day starts and ends on Lagos time, for both of you, even when either of you travels.",
+            )
+            Spacer(Modifier.height(MoyiTheme.spacing.lg))
+            Field(
+                value = "",
+                onValueChange = {},
+                label = "Anything you want to add",
+                type = FieldType.Multiline,
+                helper = "We do not tell them you reported this.",
             )
         }
     }

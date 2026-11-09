@@ -5,11 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.feature.auth.common.AuthErrorMapper
+import com.moyi.app.feature.auth.common.CodeInput
+import com.moyi.app.feature.auth.common.EMAIL_CODE_LENGTH
+import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
-import com.moyi.app.feature.auth.common.extractVerificationToken
+import com.moyi.app.feature.auth.common.parseCodeInput
 import com.moyi.app.feature.auth.resources.Res
-import com.moyi.app.feature.auth.resources.verify_token_error_blank
+import com.moyi.app.feature.auth.resources.code_error_blank
+import com.moyi.app.feature.auth.resources.code_error_no_address
+import com.moyi.app.feature.auth.resources.code_error_short
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -21,9 +27,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.minutes
 
+/**
+ * [linkToken] is the token from the emailed link when the link opened the app
+ * (`https://getmoyi.app/verify?token=…`, DeepLink): it is checked at once, so the person
+ * sees the screen's own verdict (signed in next, expired, or the field's error) without
+ * typing anything. It is never shown in the code field, which holds only digits.
+ *
+ * The code field (docs/missing-components.md §58) takes six digits typed from the email or
+ * a pasted link. The sixth digit checks the code by itself, once: a code the server refused
+ * is not sent again until it is changed, since each wrong try spends one of its five.
+ */
 class VerifyViewModel(
     email: String,
     private val authRepository: AuthRepository,
+    linkToken: String? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(VerifyState(email = email))
     val state: StateFlow<VerifyState> = _state.asStateFlow()
@@ -33,46 +50,82 @@ class VerifyViewModel(
 
     private var cooldown: Job? = null
 
+    init {
+        if (linkToken != null) sendProof(EmailProof.Link(linkToken))
+    }
+
     fun onAction(action: VerifyAction) {
         when (action) {
-            is VerifyAction.OnTokenChange -> _state.update {
-                // A new paste clears the old verdict; there is nothing to re-check client-side.
-                it.copy(token = it.token.copy(value = action.value, error = null))
-            }
-            VerifyAction.OnSubmit -> submit()
+            is VerifyAction.OnCodeChange -> onCodeChange(action.value)
+            VerifyAction.OnSubmit -> submitCode()
             VerifyAction.OnResendClick -> resend()
+            VerifyAction.OnSignInClick -> viewModelScope.launch { _events.send(VerifyEvent.NavigateToSignIn) }
             VerifyAction.OnChangeEmailClick, VerifyAction.OnBackClick ->
                 viewModelScope.launch { _events.send(VerifyEvent.NavigateBack) }
         }
     }
 
-    private fun submit() {
+    /**
+     * Keystrokes are reduced to digits, six at most. A pasted link is checked as the link
+     * would be when opened. Ignored while a check is in flight: the field keeps showing what
+     * is being checked.
+     */
+    private fun onCodeChange(raw: String) {
         val current = _state.value
         if (current.submit == SubmitStatus.Sending || current.mode != VerifyMode.Waiting) return
-        val token = extractVerificationToken(current.token.value)
-        if (token.isEmpty()) {
-            _state.update {
-                it.copy(token = it.token.copy(showErrors = true, error = UiText.Resource(Res.string.verify_token_error_blank)))
+        when (val input = parseCodeInput(raw)) {
+            is CodeInput.Link -> {
+                _state.update { it.copy(code = FieldInput()) }
+                sendProof(EmailProof.Link(input.token))
             }
+            is CodeInput.Digits -> {
+                // A letter typed, or a seventh digit: nothing changed, and an error stays put.
+                if (input.value == current.code.value) return
+                // A new digit clears the old verdict.
+                _state.update { it.copy(code = FieldInput(value = input.value)) }
+                if (input.value.length == EMAIL_CODE_LENGTH) submitCode()
+            }
+        }
+    }
+
+    private fun submitCode() {
+        val current = _state.value
+        if (current.submit == SubmitStatus.Sending || current.mode != VerifyMode.Waiting) return
+        val digits = current.code.value
+        // This exact code was refused; sending it again would only spend another try.
+        if (digits.length == EMAIL_CODE_LENGTH && current.code.error != null) return
+        val fieldError = when {
+            digits.isEmpty() -> Res.string.code_error_blank
+            digits.length < EMAIL_CODE_LENGTH -> Res.string.code_error_short
+            // Opened by a link on a phone that does not know the address: a code names no account.
+            !current.addressKnown -> Res.string.code_error_no_address
+            else -> null
+        }
+        if (fieldError != null) {
+            _state.update { it.copy(code = it.code.copy(showErrors = true, error = UiText.Resource(fieldError))) }
             return
         }
+        sendProof(EmailProof.Code(email = current.email, code = digits))
+    }
+
+    private fun sendProof(proof: EmailProof) {
         // A new check supersedes an old resend failure: one message at a time above the action.
         _state.update { it.copy(submit = SubmitStatus.Sending, resendFailure = null) }
         viewModelScope.launch {
-            when (val result = authRepository.verifyEmail(token)) {
+            when (val result = authRepository.verifyEmail(proof)) {
                 is Result.Success -> {
                     _state.update { it.copy(submit = SubmitStatus.Idle) }
-                    _events.send(VerifyEvent.NavigateToLogin(current.email))
+                    _events.send(VerifyEvent.NavigateToLogin(_state.value.email))
                 }
                 is Result.Failure -> {
-                    val tokenError = AuthErrorMapper.verifyTokenError(result.error)
+                    val fieldError = AuthErrorMapper.verifyProofError(result.error, proof)
                     _state.update {
                         when {
                             AuthErrorMapper.isVerificationExpired(result.error) ->
-                                it.copy(mode = VerifyMode.Expired, submit = SubmitStatus.Idle)
-                            tokenError != null ->
-                                it.copy(token = it.token.copy(showErrors = true, error = tokenError), submit = SubmitStatus.Idle)
-                            else -> it.copy(submit = AuthErrorMapper.formFailure(result.error))
+                                it.copy(mode = VerifyMode.Expired, code = FieldInput(), submit = SubmitStatus.Idle)
+                            fieldError != null ->
+                                it.copy(code = it.code.copy(showErrors = true, error = fieldError), submit = SubmitStatus.Idle)
+                            else -> it.copy(submit = AuthErrorMapper.proofFormFailure(result.error, proof))
                         }
                     }
                 }
@@ -82,12 +135,13 @@ class VerifyViewModel(
 
     /**
      * Resend always answers 202 on a reachable server, known address or not
-     * (doc 06 §3.1). From the expired state a new link returns the screen to
-     * waiting, with the paste field cleared for the new code.
+     * (doc 06 §3.1). A new email voids the old code (the contract: a code is
+     * good "until a newer email is sent"), so the code field is cleared either
+     * way, and from the expired state the screen returns to waiting.
      *
      * The server allows one resend a minute (ADR-0023) whichever button asks,
      * so a link sent in the last minute ([ResendStatus.Sent]) makes both
-     * "Send it again" and the expired state's "Send a new link" wait.
+     * "Send it again" and the expired state's "Send a new email" wait.
      *
      * Two buttons, two statuses. From the expired state the resend IS the
      * primary action, so it drives [VerifyState.submit]. While waiting,
@@ -98,6 +152,8 @@ class VerifyViewModel(
      */
     private fun resend() {
         val current = _state.value
+        // Opened by a link with no address: there is nowhere to resend to (VerifyState.addressKnown).
+        if (!current.addressKnown) return
         val fromExpired = current.mode == VerifyMode.Expired
         val coolingDown = current.resend == ResendStatus.Sent
         val inFlight = current.submit == SubmitStatus.Sending || (!fromExpired && current.resend == ResendStatus.Sending)
@@ -111,14 +167,9 @@ class VerifyViewModel(
                 is Result.Success -> {
                     _state.update {
                         if (fromExpired) {
-                            it.copy(
-                                mode = VerifyMode.Waiting,
-                                token = it.token.copy(value = "", error = null),
-                                resend = ResendStatus.Sent,
-                                submit = SubmitStatus.Idle,
-                            )
+                            it.copy(mode = VerifyMode.Waiting, code = FieldInput(), resend = ResendStatus.Sent, submit = SubmitStatus.Idle)
                         } else {
-                            it.copy(resend = ResendStatus.Sent)
+                            it.copy(code = FieldInput(), resend = ResendStatus.Sent)
                         }
                     }
                     startCooldown()

@@ -11,7 +11,13 @@ import com.moyi.app.domain.notification.PushPayload
 import org.koin.android.ext.android.inject
 
 /**
- * The one activity. Besides hosting [App], it hands a tapped push to the shell.
+ * The one activity. Besides hosting [App], it hands a tapped push and an opened link to the
+ * shell.
+ *
+ * An App Link (`https://getmoyi.app/verify`, `/reset-password`, `/i/…`, the manifest's
+ * filter) arrives as an `ACTION_VIEW` intent with the URL as its data, cold in [onCreate]
+ * and warm in [onNewIntent], like a tap. The URL goes to [LinkInbox] untouched and unlogged:
+ * it may carry a token.
  *
  * When a push's notification is tapped, the system starts this activity with the push's
  * `data` as intent extras (`bondId`, `kind`, beside FCM's own `google.*` keys):
@@ -21,6 +27,7 @@ import org.koin.android.ext.android.inject
  */
 class MainActivity : ComponentActivity() {
     private val pushTaps: PushTapInbox by inject()
+    private val links: LinkInbox by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -41,12 +48,19 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Takes the two keys the app reads, and only those, out of [intent] (nothing of it is
-     * logged), then removes them so the same tap is never handed over twice.
+     * An opened link goes to [LinkInbox]. Otherwise takes the two push keys the app reads,
+     * and only those, out of [intent] (nothing of it is logged), then removes them so the
+     * same tap is never handed over twice.
      */
     private fun handOver(intent: Intent) {
         // Reopened from Recents: the original intent again, not a new tap.
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        if (intent.action == Intent.ACTION_VIEW) {
+            intent.dataString?.let(links::opened)
+            // Handed over once: a recreation or a later onNewIntent must not open it again.
+            intent.data = null
+            return
+        }
         val extras = intent.extras ?: return
         pushTaps.tapped(
             mapOf(

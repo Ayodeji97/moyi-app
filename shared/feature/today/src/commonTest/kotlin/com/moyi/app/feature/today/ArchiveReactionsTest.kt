@@ -4,6 +4,7 @@ import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchivePage
+import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Reaction
@@ -157,5 +158,46 @@ class ArchiveReactionsTest : MainDispatcherTest() {
         val before = loop.refreshes
         view.onAction(ArchiveDayAction.OnReactionClick(Reaction.HEART))
         assertEquals(before + 1, loop.refreshes)
+    }
+
+    // ---- Owner ruling 5 (2026-11-09): no set on a bond that takes no writes ----
+
+    private fun onBond(status: BondStatus?) {
+        loop.show(dayView(TodayStatus.Revealed).copy(bondStatus = status))
+    }
+
+    @Test
+    fun anEndedBondOrOneInItsCoolingOffHidesTheSetAndKeepsTheirReactionOnMine() = runTest {
+        for (status in listOf(BondStatus.ARCHIVED, BondStatus.PENDING_DELETION, BondStatus.DELETED)) {
+            onBond(status)
+            seed(reacted("2026-09-02", mine = Reaction.HEART, theirs = Reaction.SMILE))
+            val view = dayView("2026-09-02")
+            val day = view.state.value.day
+            assertEquals(false, day?.canReact, "$status")
+            // Reading what the partner left is not a write: it stays under my entry.
+            assertEquals(Reaction.SMILE, day?.partnerReaction, "$status")
+            view.onAction(ArchiveDayAction.OnReactionClick(Reaction.MOVED))
+        }
+        assertTrue(entries.reactions.isEmpty(), "no call is ever made where the server would refuse it")
+    }
+
+    @Test
+    fun theListsBondStatusDecidesAndALiveBondKeepsTheSet() = runTest {
+        onBond(BondStatus.ARCHIVED)
+        seed(revealedDay("2026-09-02"))
+        feed.loadFirst()
+        assertEquals(BondStatus.ARCHIVED, feed.state.value.bondStatus)
+        assertEquals(false, dayView("2026-09-02").state.value.day?.canReact)
+
+        onBond(BondStatus.ACTIVE)
+        feed.loadFirst()
+        assertEquals(true, dayView("2026-09-02").state.value.day?.canReact)
+    }
+
+    @Test
+    fun anUnknownStatusKeepsTheSetAsBefore() = runTest {
+        onBond(null)
+        seed(revealedDay("2026-09-02"))
+        assertEquals(true, dayView("2026-09-02").state.value.day?.canReact)
     }
 }

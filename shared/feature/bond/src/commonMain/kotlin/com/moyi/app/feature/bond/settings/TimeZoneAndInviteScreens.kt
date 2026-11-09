@@ -50,6 +50,7 @@ import com.moyi.app.feature.bond.resources.settings_tz_confirm_line
 import com.moyi.app.feature.bond.resources.settings_tz_decline
 import com.moyi.app.feature.bond.resources.settings_tz_declining
 import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon
+import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon_from
 import com.moyi.app.feature.bond.resources.settings_tz_heading
 import com.moyi.app.feature.bond.resources.settings_tz_list_error
 import com.moyi.app.feature.bond.resources.settings_tz_pick_hint
@@ -359,6 +360,17 @@ private fun TimeZoneProposePreview() = ZonePreview(BondSettingsState(load = Sett
 @Preview
 @Composable
 private fun TimeZoneTooSoonPreview() = ZonePreview(
+    BondSettingsState(
+        load = SettingsLoad.Ready,
+        settings = previewBond,
+        zoneDraft = "Europe/London",
+        error = SettingsError(SettingsField.TimeZone, UiText.Resource(Res.string.settings_tz_error_too_soon_from, listOf("12 December"))),
+    ),
+)
+
+@Preview
+@Composable
+private fun TimeZoneTooSoonUndatedPreview() = ZonePreview(
     BondSettingsState(
         load = SettingsLoad.Ready,
         settings = previewBond,

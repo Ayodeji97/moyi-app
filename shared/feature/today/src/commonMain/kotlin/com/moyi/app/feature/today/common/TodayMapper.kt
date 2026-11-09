@@ -60,10 +60,12 @@ internal fun toDayView(bond: Bond, today: Today): DayView? {
         waitingForPartnerToJoin = bond.status == BondStatus.PENDING_MEMBER,
     )
     if (status in NamesThePartner && bond.partnerName == null) return null
-    // Mine to react to only where their words are shown and the entry is revealed (ADR-0037).
+    // Mine to react to only where their words are shown and the entry is revealed (ADR-0037),
+    // in a bond that still takes writes: the cooling-off refuses a reaction (`409 BOND_ARCHIVED`).
     val reactable = today.partnerEntry.reactable()?.takeIf { status in PartnerVisible }
     return DayView(
         bondId = bond.id,
+        bondStatus = bond.status,
         date = date,
         status = status,
         partnerName = bond.partnerName,
@@ -75,7 +77,7 @@ internal fun toDayView(bond: Bond, today: Today): DayView? {
         partnerPhoto = today.partnerEntry.image()?.takeIf { status in PartnerVisible }?.toEntryPhoto(),
         myVoice = today.myEntry?.takeIf { it.isLive }?.voice?.toVoiceNote(),
         partnerVoice = today.partnerEntry.voice()?.takeIf { status in PartnerVisible }?.toVoiceNote(),
-        canReact = reactable != null,
+        canReact = reactable != null && bond.status.takesWrites,
         myReaction = reactable?.reaction,
         partnerReaction = today.myEntry?.takeIf { it.isLive }?.reaction,
     )

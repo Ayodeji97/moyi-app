@@ -27,8 +27,10 @@ import com.moyi.app.designsystem.theme.MoyiDimens
  *
  * Six variants exist in Figma (Empty, Waiting, Error, Offline, Solo,
  * PartnerPending). They differ by copy and, for Waiting, a second action;
- * this builds the one-action shape, which is all onboarding uses. Waiting's
- * second action is added with the screen that needs it.
+ * this builds the one-action shape, which is all onboarding uses, and
+ * Waiting's second action ([secondActionLabel]): a second [TextLink] under
+ * the first, the same gap apart. The Generic error's Get help uses it
+ * (PROPOSED, docs/missing-components.md §55).
  */
 @Composable
 fun StateBlock(
@@ -37,6 +39,8 @@ fun StateBlock(
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: () -> Unit = {},
+    secondActionLabel: String? = null,
+    onSecondAction: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -51,6 +55,10 @@ fun StateBlock(
         if (actionLabel != null) {
             Spacer(Modifier.height(MoyiDimens.StateBlock.Gap))
             TextLink(actionLabel, onClick = onAction)
+        }
+        if (secondActionLabel != null) {
+            Spacer(Modifier.height(MoyiDimens.StateBlock.Gap))
+            TextLink(secondActionLabel, onClick = onSecondAction)
         }
     }
 }
