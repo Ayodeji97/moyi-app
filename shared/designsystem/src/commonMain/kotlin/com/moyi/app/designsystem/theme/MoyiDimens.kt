@@ -86,6 +86,8 @@ object MoyiDimens {
         val PaddingHorizontal = 32.dp
         /** Like PrimaryAction, the label is centred in the 48; padding only matters when it wraps. */
         val PaddingVertical = 8.dp
+        /** Between two side by side ([com.moyi.app.designsystem.component.SecondaryActionPair]) or stacked: the 8 the stack already used. */
+        val PairGap = 8.dp
     }
 
     /** Figma §3.1 rows 6 and 6a. tokens.md has no checkbox (not one of the ten components). */
@@ -172,6 +174,27 @@ object MoyiDimens {
         val Stroke = 1.dp
         /** Icon-only media and dismiss controls, 48 targets (tokens.md §4). */
         val IconTarget = TouchTarget
+    }
+
+    /**
+     * The voice-note waveform (PROPOSED, docs/missing-components.md §46): rounded vertical
+     * bars, as messaging apps draw a voice message. Not in Figma or tokens.md, so every value
+     * is **Interpreted**: a 48 tall target (NFR-101, it seeks) around a 32 tall drawing, on
+     * the 4 pt half-step the composer already uses for optical sizes.
+     */
+    object Waveform {
+        /** The touch height: tap or drag anywhere in it to seek. */
+        val Target = TouchTarget
+        /** The tallest bar. */
+        val Height = 32.dp
+        /** A bar's width; its ends are fully rounded. */
+        val BarWidth = 3.dp
+        /** Between two bars. */
+        val BarGap = 2.dp
+        /** The shortest bar, so silence still reads as the line of the voice note, a row of dots. */
+        val MinBar = 3.dp
+        /** Between the waveform and the control or the clock beside it. */
+        val Gap = 8.dp
     }
 
     /** Today's `nav` row (Figma 159:2: 358 × 48 at y 24; daily-loop spec §2). */

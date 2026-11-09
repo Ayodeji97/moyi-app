@@ -58,7 +58,9 @@ import com.moyi.app.feature.today.resources.delete_confirm
 import com.moyi.app.feature.today.resources.delete_heading
 import com.moyi.app.feature.today.resources.delete_line
 import com.moyi.app.feature.today.resources.today_delete
+import com.moyi.app.feature.today.resources.today_delete_short
 import com.moyi.app.feature.today.resources.today_edit
+import com.moyi.app.feature.today.resources.today_edit_short
 import com.moyi.app.feature.today.resources.today_action_failed
 import com.moyi.app.feature.today.resources.today_error_action
 import com.moyi.app.feature.today.resources.today_error_heading
@@ -252,17 +254,22 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
  */
 @Composable
 internal fun WaitingNote(partnerName: String, onEdit: (() -> Unit)?, onDelete: (() -> Unit)?) {
-    val edit = stringResource(Res.string.today_edit)
-    val delete = stringResource(Res.string.today_delete)
+    val edit = stringResource(Res.string.today_edit_short)
+    val delete = stringResource(Res.string.today_delete_short)
+    val editSpoken = stringResource(Res.string.today_edit)
+    val deleteSpoken = stringResource(Res.string.today_delete)
     DayNote(
         heading = stringResource(Res.string.today_waiting_heading),
         line = stringResource(Res.string.today_waiting_line, partnerName),
         // Outlined buttons, Edit in `ink` and Delete in `danger` (owner ruling 2026-11-06,
         // PR 30 smoke test: as underlined links they read as text, not actions). Before the
         // reveal delete is still not irreversible, so it asks no confirmation (states.md §4).
+        // Short labels, side by side when they fit (owner request 2026-11-09): "Written." and
+        // "Yours is saved" above already say whose entry it is. Spoken in full, so a screen
+        // reader still hears what each one changes.
         actions = listOfNotNull(
-            onEdit?.let { NoteAction(edit, it, outlined = true) },
-            onDelete?.let { NoteAction(delete, it, destructive = true, outlined = true) },
+            onEdit?.let { NoteAction(edit, it, outlined = true, spokenLabel = editSpoken) },
+            onDelete?.let { NoteAction(delete, it, destructive = true, outlined = true, spokenLabel = deleteSpoken) },
         ),
     )
 }
