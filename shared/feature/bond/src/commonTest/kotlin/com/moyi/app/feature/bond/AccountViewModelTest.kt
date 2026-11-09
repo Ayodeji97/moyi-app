@@ -9,6 +9,7 @@ import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.account.AccountDeletionRepository
 import com.moyi.app.domain.account.DeletionRequest
+import com.moyi.app.domain.today.QueuedEntry
 import com.moyi.app.feature.bond.account.AccountAction
 import com.moyi.app.feature.bond.account.AccountEvent
 import com.moyi.app.feature.bond.account.AccountLoad
@@ -26,6 +27,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /** Account and Delete your account: load, the password, each refusal, one call at a time, and keeping the account. */
@@ -58,7 +60,9 @@ class AccountViewModelTest : MainDispatcherTest() {
     }
 
     private val deletion = FakeDeletion()
-    private val viewModel by lazy { AccountViewModel(deletion) }
+    private val auth = FakeAuthRepository()
+    private val outbox = FakeOutbox()
+    private val viewModel by lazy { AccountViewModel(deletion, auth, outbox, outbox) }
 
     private fun api(status: Int, code: ApiErrorCode) = Result.Failure(DataError.Network.Api(ApiProblem(status, code)))
 
@@ -220,6 +224,74 @@ class AccountViewModelTest : MainDispatcherTest() {
         }
         assertNull(viewModel.state.value.pending)
     }
+
+    // ----- sign out (owner ruling 2026-11-09: as Bond settings signs out) -----
+
+    @Test
+    fun signOutWithNothingWaitingSignsOutOnceWithoutAsking() {
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        viewModel.onAction(AccountAction.OnSignOutClick)
+
+        assertTrue(viewModel.state.value.signingOut)
+        assertFalse(viewModel.state.value.confirmingUnsentSignOut)
+        assertEquals(0, outbox.passes, "nothing waiting: no send, no question")
+        assertEquals(1, auth.logouts)
+    }
+
+    @Test
+    fun signOutSendsWhatIsWaitingFirstAndSignsOutWhenItAllWent() {
+        outbox.queue += waiting
+        outbox.online = true
+
+        viewModel.onAction(AccountAction.OnSignOutClick)
+
+        assertEquals(1, outbox.passes)
+        assertEquals(1, auth.logouts)
+    }
+
+    @Test
+    fun signOutThatWouldDeleteUnsentWordsAsksFirstAndStayingKeepsThem() {
+        outbox.queue += waiting
+
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        assertTrue(viewModel.state.value.confirmingUnsentSignOut)
+        assertFalse(viewModel.state.value.signingOut)
+        assertEquals(0, auth.logouts, "not one word deleted without asking")
+
+        viewModel.onAction(AccountAction.OnSignOutUnsentDismiss)
+        assertFalse(viewModel.state.value.confirmingUnsentSignOut)
+        assertEquals(0, auth.logouts)
+        assertEquals(1, outbox.queue.size)
+
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        viewModel.onAction(AccountAction.OnSignOutUnsentConfirm)
+        assertEquals(1, auth.logouts, "the person chose: the session (and its wipe) ends")
+    }
+
+    @Test
+    fun withAccountUnreadSignOutStillWorks() {
+        deletion.pendingReads += Result.Failure(DataError.Network.NoInternet)
+        assertEquals(AccountLoad.Failed, viewModel.state.value.load)
+
+        viewModel.onAction(AccountAction.OnSignOutClick)
+
+        assertEquals(1, auth.logouts)
+    }
+
+    @Test
+    fun whileSigningOutExportAndDeleteDoNotOpen() = runTest {
+        outbox.queue += waiting
+        outbox.online = true
+        viewModel.onAction(AccountAction.OnSignOutClick)
+
+        viewModel.events.test {
+            viewModel.onAction(AccountAction.OnExportClick)
+            viewModel.onAction(AccountAction.OnDeleteClick)
+            expectNoEvents()
+        }
+    }
+
+    private val waiting = QueuedEntry("b1", "You fixed the gate.", null, "key-1", Instant.parse("2026-09-14T11:00:00Z"), "2026-09-14")
 
     private companion object {
         val pending = DeletionRequest(

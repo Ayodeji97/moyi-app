@@ -21,7 +21,7 @@ sealed interface RelationshipTypeAction {
     /** "I have an invite code" (not in Figma): manual code entry. */
     data object OnHaveCodeClick : RelationshipTypeAction
 
-    /** "Your account" (PROPOSED, docs/missing-components.md §57): Account, from the first screen. */
+    /** The account target, top right (PROPOSED, docs/missing-components.md §57): Account, from the first screen. */
     data object OnAccountClick : RelationshipTypeAction
 }
 

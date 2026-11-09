@@ -29,6 +29,7 @@ import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.component.TrailingNavRow
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -78,11 +79,13 @@ fun RelationshipTypeRoot(
  * [showBack] is false when this is the first screen after sign in (nothing
  * behind it); the eyebrow returns and the heading sits at 107, as on every root form.
  *
- * PROPOSED (docs/missing-components.md §57): as that root, a second centred link, **Your
- * account**, under the invite-code link. A person here is in no open bond, so Bond settings
- * (where Figma puts Account) cannot be reached, and Account is the only way to export or
- * delete the account. Pushed from the archived bond (back drawn), the link is left out:
- * the archived screen behind it already has it.
+ * PROPOSED (docs/missing-components.md §57, owner ruling 2026-11-09): as that root, the
+ * account target, a person glyph at the top right ([TrailingNavRow], announced "Your
+ * account"). A person here is in no open bond, so Bond settings (where Figma puts Account)
+ * cannot be reached, and Account is the only way to export, delete the account or sign out.
+ * Pushed from the archived bond (back drawn), the target is left out: the scaffold's top row
+ * is the back target there, and the archived screen one step back already has the account
+ * target.
  */
 @Composable
 fun RelationshipTypeScreen(
@@ -100,13 +103,15 @@ fun RelationshipTypeScreen(
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (!showBack) {
-                Spacer(Modifier.height(spacing.sm))
-                TextLink(
-                    stringResource(Res.string.onboarding_your_account),
+        },
+        header = if (showBack) {
+            null
+        } else {
+            {
+                TrailingNavRow(
+                    icon = MoyiIcons.User,
+                    contentDescription = stringResource(Res.string.onboarding_your_account),
                     onClick = { onAction(RelationshipTypeAction.OnAccountClick) },
-                    centered = true,
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         },

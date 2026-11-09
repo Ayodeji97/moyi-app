@@ -26,9 +26,10 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Account, its own graph so every signed-in person can reach it, bond or no bond (owner
- * ruling 2026-11-09): Bond settings' Account row, and the "Your account" link on the
- * screens a person without an open bond lands on (relationship type, the unverified gate,
- * the archived bond). Store policy wants account deletion reachable from inside the app.
+ * ruling 2026-11-09): Bond settings' Account row, and the account target (a person glyph,
+ * top right) on the screens a person without an open bond lands on (relationship type, the
+ * unverified gate, the archived bond). Store policy wants account deletion reachable from
+ * inside the app, and Account carries Sign out, so those screens can sign out too.
  */
 @Serializable
 data object AccountGraph
@@ -51,7 +52,8 @@ internal data object ExportRoute
  *   so the row shows the pending day as soon as it is asked for. Asking stays on the screen,
  *   which turns to the pending state; keeping the account returns to Account. Back clears the
  *   typed password.
- * - Account, or Delete your account's "Export your archive first" → Export (push), with a
+ * - Account, Delete your account's "Export your archive first", or the archived bond's
+ *   Export your archive ([navigateToExport], with no Account under it) → Export (push), with a
  *   ViewModel of its own, keyed to its entry: polling runs only while it is started (on
  *   screen, app in front), and stops for good when it is popped. Download leaves the app for
  *   the phone's browser.
@@ -60,6 +62,14 @@ fun NavGraphBuilder.accountGraph(navController: NavController) {
     navigation<AccountGraph>(startDestination = AccountRoute) {
         accountDestinations(navController)
     }
+}
+
+/**
+ * Export your archive on its own, without Account under it: the archived bond's link, as its
+ * frames draw it (owner ruling 2026-11-09). Back returns to the screen it was opened from.
+ */
+fun NavController.navigateToExport() {
+    navigate(ExportRoute) { launchSingleTop = true }
 }
 
 private fun NavGraphBuilder.accountDestinations(navController: NavController) {

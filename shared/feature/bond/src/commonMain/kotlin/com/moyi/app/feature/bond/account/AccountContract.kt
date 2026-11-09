@@ -28,10 +28,14 @@ data class AccountState(
     /** An error that is not the password's, above the delete screen's action. */
     val error: UiText? = null,
     val inFlight: DeletionCall? = null,
+    /** Sign out (owner ruling 2026-11-09) is running: its row says Signing out and every row waits. */
+    val signingOut: Boolean = false,
+    /** Sign out would delete entries still waiting to send: the question is up. */
+    val confirmingUnsentSignOut: Boolean = false,
 ) {
     override fun toString(): String =
         "AccountState(load=$load, pending=$pending, password=<${password.length} chars>, passwordError=$passwordError, " +
-            "error=$error, inFlight=$inFlight)"
+            "error=$error, inFlight=$inFlight, signingOut=$signingOut, confirmingUnsentSignOut=$confirmingUnsentSignOut)"
 }
 
 sealed interface AccountAction {
@@ -48,6 +52,15 @@ sealed interface AccountAction {
 
     /** The delete screen closed (back, Cancel): the password and its error go with it. */
     data object OnDeleteClosed : AccountAction
+
+    /** Sign out, exactly as Bond settings' (owner ruling 2026-11-09). The shell routes on the session ending. */
+    data object OnSignOutClick : AccountAction
+
+    /** Sign out and delete it: the entries still waiting go with the session. */
+    data object OnSignOutUnsentConfirm : AccountAction
+
+    /** Stay signed in: the entries keep waiting to send. */
+    data object OnSignOutUnsentDismiss : AccountAction
 }
 
 sealed interface AccountEvent {

@@ -14,6 +14,6 @@ import org.koin.dsl.module
 val bondFeatureModule = module {
     viewModel { (bondId: String) -> BondSettingsViewModel(bondId, repository = get(), auth = get(), bonds = get(), outbox = get(), sender = get()) }
     viewModel { (bondId: String) -> NotificationSettingsViewModel(bondId, notifications = get(), settings = get()) }
-    viewModel { AccountViewModel(deletion = get()) }
+    viewModel { AccountViewModel(deletion = get(), auth = get(), outbox = get(), sender = get()) }
     viewModel { ExportViewModel(exports = get()) }
 }

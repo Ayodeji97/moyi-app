@@ -115,7 +115,7 @@ data object JoinCannotBeUsedRoute
  * A `403 EMAIL_NOT_VERIFIED` from create or join replaces everything with the gate.
  *
  * Account ([onOpenAccount], in `:shared:feature:bond`): the gate and relationship type as a
- * root carry a "Your account" link that pushes it, so back returns. A person on either is
+ * root carry the account target (a person glyph, top right) that pushes it, so back returns. A person on either is
  * in no open bond and cannot reach Bond settings (owner ruling 2026-11-09).
  *
  * Owed: a code handed over by the `/i/{code}` lander after sign in (deep

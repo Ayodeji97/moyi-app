@@ -50,21 +50,28 @@ import com.moyi.app.feature.bond.resources.settings_cancel
 import com.moyi.app.feature.bond.resources.settings_load_error_action
 import com.moyi.app.feature.bond.resources.settings_load_error_heading
 import com.moyi.app.feature.bond.resources.settings_load_error_line
+import com.moyi.app.feature.bond.resources.settings_row_sign_out
+import com.moyi.app.feature.bond.resources.settings_signing_out
 import com.moyi.app.feature.bond.settings.RowKind
 import com.moyi.app.feature.bond.settings.SettingsRow
 import com.moyi.app.feature.bond.settings.localDayAndMonth
+import com.moyi.app.feature.bond.signout.UnsentSignOutQuestion
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
 /**
  * Account (Figma `Account 7 · settings`, 575:1782; strings-proposed.md §9), reached from
- * Bond settings › Just you › Account. The eyebrow Account, the heading Your account, then
- * its rows: **Export your archive** (PROPOSED here: the drawn screen has Get help and Delete
- * your account) and **Delete your account**, underlined in `danger`, with the day it happens
- * while one is pending. Get help is left out, with no dead row: its screen is not built.
+ * Bond settings › Just you › Account, and from the account icon on the screens a person with
+ * no open bond lands on (docs/missing-components.md §57). The eyebrow Account, the heading
+ * Your account, then its rows: **Export your archive** (PROPOSED here: the drawn screen has
+ * Get help and Delete your account), **Sign out** (owner ruling 2026-11-09: Bond settings'
+ * row, words and sequence, so a person with no bond can sign out too) and **Delete your
+ * account**, underlined in `danger`, with the day it happens while one is pending. Get help
+ * is left out, with no dead row: its screen is not built.
  *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, and
- * Export your archive stays under it, because it needs nothing `/me` holds.
+ * Export your archive and Sign out stay under it, because neither needs anything `/me` holds.
+ * While signing out every row waits, and Sign out says Signing out.
  */
 @Composable
 fun AccountScreen(
@@ -84,29 +91,50 @@ fun AccountScreen(
                 )
             }
             Spacer(Modifier.height(MoyiTheme.spacing.xxl))
-            ExportRow(onAction)
+            ExportRow(state, onAction)
+            SignOutRow(state, onAction)
         }
         AccountLoad.Ready -> MoyiScaffold(onBack = onBack) {
             ScreenHeader(eyebrow = stringResource(Res.string.account_eyebrow), heading = stringResource(Res.string.account_heading))
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
-            ExportRow(onAction)
+            ExportRow(state, onAction)
+            SignOutRow(state, onAction)
             SettingsRow(
                 label = stringResource(Res.string.account_row_delete),
                 value = state.pending?.let { stringResource(Res.string.account_delete_value_pending, localDayAndMonth(it.cancellableUntil)) },
                 kind = RowKind.Navigates,
                 destructive = true,
+                enabled = !state.signingOut,
                 onClick = { onAction(AccountAction.OnDeleteClick) },
             )
         }
     }
+    if (state.confirmingUnsentSignOut) {
+        UnsentSignOutQuestion(
+            onConfirm = { onAction(AccountAction.OnSignOutUnsentConfirm) },
+            onDismiss = { onAction(AccountAction.OnSignOutUnsentDismiss) },
+        )
+    }
 }
 
 @Composable
-private fun ExportRow(onAction: (AccountAction) -> Unit) {
+private fun ExportRow(state: AccountState, onAction: (AccountAction) -> Unit) {
     SettingsRow(
         label = stringResource(Res.string.account_row_export),
         kind = RowKind.Navigates,
+        enabled = !state.signingOut,
         onClick = { onAction(AccountAction.OnExportClick) },
+    )
+}
+
+/** Bond settings' Sign out row, its words and its Signing out (owner ruling 2026-11-09). */
+@Composable
+private fun SignOutRow(state: AccountState, onAction: (AccountAction) -> Unit) {
+    SettingsRow(
+        label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
+        kind = RowKind.Acts,
+        enabled = !state.signingOut,
+        onClick = { onAction(AccountAction.OnSignOutClick) },
     )
 }
 

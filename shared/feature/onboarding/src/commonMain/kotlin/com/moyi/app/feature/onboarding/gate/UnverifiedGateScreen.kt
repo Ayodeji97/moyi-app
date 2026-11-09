@@ -22,6 +22,8 @@ import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.component.TrailingNavRow
+import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.feature.onboarding.resources.Res
@@ -58,9 +60,10 @@ fun UnverifiedGateRoot(
  * which becomes the muted acknowledgement once sent (the verify screen's
  * Resent sub-state, 362:95). Drawn as a plain screen, not a StateBlock.
  *
- * PROPOSED (docs/missing-components.md §57): under it, a second centred link, **Your
- * account**, which pushes Account. An unverified person has no bond, so no Bond settings,
- * and must still be able to export or delete their account.
+ * PROPOSED (docs/missing-components.md §57, owner ruling 2026-11-09): the account target,
+ * a person glyph at the top right ([TrailingNavRow], announced "Your account"), which pushes
+ * Account. An unverified person has no bond, so no Bond settings, and must still be able to
+ * export, delete their account or sign out.
  */
 @Composable
 fun UnverifiedGateScreen(
@@ -94,12 +97,12 @@ fun UnverifiedGateScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(Modifier.height(spacing.sm))
-            TextLink(
-                stringResource(Res.string.onboarding_your_account),
+        },
+        header = {
+            TrailingNavRow(
+                icon = MoyiIcons.User,
+                contentDescription = stringResource(Res.string.onboarding_your_account),
                 onClick = { onAction(UnverifiedGateAction.OnAccountClick) },
-                centered = true,
-                modifier = Modifier.fillMaxWidth(),
             )
         },
     ) {

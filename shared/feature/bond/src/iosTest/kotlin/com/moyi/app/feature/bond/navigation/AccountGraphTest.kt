@@ -17,7 +17,7 @@ class AccountGraphTest {
     private fun controller(): NavHostController = NavHostController().apply {
         navigatorProvider.addNavigator(ComposeNavigator())
         graph = createGraph(startDestination = BondArchivedRoute()) {
-            bondArchivedDestination(onStartNewBond = {}, onOpenAccount = {})
+            bondArchivedDestination(this@apply, onStartNewBond = {}, onOpenAccount = {})
             bondSettingsGraph(this@apply, onBondEnded = {})
             accountGraph(this@apply)
         }
@@ -62,5 +62,17 @@ class AccountGraphTest {
         // The delete screen shares Account's ViewModel through Account's entry.
         assertEquals(AccountRoute, nav.getBackStackEntry<AccountRoute>().toRoute<AccountRoute>())
         assertEquals(DeleteAccountRoute, nav.currentBackStackEntry!!.toRoute<DeleteAccountRoute>())
+    }
+
+    @Test
+    fun theArchivedBondsExportOpensExportWithNoAccountUnderIt() {
+        val nav = controller()
+
+        nav.navigateToExport()
+
+        assertEquals(ExportRoute, nav.currentBackStackEntry!!.toRoute<ExportRoute>())
+        assertTrue(runCatching { nav.getBackStackEntry<AccountRoute>() }.isFailure, "export is opened directly, not through Account")
+        nav.popBackStack()
+        assertEquals(null, nav.currentBackStackEntry!!.toRoute<BondArchivedRoute>().partnerName, "back returns to the archived bond")
     }
 }

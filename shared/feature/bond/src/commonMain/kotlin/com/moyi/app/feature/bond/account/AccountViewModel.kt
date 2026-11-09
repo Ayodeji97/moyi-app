@@ -7,12 +7,16 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.account.AccountDeletionRepository
+import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.today.EntryOutbox
+import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.delete_account_error_blank
 import com.moyi.app.feature.bond.resources.delete_account_error_password
 import com.moyi.app.feature.bond.resources.delete_account_error_rate_limited
 import com.moyi.app.feature.bond.resources.delete_account_error_too_late
 import com.moyi.app.feature.bond.resources.settings_error_generic
+import com.moyi.app.feature.bond.signout.SignOut
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,15 +39,25 @@ import kotlinx.coroutines.launch
  * - **Keep my account** is `DELETE /me/deletion-request`. A `404` means nothing can be called
  *   off any more: reload, and say it is too late if a deletion is still there.
  * - One call at a time: a second tap while one is in flight does nothing.
+ * - **Sign out** (owner ruling 2026-11-09) runs Bond settings' sequence ([SignOut]): one more
+ *   try to send what is waiting, then ask, or sign out. Account is the one place a person
+ *   with no open bond can sign out. A second tap while it runs does nothing.
  */
 class AccountViewModel(
     private val deletion: AccountDeletionRepository,
+    auth: AuthRepository,
+    /** Entries sent while offline: a sign-out tries them once more before the session wipe takes them. */
+    outbox: EntryOutbox,
+    sender: OutboxSender,
 ) : ViewModel() {
     private val _state = MutableStateFlow(AccountState())
     val state: StateFlow<AccountState> = _state.asStateFlow()
 
     private val _events = Channel<AccountEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    /** The same sign-out as Bond settings' (owner ruling 2026-11-09). */
+    private val signOutSequence = SignOut(auth, outbox, sender)
 
     init {
         load()
@@ -52,8 +66,8 @@ class AccountViewModel(
     fun onAction(action: AccountAction) {
         when (action) {
             AccountAction.OnRetryClick -> load()
-            AccountAction.OnExportClick -> send(AccountEvent.OpenExport)
-            AccountAction.OnDeleteClick -> {
+            AccountAction.OnExportClick -> if (!_state.value.signingOut) send(AccountEvent.OpenExport)
+            AccountAction.OnDeleteClick -> if (!_state.value.signingOut) {
                 _state.update { it.copy(password = "", passwordError = null, error = null) }
                 send(AccountEvent.OpenDelete)
             }
@@ -61,6 +75,22 @@ class AccountViewModel(
             AccountAction.OnConfirmDeletion -> requestDeletion()
             AccountAction.OnKeepAccount -> cancelDeletion()
             AccountAction.OnDeleteClosed -> _state.update { it.copy(password = "", passwordError = null, error = null) }
+            AccountAction.OnSignOutClick -> signOut()
+            AccountAction.OnSignOutUnsentConfirm -> {
+                _state.update { it.copy(confirmingUnsentSignOut = false, signingOut = true) }
+                viewModelScope.launch { signOutSequence.anyway() }
+            }
+            AccountAction.OnSignOutUnsentDismiss -> _state.update { it.copy(confirmingUnsentSignOut = false) }
+        }
+    }
+
+    private fun signOut() {
+        if (_state.value.signingOut) return
+        _state.update { it.copy(signingOut = true) }
+        viewModelScope.launch {
+            if (!signOutSequence.unlessWordsWouldBeLost()) {
+                _state.update { it.copy(signingOut = false, confirmingUnsentSignOut = true) }
+            }
         }
     }
 

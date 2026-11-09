@@ -29,12 +29,7 @@ import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextTone
-import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.TimeOfDayPicker
-import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_confirm
-import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_dismiss
-import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_line
-import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_title
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
@@ -78,6 +73,7 @@ import com.moyi.app.feature.bond.resources.settings_type_hint
 import com.moyi.app.feature.bond.resources.settings_type_line
 import com.moyi.app.feature.bond.resources.settings_value_off
 import com.moyi.app.feature.bond.resources.settings_value_on
+import com.moyi.app.feature.bond.signout.UnsentSignOutQuestion
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.relationship.RelationshipCard
 import com.moyi.app.feature.onboarding.resources.bond_name_helper
@@ -130,7 +126,7 @@ fun BondSettingsScreen(
                 Spacer(Modifier.height(MoyiTheme.spacing.xxl))
                 JustYouGroup(state, busy = state.signingOut, notifications = false, onAction = onAction)
             }
-            UnsentSignOutQuestion(state, onAction)
+            SignOutQuestion(state, onAction)
         }
         settings != null -> SettingsRoot(state, settings, onAction, onBack)
     }
@@ -167,22 +163,13 @@ private fun JustYouGroup(state: BondSettingsState, busy: Boolean, notifications:
     }
 }
 
-/**
- * A sign-out that would delete words still waiting to send (the session wipe is total).
- * ConfirmDialog with the copy approved 2026-11-08 (strings-proposed.md §12), its safe
- * answer the dismiss.
- */
+/** The sign-out question ([UnsentSignOutQuestion]), shared with Account. */
 @Composable
-private fun UnsentSignOutQuestion(state: BondSettingsState, onAction: (BondSettingsAction) -> Unit) {
+private fun SignOutQuestion(state: BondSettingsState, onAction: (BondSettingsAction) -> Unit) {
     if (!state.confirmingUnsentSignOut) return
-    ConfirmDialog(
-        title = stringResource(Res.string.settings_sign_out_unsent_title),
-        message = stringResource(Res.string.settings_sign_out_unsent_line),
-        confirmLabel = stringResource(Res.string.settings_sign_out_unsent_confirm),
-        dismissLabel = stringResource(Res.string.settings_sign_out_unsent_dismiss),
+    UnsentSignOutQuestion(
         onConfirm = { onAction(BondSettingsAction.OnSignOutUnsentConfirm) },
         onDismiss = { onAction(BondSettingsAction.OnSignOutUnsentDismiss) },
-        destructive = true,
     )
 }
 
@@ -303,7 +290,7 @@ private fun SettingsRoot(
         }
     }
 
-    UnsentSignOutQuestion(state, onAction)
+    SignOutQuestion(state, onAction)
 
     if (state.pickingRevealTime) {
         val initial = settings.revealTime ?: DEFAULT_REVEAL_TIME

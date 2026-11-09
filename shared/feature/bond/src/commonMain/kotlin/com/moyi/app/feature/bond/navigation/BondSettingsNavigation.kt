@@ -254,12 +254,18 @@ private fun NavController.closeEditor(viewModel: BondSettingsViewModel) {
 
 /**
  * Bond · archived ([BondArchivedRoute]). A root with no back (SKILL.md); the shell makes it
- * the only screen. [onStartNewBond] pushes onboarding over it, and [onOpenAccount] pushes
- * Account ([AccountGraph]), so back from either returns here.
+ * the only screen. [onStartNewBond] pushes onboarding over it, Export your archive pushes the
+ * export screen ([navigateToExport]), and [onOpenAccount] pushes Account ([AccountGraph]), so
+ * back from any of them returns here.
  */
-fun NavGraphBuilder.bondArchivedDestination(onStartNewBond: () -> Unit, onOpenAccount: () -> Unit) {
+fun NavGraphBuilder.bondArchivedDestination(navController: NavController, onStartNewBond: () -> Unit, onOpenAccount: () -> Unit) {
     composable<BondArchivedRoute> { entry ->
         val route = entry.toRoute<BondArchivedRoute>()
-        BondArchivedScreen(partnerName = route.partnerName, onStartNewBond = onStartNewBond, onOpenAccount = onOpenAccount)
+        BondArchivedScreen(
+            partnerName = route.partnerName,
+            onStartNewBond = onStartNewBond,
+            onExportArchive = { navController.navigateToExport() },
+            onOpenAccount = onOpenAccount,
+        )
     }
 }

@@ -13,8 +13,11 @@ import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.component.TrailingNavRow
+import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.archived_account
+import com.moyi.app.feature.bond.resources.archived_export
 import com.moyi.app.feature.bond.resources.archived_eyebrow
 import com.moyi.app.feature.bond.resources.archived_heading
 import com.moyi.app.feature.bond.resources.archived_line
@@ -38,23 +41,35 @@ import org.jetbrains.compose.resources.stringResource
  *
  * The link into this bond's Archive is owed (the Archive is on another branch). The primary
  * action is starting a new bond, which pushes onboarding, so back from there returns here.
- * Under it, PROPOSED (docs/missing-components.md §57), **Your account**: a person here has
- * no Bond settings, and Account is where they export their archive (the frames' "Export
- * your archive") or delete their account. It pushes Account; back returns here.
+ * Under it, as the frames draw it (states.md §9; owner ruling 2026-11-09), **Export your
+ * archive**, the secondary link, which pushes the export screen directly; back returns here.
+ *
+ * PROPOSED (docs/missing-components.md §57, owner ruling 2026-11-09): the account target, a
+ * person glyph at the top right ([TrailingNavRow], announced "Your account"). A person here
+ * has no Bond settings, and Account is where they delete their account or sign out. It pushes
+ * Account; back returns here.
  */
 @Composable
 fun BondArchivedScreen(
     partnerName: String?,
     onStartNewBond: () -> Unit,
+    onExportArchive: () -> Unit,
     onOpenAccount: () -> Unit,
 ) {
     MoyiScaffold(
+        header = {
+            TrailingNavRow(
+                icon = MoyiIcons.User,
+                contentDescription = stringResource(Res.string.archived_account),
+                onClick = onOpenAccount,
+            )
+        },
         action = {
             PrimaryAction(text = stringResource(Res.string.archived_new_bond), onClick = onStartNewBond)
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
             TextLink(
-                stringResource(Res.string.archived_account),
-                onClick = onOpenAccount,
+                stringResource(Res.string.archived_export),
+                onClick = onExportArchive,
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -72,11 +87,11 @@ fun BondArchivedScreen(
 @Preview
 @Composable
 private fun BondArchivedPreview() {
-    MoyiTheme(darkTheme = true) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onOpenAccount = {}) }
+    MoyiTheme(darkTheme = true) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onExportArchive = {}, onOpenAccount = {}) }
 }
 
 @Preview
 @Composable
 private fun BondArchivedLightPreview() {
-    MoyiTheme(darkTheme = false) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onOpenAccount = {}) }
+    MoyiTheme(darkTheme = false) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onExportArchive = {}, onOpenAccount = {}) }
 }

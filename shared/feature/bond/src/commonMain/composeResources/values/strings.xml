@@ -27,7 +27,7 @@
     <string name="settings_row_reveal">Reveal time</string>
     <!-- states.md §8: strict mode is shown as Rest days, because "strict mode" is a flag name. -->
     <string name="settings_row_rest_days">Rest days</string>
-    <!-- PROPOSED. In place of the Account row (its screen is not built): home_sign_out's words. -->
+    <!-- PROPOSED. home_sign_out's words. Bond settings' Just you row, and Account's (owner ruling 2026-11-09). -->
     <string name="settings_row_sign_out">Sign out</string>
     <!-- copy.md: "Leave this bond?" is the confirmation; the row is the act. -->
     <string name="settings_row_leave">Leave this bond</string>
@@ -162,8 +162,10 @@
     <string name="archived_line_unnamed">It is read only for both of you, and your archive stays. What the other person wrote about you stays readable unless they remove it.</string>
     <!-- PROPOSED. The PrimaryAction (399:32), whose words were not read: starting a new bond (copy.md: "New bond"). -->
     <string name="archived_new_bond">Start a new bond</string>
-    <!-- PROPOSED (docs/missing-components.md §57). The link under Start a new bond that opens Account: account.heading's words. Someone with no open bond has no Bond settings, so this is how they reach export and deletion. -->
+    <!-- PROPOSED (docs/missing-components.md §57, owner ruling 2026-11-09). The spoken label of the account target (a person glyph, top right) that opens Account: account.heading's words. Someone with no open bond has no Bond settings, so this is how they reach deletion and sign out. -->
     <string name="archived_account">Your account</string>
+    <!-- Owner ruling 2026-11-09: the frames' secondary under the primary (states.md §9, "Export your archive" on Bond · archived 399:21 and 614:1832). Opens the export screen directly. -->
+    <string name="archived_export">Export your archive</string>
 
     <!-- states.md §8 (the ETag conflict, "worth drawing"): a 412, after the screen has reloaded. -->
     <string name="settings_error_conflict">This changed while you were looking at it.</string>

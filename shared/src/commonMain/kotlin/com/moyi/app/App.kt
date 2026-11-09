@@ -170,7 +170,8 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session:
             onOpenAccount = openAccount,
         )
         // Starting a new bond pushes onboarding over the archived screen, so back returns to it.
-        bondArchivedDestination(onStartNewBond = { navController.navigate(OnboardingRoute) }, onOpenAccount = openAccount)
+        // Its Export your archive and account target push over it too.
+        bondArchivedDestination(navController, onStartNewBond = { navController.navigate(OnboardingRoute) }, onOpenAccount = openAccount)
         // Account: from Bond settings, and from each screen a person with no open bond lands on.
         accountGraph(navController)
         if (UiPreview.onboarding) uiPreviewGraph(navController)

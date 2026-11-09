@@ -21,7 +21,7 @@ sealed interface UnverifiedGateAction {
     /** The app came back to the foreground: the link may have been opened meanwhile. */
     data object OnResume : UnverifiedGateAction
 
-    /** "Your account" (PROPOSED, docs/missing-components.md §57): Account, from the gate. */
+    /** The account target, top right (PROPOSED, docs/missing-components.md §57): Account, from the gate. */
     data object OnAccountClick : UnverifiedGateAction
 }
 

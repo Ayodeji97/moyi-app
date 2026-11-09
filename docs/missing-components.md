@@ -393,8 +393,9 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   first if you want to keep them." with it, and the archived line does not promise an
   export. Owed together with the export screen (`Account 8 · export · REQUESTED`).
 - **Update (PR feat/export-and-deletion):** the export screen now exists, reached from
-  Account (§57). Linking it from the archived screens, the block confirm and the cooling-off
-  is still owed: a small follow-up once the owner confirms the placement in §57.
+  Account (§57), and the archived bond draws its "Export your archive" link (owner ruling
+  2026-11-09), opening it directly. Linking it from the block confirm and the cooling-off is
+  still owed.
 
 ### 32. Bond · archived: READ ONLY and BLOCKED are one screen
 
@@ -962,20 +963,39 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   - **Get help** is left out (no support screen yet), with no dead row.
 - **Reachable with no bond (owner ruling 2026-11-09, "it should be moved"):** Account is its
   own navigation graph beside Bond settings, not inside it, so every signed-in person reaches
-  it. Bond settings keeps its **Account** row (Figma 575:1782 draws it there). The screens a
-  person with no open bond lands on, none of which can reach Bond settings, gain a **Your
-  account** link (`TextLink`, centred, `account.heading`'s words) that pushes Account; back
-  returns:
-  - **Account · unverified gate**: under Send it again (or its Resent acknowledgement).
-  - **Relationship type as the signed-in root**: under I have an invite code. Left out when it
-    is pushed from the archived bond (back drawn), because the screen behind already has it.
-  - **Bond · archived**: under Start a new bond. This is also where the frames draw "Export your
-    archive"; Account carries it, one tap further.
-  - PROPOSED: Figma draws no account entry on any of these three. The closest existing pattern
-    is the secondary link in the action block, which each already uses; no new component.
-- **Open questions for the owner:** (1) the "Your account" link on the gate, relationship type
-  and the archived bond (placement and words; whether the archived bond should instead draw
-  its own "Export your archive" link, as its frames do); (2) every string in the "Account (Figma Account 7 · settings ...)" block of
-  `feature/bond` `strings.xml`, for `copy.md`; (3) whether the export's ready line should
-  name a time (it does: "until 10 November at 17:30") or only the day.
+  it. Bond settings keeps its **Account** row (Figma 575:1782 draws it there).
+- **Owner rulings 2026-11-09 (second round), on the placement first proposed here:**
+  1. **No centred "Your account" link; an account target at the top right instead.** The
+     screens a person with no open bond lands on, none of which can reach Bond settings, draw
+     a person glyph (Lucide `user`, lucide-static v1.40.0, verbatim, its circle written as a
+     path like every other glyph in `MoyiIcons`) in a 48 x 48 target, announced as **Your
+     account** (`account.heading`'s words, a string resource). It pushes Account; back returns.
+     - **Account · unverified gate** and **Bond · archived**: both roots with no back.
+     - **Relationship type as the signed-in root.** Left out when it is pushed from the
+       archived bond (back drawn): the rule stays, because the scaffold's top row there is the
+       back target (a screen has a back target or its own top row, never both), and the
+       archived screen one step back already has the account target.
+     - **PROPOSED component: `TrailingNavRow`** (`designsystem/component/NavTarget.kt`). The
+       design system has no top bar ("no persistent chrome"), so this is the closest existing
+       thing, Today's `nav` row (Figma 159:2: 48 tall, 48 x 48 targets at the end, 24 glyphs
+       in `ink`), with nothing at the start. Today's target is now the shared `NavTarget`, so
+       both draw the same control. It sits in `MoyiScaffold`'s `header` slot, which already
+       exists for a root screen's own top row; the eyebrow and heading move down by the row
+       and its 16 gap (64), as on Today. Figma draws none of the three with it: owed a frame.
+  2. **Sign out lives inside Account too.** Account gains a **Sign out** row (Bond settings'
+     words, `RowKind.Acts`, "Signing out" while it runs), between Export your archive and
+     Delete your account, and also under the failed load, because it needs nothing `/me`
+     holds. It runs the very sequence Bond settings runs (`SignOut`, shared): one more try to
+     send entries still waiting, the approved "Your entry hasn't sent yet" question if any are
+     left, then the session ends and the shell routes to sign in. This is how a person on the
+     three no-bond screens signs out. **Bond settings keeps its own Sign out row**: Figma
+     draws it there (575:1782's group), and taking it away would add a step for everyone who
+     has a bond.
+  3. **Bond · archived draws "Export your archive"**, as its frames do (399:21, 614:1832;
+     states.md §9): the centred secondary link under Start a new bond, which opens the export
+     screen directly, with no Account under it; back returns to the archived bond.
+- **Open questions for the owner:** (1) every string in the "Account (Figma Account 7 ·
+  settings ...)" block of `feature/bond` `strings.xml`, for `copy.md`; (2) whether the
+  export's ready line should name a time (it does: "until 10 November at 17:30") or only the
+  day; (3) a Figma frame for the account target on the three no-bond screens.
 
