@@ -925,7 +925,7 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   what is confirmed, need amending in the design system. Open question for the owner: the
   message string, for `copy.md`.
 
-### 51. The launch splash animates the logo (owner request 2026-11-09)
+### 56. The launch splash animates the logo (owner request 2026-11-09)
 
 - **Today:** `states.md` §0: "Splash: the wordmark on `surface`. Nothing else. **No motion.**"
   iOS showed the wordmark (a PDF drawn by `scripts/render-wordmark.swift`), Android 12+ the
@@ -939,8 +939,10 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   frame starts as that same surface. Over it the mark (96 high, `ink`) builds: the ring fades
   in and grows from 92 % (0 to 300 ms), the dot fades in and settles into place under it (220
   to 520 ms), both on `motion.push` (300 ms, `FastOutSlowIn`); the wordmark (Newsreader
-  Medium, 48, 24 below the mark) fades in on `motion.fadeIn` (610 to 820 ms); the lockup holds
-  to 1120 ms and cross-fades away (`motion.crossFade`, 200 ms). The app composes underneath
+  Medium, 48, 24 below the mark) fades in and rises 8 (`spacing.sm`) from 320 to 670 ms,
+  over the dot's last 200 ms (350 ms, `LinearOutSlowIn`; owner ruling 2026-11-09, PR #56: it
+  was easy to miss); logo and wordmark hold together to 1100 ms and fade out together into
+  the app (`motion.crossFade`, 200 ms). The app composes underneath
   from the moment the session is known. **Hand-off** (`SplashTimeline.handOff`): signed out,
   the splash plays out (1.3 s in all); signed in, it waits until the first screen has drawn
   something (the cached day, Today's first answer, or another screen; never a bare surface)

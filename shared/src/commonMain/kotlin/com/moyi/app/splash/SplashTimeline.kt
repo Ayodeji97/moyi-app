@@ -16,9 +16,12 @@ import com.moyi.app.designsystem.theme.MoyiMotion
  * |---|---|---|
  * | Ring (the o) | 0 to 300 | fades in and grows from 92 % (`motion.push`: 300 ms, `FastOutSlowIn`) |
  * | Dot (the dot below) | 220 to 520 | fades in and settles down onto its place under the ring (same token), overlapping the ring's last 80 ms |
- * | Wordmark | 610 to 820 | fades in (`motion.fadeIn`: 210 ms after a 90 ms delay, `LinearOutSlowIn`) |
- * | Hold | 820 to 1120 | the complete lockup, still |
- * | Exit | at the hand-off ([handOff]) | cross-fades to the first screen (`motion.crossFade`, 200 ms) |
+ * | Wordmark | 320 to 670 | fades in and rises 8 (`spacing.sm`), starting while the dot still settles (its last 200 ms); 350 ms (`motion.push.ios`'s duration) on `LinearOutSlowIn` (`motion.fadeIn`'s curve) |
+ * | Hold | 670 to 1100 | the complete lockup, still |
+ * | Exit | at the hand-off ([handOff]) | logo and wordmark fade out together into the first screen (`motion.crossFade`, 200 ms) |
+ *
+ * About 1.3 s in all. The wordmark's longer, earlier arrival is the owner's 2026-11-09 ruling
+ * on PR #56: at 210 ms after the dot, "Mọyì" was easy to miss.
  *
  * No bounce, no overshoot (tokens.md §3a): each part arrives once and stops.
  */
@@ -30,14 +33,16 @@ internal object SplashTimeline {
     const val DotStartMillis = 220
     const val DotMillis = MoyiMotion.PushMillis
 
-    const val WordmarkStartMillis = DotStartMillis + DotMillis + MoyiMotion.FadeInDelayMillis
-    const val WordmarkMillis = MoyiMotion.FadeInMillis
+    /** How much of the dot's settle the wordmark overlaps. */
+    const val WordmarkOverlapMillis = 200
+    const val WordmarkStartMillis = DotStartMillis + DotMillis - WordmarkOverlapMillis
+    const val WordmarkMillis = MoyiMotion.PushMillisIos
 
     /** Everything has arrived. */
     const val EntranceEndMillis = WordmarkStartMillis + WordmarkMillis
 
     /** How long the finished lockup stays when nothing is waiting on it. */
-    const val HoldMillis = 300
+    const val HoldMillis = 430
 
     /** The entrance plus the hold: the splash's natural length. */
     const val NaturalEndMillis = EntranceEndMillis + HoldMillis
@@ -73,24 +78,32 @@ internal object SplashTimeline {
         (position + frameMillis.coerceIn(0f, MaxFrameStepMillis) * speed).coerceAtMost(target)
 
     private val Arrive: Easing = FastOutSlowInEasing
-    private val FadeIn: Easing = LinearOutSlowInEasing
+    private val Enter: Easing = LinearOutSlowInEasing
 
     /** What the splash draws at [timeMillis]. Before 0 nothing shows; from [EntranceEndMillis] on, the final frame. */
     fun frameAt(timeMillis: Float): SplashFrame {
         val ring = Arrive.transform(fraction(timeMillis, RingStartMillis, RingMillis))
         val dot = Arrive.transform(fraction(timeMillis, DotStartMillis, DotMillis))
-        val wordmark = FadeIn.transform(fraction(timeMillis, WordmarkStartMillis, WordmarkMillis))
+        val wordmark = Enter.transform(fraction(timeMillis, WordmarkStartMillis, WordmarkMillis))
         return SplashFrame(
             ringAlpha = ring,
             ringScale = RingStartScale + (1f - RingStartScale) * ring,
             dotAlpha = dot,
             dotLift = DotDropFraction * (1f - dot),
             wordmarkAlpha = wordmark,
+            wordmarkDrop = 1f - wordmark,
         )
     }
 
     /** The finished lockup: what Reduce Motion shows from the first frame. */
-    val FinalFrame: SplashFrame = SplashFrame(ringAlpha = 1f, ringScale = 1f, dotAlpha = 1f, dotLift = 0f, wordmarkAlpha = 1f)
+    val FinalFrame: SplashFrame = SplashFrame(
+        ringAlpha = 1f,
+        ringScale = 1f,
+        dotAlpha = 1f,
+        dotLift = 0f,
+        wordmarkAlpha = 1f,
+        wordmarkDrop = 0f,
+    )
 
     /**
      * The hand-off rule: what the splash does once the first screen has drawn, when its
@@ -129,7 +142,8 @@ internal object SplashTimeline {
 
 /**
  * One frame of the splash. [dotLift] is how far above its place the dot is, as a
- * fraction of its diameter.
+ * fraction of its diameter; [wordmarkDrop] how far below its place the wordmark is, as a
+ * fraction of its rise (`MoyiTheme.spacing.sm`, 8).
  */
 internal data class SplashFrame(
     val ringAlpha: Float,
@@ -137,6 +151,7 @@ internal data class SplashFrame(
     val dotAlpha: Float,
     val dotLift: Float,
     val wordmarkAlpha: Float,
+    val wordmarkDrop: Float,
 )
 
 /**

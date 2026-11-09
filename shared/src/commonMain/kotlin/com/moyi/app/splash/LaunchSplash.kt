@@ -125,9 +125,14 @@ private fun SplashLockup(frame: () -> SplashFrame) {
         Spacer(Modifier.height(MoyiTheme.spacing.lg))
         // The wordmark is a logo, not text: it keeps its size whatever the font scale.
         val size = with(LocalDensity.current) { SplashLockupSize.WordmarkHeight.toSp() }
+        val rise = with(LocalDensity.current) { MoyiTheme.spacing.sm.toPx() }
         BasicText(
             text = stringResource(Res.string.ds_wordmark),
-            modifier = Modifier.graphicsLayer { alpha = frame().wordmarkAlpha },
+            modifier = Modifier.graphicsLayer {
+                val f = frame()
+                alpha = f.wordmarkAlpha
+                translationY = f.wordmarkDrop * rise
+            },
             style = TextStyle(
                 color = ink,
                 fontFamily = MoyiTheme.type.wordmarkFamily,

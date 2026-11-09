@@ -23,16 +23,28 @@ class SplashTimelineTest {
         assertTrue(ringOnly.ringAlpha > 0f)
         assertEquals(0f, ringOnly.dotAlpha)
 
-        val dotSettling = SplashTimeline.frameAt(400f)
+        val dotSettling = SplashTimeline.frameAt(300f)
         assertEquals(1f, dotSettling.ringAlpha)
         assertTrue(dotSettling.dotAlpha in 0.01f..0.99f)
         assertTrue(dotSettling.dotLift > 0f, "the dot settles down onto its place")
         assertEquals(0f, dotSettling.wordmarkAlpha)
 
-        val wordmarkArriving = SplashTimeline.frameAt(700f)
+        val wordmarkArriving = SplashTimeline.frameAt(560f)
         assertEquals(1f, wordmarkArriving.dotAlpha)
         assertEquals(0f, wordmarkArriving.dotLift)
         assertTrue(wordmarkArriving.wordmarkAlpha in 0.01f..0.99f)
+    }
+
+    @Test
+    fun `the wordmark starts while the dot is still settling and rises into place`() {
+        assertEquals(200, SplashTimeline.DotStartMillis + SplashTimeline.DotMillis - SplashTimeline.WordmarkStartMillis)
+        val overlap = SplashTimeline.frameAt(420f)
+        assertTrue(overlap.dotLift > 0f, "the dot is still settling")
+        assertTrue(overlap.wordmarkAlpha > 0f, "the wordmark has begun")
+        assertTrue(overlap.wordmarkDrop in 0.01f..0.99f, "and is still below its place")
+        assertEquals(1f, SplashTimeline.frameAt(320f).wordmarkDrop, "it starts a full rise below")
+        assertEquals(0f, SplashTimeline.frameAt(EntranceEndMillis.toFloat()).wordmarkDrop)
+        assertEquals(350, SplashTimeline.WordmarkMillis)
     }
 
     @Test
@@ -42,9 +54,8 @@ class SplashTimelineTest {
     }
 
     @Test
-    fun `the whole splash runs between one and one and a half seconds`() {
-        val total = NaturalEndMillis + SplashTimeline.ExitMillis
-        assertTrue(total in 1_000..1_500, "total $total ms")
+    fun `the whole splash runs about one point three seconds`() {
+        assertEquals(1_300, NaturalEndMillis + SplashTimeline.ExitMillis)
     }
 
     @Test
@@ -53,7 +64,7 @@ class SplashTimelineTest {
             HandOff(entranceMillis = EntranceEndMillis, holdMillis = SplashTimeline.HoldMillis),
             SplashTimeline.handOff(0f, signedIn = false),
         )
-        assertEquals(HandOff(entranceMillis = 0, holdMillis = 20), SplashTimeline.handOff(1_100f, signedIn = false))
+        assertEquals(HandOff(entranceMillis = 0, holdMillis = 20), SplashTimeline.handOff(1_080f, signedIn = false))
     }
 
     @Test
@@ -64,15 +75,15 @@ class SplashTimelineTest {
 
     @Test
     fun `signed in when the rest of the entrance fits it plays at its own pace and the remainder is held`() {
-        // 620: 200 of entrance left, cap 400, so 200 at normal speed and 200 held.
-        assertEquals(HandOff(entranceMillis = 200, holdMillis = 200), SplashTimeline.handOff(620f, signedIn = true))
+        // 470: 200 of entrance left, cap 400, so 200 at normal speed and 200 held.
+        assertEquals(HandOff(entranceMillis = 200, holdMillis = 200), SplashTimeline.handOff(470f, signedIn = true))
     }
 
     @Test
     fun `signed in late enough it leaves at its natural end`() {
-        val handOff = SplashTimeline.handOff(770f, signedIn = true)
-        assertEquals(HandOff(entranceMillis = 50, holdMillis = 300), handOff)
-        assertEquals(NaturalEndMillis - 770, handOff.totalMillis)
+        val handOff = SplashTimeline.handOff(720f, signedIn = true)
+        assertEquals(HandOff(entranceMillis = 0, holdMillis = 380), handOff)
+        assertEquals(NaturalEndMillis - 720, handOff.totalMillis)
     }
 
     @Test
