@@ -43,11 +43,18 @@ interface TodayRepository {
         voiceMediaId: String? = null,
     ): Result<MyEntry, DataError.Network>
 
-    /** Replaces the words of my entry before the reveal. [idempotencyKey] as for [submitEntry]. */
+    /**
+     * Replaces the words of my entry before the reveal. [idempotencyKey] as for [submitEntry].
+     * [imageMediaId] and [voiceMediaId] (uploads already processed) attach a photo or a voice
+     * note in place of any the entry has; null leaves the entry's as it is. Nothing here
+     * removes one: the contract has no way to say so (docs/backend-contract-gaps.md row 41).
+     */
     suspend fun editEntry(
         entryId: String,
         text: String,
         idempotencyKey: String,
+        imageMediaId: String? = null,
+        voiceMediaId: String? = null,
     ): Result<MyEntry, DataError.Network>
 
     /** Deletes my entry: before the reveal it is gone, after it a tombstone stays (doc 06 §3.4). */

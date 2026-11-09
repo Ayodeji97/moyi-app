@@ -277,6 +277,42 @@ class RepositoryDailyLoopTest {
     }
 
     @Test
+    fun anEditSendsANewPhotoOrVoiceNoteByNameAndNoneWhenThereIsNone() = runTest {
+        entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY))
+        loop.refresh()
+        assertEquals(WriteResult.Saved, loop.edit("changed", "key-1"))
+        assertEquals(WriteResult.Saved, loop.edit("changed", "key-2", voiceMediaId = "v2"))
+        assertEquals(WriteResult.Saved, loop.edit("changed", "key-3", imageMediaId = "m2"))
+        assertEquals(
+            listOf(Pair(null, null), Pair(null, "v2"), Pair("m2", null)),
+            entries.edited.map { it.imageMediaId to it.voiceMediaId },
+            "absent keeps the entry's own",
+        )
+    }
+
+    @Test
+    fun anEditWithMediaIsNeverQueuedAndARefusedOneIsSaidSo() = runTest {
+        entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY))
+        loop.refresh()
+        entries.editResult = Result.Failure(DataError.Network.NoInternet)
+        assertEquals(WriteResult.Failed, loop.edit("changed", "key-1", voiceMediaId = "v2"))
+        assertTrue(outbox.queue.isEmpty(), "an edit needs a connection")
+
+        entries.editResult = Result.Failure(
+            DataError.Network.Api(
+                ApiProblem(422, ApiErrorCode.VALIDATION_FAILED, listOf(FieldError("voiceMediaId", "MEDIA_NOT_ATTACHABLE", "cannot be attached"))),
+            ),
+        )
+        assertEquals(WriteResult.VoiceRefused, loop.edit("changed", "key-2", voiceMediaId = "v2"))
+        entries.editResult = Result.Failure(
+            DataError.Network.Api(
+                ApiProblem(422, ApiErrorCode.VALIDATION_FAILED, listOf(FieldError("imageMediaId", "MEDIA_NOT_ATTACHABLE", "cannot be attached"))),
+            ),
+        )
+        assertEquals(WriteResult.PhotoRefused, loop.edit("changed", "key-3", imageMediaId = "m2"))
+    }
+
+    @Test
     fun aQueueThatCannotBeWrittenFailsTheSendSoTheComposerKeepsTheWords() = runTest {
         loop.refresh()
         outbox.failEnqueue = true

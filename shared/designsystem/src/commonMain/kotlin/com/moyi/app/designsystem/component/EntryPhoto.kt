@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -31,7 +32,10 @@ import com.moyi.app.designsystem.platform.PickedPhoto
 import com.moyi.app.designsystem.platform.ProtectFromCapture
 import com.moyi.app.designsystem.resources.Res
 import com.moyi.app.designsystem.resources.ds_compose_attached_photo
+import com.moyi.app.designsystem.resources.ds_compose_keep_sent_photo
 import com.moyi.app.designsystem.resources.ds_compose_remove_photo
+import com.moyi.app.designsystem.resources.ds_compose_replace_photo
+import com.moyi.app.designsystem.resources.ds_compose_sent_photo
 import com.moyi.app.designsystem.resources.ds_entry_photo
 import com.moyi.app.designsystem.resources.ds_entry_photo_not_shared
 import com.moyi.app.designsystem.resources.ds_entry_photo_on_its_way
@@ -142,37 +146,92 @@ private const val WIDEST = 2f
  * **Interim, not drawn** (docs/missing-components.md §41): the photo being added, inside
  * the composer's box above its toolbar, a small preview at [AttachedPhotoHeight] with a
  * 48 target beside it that removes it. Picking another photo replaces it.
+ *
+ * [removeRestoresSent]: in Edit, where taking this new photo away puts the entry's own back,
+ * the target is named "Keep the photo you had" instead of "Remove the photo" (§60).
  */
 @Composable
-fun AttachedPhoto(photo: PickedPhoto, onRemove: (() -> Unit)?, modifier: Modifier = Modifier) {
-    val colors = MoyiTheme.colors
-    val ratio = (photo.width.toFloat() / photo.height).coerceIn(TALLEST, WIDEST)
+fun AttachedPhoto(
+    photo: PickedPhoto,
+    onRemove: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    removeRestoresSent: Boolean = false,
+) {
+    val removeLabel = stringResource(if (removeRestoresSent) Res.string.ds_compose_keep_sent_photo else Res.string.ds_compose_remove_photo)
+    PhotoRow(
+        model = photo.bytes,
+        ratio = (photo.width.toFloat() / photo.height).coerceIn(TALLEST, WIDEST),
+        description = stringResource(Res.string.ds_compose_attached_photo),
+        modifier = modifier,
+    ) {
+        if (onRemove != null) PhotoIconTarget(MoyiIcons.Close, removeLabel, onRemove)
+    }
+}
+
+/**
+ * **PROPOSED, not drawn** (docs/missing-components.md §60): in Edit, the photo already on
+ * the entry, drawn as [AttachedPhoto] is, with a 48 target beside it that picks a new one
+ * in its place ([onReplace]; null while saving). It has **no remove**: the contract cannot
+ * take a photo off an entry (docs/backend-contract-gaps.md row 41). A photo the server has
+ * not finished with (no [EntryPhoto.url]) is the card's muted line instead of the image.
+ */
+@Composable
+fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = Modifier) {
+    if (photo.url == null) {
+        Row(modifier = modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.CenterVertically) {
+            MoyiText(text = stringResource(Res.string.ds_entry_photo_on_its_way), tone = TextTone.Muted, modifier = Modifier.weight(1f))
+            if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
+        }
+        return
+    }
+    PhotoRow(
+        model = photo.url,
+        ratio = photo.aspectRatio(),
+        description = stringResource(Res.string.ds_compose_sent_photo),
+        modifier = modifier,
+    ) {
+        if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
+    }
+}
+
+/** The small preview and, beside it, the [trailing] 48 target: shared by [AttachedPhoto] and [SentPhoto]. */
+@Composable
+private fun PhotoRow(
+    model: Any?,
+    ratio: Float,
+    description: String,
+    modifier: Modifier,
+    trailing: @Composable () -> Unit,
+) {
     Row(modifier = modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.Top) {
         AsyncImage(
-            model = photo.bytes,
-            contentDescription = stringResource(Res.string.ds_compose_attached_photo),
+            model = model,
+            contentDescription = description,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .height(AttachedPhotoHeight)
                 .aspectRatio(ratio)
                 .clip(MoyiTheme.shapes.radius)
-                .background(colors.surface),
+                .background(MoyiTheme.colors.surface),
         )
-        if (onRemove != null) {
-            Box(
-                modifier = Modifier
-                    .size(MoyiDimens.ComposeField.IconTarget)
-                    .clickable(role = Role.Button, onClick = onRemove),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = MoyiIcons.Close,
-                    contentDescription = stringResource(Res.string.ds_compose_remove_photo),
-                    tint = colors.ink,
-                    modifier = Modifier.size(MoyiDimens.IconGlyph),
-                )
-            }
-        }
+        trailing()
+    }
+}
+
+@Composable
+private fun PhotoIconTarget(icon: ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(MoyiDimens.ComposeField.IconTarget)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = MoyiTheme.colors.ink,
+            modifier = Modifier.size(MoyiDimens.IconGlyph),
+        )
     }
 }
 

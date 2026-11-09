@@ -64,6 +64,16 @@
     <string name="ds_compose_record_again">Record again</string>
     <!-- PROPOSED (voice notes). Spoken name of the remove control on the recorded voice note (icon only). -->
     <string name="ds_compose_remove_voice">Remove the voice note</string>
+    <!-- PROPOSED (edit media, docs/missing-components.md §60). Edit: spoken for the photo already on the entry. -->
+    <string name="ds_compose_sent_photo">The photo on your entry</string>
+    <!-- PROPOSED (§60). Edit: spoken name of the control beside the photo on the entry that picks a new one in its place (icon only). -->
+    <string name="ds_compose_replace_photo">Replace the photo</string>
+    <!-- PROPOSED (§60). Edit: spoken name of the waveform of the voice note already on the entry. -->
+    <string name="ds_compose_sent_voice">The voice note on your entry</string>
+    <!-- PROPOSED (§60). Edit: spoken name of the remove control on a NEW photo, which puts the entry's own photo back (icon only). -->
+    <string name="ds_compose_keep_sent_photo">Keep the photo you had</string>
+    <!-- PROPOSED (§60). Edit: spoken name of the remove control on a NEW voice note, which puts the entry's own back (icon only). -->
+    <string name="ds_compose_keep_sent_voice">Keep the voice note you had</string>
     <!-- FavouriteToggle Idle: the visible label and the spoken name. entry.favourite.add (strings-proposed.md §6a). -->
     <string name="ds_favourite_add">Add to favourites</string>
     <!-- FavouriteToggle Marked: the visible label and the spoken name. entry.favourite.remove (strings-proposed.md §6a). -->

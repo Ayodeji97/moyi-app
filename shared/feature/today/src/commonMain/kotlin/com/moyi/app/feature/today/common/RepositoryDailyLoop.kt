@@ -189,20 +189,31 @@ class RepositoryDailyLoop(
         Unit
     }
 
-    override suspend fun edit(text: String, idempotencyKey: String): WriteResult = mutex.withLock {
+    override suspend fun edit(
+        text: String,
+        idempotencyKey: String,
+        imageMediaId: String?,
+        voiceMediaId: String?,
+    ): WriteResult = mutex.withLock {
         val entryId = today?.myEntry?.takeIf { it.isLive }?.id ?: return@withLock WriteResult.Failed
-        when (val result = entries.editEntry(entryId, text, idempotencyKey)) {
+        when (val result = entries.editEntry(entryId, text, idempotencyKey, imageMediaId, voiceMediaId)) {
             is Result.Success -> {
                 withMine(result.data)
                 load()
                 WriteResult.Saved
             }
-            is Result.Failure -> {
-                // 409 ENTRY_IMMUTABLE (the day opened while editing) or BOND_ARCHIVED: no state is
-                // drawn for either (states.md §5a), so the composer shows Save failed and Today
-                // underneath catches up.
-                if (result.error.isConflictOrGone()) load()
-                WriteResult.Failed
+            is Result.Failure -> when {
+                // The new photo or voice note would not attach (held by moderation, or gone): the
+                // composer says so, as it does for a new entry. The entry keeps the one it had.
+                imageMediaId != null && result.error.isNotAttachable(IMAGE_FIELD) -> WriteResult.PhotoRefused
+                voiceMediaId != null && result.error.isNotAttachable(VOICE_FIELD) -> WriteResult.VoiceRefused
+                else -> {
+                    // 409 ENTRY_IMMUTABLE (the day opened while editing) or BOND_ARCHIVED: no state is
+                    // drawn for either (states.md §5a), so the composer shows Save failed and Today
+                    // underneath catches up.
+                    if (result.error.isConflictOrGone()) load()
+                    WriteResult.Failed
+                }
             }
         }
     }

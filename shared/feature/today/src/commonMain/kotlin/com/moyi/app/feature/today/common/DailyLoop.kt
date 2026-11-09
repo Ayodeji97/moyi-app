@@ -45,8 +45,19 @@ interface DailyLoop {
         voiceMediaId: String? = null,
     ): WriteResult
 
-    /** Replaces my entry's words before the reveal. */
-    suspend fun edit(text: String, idempotencyKey: String): WriteResult
+    /**
+     * Replaces my entry's words before the reveal, and with [imageMediaId] or [voiceMediaId]
+     * (uploaded and ready) its photo or voice note; null keeps the entry's. An edit is never
+     * queued: one that cannot reach the server is [WriteResult.Failed] (it needs a connection).
+     * Nothing here removes a photo or a voice note: the contract cannot say so
+     * (docs/backend-contract-gaps.md row 41).
+     */
+    suspend fun edit(
+        text: String,
+        idempotencyKey: String,
+        imageMediaId: String? = null,
+        voiceMediaId: String? = null,
+    ): WriteResult
 
     /** Optimistic (states.md §4: not irreversible yet): Today shows not-written at once; a failure restores it. */
     suspend fun deleteBeforeReveal(): DeleteResult

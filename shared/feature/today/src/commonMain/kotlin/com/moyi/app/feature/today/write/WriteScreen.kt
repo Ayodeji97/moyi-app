@@ -26,6 +26,8 @@ import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
+import com.moyi.app.designsystem.component.SentPhoto
+import com.moyi.app.designsystem.component.SentVoice
 import com.moyi.app.designsystem.platform.NoArrowBackHandler
 import com.moyi.app.designsystem.platform.rememberPhotoPicker
 import com.moyi.app.designsystem.platform.rememberVoiceRecorder
@@ -174,11 +176,17 @@ fun WriteScreen(
             invalid = state.overLimit,
             // Never disabled or read-only while sending: either drops focus and the keyboard
             // (419:193 keeps it up). The ViewModel ignores edits in flight instead.
-            onAddPhoto = if (state.photosOffered) ({ onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }) else null,
-            // One voice note per entry (FR-043): once one is recording or recorded, its own row offers what is next.
-            onRecordVoice = if (state.voiceOffered && state.voice == null) ({ onAction(WriteAction.OnRecordVoiceClick) }) else null,
+            // In Edit, the entry's own photo carries Replace on its row (§60), so the toolbar does not offer it twice.
+            onAddPhoto = if (state.photosOffered && (state.photo != null || state.sentPhoto == null)) {
+                { onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }
+            } else {
+                null
+            },
+            // One voice note per entry (FR-043): once one is recording, recorded or (in Edit) on the
+            // entry, its own row offers what is next.
+            onRecordVoice = if (state.voiceOffered && state.voice == null && state.sentVoice == null) ({ onAction(WriteAction.OnRecordVoiceClick) }) else null,
             focusRequester = focusRequester,
-            attachment = if (state.photo == null && state.voice == null) null else ({ Attachments(state, onAction, recordingLevels) }),
+            attachment = if (state.hasAttachments) ({ Attachments(state, onAction, canTakePhoto, recordingLevels) }) else null,
             modifier = Modifier
                 .weight(1f)
                 .then(if (state.editing) Modifier.semantics { paneTitle = editingAnnounce } else Modifier),
@@ -214,23 +222,54 @@ fun WriteScreen(
     }
 }
 
-/** What is attached, inside the box above its toolbar (interim, §41 and §44): the photo, then the voice note. */
+private val WriteState.hasAttachments: Boolean
+    get() = photo != null || voice != null || sentPhoto != null || sentVoice != null
+
+/**
+ * What is attached, inside the box above its toolbar (interim, §41 and §44): the photo, then
+ * the voice note. In Edit (§60) the entry's own photo and voice note stand in each slot until a
+ * new one is picked or recorded; they offer Replace and Record again, never Remove (the
+ * contract cannot take one off, docs/backend-contract-gaps.md row 41). Removing a new one
+ * puts the entry's own back, and its control says so.
+ */
 @Composable
-private fun Attachments(state: WriteState, onAction: (WriteAction) -> Unit, recordingLevels: () -> List<Float>) {
+private fun Attachments(
+    state: WriteState,
+    onAction: (WriteAction) -> Unit,
+    canTakePhoto: Boolean,
+    recordingLevels: () -> List<Float>,
+) {
     // Not while they are being sent: what is on its way is what is shown.
     val sending = state.submit == WriteSubmit.Sending
     Column {
-        state.photo?.let { photo ->
-            AttachedPhoto(photo = photo, onRemove = if (sending) null else ({ onAction(WriteAction.OnRemovePhoto) }))
+        val photo = state.photo
+        val sentPhoto = state.sentPhoto
+        when {
+            photo != null -> AttachedPhoto(
+                photo = photo,
+                onRemove = if (sending) null else ({ onAction(WriteAction.OnRemovePhoto) }),
+                removeRestoresSent = sentPhoto != null,
+            )
+            sentPhoto != null -> SentPhoto(
+                photo = sentPhoto,
+                onReplace = if (sending || !state.photosOffered) null else ({ onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }),
+            )
         }
-        state.voice?.let { voice ->
-            AttachedVoice(
+        val voice = state.voice
+        val sentVoice = state.sentVoice
+        when {
+            voice != null -> AttachedVoice(
                 state = voice,
                 onStop = { onAction(WriteAction.OnStopRecordingClick) },
                 onDiscard = { onAction(WriteAction.OnDiscardRecordingClick) },
                 onRecordAgain = if (sending) null else ({ onAction(WriteAction.OnRecordAgainClick) }),
                 onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveVoice) }),
                 recordingLevels = recordingLevels,
+                removeRestoresSent = sentVoice != null,
+            )
+            sentVoice != null -> SentVoice(
+                voice = sentVoice,
+                onRecordAgain = if (sending || !state.voiceOffered) null else ({ onAction(WriteAction.OnRecordVoiceClick) }),
             )
         }
     }
@@ -263,9 +302,10 @@ private fun actionState(state: WriteState): PrimaryActionState = when (state.sub
     WriteSubmit.Sending -> PrimaryActionState.Sending(
         stringResource(
             when {
-                state.editing -> Res.string.write_saving
+                // The media go first, in Edit as at Send (§60): the action says which is on its way.
                 state.sendingPhoto -> Res.string.write_sending_photo
                 state.sendingVoice -> Res.string.write_sending_voice
+                state.editing -> Res.string.write_saving
                 else -> Res.string.write_sending
             },
         ),

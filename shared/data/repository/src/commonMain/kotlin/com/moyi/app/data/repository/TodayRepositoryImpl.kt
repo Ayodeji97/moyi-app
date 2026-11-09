@@ -59,9 +59,17 @@ class TodayRepositoryImpl(
         return safeApiCall { entriesApi.submitEntry(bondId, idempotencyKey, request) }.mapOrSerialization { it.toMyEntry() }
     }
 
-    override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String): Result<MyEntry, DataError.Network> =
-        safeApiCall { entryChangesApi.patchEntry(entryId, PatchEntryRequest(text = text), idempotencyKey) }
-            .mapOrSerialization { it.toMyEntry() }
+    override suspend fun editEntry(
+        entryId: String,
+        text: String,
+        idempotencyKey: String,
+        imageMediaId: String?,
+        voiceMediaId: String?,
+    ): Result<MyEntry, DataError.Network> {
+        // Null fields are left out of the body: absent keeps the entry's media (row 41).
+        val request = PatchEntryRequest(text = text, imageMediaId = imageMediaId, voiceMediaId = voiceMediaId)
+        return safeApiCall { entryChangesApi.patchEntry(entryId, request, idempotencyKey) }.mapOrSerialization { it.toMyEntry() }
+    }
 
     override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { entryChangesApi.deleteEntry(entryId) }
