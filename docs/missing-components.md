@@ -1068,3 +1068,57 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   `ink` colour resource that only it used.
 - **Open for the owner:** `states.md` §0 still says "No motion" and "the wordmark on
   `surface`"; the lockup (mark above wordmark, 96 / 24 / 48) is not drawn in Figma.
+## Reporting (FR-100, ADR-0053)
+
+### 53. The report flow, its reasons, and where it starts
+
+- **Today:** Figma's Safety section draws `Report · choose target` (607:1795), `compose` (599:1782,
+  with `KEYBOARD UP` 607:1825), `sent` (608:1811) and `failed · INPUT KEPT` (608:1841), and the
+  Archive day view's header action (617:1835). `26` §3.2 puts entry reporting there and only
+  there: "a report control cannot live" on Reveal, and never under an entry. The copy is
+  `strings-proposed.md` §10, "IN FILE, not decided".
+- **Built as drawn:** the day view's **Report** at the end of the back row (a `TextLink`, its own
+  48 target; `MoyiScaffold` gains a `backAction` slot for it), shown once the other member has a
+  name. It opens choose target when the day shows the partner's words (their entry, read in full),
+  else the form about the member. My own entry is never offered, and nothing on Today or the
+  reveal offers a report. The form is `Field` Select for the reason and `Field` **Multiline** for
+  the detail: Multiline is `tokens.md` §4's fifth type (box 140, top-aligned, no trailing icon),
+  built here for the first time. A failure keeps the form and puts the error line 8 above Send.
+  Sent is a root with one action, back to where the report started (SKILL.md §9).
+- **Not drawn, PROPOSED:**
+  - **The reasons.** The contract takes five (`NON_CONSENSUAL`, `MINOR_SEXUAL_CONTENT`,
+    `VIOLENCE_OR_SELF_HARM`, `HARASSMENT`, `OTHER`); §10 drew four others (contract gap row 36).
+    Words: "How they’re treating me" (§10's `treating`, for `HARASSMENT`, as ADR-0053 maps it),
+    "Something shared without my consent", "Violence, threats or self-harm", "Sexual content
+    involving a child", "Something else" (§10's `other`). The label is "Why are you reporting
+    this?", not §10's "What are you reporting?", which repeats choose target's heading and asks
+    what rather than why. Before a choice the field reads "Choose one". ADR-0053 question 4 gives
+    these words to the owner.
+  - **The reason picker.** The `Field` Select opens a pushed list of the five, each a settings
+    row; a tap chooses and returns. The time-zone picker's shape. Not drawn anywhere.
+  - **Bond settings › Report {partnerName}**, in Ending after Block and leave, underlined, not
+    `danger` (it ends nothing), straight to the form about the member. The design reaches the
+    member only from a day view; this row exists so a member with no day to open (or who is
+    reporting how they are treated, T-09, which is about no one day) can still reach it. It stays
+    enabled during the cooling-off: a report is never contact (ADR-0053 decision 14).
+  - **Sent, for an entry:** a second line, "If that entry has a photo or voice note, it stays
+    hidden from you until a person has looked at it." True by ADR-0053 decision 4 (held back from
+    the reporter at once). Without it, the photo turning to "processing" reads as a fault.
+  - **The errors:** no reason ("Choose a reason to send this."), a detail over 500 ("Keep it to
+    500 characters or fewer."), `429` ("Reports are paused for a while. Your report is still
+    here, and the ones you already sent are with us."), `404` ("This can no longer be reported
+    from here. Nothing was sent."), `409 REPORT_ON_OWN_ENTRY` (a guard: "That entry is yours, so
+    it cannot be reported. Nothing was sent."). Sending reads "Sending report".
+- **Deliberately not built:**
+  - **Block and leave on the sent screen.** ADR-0053 names leaving or blocking as the reporter's
+    remedy, but the drawn sent screen carries one action, and SKILL.md §9 rules a second out on
+    acknowledgement screens. Block and leave stays one row away in Bond settings. Whether sent
+    should mention it is the owner's question.
+  - **A partner tombstone.** The server lets a tombstone be reported (ADR-0053 decision 2), but
+    this day view does not draw the partner's tombstone, so it offers only the member then.
+  - **After the bond ends.** The archived screen links nowhere (§31), so neither the day view
+    nor Bond settings, and so no report, is reachable once a bond has ended, though the server
+    allows it then (ADR-0053: "a member who has just blocked their partner may need it most").
+    Owed with the archived screen's link to the Archive.
+- **Owed:** `KEYBOARD UP` (607:1825) is the scaffold's ordinary keyboard behaviour, not measured
+  against the frame. Neither TalkBack nor VoiceOver has walked the flow.

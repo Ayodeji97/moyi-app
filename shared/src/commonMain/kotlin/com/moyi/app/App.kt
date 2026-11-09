@@ -46,6 +46,8 @@ import com.moyi.app.feature.bond.navigation.BondSettingsGraph
 import com.moyi.app.feature.bond.navigation.bondArchivedDestination
 import com.moyi.app.feature.bond.navigation.bondSettingsGraph
 import com.moyi.app.feature.onboarding.navigation.InviteHandoffRoute
+import com.moyi.app.feature.bond.navigation.openReport
+import com.moyi.app.feature.bond.navigation.reportGraph
 import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
 import com.moyi.app.feature.onboarding.navigation.SignedInStartRoute
@@ -197,6 +199,8 @@ private fun MoyiNavHost(
         todayGraph(
             navController = navController,
             onOpenSettings = { bondId -> navController.navigate(BondSettingsGraph(bondId)) { launchSingleTop = true } },
+            // The Archive day view's Report (FR-100): the report flow, over the day.
+            onReport = { bondId, entryId, partnerName -> navController.openReport(bondId, entryId, partnerName) },
             // Left or ended on the other phone: the signed-in start asks the server again.
             onNoOpenBond = { navController.resetTo(SignedInStartRoute) },
             debugTools = UiPreview.today,
@@ -206,6 +210,7 @@ private fun MoyiNavHost(
             // Left, blocked, or found ended: the same path as Today finding no open bond.
             onBondEnded = { navController.resetTo(SignedInStartRoute) },
         )
+        reportGraph(navController)
         onboardingGraph(
             navController = navController,
             onNavigateToRegister = { navController.navigate(RegisterRoute) },
