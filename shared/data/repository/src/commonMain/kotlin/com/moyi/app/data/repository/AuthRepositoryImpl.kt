@@ -61,7 +61,7 @@ class AuthRepositoryImpl(
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network> = safeApiCallEmpty {
         // 201 with no body: only the status is checked, the body is never decoded.

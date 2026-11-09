@@ -53,6 +53,8 @@
     <!-- Figma 389:205, the legal links. -->
     <string name="register_terms">Terms</string>
     <string name="register_privacy">Privacy Policy</string>
+    <!-- PROPOSED. Under the two links when GET /meta/legal could not be read, so neither URL is known. Names the next step. -->
+    <string name="register_legal_unavailable">That page didn't open. Check your connection, then tap the link again.</string>
     <!-- signup.action. -->
     <string name="register_action">Create account</string>
     <!-- PROPOSED. The button while the request is in flight (states.md §1c: the control says what it is doing). -->
@@ -154,4 +156,32 @@
     <string name="reset_token_error_expired">That link has expired. Go back and ask for a new one.</string>
 
     
+
+    <!-- ===== Terms and Privacy (re-consent prompt and settings), PROPOSED: no frame draws it (docs/missing-components.md §51) ===== -->
+
+    <!-- PROPOSED. Eyebrow, label style. -->
+    <string name="legal_eyebrow">Terms and Privacy</string>
+    <!-- PROPOSED. Heading when opened from Bond settings and the consent is current. -->
+    <string name="legal_heading">What you agreed to</string>
+    <!-- PROPOSED. Heading when the Terms or the Privacy Policy changed since the person accepted them. -->
+    <string name="legal_heading_changed">Our Terms and Privacy Policy have changed</string>
+    <!-- PROPOSED. The line under the changed heading: names the next step. Nothing is blocked, so it never threatens. -->
+    <string name="legal_line_changed">Read them below, then tap Accept to agree to the new versions. Your entries stay exactly as they are.</string>
+    <!-- PROPOSED. The line when the consent is current. -->
+    <string name="legal_line_current">You have accepted the current versions. Tap one to read it.</string>
+    <!-- PROPOSED. The third link: the data-processing summary (GET /meta/legal), shown and never accepted on its own. -->
+    <string name="legal_data_processing">How we handle your data</string>
+    <!-- PROPOSED. The action: POST /me/legal-consent. -->
+    <string name="legal_accept">Accept</string>
+    <!-- PROPOSED. The action while the request is in flight (the control says what it is doing). -->
+    <string name="legal_accept_sending">Accepting</string>
+    <!-- PROPOSED. Under Accept on the prompt only: closes it, records nothing; the app asks again next launch. -->
+    <string name="legal_not_now">Not now</string>
+    <!-- PROPOSED. Accept never reached the server. -->
+    <string name="legal_error_offline">That didn't go through. Check your connection, then try again.</string>
+    <!-- states.md §10 "Generic error", its two lines, for a failed load (GET /meta/legal or GET /me). -->
+    <string name="legal_load_error_heading">That didn't work.</string>
+    <string name="legal_load_error_line">Nothing was lost. Try again in a moment.</string>
+    <!-- states.md §1c. -->
+    <string name="legal_load_error_action">Try again</string>
 </resources>

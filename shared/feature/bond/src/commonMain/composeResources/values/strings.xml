@@ -27,6 +27,8 @@
     <string name="settings_row_reveal">Reveal time</string>
     <!-- states.md §8: strict mode is shown as Rest days, because "strict mode" is a flag name. -->
     <string name="settings_row_rest_days">Rest days</string>
+    <!-- PROPOSED. Just you: opens Terms and Privacy (GET /meta/legal), to read the documents and accept any that changed. -->
+    <string name="settings_row_legal">Terms and Privacy</string>
     <!-- PROPOSED. In place of the Account row (its screen is not built): home_sign_out's words. -->
     <string name="settings_row_sign_out">Sign out</string>
     <!-- copy.md: "Leave this bond?" is the confirmation; the row is the act. -->

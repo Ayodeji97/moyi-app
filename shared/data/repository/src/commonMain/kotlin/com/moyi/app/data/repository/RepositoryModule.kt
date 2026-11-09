@@ -9,6 +9,7 @@ import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
+import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.domain.media.MediaRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
 import com.moyi.app.domain.notification.PushTokenRegistration
@@ -35,6 +36,8 @@ val repositoryModule = module {
         PushTokenRegistrar(get(), get(), get(), get<SessionManager>().sessionState, CoroutineScope(SupervisorJob() + Dispatchers.Default))
     } bind PushTokenRegistration::class
     single<AccountRepository> { AccountRepositoryImpl(get(), get()) }
+    // Terms and Privacy: the public documents and the signed-in person's consent (ADR-0056).
+    single<LegalRepository> { LegalRepositoryImpl(get(), get(), get()) }
     single<BondRepository> { BondRepositoryImpl(get(), get()) }
     single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get()) }
     single<TodayRepository> { TodayRepositoryImpl(get(), get()) }

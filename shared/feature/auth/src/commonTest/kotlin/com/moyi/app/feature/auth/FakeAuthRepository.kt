@@ -45,7 +45,7 @@ class FakeAuthRepository : AuthRepository {
         val email: String,
         val password: String,
         val locale: String,
-        val acceptedTermsVersion: String,
+        val acceptedTermsVersion: String?,
         val over18: Boolean,
     )
 
@@ -64,7 +64,7 @@ class FakeAuthRepository : AuthRepository {
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network> {
         registerCalls += RegisterCall(displayName, email, password, locale, acceptedTermsVersion, over18)

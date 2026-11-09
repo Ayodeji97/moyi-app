@@ -118,7 +118,7 @@ class FakeAuthRepository(signedIn: User? = user(verified = false)) : AuthReposit
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network> = error("not used")
 
