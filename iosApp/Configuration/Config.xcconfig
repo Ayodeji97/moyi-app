@@ -3,7 +3,9 @@
 TEAM_ID=
 
 PRODUCT_NAME=Moyi
-PRODUCT_BUNDLE_IDENTIFIER=com.moyi.app.Moyi$(TEAM_ID)
+// getmoyi.app reversed, the same as Android's applicationId (issue #49). The Firebase iOS
+// app and the APNs key are registered for exactly this ID.
+PRODUCT_BUNDLE_IDENTIFIER=app.getmoyi.moyi
 
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0
