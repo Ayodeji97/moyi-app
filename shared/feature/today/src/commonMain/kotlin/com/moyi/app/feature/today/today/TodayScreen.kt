@@ -37,6 +37,8 @@ import com.moyi.app.feature.today.common.CenteredContent
 import com.moyi.app.feature.today.common.DayNote
 import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.NoteAction
+import com.moyi.app.feature.today.common.PartnerReaction
+import com.moyi.app.feature.today.common.ReactionControl
 import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.TodayNavRow
 import com.moyi.app.feature.today.common.TodayStatus
@@ -70,6 +72,7 @@ import com.moyi.app.feature.today.resources.today_queued_refused_open_write
 import com.moyi.app.feature.today.resources.today_queued_refused_written
 import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.resources.today_revealed_title
 import com.moyi.app.feature.today.resources.today_share_invite_again
 import com.moyi.app.feature.today.resources.today_invite_share_text
@@ -281,6 +284,16 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
         // their tombstone on Today yet (owed), so nothing stands in for it.
         if (state.partnerEntry != null) {
             PartnerCard(state)
+            // Interim (docs/missing-components.md §45): no frame draws a reaction yet.
+            if (state.canReact) {
+                Spacer(Modifier.height(MoyiTheme.spacing.sm))
+                ReactionControl(
+                    partnerName = state.partnerName.orEmpty(),
+                    mine = state.myReaction,
+                    failed = state.reactionFailed,
+                    onChoose = { onAction(TodayAction.OnReactionClick(it)) },
+                )
+            }
             Spacer(Modifier.height(MoyiTheme.spacing.md))
         }
         if (deleted) {
@@ -292,6 +305,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
             )
         } else {
             OwnCard(state)
+            PartnerReactionLine(state)
             ActionFailed(state)
             Refusal(state, onAction)
             // Entries are immutable after the reveal: no edit (states.md §5). Delete
@@ -423,6 +437,14 @@ internal fun OwnCard(state: TodayState) {
     EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
 }
 
+/** The reaction the partner left on my entry, under my card (interim, §45). */
+@Composable
+private fun PartnerReactionLine(state: TodayState) {
+    val reaction = state.partnerReaction ?: return
+    Spacer(Modifier.height(MoyiTheme.spacing.sm))
+    PartnerReaction(reaction = reaction, partnerName = state.partnerName.orEmpty(), modifier = Modifier.fillMaxWidth())
+}
+
 /**
  * A delete that did not go through: the entry is back (or never left), and the Generic
  * error's words say so (states.md §10), in InlineError's `danger` under my card.
@@ -460,6 +482,9 @@ private fun previewState(status: TodayStatus) = TodayState(
     partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf {
         status == TodayStatus.Revealed || status == TodayStatus.Tombstone || status == TodayStatus.SoloTheyWrote
     },
+    canReact = status == TodayStatus.Revealed || status == TodayStatus.Tombstone,
+    myReaction = Reaction.THANK_YOU.takeIf { status == TodayStatus.Revealed },
+    partnerReaction = Reaction.MOVED.takeIf { status == TodayStatus.Revealed },
 )
 
 @Composable

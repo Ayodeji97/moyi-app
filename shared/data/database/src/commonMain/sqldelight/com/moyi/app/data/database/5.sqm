@@ -1,0 +1,9 @@
+-- Version 5 to 6: the reaction on each entry (ADR-0037, FR-048), in the two tables that
+-- keep a day: Today's (cached_day) and the Archive's (archive_day). Added at the end of
+-- each, where the .sq files declare them, so a migrated phone and a fresh install have the
+-- same column order. A row cached before this has no reaction; the next answer from the
+-- server fills it in (the server always wins).
+ALTER TABLE cached_day ADD COLUMN my_entry_reaction TEXT;
+ALTER TABLE cached_day ADD COLUMN partner_entry_reaction TEXT;
+ALTER TABLE archive_day ADD COLUMN my_entry_reaction TEXT;
+ALTER TABLE archive_day ADD COLUMN partner_entry_reaction TEXT;

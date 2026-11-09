@@ -241,4 +241,28 @@
     <string name="streak_ended_strict">Your streak ended. Rest days are off.</string>
     <!-- FIGMA NODE NAME 401:309. Strict mode, stated plainly. -->
     <string name="streak_strict">Rest days are off.</string>
+
+    <!-- ===== Reactions (FR-048, ADR-0037). states.md and copy.md draw and word no reaction yet
+    (ADR-0037 question 9): every string here is PROPOSED, with the interim control
+    (docs/missing-components.md §45). Words, not glyphs, until the design decides. ===== -->
+
+    <!-- PROPOSED. The reaction set's words, on the chips (uppercased there) and spoken as written. One per value of the contract's ReactionRequest.type. -->
+    <string name="reaction_heart">Heart</string>
+    <string name="reaction_thank_you">Thank you</string>
+    <string name="reaction_smile">Smile</string>
+    <string name="reaction_moved">Moved</string>
+    <!-- PROPOSED. ME_TOO: the owner's gloss is "I'm grateful for that too"; this is its chip. -->
+    <string name="reaction_me_too">Me too</string>
+    <!-- PROPOSED. Over the chips, under the partner's entry, while I have left none. Names the next action. %1$s = partnerName. -->
+    <string name="reaction_prompt">React to what %1$s wrote.</string>
+    <!-- PROPOSED. Over the chips once I have left one: how to change it and how to take it back. -->
+    <string name="reaction_chosen">Tap another to change it, or the same one to take it back.</string>
+    <!-- PROPOSED. Spoken as what a double tap on my chosen reaction does (a radio button is not usually cleared). -->
+    <string name="reaction_take_back">Take back your reaction</string>
+    <!-- PROPOSED. Under my entry: the reaction the partner left on it. No time, no count. %1$s = partnerName. -->
+    <string name="reaction_from_partner_heart">%1$s sent a heart.</string>
+    <string name="reaction_from_partner_thank_you">%1$s said thank you.</string>
+    <string name="reaction_from_partner_smile">%1$s smiled at this.</string>
+    <string name="reaction_from_partner_moved">%1$s was moved by this.</string>
+    <string name="reaction_from_partner_me_too">%1$s is grateful for that too.</string>
 </resources>

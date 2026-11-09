@@ -37,7 +37,8 @@ class RepositoryDailyLoopTest {
     private val entries = FakeTodayEntries()
     private val cache = FakeTodayCache()
     private val outbox = FakeOutbox()
-    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, FixedClock(NOON_ON_THE_DAY))
+    private val archiveCache = FakeArchiveCache()
+    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, FixedClock(NOON_ON_THE_DAY), archiveCache)
 
     private val ready get() = assertIs<DailyLoopState.Ready>(loop.state.value).day
 

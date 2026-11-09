@@ -6,6 +6,7 @@ import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Today
+import com.moyi.app.domain.today.reactable
 import kotlinx.datetime.LocalDate
 
 /**
@@ -59,6 +60,8 @@ internal fun toDayView(bond: Bond, today: Today): DayView? {
         waitingForPartnerToJoin = bond.status == BondStatus.PENDING_MEMBER,
     )
     if (status in NamesThePartner && bond.partnerName == null) return null
+    // Mine to react to only where their words are shown and the entry is revealed (ADR-0037).
+    val reactable = today.partnerEntry.reactable()?.takeIf { status in PartnerVisible }
     return DayView(
         bondId = bond.id,
         date = date,
@@ -72,6 +75,9 @@ internal fun toDayView(bond: Bond, today: Today): DayView? {
         partnerPhoto = today.partnerEntry.image()?.takeIf { status in PartnerVisible }?.toEntryPhoto(),
         myVoice = today.myEntry?.takeIf { it.isLive }?.voice?.toVoiceNote(),
         partnerVoice = today.partnerEntry.voice()?.takeIf { status in PartnerVisible }?.toVoiceNote(),
+        canReact = reactable != null,
+        myReaction = reactable?.reaction,
+        partnerReaction = today.myEntry?.takeIf { it.isLive }?.reaction,
     )
 }
 

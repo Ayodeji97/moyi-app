@@ -1,5 +1,6 @@
 package com.moyi.app.feature.today
 
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
@@ -93,6 +94,16 @@ internal class FakeTodayEntries : TodayRepository {
         deleted += entryId
         deleteGate?.await()
         return deleteResult
+    }
+
+    var reactResult: EmptyResult<DataError.Network> = Result.Success(Unit)
+    var reactGate: CompletableDeferred<Unit>? = null
+    val reactions = mutableListOf<Pair<String, Reaction?>>()
+
+    override suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network> {
+        reactions += entryId to reaction
+        reactGate?.await()
+        return reactResult
     }
 }
 

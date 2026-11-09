@@ -15,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.intl.Locale
@@ -36,6 +38,10 @@ import com.moyi.app.designsystem.theme.MoyiDimens
  * The label is set in `label` (uppercase, from the words as written): a chip names a
  * set, like an eyebrow, rather than being a link (D14 covers links only). Spoken as
  * written, with its selected state.
+ *
+ * [role] is a filter's [Role.Tab] unless the caller's set is something else (the interim
+ * reaction set, [ReactionChoices], uses [Role.RadioButton]). [onClickLabel], when given, is
+ * what a screen reader says a double tap will do.
  */
 @Composable
 fun Chip(
@@ -43,13 +49,27 @@ fun Chip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    role: Role = Role.Tab,
+    onClickLabel: String? = null,
 ) {
     val colors = MoyiTheme.colors
     val pill = MoyiTheme.shapes.full
     Box(
         modifier = modifier
             .heightIn(min = MoyiDimens.Chip.Target)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick),
+            .selectable(selected = selected, role = role, onClick = onClick)
+            .then(
+                if (onClickLabel == null) {
+                    Modifier
+                } else {
+                    Modifier.semantics {
+                        onClick(label = onClickLabel) {
+                            onClick()
+                            true
+                        }
+                    }
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Box(

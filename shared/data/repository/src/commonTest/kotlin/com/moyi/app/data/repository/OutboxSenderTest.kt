@@ -1,5 +1,6 @@
 package com.moyi.app.data.repository
 
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.api.apis.RefreshControllerApi
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
@@ -284,6 +285,7 @@ class OutboxSenderTest {
         override suspend fun today(bondId: String): Result<Today, DataError.Network> = error("not used")
         override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String) = error("not used")
         override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> = error("not used")
+        override suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network> = error("not used")
     }
 
     /** An [EntryOutbox] in a list: no IO dispatcher, so virtual time is the only clock. */

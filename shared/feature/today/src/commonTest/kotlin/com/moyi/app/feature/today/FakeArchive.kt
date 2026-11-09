@@ -1,5 +1,6 @@
 package com.moyi.app.feature.today
 
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
@@ -134,6 +135,16 @@ class FakeEntries : TodayRepository {
         gate?.await()
         return deleteResult
     }
+
+    var reactResult: EmptyResult<DataError.Network> = Result.Success(Unit)
+    var reactGate: CompletableDeferred<Unit>? = null
+    val reactions = mutableListOf<Pair<String, Reaction?>>()
+
+    override suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network> {
+        reactions += entryId to reaction
+        reactGate?.await()
+        return reactResult
+    }
 }
 
 val NOT_FOUND = DataError.Network.Api(ApiProblem(404, ApiErrorCode.NOT_FOUND))
@@ -173,6 +184,19 @@ class FakeArchiveCache : ArchiveCache {
         val current = run ?: return
         run = current.copy(
             days = current.days.map { if (it.date == date) it.copy(markedByMe = if (marked) it.markedByMe + entryId else it.markedByMe - entryId) else it },
+        )
+    }
+
+    val reactions = mutableListOf<Triple<String, String, Reaction?>>()
+
+    override suspend fun setMyReaction(bondId: String, date: String, entryId: String, reaction: Reaction?) {
+        reactions += Triple(date, entryId, reaction)
+        val current = run ?: return
+        run = current.copy(
+            days = current.days.map { day ->
+                val theirs = day.partnerEntry as? PartnerEntry.Revealed
+                if (day.date == date && theirs?.id == entryId) day.copy(partnerEntry = theirs.copy(reaction = reaction)) else day
+            },
         )
     }
 

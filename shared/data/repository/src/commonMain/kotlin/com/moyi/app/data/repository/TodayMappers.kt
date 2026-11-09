@@ -7,6 +7,7 @@ import com.moyi.app.api.models.EntryResponse
 import com.moyi.app.api.models.EntryVoiceResponse
 import com.moyi.app.api.models.LockedEntryResponse
 import com.moyi.app.api.models.PartnerEntryResponse
+import com.moyi.app.api.models.ReactionRequest
 import com.moyi.app.api.models.RevealedPartnerEntryResponse
 import com.moyi.app.api.models.SubmittedPartnerEntryResponse
 import com.moyi.app.api.models.TodayPromptResponse
@@ -19,6 +20,7 @@ import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Prompt
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Today
 
 // TodayResponse and BondDayResponse declare no `required` fields either
@@ -50,6 +52,8 @@ internal fun EntryResponse.toMyEntry(): MyEntry? {
         status = status,
         image = image?.toEntryImage().takeIf { status != EntryStatus.DELETED },
         voice = voice?.toEntryVoice().takeIf { status != EntryStatus.DELETED },
+        // The contract: always null on an erased entry. Dropped there all the same.
+        reaction = reaction?.toDomain().takeIf { status != EntryStatus.DELETED },
     )
 }
 
@@ -98,12 +102,15 @@ internal fun EntryVoiceResponse.toEntryVoice(): EntryVoice {
 /**
  * The other member's entry. `status` picks the generated subclass while decoding
  * (`@JsonClassDiscriminator("status")`), so the shape is already known here; an entry
- * read in full without its words is the one shape that still does not parse.
+ * read in full without its words is the one shape that still does not parse. Only a
+ * revealed entry carries a reaction.
  */
 internal fun PartnerEntryResponse.toPartnerEntry(): PartnerEntry? = when (this) {
     is LockedEntryResponse -> PartnerEntry.Locked
     is SubmittedPartnerEntryResponse -> text?.let { PartnerEntry.Submitted(id, it, image?.toEntryImage(), voice?.toEntryVoice()) }
-    is RevealedPartnerEntryResponse -> text?.let { PartnerEntry.Revealed(id, it, image?.toEntryImage(), voice?.toEntryVoice()) }
+    is RevealedPartnerEntryResponse -> text?.let {
+        PartnerEntry.Revealed(id, it, image?.toEntryImage(), voice?.toEntryVoice(), reaction?.toDomain())
+    }
     is DeletedPartnerEntryResponse -> PartnerEntry.Deleted(id)
 }
 
@@ -112,3 +119,12 @@ private fun TodayPromptResponse.toPrompt(): Prompt? = Prompt(id = id ?: return n
 private fun BondDayResponse.Status.toDomain(): BondDayStatus = BondDayStatus.valueOf(name)
 
 private fun EntryResponse.Status.toDomain(): EntryStatus = EntryStatus.valueOf(name)
+
+/** By name: the contract's enum and the domain's are the same five (a test pins it). */
+internal fun EntryResponse.Reaction.toDomain(): Reaction = Reaction.valueOf(name)
+
+/** The revealed partner entry's own copy of the same enum, by name likewise. */
+internal fun RevealedPartnerEntryResponse.Reaction.toDomain(): Reaction = Reaction.valueOf(name)
+
+/** The request's own enum, by name, for the same reason. */
+internal fun Reaction.toRequest(): ReactionRequest = ReactionRequest(ReactionRequest.Type.valueOf(name))

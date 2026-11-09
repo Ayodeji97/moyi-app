@@ -13,6 +13,7 @@ import com.moyi.app.domain.today.CachedDay
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Prompt
 import com.moyi.app.domain.today.Today
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -121,5 +122,25 @@ class SqlTodayCacheTest {
             cachedDayQueries.insert(day(PartnerEntry.Locked).toRow(ada.id).copy(partner_entry_shape = "REVEALED"))
         }
         assertNull(cache.read(), "a revealed shape with no words is not a shape")
+    }
+
+    @Test
+    fun theReactionOnEachEntryComesBackAsItWent() = runTest {
+        val reacted = day(
+            partner = PartnerEntry.Revealed("e2", "You listened.", reaction = Reaction.ME_TOO),
+            mine = MyEntry("e1", "You made the tea.", EntryStatus.REVEALED, reaction = Reaction.SMILE),
+        )
+        cache.write(reacted)
+        assertEquals(reacted, cache.read())
+    }
+
+    @Test
+    fun aReactionNameThisBuildDoesNotKnowIsNoCacheNotAGuess() = runTest {
+        cache.write(day(PartnerEntry.Revealed("e2", "You listened.")))
+        database.io { cachedDayQueries.deleteAll() }
+        database.io {
+            cachedDayQueries.insert(day(PartnerEntry.Revealed("e2", "You listened.")).toRow("ada-id").copy(partner_entry_reaction = "WAVE"))
+        }
+        assertNull(cache.read())
     }
 }

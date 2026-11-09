@@ -2,6 +2,7 @@ package com.moyi.app.feature.today.common
 
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
+import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.today.CachedDay
@@ -11,6 +12,8 @@ import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.domain.today.QueuedEntry
+import com.moyi.app.domain.today.Reaction
+import com.moyi.app.domain.today.reactable
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayCache
@@ -72,6 +75,8 @@ class RepositoryDailyLoop(
     private val outbox: EntryOutbox,
     private val sender: OutboxSender,
     private val clock: Clock = Clock.System,
+    /** The Archive's cached days: a reaction the server took on Today is kept there too, if that day is cached. */
+    private val archive: ArchiveCache,
 ) : DailyLoop {
     private val _state = MutableStateFlow<DailyLoopState>(DailyLoopState.Loading)
     override val state: StateFlow<DailyLoopState> = _state.asStateFlow()
@@ -146,6 +151,34 @@ class RepositoryDailyLoop(
         throw cancelled
     } catch (_: Exception) {
         false
+    }
+
+    override suspend fun react(reaction: Reaction?): ReactResult = mutex.withLock {
+        val currentBond = bond ?: return@withLock ReactResult.Failed
+        val day = today ?: return@withLock ReactResult.Failed
+        // Only what Today shows the control for: the partner's revealed entry, in a layout showing it.
+        val view = toDayView(currentBond, day)
+        val theirs = day.partnerEntry.reactable()?.takeIf { view?.canReact == true } ?: return@withLock ReactResult.Failed
+        if (theirs.reaction == reaction) return@withLock ReactResult.Done
+        val reacted = day.copy(partnerEntry = theirs.copy(reaction = reaction))
+        // Optimistic: shown at once, cached only once the server agrees (a cold start must
+        // never show a reaction the partner was never sent).
+        publish(currentBond, reacted, confirmed = false)
+        when (val result = entries.setReaction(theirs.id, reaction)) {
+            is Result.Success -> {
+                publish(currentBond, reacted)
+                archive.setMyReaction(currentBond.id, day.date, theirs.id, reaction)
+                ReactResult.Done
+            }
+            is Result.Failure -> {
+                publish(currentBond, day, confirmed = false)
+                // 404 (never shown), 409 ENTRY_IMMUTABLE (erased), BOND_ARCHIVED: the day is not
+                // what this screen thinks, so it is read again. REACTION_BUSY is a 409 too; the
+                // reload is harmless there and shows the server's answer.
+                if (result.error.isConflictOrGone()) load()
+                ReactResult.Failed
+            }
+        }
     }
 
     override suspend fun dismissRefusal() = mutex.withLock {
