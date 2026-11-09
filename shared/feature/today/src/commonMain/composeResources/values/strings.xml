@@ -33,6 +33,8 @@
     <string name="today_edit">Edit what you wrote</string>
     <!-- strings-proposed.md §favourites note and states.md §6: the established delete link. Before reveal it needs no confirmation (states.md §4). -->
     <string name="today_delete">Delete what you wrote</string>
+    <!-- report.action (strings-proposed.md §10, in file, not decided): the day view's header action (Figma 617:1835, `26` §3.2). -->
+    <string name="archive_day_report">Report</string>
     <!-- PROPOSED (owner request 2026-11-09, docs/missing-components.md §48). The visible label of Edit on Today's waiting note, beside Delete. "Written." and "Yours is saved" above it say whose entry it is; the spoken name stays today_edit, which contains this word (WCAG 2.5.3). -->
     <string name="today_edit_short">Edit</string>
     <!-- PROPOSED (owner request 2026-11-09, §48). The visible label of Delete on Today's waiting note, beside Edit; spoken as today_delete. Only here: alone (after the reveal, the Archive day) the full "Delete what you wrote" stays. -->

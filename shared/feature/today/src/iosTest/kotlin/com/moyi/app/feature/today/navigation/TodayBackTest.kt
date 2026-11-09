@@ -90,7 +90,7 @@ class TodayBackTest {
             MoyiTheme(darkTheme = true) {
                 nav = rememberNavController()
                 NavHost(nav, startDestination = TodayRoute) {
-                    todayGraph(nav, onOpenSettings = {}, onNoOpenBond = {}, debugTools = false)
+                    todayGraph(nav, onOpenSettings = {}, onReport = { _, _, _ -> }, onNoOpenBond = {}, debugTools = false)
                 }
             }
         }
