@@ -22,6 +22,7 @@ import com.moyi.app.feature.today.common.toVoiceNote
 import com.moyi.app.feature.today.common.todayStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -92,6 +93,18 @@ class TodayMapperTest {
 
     private fun today(status: BondDayStatus, my: MyEntry?, theirs: PartnerEntry?, date: String = "2026-09-14") =
         Today(date = date, status = status, myEntry = my, partnerEntry = theirs, prompt = PROMPT)
+
+    @Test
+    fun theBondsStatusTravelsAndOnlyABondTakingWritesTakesAReaction() {
+        // Owner ruling 5 (2026-11-09): the server refuses a reaction once the bond takes no
+        // writes (ended, or counting down to deletion), so no set is offered there.
+        val active = assertNotNull(toDayView(bond, today(BondDayStatus.REVEALED, mine, theirsOpen)))
+        assertEquals(BondStatus.ACTIVE, active.bondStatus)
+        assertTrue(active.canReact)
+        val coolingOff = assertNotNull(toDayView(bond.copy(status = BondStatus.PENDING_DELETION), today(BondDayStatus.REVEALED, mine, theirsOpen)))
+        assertEquals(BondStatus.PENDING_DELETION, coolingOff.bondStatus)
+        assertFalse(coolingOff.canReact)
+    }
 
     @Test
     fun aDayNeverCarriesThePartnersWordsIntoALayoutThatHidesThem() {

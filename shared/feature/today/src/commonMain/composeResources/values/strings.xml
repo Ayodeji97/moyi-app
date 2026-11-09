@@ -33,6 +33,8 @@
     <string name="today_edit">Edit what you wrote</string>
     <!-- strings-proposed.md §favourites note and states.md §6: the established delete link. Before reveal it needs no confirmation (states.md §4). -->
     <string name="today_delete">Delete what you wrote</string>
+    <!-- report.action (strings-proposed.md §10, in file, not decided): the day view's header action (Figma 617:1835, `26` §3.2). -->
+    <string name="archive_day_report">Report</string>
     <!-- PROPOSED (owner request 2026-11-09, docs/missing-components.md §48). The visible label of Edit on Today's waiting note, beside Delete. "Written." and "Yours is saved" above it say whose entry it is; the spoken name stays today_edit, which contains this word (WCAG 2.5.3). -->
     <string name="today_edit_short">Edit</string>
     <!-- PROPOSED (owner request 2026-11-09, §48). The visible label of Delete on Today's waiting note, beside Edit; spoken as today_delete. Only here: alone (after the reveal, the Archive day) the full "Delete what you wrote" stays. -->
@@ -251,24 +253,34 @@
     <!-- FIGMA NODE NAME 401:309. Strict mode, stated plainly. -->
     <string name="streak_strict">Rest days are off.</string>
 
-    <!-- ===== Reactions (FR-048, ADR-0037). states.md and copy.md draw and word no reaction yet
-    (ADR-0037 question 9): every string here is PROPOSED, with the interim control
-    (docs/missing-components.md §45). Words, not glyphs, until the design decides. ===== -->
+    <!-- ===== Reactions (FR-048, ADR-0037). The owner ruled on the open questions on 2026-11-09
+    (docs/missing-components.md §45): each chip is an emoji and a word; the chip words and the
+    partner sentences are approved. The emoji are PROPOSED in PR (reactions rulings). ===== -->
 
-    <!-- PROPOSED. The reaction set's words, on the chips (uppercased there) and spoken as written. One per value of the contract's ReactionRequest.type. -->
+    <!-- Approved (owner ruling 2026-11-09). The reaction set's words, on the chips (uppercased there) and spoken as written: each chip's label. One per value of the contract's ReactionRequest.type. -->
     <string name="reaction_heart">Heart</string>
     <string name="reaction_thank_you">Thank you</string>
     <string name="reaction_smile">Smile</string>
     <string name="reaction_moved">Moved</string>
-    <!-- PROPOSED. ME_TOO: the owner's gloss is "I'm grateful for that too"; this is its chip. -->
+    <!-- Approved (owner ruling 2026-11-09). ME_TOO: the owner's gloss is "I'm grateful for that too"; this is its chip. -->
     <string name="reaction_me_too">Me too</string>
+    <!-- PROPOSED (owner ruling 1, 2026-11-09: an emoji with each word). Drawn before the word on the chip and on the partner's reaction under my entry; never spoken (the word or sentence is the label). Not translated: the same emoji in every language. -->
+    <string name="reaction_emoji_heart">❤️</string>
+    <!-- PROPOSED. THANK_YOU: folded hands. -->
+    <string name="reaction_emoji_thank_you">🙏</string>
+    <!-- PROPOSED. SMILE: smiling face with smiling eyes. -->
+    <string name="reaction_emoji_smile">😊</string>
+    <!-- PROPOSED. MOVED: pleading face (Emoji 11), touched. Owner ruling 2026-11-09: swapped from 🥹 (Emoji 14), which older Android phones draw as an empty box. -->
+    <string name="reaction_emoji_moved">🥺</string>
+    <!-- PROPOSED. ME_TOO: handshake, agreeing with what they wrote. -->
+    <string name="reaction_emoji_me_too">🤝</string>
     <!-- PROPOSED. Over the chips, under the partner's entry, while I have left none. Names the next action. %1$s = partnerName. -->
     <string name="reaction_prompt">React to what %1$s wrote.</string>
     <!-- PROPOSED. Over the chips once I have left one: how to change it and how to take it back. -->
     <string name="reaction_chosen">Tap another to change it, or the same one to take it back.</string>
     <!-- PROPOSED. Spoken as what a double tap on my chosen reaction does (a radio button is not usually cleared). -->
     <string name="reaction_take_back">Take back your reaction</string>
-    <!-- PROPOSED. Under my entry: the reaction the partner left on it. No time, no count. %1$s = partnerName. -->
+    <!-- Approved (owner ruling 2026-11-09). Under my entry: the reaction the partner left on it, after its emoji. No time, no count. %1$s = partnerName. -->
     <string name="reaction_from_partner_heart">%1$s sent a heart.</string>
     <string name="reaction_from_partner_thank_you">%1$s said thank you.</string>
     <string name="reaction_from_partner_smile">%1$s smiled at this.</string>

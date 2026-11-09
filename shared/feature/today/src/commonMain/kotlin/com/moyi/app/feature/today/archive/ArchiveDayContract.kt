@@ -24,6 +24,8 @@ data class ArchiveDayState(
     val markFailed: FavouriteTarget? = null,
     /** The last reaction tap did not go through: it is back as it was, and the line under the set says so. */
     val reactionFailed: Boolean = false,
+    /** The header's Report: once the bond is known and the other member has a name to show. */
+    val canReport: Boolean = false,
 )
 
 /** Which entry's FavouriteToggle: the one under my entry, or under the partner's. */
@@ -41,8 +43,20 @@ sealed interface ArchiveDayAction {
 
     /** A chip of the reaction set under the partner's entry: leaves, replaces or takes back mine. */
     data class OnReactionClick(val reaction: Reaction) : ArchiveDayAction
+
+    /** The header's Report (`26` §3.2): the report flow, offering this day's entry when it is shown. */
+    data object OnReportClick : ArchiveDayAction
+
+    /** The day view is showing again, after something above it (a report) may have changed the day. */
+    data object OnResumed : ArchiveDayAction
 }
 
 sealed interface ArchiveDayEvent {
     data object NavigateBack : ArchiveDayEvent
+
+    /**
+     * The report flow in [bondId]: about the partner's [entryId] or the member, when the
+     * day shows that entry; about the member only when [entryId] is null.
+     */
+    data class NavigateToReport(val bondId: String, val entryId: String?, val partnerName: String?) : ArchiveDayEvent
 }

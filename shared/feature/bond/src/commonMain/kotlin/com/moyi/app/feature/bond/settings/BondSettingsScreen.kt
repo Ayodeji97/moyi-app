@@ -60,7 +60,9 @@ import com.moyi.app.feature.bond.resources.settings_name_saving
 import com.moyi.app.feature.bond.resources.settings_picker_confirm
 import com.moyi.app.feature.bond.resources.settings_reveal_none
 import com.moyi.app.feature.bond.resources.settings_row_leave
+import com.moyi.app.feature.bond.resources.settings_row_legal
 import com.moyi.app.feature.bond.resources.settings_row_block
+import com.moyi.app.feature.bond.resources.settings_row_report
 import com.moyi.app.feature.bond.resources.settings_row_close_box
 import com.moyi.app.feature.bond.resources.settings_close_box_value_asked
 import com.moyi.app.feature.bond.resources.settings_close_box_value_closing
@@ -112,6 +114,7 @@ fun BondSettingsScreen(
     state: BondSettingsState,
     onAction: (BondSettingsAction) -> Unit,
     onBack: () -> Unit,
+    onOpenLegal: () -> Unit = {},
 ) {
     val settings = state.settings
     when {
@@ -128,15 +131,20 @@ fun BondSettingsScreen(
                     )
                 }
                 Spacer(Modifier.height(MoyiTheme.spacing.xxl))
-                JustYouGroup(state, busy = state.signingOut, notifications = false, onAction = onAction)
+                JustYouGroup(state, busy = state.signingOut, notifications = false, onAction = onAction, onOpenLegal = onOpenLegal)
             }
             UnsentSignOutQuestion(state, onAction)
         }
-        settings != null -> SettingsRoot(state, settings, onAction, onBack)
+        settings != null -> SettingsRoot(state, settings, onAction, onBack, onOpenLegal)
     }
 }
 
 /**
+ * Just you: Notifications (on the loaded root only: they belong to the bond), Terms and
+ * Privacy, and Sign out. Sign out is drawn on the failed load too, because it needs
+ * nothing the bond's settings hold (owner ruling 2026-11-08); so is Terms and Privacy,
+ * for the same reason. That row is PROPOSED (docs/missing-components.md §54): no frame
+ * places the legal documents in settings.
  * Just you: Notifications (on the loaded root only: they belong to the bond), Get help and
  * Sign out. Get help and Sign out are drawn on the failed load too, because they need
  * nothing the bond's settings hold (owner ruling 2026-11-08); Get help there is the way to
@@ -145,7 +153,13 @@ fun BondSettingsScreen(
  * docs/missing-components.md §55.
  */
 @Composable
-private fun JustYouGroup(state: BondSettingsState, busy: Boolean, notifications: Boolean, onAction: (BondSettingsAction) -> Unit) {
+private fun JustYouGroup(
+    state: BondSettingsState,
+    busy: Boolean,
+    notifications: Boolean,
+    onAction: (BondSettingsAction) -> Unit,
+    onOpenLegal: () -> Unit,
+) {
     SettingsGroup(stringResource(Res.string.settings_group_you)) {
         if (notifications) {
             SettingsRow(
@@ -160,6 +174,12 @@ private fun JustYouGroup(state: BondSettingsState, busy: Boolean, notifications:
             kind = RowKind.Navigates,
             enabled = !busy,
             onClick = { onAction(BondSettingsAction.OnGetHelpClick) },
+        )
+        SettingsRow(
+            label = stringResource(Res.string.settings_row_legal),
+            kind = RowKind.Navigates,
+            enabled = !busy,
+            onClick = onOpenLegal,
         )
         SettingsRow(
             label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
@@ -195,6 +215,7 @@ private fun SettingsRoot(
     settings: BondSettings,
     onAction: (BondSettingsAction) -> Unit,
     onBack: () -> Unit,
+    onOpenLegal: () -> Unit,
 ) {
     val spacing = MoyiTheme.spacing
     val saving = stringResource(Res.string.settings_saving)
@@ -256,7 +277,7 @@ private fun SettingsRoot(
                     onToggle = { onAction(BondSettingsAction.OnRestDaysToggle) },
                 )
             }
-            JustYouGroup(state, busy, notifications = true, onAction = onAction)
+            JustYouGroup(state, busy, notifications = true, onAction = onAction, onOpenLegal = onOpenLegal)
             // Only while the bond waits for its second member, or still holds a live code:
             // a full bond has nothing to invite to (409 BOND_FULL).
             if (settings.waitingForPartner || settings.invite != null) {
@@ -279,13 +300,22 @@ private fun SettingsRoot(
                     onClick = { onAction(BondSettingsAction.OnLeaveClick) },
                 )
                 // Only while the other member is known: the confirm names them (`26` §3.1).
-                if (settings.partnerName != null) {
+                val partnerName = settings.partnerName
+                if (partnerName != null) {
                     SettingsRow(
                         label = stringResource(Res.string.settings_row_block),
                         kind = RowKind.Navigates,
                         destructive = true,
                         enabled = !busy,
                         onClick = { onAction(BondSettingsAction.OnBlockClick) },
+                    )
+                    // Not drawn (missing-components §53): the member half of FR-100 beside the
+                    // remedies it is paired with. Not destructive: it ends nothing.
+                    SettingsRow(
+                        label = stringResource(Res.string.settings_row_report, partnerName),
+                        kind = RowKind.Navigates,
+                        enabled = !busy,
+                        onClick = { onAction(BondSettingsAction.OnReportClick) },
                     )
                 }
                 SettingsRow(

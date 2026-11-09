@@ -106,6 +106,8 @@ data class BondArchivedRoute(val partnerName: String? = null)
  *   times change in place. The phone's permission prompt is shown from here only
  *   (NotificationPermissionPolicy), and Open phone settings leaves the app. Back returns
  *   to the root.
+ * - Bond settings → Report (the member), the report flow ([reportGraph]); leaving it returns
+ *   to the root.
  * - Bond settings → Get help (Just you, on the loaded root and the failed load) calls
  *   [onOpenSupport]: Support is its own feature, pushed by the shell over settings, and
  *   its way back pops to here.
@@ -116,13 +118,20 @@ data class BondArchivedRoute(val partnerName: String? = null)
 fun NavGraphBuilder.bondSettingsGraph(
     navController: NavController,
     onBondEnded: () -> Unit,
+    /** Just you › Terms and Privacy: the shell opens the read view (feature:auth's screen). */
+    onOpenLegal: () -> Unit,
     onOpenSupport: () -> Unit,
 ) {
     navigation<BondSettingsGraph>(startDestination = BondSettingsRoute) {
         composable<BondSettingsRoute> { entry ->
             SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
-                BondSettingsScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
+                BondSettingsScreen(
+                    state = state,
+                    onAction = viewModel::onAction,
+                    onBack = { navController.popBackStack() },
+                    onOpenLegal = onOpenLegal,
+                )
             }
         }
         composable<BondNameRoute> { entry ->
@@ -210,6 +219,7 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
+            is BondSettingsEvent.OpenReport -> navController.openReport(event.bondId, entryId = null, event.partnerName, fromSettings = true)
             BondSettingsEvent.OpenSupport -> onOpenSupport()
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.

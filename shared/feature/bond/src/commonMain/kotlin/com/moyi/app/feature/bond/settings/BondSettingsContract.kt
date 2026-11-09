@@ -134,6 +134,9 @@ sealed interface BondSettingsAction {
     data object OnBlockWithdrawToggle : BondSettingsAction
     data object OnBlockConfirm : BondSettingsAction
 
+    /** Report the other member (FR-100): the report flow, about the member. */
+    data object OnReportClick : BondSettingsAction
+
     // Close the box (FR-028)
     data object OnCloseBoxClick : BondSettingsAction
     /** Ask, or agree to the other member's ask: the same `POST`. */
@@ -174,6 +177,9 @@ sealed interface BondSettingsEvent {
     data object OpenLeave : BondSettingsEvent
     data object OpenBlock : BondSettingsEvent
     data object OpenCloseBox : BondSettingsEvent
+
+    /** The report flow about the other member of [bondId], named [partnerName]. */
+    data class OpenReport(val bondId: String, val partnerName: String) : BondSettingsEvent
     data object OpenNotifications : BondSettingsEvent
     data object OpenSupport : BondSettingsEvent
 

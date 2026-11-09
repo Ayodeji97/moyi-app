@@ -2,6 +2,8 @@ package com.moyi.app.feature.today.reveal
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -23,10 +27,12 @@ import com.moyi.app.designsystem.component.EntryCard
 import com.moyi.app.designsystem.component.EntryCardVariant
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.platform.NoArrowBackHandler
+import com.moyi.app.designsystem.theme.MoyiMotion
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.CenteredContent
 import com.moyi.app.feature.today.common.DateLabel
 import com.moyi.app.feature.today.common.FakeCopy
+import com.moyi.app.feature.today.common.ReactionControl
 import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.dayHeader
 import com.moyi.app.feature.today.common.debugLongPress
@@ -69,7 +75,8 @@ fun RevealRoot(
  * The reveal (Figma 179:3 before, 179:8 after; 179:23 / 179:28 under reduced
  * motion, the same geometry). **No nav row**: the date at y 24, then content.
  * After: the title at 59 and the partner's entry first, then mine, 16 apart,
- * centred in 108 to 820. No metrics, no streak, no next action: just the words.
+ * centred in 108 to 820. No metrics, no streak: just the words, and once the turn has
+ * settled, the reaction set under the partner's (owner ruling 3, 2026-11-09).
  *
  * **The product's one animation** (SKILL.md §5). Under reduced motion it is an
  * instant-feeling cross-fade that still reads as a reveal: the before content
@@ -104,7 +111,7 @@ fun RevealScreen(
             Column(Modifier.fillMaxWidth()) {
                 when (phase) {
                     RevealPhase.Before -> Before(state)
-                    RevealPhase.After -> After(state)
+                    RevealPhase.After -> After(state, onAction, reducedMotion)
                 }
             }
         }
@@ -132,7 +139,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.Before(state: RevealS
  * that appears, and the after column is a new node, not a changed one.
  */
 @Composable
-private fun androidx.compose.foundation.layout.ColumnScope.After(state: RevealState) {
+private fun androidx.compose.foundation.layout.ColumnScope.After(state: RevealState, onAction: (RevealAction) -> Unit, reducedMotion: Boolean) {
     val announce = stringResource(Res.string.today_announce_revealed)
     Column(
         Modifier
@@ -151,10 +158,39 @@ private fun androidx.compose.foundation.layout.ColumnScope.After(state: RevealSt
                 photo = state.partnerPhoto,
                 voice = state.partnerVoice,
             )
+            if (state.canReact) {
+                Spacer(Modifier.height(MoyiTheme.spacing.md))
+                SettledReactions(state, onAction, reducedMotion)
+            }
             Spacer(Modifier.height(MoyiTheme.spacing.md))
             EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
         }
     }
+}
+
+/**
+ * The reaction set under the partner's entry, as on Today (owner ruling 3, 2026-11-09). It is
+ * laid out with the after frame, so nothing moves when it appears, but stays invisible, silent
+ * to screen readers and deaf to taps until [RevealState.reactionsShown], once the turn has
+ * settled. Then it fades in ([MoyiMotion.CrossFadeMillis], opacity only, drawn in the graphics
+ * layer so nothing recomposes per frame); under reduced motion it appears at once.
+ */
+@Composable
+private fun SettledReactions(state: RevealState, onAction: (RevealAction) -> Unit, reducedMotion: Boolean) {
+    val alpha by animateFloatAsState(
+        targetValue = if (state.reactionsShown) 1f else 0f,
+        animationSpec = if (reducedMotion) snap() else tween(MoyiMotion.CrossFadeMillis),
+        label = "reactions",
+    )
+    ReactionControl(
+        partnerName = state.partnerName,
+        mine = state.myReaction,
+        failed = state.reactionFailed,
+        onChoose = { onAction(RevealAction.OnReactionClick(it)) },
+        modifier = Modifier
+            .graphicsLayer { this.alpha = alpha }
+            .then(if (state.reactionsShown) Modifier else Modifier.clearAndSetSemantics { }),
+    )
 }
 
 /**
@@ -178,6 +214,8 @@ private fun previewReveal(phase: RevealPhase) = RevealState(
     partnerName = FakeCopy.PARTNER_NAME,
     myEntry = FakeCopy.MY_ENTRY,
     partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf { phase == RevealPhase.After },
+    canReact = true,
+    reactionsShown = phase == RevealPhase.After,
 )
 
 @Preview

@@ -114,9 +114,9 @@ data object JoinCannotBeUsedRoute
  *
  * A `403 EMAIL_NOT_VERIFIED` from create or join replaces everything with the gate.
  *
- * Owed: a code handed over by the `/i/{code}` lander after sign in (deep
- * links, site association files). Until then the prefilled layout is reached
- * only through the debug preview index; pasting the link into manual entry works.
+ * An invite link (`https://getmoyi.app/i/{code}`) opens the prefilled code screen, put
+ * there by the app shell (App.kt, LinkRouting) once the person is signed in, verified and
+ * outside an open bond's Today, or over Today or the archived bond.
  */
 fun NavGraphBuilder.onboardingGraph(
     navController: NavController,
@@ -124,6 +124,7 @@ fun NavGraphBuilder.onboardingGraph(
     onNavigateToSignIn: () -> Unit,
     onOnboardingFinished: () -> Unit,
     onBondArchived: (partnerName: String?) -> Unit,
+    onSignedInStartError: () -> Unit = {},
     onOpenSupport: () -> Unit,
 ) {
     composable<PromiseRoute> {
@@ -135,6 +136,7 @@ fun NavGraphBuilder.onboardingGraph(
             onNavigateToOnboarding = { navController.resetTo(OnboardingRoute) },
             onNavigateToGate = { navController.resetTo(UnverifiedGateRoute) },
             onNavigateToArchived = onBondArchived,
+            onShowingError = onSignedInStartError,
             onNavigateToSupport = onOpenSupport,
         )
     }
@@ -168,8 +170,10 @@ fun NavGraphBuilder.onboardingGraph(
                 prefilledCode = route.prefilledCode,
                 onNavigateToConfirm = { code, preview -> navController.navigate(JoinConfirmRoute(code, preview)) },
                 onNavigateToCannotBeUsed = { navController.navigate(JoinCannotBeUsedRoute) },
-                // A prefilled code is a root (deep link from a cold install), so it has no back.
-                onNavigateBack = if (route.prefilledCode == null) navController.upOrNull() else null,
+                // From a link into onboarding the code screen is the root (states.md §9, "Join · code
+                // from link": no prior screen), so it has no back. Over Today or the archived bond
+                // (App.kt, LinkRouting) back returns there.
+                onNavigateBack = navController.upOrNull(),
             )
         }
         composable<JoinConfirmRoute> { entry ->

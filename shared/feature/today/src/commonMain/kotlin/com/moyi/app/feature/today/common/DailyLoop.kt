@@ -2,6 +2,7 @@ package com.moyi.app.feature.today.common
 
 import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.VoiceNote
+import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Prompt
 import com.moyi.app.domain.today.Reaction
@@ -93,6 +94,12 @@ sealed interface DailyLoopState {
  */
 data class DayView(
     val bondId: String,
+    /**
+     * The bond's status as `GET /bonds` last said, or as the cached day kept it offline. Null
+     * only where nothing said (test and preview days). The Archive reads it to hide the
+     * reaction set on a bond that takes no writes (owner ruling 5, 2026-11-09).
+     */
+    val bondStatus: BondStatus? = null,
     val date: LocalDate,
     val status: TodayStatus,
     /** The other member; null while nobody has joined. Every layout that names them has one. */
@@ -113,7 +120,7 @@ data class DayView(
     val partnerVoice: VoiceNote? = null,
     /**
      * The partner's entry takes **my** reaction here: it is revealed and its words are shown
-     * ([reactable]). Never on my own entry, never before the reveal, never on a tombstone.
+     * ([reactable]), and the bond still takes writes ([BondStatus.takesWrites]). Never on my own entry, never before the reveal, never on a tombstone.
      */
     val canReact: Boolean = false,
     /** The reaction I left on the partner's entry; null when none. Only where [canReact]. */
@@ -127,7 +134,7 @@ data class DayView(
 ) {
     /** Never the words: a data class would print both entries into any log that printed this. */
     override fun toString(): String =
-        "DayView(bondId=$bondId, date=$date, status=$status, myEntryId=$myEntryId, " +
+        "DayView(bondId=$bondId, bondStatus=$bondStatus, date=$date, status=$status, myEntryId=$myEntryId, " +
             "myEntry=${myEntry?.let { "(redacted)" }}, partnerEntry=${partnerEntry?.let { "(redacted)" }}, " +
             "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, queuedDay=$queuedDay, refusal=$refusal, " +
             "canReact=$canReact, myReaction=$myReaction, partnerReaction=$partnerReaction)"

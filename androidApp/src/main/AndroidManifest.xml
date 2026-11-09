@@ -68,6 +68,23 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- App Links: the three links the backend emails and shares open the app, verified
+                 against https://getmoyi.app/.well-known/assetlinks.json (moyi-backend#157).
+                 Exact paths only, so the rest of the site still opens in the browser, and the
+                 same three the iOS AASA lists. One filter per verified host; https only.
+                 The shell parses the URL again (DeepLink.parse) and routes it (LinkRouting). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="https" />
+                <data android:host="getmoyi.app" />
+                <data android:path="/verify" />
+                <data android:path="/reset-password" />
+                <data android:pathPrefix="/i/" />
+            </intent-filter>
         </activity>
     </application>
 
