@@ -195,6 +195,7 @@ class WriteViewModel(
             }
             WriteAction.OnRecordVoiceClick -> startRecording()
             WriteAction.OnStopRecordingClick -> if (_state.value.recording) send(WriteEvent.StopRecording)
+            WriteAction.OnDiscardRecordingClick -> discardRecording()
             WriteAction.OnRecordAgainClick -> {
                 if (_state.value.submit == WriteSubmit.Sending || _state.value.recordedVoice == null) return
                 replaceVoice(null)
@@ -337,6 +338,18 @@ class WriteViewModel(
         if (!current.voiceOffered || current.submit == WriteSubmit.Sending || current.voice != null) return
         _state.update { it.copy(voiceNotice = it.voiceNotice.takeIf { notice -> notice == VoiceNotice.Refused }) }
         send(WriteEvent.StartRecording)
+    }
+
+    /**
+     * Throws the recording in progress away, at once and with no question: it was never
+     * sent, so nothing is lost that the person did not just choose to lose (states.md §4,
+     * "confirm the irreversible, only"). The voice slot is empty again, ready to record.
+     */
+    private fun discardRecording() {
+        if (!_state.value.recording) return
+        recordingClock?.cancel()
+        _state.update { it.copy(voice = null, submit = it.submit.afterEdit()) }
+        send(WriteEvent.CancelRecording)
     }
 
     private fun onRecorderEvent(event: RecorderEvent) {

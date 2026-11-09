@@ -104,6 +104,10 @@ private class AndroidVoicePlayer(
 
     override fun positionMs(): Long = exo?.currentPosition ?: 0
 
+    override fun seekNative(positionMs: Long) {
+        exo?.seekTo(positionMs)
+    }
+
     private fun mediaSource(source: VoiceSource): MediaSource = when (source) {
         is VoiceSource.Remote -> ProgressiveMediaSource.Factory(DefaultHttpDataSource.Factory())
             .createMediaSource(MediaItem.fromUri(source.url))

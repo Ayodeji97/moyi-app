@@ -86,6 +86,12 @@ interface VoicePlayer {
 
     fun pause()
 
+    /**
+     * Moves to [positionMs] (clamped to the voice note): at once when it is open, playing or
+     * paused; otherwise the next play starts there. It never starts playback by itself.
+     */
+    fun seekTo(positionMs: Long)
+
     /** Stops and lets go of everything: the platform player, the audio session, the bytes. */
     fun release()
 }
@@ -118,6 +124,9 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
     private var openKey: String? = null
     private var ticker: Job? = null
 
+    /** Where to start once it opens: a seek made before the first play, or while it loads. */
+    private var startAtMs = 0L
+
     /** Opens [source] and starts it; reports [onReady] once it plays, or [onFailed]. */
     protected abstract fun open(source: VoiceSource)
 
@@ -129,6 +138,9 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
     protected abstract fun releaseNative()
 
     protected abstract fun positionMs(): Long
+
+    /** Moves the open platform player to [positionMs], playing or paused as it was. */
+    protected abstract fun seekNative(positionMs: Long)
 
     override fun toggle(source: VoiceSource) {
         if (state.value.active) {
@@ -143,7 +155,7 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
             tick()
         } else {
             openKey = source.key
-            state.update { it.loading().at(0) }
+            state.update { it.loading().at(startAtMs) }
             open(source)
         }
     }
@@ -162,8 +174,17 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
         }
     }
 
+    override fun seekTo(positionMs: Long) {
+        val current = state.value
+        val target = current.at(positionMs).positionMs
+        val open = openKey != null && current.phase != PlaybackPhase.Loading && current.phase != PlaybackPhase.Failed
+        if (open) seekNative(target) else startAtMs = target
+        state.update { it.at(target) }
+    }
+
     override fun release() {
         ticker?.cancel()
+        startAtMs = 0
         openKey = null
         ActiveVoicePlayer.letGo(this)
         releaseNative()
@@ -172,6 +193,10 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
 
     /** The platform player has started playing; [durationMs] as the file says, if it does. */
     protected fun onReady(durationMs: Long?) {
+        if (startAtMs > 0) {
+            seekNative(startAtMs)
+            startAtMs = 0
+        }
         state.update { it.playing(durationMs) }
         tick()
     }
@@ -193,6 +218,7 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
 
     protected fun onFailed() {
         ticker?.cancel()
+        startAtMs = 0
         openKey = null
         releaseNative()
         state.update { it.failed() }

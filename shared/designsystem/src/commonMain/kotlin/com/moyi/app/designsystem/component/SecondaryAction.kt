@@ -18,7 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.max
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
@@ -57,6 +63,12 @@ fun SecondaryAction(
     enabled: Boolean = true,
     /** `danger` label and border, for an action that deletes ("Delete what you wrote"). */
     destructive: Boolean = false,
+    /**
+     * A fuller spoken name when the visible label leans on what is around it: "Delete"
+     * under "Written." is spoken "Delete what you wrote". It must contain [text] (WCAG
+     * 2.5.3, label in name), so "say Delete" still works with voice control.
+     */
+    contentDescription: String? = null,
 ) {
     val shapes = MoyiTheme.shapes
     val color = MoyiTheme.colors.secondaryActionColor(enabled, destructive)
@@ -74,6 +86,7 @@ fun SecondaryAction(
                 indication = platformPressIndication(color = color),
                 onClick = onClick,
             )
+            .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
             .border(MoyiDimens.SecondaryAction.Stroke, color, shapes.radius)
             .padding(
                 horizontal = MoyiDimens.SecondaryAction.PaddingHorizontal,
@@ -86,7 +99,64 @@ fun SecondaryAction(
             style = MoyiTheme.type.body,
             color = color,
             textAlign = TextAlign.Center,
+            // With a fuller spoken name, the short label is not read a second time.
+            modifier = if (contentDescription != null) Modifier.clearAndSetSemantics {} else Modifier,
         )
+    }
+}
+
+/**
+ * **PROPOSED** (docs/missing-components.md §48): two [SecondaryAction]s side by side, equal
+ * width, 8 apart, **when both labels fit on one line in half the width**; otherwise stacked
+ * full width, 8 apart, as before. Side by side is the common case at 100 % text with short
+ * labels ("Edit", "Delete") on a 320 wide phone; a large font, a long translation or a
+ * narrow window falls back to the stack, so a label never wraps inside a half-width button
+ * and the 48 targets never shrink.
+ *
+ * The first is at the start (reading order: Edit, then Delete).
+ */
+@Composable
+fun SecondaryActionPair(
+    first: @Composable () -> Unit,
+    second: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Layout(contents = listOf(first, second), modifier = modifier) { (firstSlot, secondSlot), constraints ->
+        val gap = MoyiDimens.SecondaryAction.PairGap.roundToPx()
+        val one = firstSlot.single()
+        val two = secondSlot.single()
+        val width = constraints.maxWidth
+        val sideBySide = constraints.hasBoundedWidth &&
+            ActionPairMath.fitsSideBySide(one.maxIntrinsicWidth(Constraints.Infinity), two.maxIntrinsicWidth(Constraints.Infinity), width, gap)
+        if (sideBySide) {
+            val half = (width - gap) / 2
+            // Both as tall as the taller one, so the pair reads as one row.
+            val tall = max(one.minIntrinsicHeight(half), two.minIntrinsicHeight(half))
+            val fixed = Constraints.fixed(half, tall)
+            val a = one.measure(fixed)
+            val b = two.measure(fixed)
+            layout(width, a.height) {
+                a.placeRelative(0, 0)
+                b.placeRelative(width - half, 0)
+            }
+        } else {
+            val full = Constraints(minWidth = width, maxWidth = width)
+            val a = one.measure(full)
+            val b = two.measure(full)
+            layout(width, a.height + gap + b.height) {
+                a.placeRelative(0, 0)
+                b.placeRelative(0, a.height + gap)
+            }
+        }
+    }
+}
+
+/** The decision behind [SecondaryActionPair], pure so it is tested on its own. */
+object ActionPairMath {
+    /** Whether two controls that want [first] and [second] px fit side by side, equal width, in [width] with [gap] between. */
+    fun fitsSideBySide(first: Int, second: Int, width: Int, gap: Int): Boolean {
+        val half = (width - gap) / 2
+        return half > 0 && first <= half && second <= half
     }
 }
 
@@ -125,5 +195,10 @@ private fun SecondaryActionSamples() {
         SecondaryAction("Delete what you wrote", onClick = {}, destructive = true, enabled = false, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoyiTheme.spacing.sm))
         SecondaryAction("Edit", onClick = {})
+        Spacer(Modifier.height(MoyiTheme.spacing.sm))
+        SecondaryActionPair(
+            first = { SecondaryAction("Edit", onClick = {}, contentDescription = "Edit what you wrote") },
+            second = { SecondaryAction("Delete", onClick = {}, destructive = true, contentDescription = "Delete what you wrote") },
+        )
     }
 }

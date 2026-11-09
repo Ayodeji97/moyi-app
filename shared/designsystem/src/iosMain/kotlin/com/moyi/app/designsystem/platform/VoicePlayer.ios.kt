@@ -21,7 +21,6 @@ import platform.AVFAudio.AVAudioSessionInterruptionNotification
 import platform.AVFAudio.AVAudioSessionInterruptionTypeBegan
 import platform.AVFAudio.AVAudioSessionInterruptionTypeKey
 import platform.AVFAudio.AVAudioSessionModeSpokenAudio
-import platform.AVFAudio.AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
 import platform.AVFAudio.setActive
 import platform.Foundation.NSData
 import platform.Foundation.NSError
@@ -109,6 +108,11 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
 
     override fun positionMs(): Long = player?.let { (it.currentTime * MS_PER_SECOND).toLong() } ?: 0
 
+    /** `currentTime` moves a playing or paused AVAudioPlayer; a paused one stays paused. */
+    override fun seekNative(positionMs: Long) {
+        player?.currentTime = positionMs / MS_PER_SECOND
+    }
+
     /** The whole file, in memory, or null. The URL is a credential: it is never logged. */
     private suspend fun fetch(url: String): ByteArray? {
         val address = NSURL.URLWithString(url) ?: return null
@@ -127,6 +131,7 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
     /** Playback, spoken audio: it plays with the ring switch on silent, as a voice message does. */
     private fun startSession(): Boolean {
         val audio = AVAudioSession.sharedInstance()
+        AudioSessionOwner.shared.take(this)
         val ok = audio.setCategory(AVAudioSessionCategoryPlayback, mode = AVAudioSessionModeSpokenAudio, options = 0u, error = null) &&
             audio.setActive(true, error = null)
         if (ok && interruptions == null) {
@@ -149,7 +154,8 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
     private fun letGoOfSession() {
         interruptions?.let(NSNotificationCenter.defaultCenter::removeObserver)
         interruptions = null
-        AVAudioSession.sharedInstance().setActive(false, withOptions = AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation, error = null)
+        // Only if it is still the player's: Record again starts the recorder before this player is let go.
+        AudioSessionOwner.shared.letGo(this)
     }
 
     private companion object {

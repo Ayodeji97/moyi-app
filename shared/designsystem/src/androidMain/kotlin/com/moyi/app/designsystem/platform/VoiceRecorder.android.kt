@@ -15,9 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import java.util.UUID
 
@@ -25,7 +28,8 @@ import java.util.UUID
 actual fun rememberVoiceRecorder(onEvent: (RecorderEvent) -> Unit): VoiceRecorder {
     val context = LocalContext.current.applicationContext
     val currentOnEvent by rememberUpdatedState(onEvent)
-    val recorder = remember(context) { AndroidVoiceRecorder(context) { currentOnEvent(it) } }
+    val scope = rememberCoroutineScope()
+    val recorder = remember(context) { AndroidVoiceRecorder(context, scope) { currentOnEvent(it) } }
     // Asked at the tap on "Record a voice note", never before (14 §: permissions in context).
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) recorder.begin() else currentOnEvent(RecorderEvent.PermissionDenied)
@@ -43,9 +47,12 @@ actual fun rememberVoiceRecorder(onEvent: (RecorderEvent) -> Unit): VoiceRecorde
  */
 private class AndroidVoiceRecorder(
     private val context: Context,
+    scope: CoroutineScope,
     private val onEvent: (RecorderEvent) -> Unit,
 ) : VoiceRecorder {
     var askForMicrophone: () -> Unit = {}
+    private val meter = RecordingLevels(scope)
+    override val levels: StateFlow<List<Float>> = meter.levels
     private var recorder: MediaRecorder? = null
     private var file: File? = null
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -102,12 +109,15 @@ private class AndroidVoiceRecorder(
         }
         recorder = made
         file = target
+        // The peak since the last poll; the first call after start reads 0, which is right.
+        meter.start { readAmplitude() }
         onEvent(RecorderEvent.Started)
     }
 
     override fun stop() {
         val made = recorder ?: return
         val target = file
+        val heard = meter.stop()
         recorder = null
         file = null
         val stopped = try {
@@ -120,13 +130,15 @@ private class AndroidVoiceRecorder(
             made.release()
             abandonFocus()
         }
-        val voice = if (stopped && target != null) read(target) else null
+        val voice = if (stopped && target != null) read(target, heard) else null
         target?.delete()
+        if (voice == null) meter.clear()
         onEvent(if (voice != null) RecorderEvent.Finished(voice) else RecorderEvent.Failed)
     }
 
     override fun cancel() {
         val made = recorder ?: return
+        meter.clear()
         val target = file
         recorder = null
         file = null
@@ -141,7 +153,14 @@ private class AndroidVoiceRecorder(
         }
     }
 
-    private fun read(target: File): RecordedVoice? = try {
+    /** 0 when the recorder is between states (it throws then): a gap in the drawing, nothing worse. */
+    private fun readAmplitude(): Float = try {
+        recorder?.maxAmplitude?.let(::levelFromAmplitude) ?: 0f
+    } catch (_: IllegalStateException) {
+        0f
+    }
+
+    private fun read(target: File, heard: List<Float>): RecordedVoice? = try {
         val bytes = target.readBytes()
         val durationMs = MediaMetadataRetriever().run {
             try {
@@ -151,7 +170,7 @@ private class AndroidVoiceRecorder(
                 release()
             }
         }
-        if (bytes.isEmpty() || durationMs == null || durationMs <= 0) null else RecordedVoice(bytes, durationMs)
+        if (bytes.isEmpty() || durationMs == null || durationMs <= 0) null else RecordedVoice(bytes, durationMs, heard)
     } catch (_: Exception) {
         null
     }

@@ -650,7 +650,8 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **Here (interim, the most conservative reading):** under the words (and under the photo, when
   there is one), a 48 target with Lucide's `play` / `pause` glyph tinted `ink`, and beside it, in
   `inkMuted`, the length ("0:42") before it plays and "0:12 of 0:42" while it plays or is paused
-  (PROPOSED `ds_voice_progress`). No waveform, no scrubber, no speed control. Spoken names:
+  (PROPOSED `ds_voice_progress`). No speed control. **Since 2026-11-09 the time follows a
+  waveform you tap or drag to move through, and is one clock (§46).** Spoken names:
   "Play the voice note" / "Pause the voice note" (PROPOSED `ds_voice_play`, `ds_voice_pause`).
   - **On demand only:** nothing is fetched until play is tapped. While it is fetched the line
     reads "Getting the voice note" (PROPOSED `ds_voice_loading`): the control says what it is
@@ -688,7 +689,10 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
     (PROPOSED `write_voice_microphone_denied`). No settings deep link is improvised.
   - **Recording:** inside the box, above the toolbar, where the photo preview goes: a 48 stop
     target (Lucide `square`, "Stop recording") and "Recording 0:12 of 1:00" (PROPOSED
-    `ds_compose_recording`). The mic icon is hidden while one is recording or recorded (FR-043: at
+    `ds_compose_recording`). **Since 2026-11-09 (owner ruling, §49): trash (discard, no
+    confirmation), the live waveform (§47), a `danger` recording dot and "0:12 of 1:00", then a
+    tick (stop and keep); the stop square is gone. The screen reader still hears "Recording 0:12
+    of 1:00".** The mic icon is hidden while one is recording or recorded (FR-043: at
     most one). Send is disabled while recording. At 1:00 it stops itself (the backend allows 60 s
     plus 1 s grace) and keeps the minute.
   - **Interruptions keep what was said:** a call, Siri, another app taking the microphone (Android:
@@ -696,7 +700,8 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
     where it is, and it becomes the voice note. Closing Write while recording stops it first, then
     asks the D10 question; Discard throws it away.
   - **Recorded:** a 48 play/pause target to listen back (from memory, nothing leaves the phone),
-    "Your voice note, 0:42" (PROPOSED `ds_compose_recorded`), then two 48 targets: Lucide
+    "Your voice note, 0:42" (PROPOSED `ds_compose_recorded`; since 2026-11-09 the waveform of what
+    was recorded and its clock, this line its spoken name, §46), then two 48 targets: Lucide
     `rotate-ccw` "Record again" and the X "Remove the voice note" (PROPOSED). Both are hidden while
     it is being sent. Not offered while editing (an edit sends words only).
   - **Sending:** after any photo, `PrimaryAction` Sending reads "Sending your voice note"
@@ -772,3 +777,118 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   partner's-reaction sentences; (3) the set on the reveal screen; (4) the set on a solo day's
   unlocked entry; (5) hiding the set on an ended bond (needs the bond's status in the Archive);
   (6) whether the partner's reaction should be more than a muted line, or less.
+
+## Voice waveforms and Today's action pair (owner request 2026-11-09)
+
+The owner asked for voice notes to look like the voice messages people know (WhatsApp, iMessage,
+Telegram) in Rosewood's quiet manner, and for Today's waiting note to stop stacking its two
+buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PROPOSED.
+
+### 46. A voice note drawn as a waveform (`VoiceWaveform`)
+
+- **Today:** not drawn. §43 and §44 drew a play target and a clock, and listed "a scrubber or a
+  waveform" as an open question.
+- **Here (PROPOSED):** rounded vertical bars, 3 wide with 2 between, at most 32 tall and at
+  least a 3 dot, centred in a 48 tall band that is the touch target. Bars already played are
+  `ink`, the rest `outlineStrong`: **Rosewood has no accent** (tokens.md §1), so the split is the
+  value step from `outlineStrong` to `ink`, not a hue, and `outlineStrong` is the token measured
+  at 3:1 for a graphic that carries meaning. Colour is never the only cue: the clock beside it
+  says the position in words.
+  - **Seeking:** tap anywhere in the band to move there; drag and the bars follow the finger,
+    and the player moves when it lifts. Before the first play a seek fetches nothing: play then
+    starts there. Seeking never starts or stops playback. Right to left, it plays from the right.
+  - **Accessibility:** one node, spoken "Position in the voice note" (PROPOSED
+    `ds_voice_position`; in the composer, "Your voice note, 0:42") with the value "0:12 of 0:42",
+    adjusted as a slider (`setProgress`). The clock is not read a second time.
+  - **The row:** play/pause (48), the waveform filling the row, and under the bars the clock in
+    `inkMuted`, "0:12 of 0:42" (how far of the length; "0:00 of 0:42" before the first play).
+    Under the bars, not beside them, because "0:12 of 0:42" beside the bars left the composer's
+    listen-back (play, bars, clock, Record again, Remove) about 30 for the bars on a 320 phone.
+    "Getting the voice note" and "couldn't be played" stay as lines under the row.
+  - **The shape:** in the composer, the levels measured while recording (§47). On an entry, the
+    server sends none (backend-contract-gaps row 31), so the bars are **a stand-in shape seeded
+    by the media id**: the same each time, the same on both platforms, gentle (between 0.2 and
+    0.8), and honest about length and position only. It becomes the real shape when the
+    backend sends levels, with no change to the screen.
+- **Owner rulings 2026-11-09 (PR #53):** (1) **keep the stand-in shape** for a voice note from
+  the server; it is replaced by the real peaks when the backend sends them (backend-contract-gaps
+  row 31). (3) **The clock reads "0:12 of 0:42"** while playing or paused, "0:00 of 0:42" before
+  the first play (`ds_voice_progress`). Still open: (2) `ink` and `outlineStrong` for played and
+  unplayed.
+
+### 47. The live waveform while recording (`LiveWaveform`)
+
+- **Today:** §44's "Recording 0:12 of 1:00" and nothing that moves with the voice (the owner did
+  not like a bare counting timer).
+- **Here (PROPOSED):** the row of §49 (trash, these bars, the recording dot and "0:12 of 1:00"
+  in `inkMuted`, the tick). The bars move **from the first frame** the row is shown (owner ruling
+  2026-11-09): each 80 ms of recording is a bar whether or not its level has arrived, and a
+  quiet bar never drops below a gentle idle ripple (3.5 to 6.5 of the 32 band), so the row is
+  visibly listening before anyone speaks. The newest bar slides in smoothly, frame by frame,
+  drawn in the draw phase only. The idle ripple is drawn, never kept: listening back shows the
+  real levels. The level is measured, not drawn for show: Android polls
+  `MediaRecorder.getMaxAmplitude`, iOS reads `AVAudioRecorder.peakPower` with metering on, both
+  every 80 ms, on one decibel scale (-50 dB and quieter is silence). The newest bar is at the
+  end and the older ones scroll off the start. The levels are kept with the recording (on the
+  phone only, never sent) and become its listen-back waveform (§46).
+  - **Reduce Motion** (iOS) or **Remove animations** (Android): nothing scrolls. The band stands
+    for the whole minute; each bar appears in its place, left to right, and the time still to
+    come is a row of `outlineStrong` dots, so the limit is visible too.
+  - **Accessibility:** the bars are decorative; the clock is spoken "Recording 0:12 of 1:00".
+- **Owner ruling 2026-11-09:** (1) the recording mark is a `danger` dot (§49). Still open: (2)
+  hold to record (§44 question 2).
+
+### 48. Two outlined actions side by side (`SecondaryActionPair`)
+
+- **Today:** Today's waiting note stacked "Edit what you wrote" and "Delete what you wrote" as
+  two full-width outlined buttons, 8 apart (owner ruling 2026-11-06). The owner found the stack
+  wasteful and asked for them side by side if that passes a UX check.
+- **The check:** two equal buttons, 8 apart, on a 320 wide phone (288 inside the 16 gutters)
+  are 140 wide each; less the 32 padding each side, the label has 76. "Delete what you wrote" in
+  `body` needs about 160, so side by side **with those labels it wraps on every phone width**,
+  even at 390. Short labels fit: "Edit" and "Delete" need about 30 and 50. (Tested on the iOS
+  simulator: `SecondaryActionPairTest`.)
+- **Here (PROPOSED):** "Edit" and "Delete" (PROPOSED `today_edit_short`, `today_delete_short`)
+  side by side, equal width, Edit first, Delete in `danger`, both 48 tall. The note above
+  ("Written." and "Yours is saved...") already says whose entry they change, and each is
+  **spoken** in full, "Edit what you wrote" and "Delete what you wrote", which contain the
+  visible word (WCAG 2.5.3, label in name). When either label does not fit in half the width
+  (a large font, a long translation, a narrow window) both stack full width as before, so a
+  label never wraps inside a half-width button and no target shrinks. Measured, not guessed:
+  the layout compares each button's natural width with half the row.
+  - **Not changed:** the single "Delete what you wrote" after the reveal on Today (a lone
+    full-width button, nothing to sit beside) and the Archive day's delete link (an underlined
+    `TextLink`, alone). Both keep the full label.
+- **Open questions for the owner:** (1) the short labels; (2) whether `copy.md` should record
+  them as the waiting note's actions.
+
+### 49. The recording row: discard, recording mark, keep (owner ruling 2026-11-09, PR #53)
+
+- **Today:** §47 drew a stop target, the live bars and the clock. The owner asked for the layout
+  people know from WhatsApp, with one difference: the end of the row keeps the recording, it
+  does not send it, because a voice note is part of an entry and the entry is still sent with
+  the composer's Send.
+- **Here (PROPOSED):** in one row, start to end:
+  - **Trash** (48 target, 24 glyph in `ink`, spoken "Delete this recording", PROPOSED
+    `ds_compose_discard_recording`): stops and throws the recording away **at once, with no
+    confirmation**. An unsent recording is not irreversible in `states.md`'s sense (§4, "Delete
+    before reveal: free, no confirmation"; §3, "confirm the irreversible, only"), so nothing
+    asks. The recorder is cancelled, not stopped: nothing is kept, and the voice slot is empty
+    again. The glyph is `ink`, not `danger`, because `danger` is the destructive confirm.
+  - **The live waveform** (§47), filling the row.
+  - **The recording mark**: an 8 dot in **`danger`** before "0:12 of 1:00". It breathes on
+    `motion.breathe` (900 ms each way, alpha 1.0 to 0.55, tokens.md §3a) and holds still under
+    Reduce Motion or Remove animations. The dot and the clock are one node to a screen reader,
+    "Recording 0:12 of 1:00". **Note against tokens.md §1:** `danger` is reserved for
+    destructive confirmation; the owner ruled it for this mark. `danger` on `surface` measures
+    6.54:1 dark and 5.57:1 light, above the 3:1 a graphic needs. If `tokens.md` should record
+    this second use of red, that is a design-system change.
+  - **Tick** (48, `ink`, spoken "Stop and keep the recording", PROPOSED
+    `ds_compose_keep_recording`): stops and keeps it; the listen-back row (§46) takes its place.
+    A tick, not a send arrow, because it does not send.
+- **Icons:** Lucide `check` was already in `MoyiIcons` (`Check`). Lucide **`trash`** (v1.40.0,
+  three paths, verbatim) is **added, PROPOSED**: `MoyiIcons.Trash`. `MoyiIcons.Stop` (Lucide
+  `square`) is removed: nothing uses it now.
+- **Open questions for the owner:** (1) whether `tokens.md` §1 should name the recording mark as
+  `danger`'s second use; (2) the spoken names "Delete this recording" and "Stop and keep the
+  recording" for `copy.md`.
