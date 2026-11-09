@@ -9,17 +9,16 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<!-- The launch screen (states.md §0): the wordmark on `surface`, nothing else, no
-	     motion. Both are asset-catalog entries with a dark appearance, so the system
-	     picks the pair for the current mode. Replaces the empty screen that
-	     INFOPLIST_KEY_UILaunchScreen_Generation used to generate (now NO). The wordmark
-	     PDFs are drawn by scripts/render-wordmark.swift. -->
+	<!-- The launch screen: `surface` alone, static (an asset-catalog colour with a dark
+	     appearance, so the system picks it for the current mode). The logo builds over
+	     it in the first Compose frame (LaunchSplash, owner request 2026-11-09), which
+	     starts as this same empty surface, so nothing jumps. It replaced the wordmark
+	     that stood here (states.md §0): a static wordmark would have had to vanish for
+	     the animation to build it. INFOPLIST_KEY_UILaunchScreen_Generation stays NO. -->
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
-		<key>UIImageName</key>
-		<string>LaunchWordmark</string>
 	</dict>
 	<!-- The outbox's background send (IosOutboxScheduler): a BGAppRefreshTask, which needs
 	     the fetch background mode. iOS runs it when it chooses, never on a schedule. -->

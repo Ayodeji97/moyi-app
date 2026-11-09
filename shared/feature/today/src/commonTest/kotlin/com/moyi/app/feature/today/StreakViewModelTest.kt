@@ -3,6 +3,7 @@ package com.moyi.app.feature.today
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.component.DayCellState
+import com.moyi.app.domain.streak.FrozenReason
 import com.moyi.app.domain.streak.Streak
 import com.moyi.app.domain.streak.StreakDay
 import com.moyi.app.domain.streak.StreakDayStatus
@@ -55,7 +56,10 @@ class StreakViewModelTest : MainDispatcherTest() {
 
     private fun StreakViewModel.ui(): StreakUi = state.value.streak ?: error("not ready: ${state.value.load}")
 
-    /** [count] cells ending on [DAY] (today, OPEN), oldest first; [at] sets a cell by its distance back from today. */
+    /**
+     * [count] cells ending on [DAY] (today, OPEN), oldest first; [at] sets a cell by its distance
+     * back from today. A FROZEN cell is a rest day unless [reasons] gives it another reason.
+     */
     private fun streak(
         current: Int = 22,
         longest: Int = 41,
@@ -63,6 +67,8 @@ class StreakViewModelTest : MainDispatcherTest() {
         strict: Boolean = false,
         count: Int = 28,
         at: Map<Int, StreakDayStatus> = emptyMap(),
+        reasons: Map<Int, FrozenReason> = emptyMap(),
+        lastRunLength: Int? = null,
     ) = Streak(
         current = current,
         longest = longest,
@@ -72,11 +78,15 @@ class StreakViewModelTest : MainDispatcherTest() {
         totalCompleteDays = 57,
         lastCompleteDate = null,
         days = (count - 1 downTo 0).map { back ->
+            val status = at[back] ?: if (back == 0) StreakDayStatus.OPEN else StreakDayStatus.COMPLETE
             StreakDay(
                 DAY.minus(DatePeriod(days = back)).toString(),
-                at[back] ?: if (back == 0) StreakDayStatus.OPEN else StreakDayStatus.COMPLETE,
+                status,
+                if (status == StreakDayStatus.FROZEN) reasons[back] ?: FrozenReason.REST_DAY else null,
             )
         },
+        lastRunLength = lastRunLength,
+        lastRunBrokenOn = lastRunLength?.let { DAY.minus(DatePeriod(days = 1)).toString() },
     )
 
     // ---- The four drawn states ----
@@ -105,7 +115,7 @@ class StreakViewModelTest : MainDispatcherTest() {
     }
 
     @Test
-    fun aZeroAfterARunIsTheStreakEndedAndTheLongestStaysShown() = runTest {
+    fun aZeroAfterARunWithNoEndedRunSentIsTheStreakEndedWithoutANumber() = runTest {
         val viewModel = open(Result.Success(streak(current = 0, freezes = 0, at = mapOf(1 to StreakDayStatus.MISSED))))
 
         val ui = viewModel.ui()
@@ -130,6 +140,89 @@ class StreakViewModelTest : MainDispatcherTest() {
     fun anEndedStreakInStrictModeGivesStrictModeAsTheReason() = runTest {
         val viewModel = open(Result.Success(streak(current = 0, freezes = 1, strict = true, at = mapOf(1 to StreakDayStatus.MISSED))))
         assertEquals(StreakFooter.Ended(strict = true), viewModel.ui().footer)
+    }
+
+    // ---- The run that ended, and the time zone shift (ADR-0034: lastRunLength, reason) ----
+
+    @Test
+    fun anEndedStreakSaysHowLongTheRunThatEndedWas() = runTest {
+        val viewModel = open(Result.Success(streak(current = 0, freezes = 0, at = mapOf(1 to StreakDayStatus.MISSED), lastRunLength = 21)))
+
+        val ui = viewModel.ui()
+        assertEquals(StreakFooter.EndedAt(length = 21, strict = false), ui.footer)
+        // The ended run is not the longest: both numbers stay as sent.
+        assertEquals(41, ui.longest)
+        assertEquals(0, ui.current)
+    }
+
+    @Test
+    fun anEndedStreakInStrictModeSaysTheLengthAndStrictMode() = runTest {
+        val viewModel = open(Result.Success(streak(current = 0, freezes = 1, strict = true, at = mapOf(1 to StreakDayStatus.MISSED), lastRunLength = 1)))
+        assertEquals(StreakFooter.EndedAt(length = 1, strict = true), viewModel.ui().footer)
+    }
+
+    @Test
+    fun anEarlierEndedRunIsNotMentionedWhileTheNextRunGrows() = runTest {
+        // lastRunLength stays set while the next run grows; the ended line is only for current 0.
+        val viewModel = open(Result.Success(streak(current = 5, freezes = 1, lastRunLength = 21)))
+        assertEquals(StreakFooter.RestDaysLeft(1), viewModel.ui().footer)
+    }
+
+    @Test
+    fun yesterdaySkippedByATimezoneChangeIsSaidAsThatNotAsARestDayUsed() = runTest {
+        val viewModel = open(
+            Result.Success(
+                streak(freezes = 2, at = mapOf(1 to StreakDayStatus.FROZEN), reasons = mapOf(1 to FrozenReason.TIMEZONE_SHIFT)),
+            ),
+        )
+
+        val ui = viewModel.ui()
+        assertEquals(StreakFooter.TimezoneShift, ui.footer)
+        // The same shape as a rest day (no other is designed); a screen reader hears the difference.
+        assertEquals(DayCellState.Frozen, ui.cells[26].state)
+        assertTrue(ui.cells[26].skippedByTimezone)
+    }
+
+    @Test
+    fun aTimezoneShiftInStrictModeIsSaidRatherThanRestDaysAreOff() = runTest {
+        val viewModel = open(
+            Result.Success(
+                streak(current = 11, freezes = 1, strict = true, at = mapOf(1 to StreakDayStatus.FROZEN), reasons = mapOf(1 to FrozenReason.TIMEZONE_SHIFT)),
+            ),
+        )
+        assertEquals(StreakFooter.TimezoneShift, viewModel.ui().footer)
+    }
+
+    @Test
+    fun aTimezoneShiftWithNoRunToCarryOnIsNotSaidToCarryOn() = runTest {
+        val viewModel = open(
+            Result.Success(
+                streak(current = 0, longest = 0, freezes = 0, count = 2, at = mapOf(1 to StreakDayStatus.FROZEN), reasons = mapOf(1 to FrozenReason.TIMEZONE_SHIFT)),
+            ),
+        )
+        assertEquals(StreakFooter.RestDaysLeft(0), viewModel.ui().footer)
+    }
+
+    @Test
+    fun anEarlierTimezoneShiftOnlyChangesWhatItsCellSays() = runTest {
+        val viewModel = open(
+            Result.Success(streak(at = mapOf(10 to StreakDayStatus.FROZEN), reasons = mapOf(10 to FrozenReason.TIMEZONE_SHIFT))),
+        )
+        val ui = viewModel.ui()
+        assertEquals(StreakFooter.RestDaysLeft(2), ui.footer)
+        assertTrue(ui.cells[27 - 10].skippedByTimezone)
+        assertFalse(ui.cells.filterIndexed { i, _ -> i != 27 - 10 }.any { it.skippedByTimezone })
+    }
+
+    @Test
+    fun yesterdayFrozenForAReasonThisBuildDoesNotKnowGetsTheOrdinaryLine() = runTest {
+        val viewModel = open(
+            Result.Success(streak(freezes = 1, at = mapOf(1 to StreakDayStatus.FROZEN), reasons = mapOf(1 to FrozenReason.UNKNOWN))),
+        )
+        val ui = viewModel.ui()
+        assertEquals(StreakFooter.RestDaysLeft(1), ui.footer)
+        assertEquals(DayCellState.Frozen, ui.cells[26].state)
+        assertFalse(ui.cells[26].skippedByTimezone)
     }
 
     @Test

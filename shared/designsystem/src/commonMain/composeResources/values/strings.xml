@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Moyi</string>
+    <!-- The wordmark (tokens.md §6, orthography decided 2026-09-03): drawn by the launch splash in Newsreader Medium. Not spoken: the splash is decorative. -->
+    <string name="ds_wordmark">Mọyì</string>
     <!-- Spoken by the Secure field's eye toggle when the password is hidden: says what a tap does. -->
     <string name="ds_password_show">Show password</string>
     <!-- Spoken by the Secure field's eye toggle when the password is visible: says what a tap does. -->

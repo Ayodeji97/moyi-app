@@ -23,8 +23,11 @@ import com.moyi.app.feature.bond.resources.settings_error_rate_limited
 import com.moyi.app.feature.bond.resources.settings_invite_error_full
 import com.moyi.app.feature.bond.resources.settings_leave_error_ended
 import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon
+import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon_from
 import com.moyi.app.feature.bond.resources.settings_tz_error_unsupported
+import com.moyi.app.feature.bond.signout.SignOut
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,8 +36,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.time.Duration.Companion.seconds
 import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
 import com.moyi.app.feature.onboarding.resources.bond_name_error_blank
 import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
@@ -63,7 +64,9 @@ import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
  *   change ([BondSettingsState.timeZoneStep]): propose a zone, cancel your own proposal,
  *   or agree to (or decline) the other member's. Proposing on a bond nobody has joined
  *   applies at once, and goes back to the root. The 30-day rule is a `409
- *   TIMEZONE_CHANGE_TOO_SOON`, said plainly and never retried. A `404` from agree or
+ *   TIMEZONE_CHANGE_TOO_SOON`, said plainly with the day it can change again (its
+ *   `allowedFrom`, states.md §8), or without a day when none came, and never retried. A
+ *   `404` from agree or
  *   cancel means nothing is waiting any more (cancelled or lapsed): reload, not Ended.
  * - **The invite** (states.md §2): share and copy the live one, cancel it (`DELETE`), or
  *   create a new one, which replaces any other. `409 BOND_FULL` means someone joined:
@@ -72,11 +75,11 @@ import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
 class BondSettingsViewModel(
     private val bondId: String,
     private val repository: BondSettingsRepository,
-    private val auth: AuthRepository,
+    auth: AuthRepository,
     private val bonds: BondRepository,
     /** Entries sent while offline: a sign-out tries them once more before the session wipe takes them. */
-    private val outbox: EntryOutbox,
-    private val sender: OutboxSender,
+    outbox: EntryOutbox,
+    sender: OutboxSender,
     /** Every zone id the platform knows; kotlinx-datetime's list unless a test gives one. */
     private val zoneIds: () -> Set<String> = { TimeZone.availableZoneIds },
 ) : ViewModel() {
@@ -85,6 +88,9 @@ class BondSettingsViewModel(
 
     private val _events = Channel<BondSettingsEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    /** The same sign-out as Account's (owner ruling 2026-11-09). */
+    private val signOutSequence = SignOut(auth, outbox, sender)
 
     init {
         load()
@@ -128,9 +134,11 @@ class BondSettingsViewModel(
                 _state.update { it.copy(error = null) }
                 send(BondSettingsEvent.OpenNotifications)
             }
+            BondSettingsAction.OnGetHelpClick -> if (!_state.value.signingOut) send(BondSettingsEvent.OpenSupport)
+            BondSettingsAction.OnAccountClick -> if (!_state.value.signingOut) send(BondSettingsEvent.OpenAccount)
             BondSettingsAction.OnSignOutUnsentConfirm -> {
                 _state.update { it.copy(confirmingUnsentSignOut = false, signingOut = true) }
-                viewModelScope.launch { auth.logout() }
+                viewModelScope.launch { signOutSequence.anyway() }
             }
             BondSettingsAction.OnSignOutUnsentDismiss -> _state.update { it.copy(confirmingUnsentSignOut = false) }
             BondSettingsAction.OnLeaveClick -> if (canEdit()) {
@@ -147,6 +155,15 @@ class BondSettingsViewModel(
             }
             BondSettingsAction.OnBlockWithdrawToggle -> if (_state.value.saving == null) _state.update { it.copy(withdrawOnBlock = !it.withdrawOnBlock) }
             BondSettingsAction.OnBlockConfirm -> endBond(SettingsField.Block)
+            // Not an edit: a report is never contact, so it stays open during the cooling-off
+            // (ADR-0053 decision 14). Only once the other member is known: before that, `404`.
+            BondSettingsAction.OnReportClick -> {
+                val settings = _state.value.settings
+                val partner = settings?.partnerName
+                if (settings != null && partner != null && _state.value.saving == null && !_state.value.signingOut) {
+                    send(BondSettingsEvent.OpenReport(settings.bondId, partner))
+                }
+            }
             BondSettingsAction.OnCloseBoxClick -> if (canEdit()) {
                 _state.update { it.copy(error = null) }
                 send(BondSettingsEvent.OpenCloseBox)
@@ -259,9 +276,21 @@ class BondSettingsViewModel(
                 _state.update { it.copy(saving = null) }
                 send(BondSettingsEvent.Ended)
             }
-            error.code() == ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON -> zoneFailed(UiText.Resource(Res.string.settings_tz_error_too_soon))
+            error.code() == ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON -> zoneFailed(tooSoon(error))
             else -> zoneFailed(error.message())
         }
+    }
+
+    /**
+     * The 30-day refusal, naming the day it lifts when the server sent one. The day is a
+     * calendar date in the bond's zone, so it is shown as it is, never moved into the
+     * device's zone; [dayAndMonth] writes it in the device's language.
+     */
+    private fun tooSoon(error: DataError.Network): UiText {
+        val allowedFrom = (error as? DataError.Network.Api)?.problem?.allowedFrom
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?: return UiText.Resource(Res.string.settings_tz_error_too_soon)
+        return UiText.Resource(Res.string.settings_tz_error_too_soon_from, listOf(dayAndMonth(allowedFrom)))
     }
 
     private fun zoneFailed(message: UiText) =
@@ -469,32 +498,15 @@ class BondSettingsViewModel(
         }
     }
 
-    /**
-     * Signing out wipes everything on the device (FR-124), entries still waiting to send
-     * included. So a voluntary sign-out first tries to send them (one pass, at most
-     * [UNSENT_FLUSH_LIMIT]); if any are still waiting, it asks before deleting someone's
-     * words. Nothing waiting, it signs out at once, as before. An involuntary end (a refresh
-     * refused, a token reused) asks nobody: privacy wins, and the wipe takes them.
-     */
+    /** Sign out as [SignOut] runs it: one more try to send what is waiting, then ask or sign out. */
     private fun signOut() {
         if (_state.value.signingOut) return
         _state.update { it.copy(signingOut = true) }
         viewModelScope.launch {
-            if (unsentAfterLastTry()) {
+            if (!signOutSequence.unlessWordsWouldBeLost()) {
                 _state.update { it.copy(signingOut = false, confirmingUnsentSignOut = true) }
-                return@launch
             }
-            // Always ends the local session, even offline (AuthRepository.logout); the shell routes.
-            auth.logout()
         }
-    }
-
-    /** True when entries would be lost: some were waiting, and one more try did not send them all. */
-    private suspend fun unsentAfterLastTry(): Boolean {
-        val waiting = runCatching { outbox.queued().isNotEmpty() }.getOrDefault(false)
-        if (!waiting) return false
-        withTimeoutOrNull(UNSENT_FLUSH_LIMIT) { sender.sendQueued() }
-        return runCatching { outbox.queued().isNotEmpty() }.getOrDefault(false)
     }
 
     private fun send(event: BondSettingsEvent) {
@@ -521,6 +533,3 @@ class BondSettingsViewModel(
         const val MAX_NAME_LENGTH = 60
     }
 }
-
-/** How long a sign-out waits for one last send of the waiting entries before it asks. */
-private val UNSENT_FLUSH_LIMIT = 10.seconds

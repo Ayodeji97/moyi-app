@@ -6,6 +6,7 @@ import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class ProblemDetailParserTest {
     private val problemJson = "application/problem+json"
@@ -81,6 +82,48 @@ class ProblemDetailParserTest {
     fun theHttpStatusWinsOverTheBodyStatus() {
         val body = """{"status":200,"code":"RATE_LIMITED"}"""
         assertEquals(429, ProblemDetailParser.parse(429, body, problemJson).status)
+    }
+
+    @Test
+    fun readsAllowedFromOnTimezoneChangeTooSoon() {
+        val body = """{"type":"about:blank","title":"Conflict","status":409,"code":"TIMEZONE_CHANGE_TOO_SOON","detail":"The shared time zone can change again from 2026-12-12.","allowedFrom":"2026-12-12"}"""
+        assertEquals(
+            ApiProblem(status = 409, code = ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON, allowedFrom = "2026-12-12"),
+            ProblemDetailParser.parse(409, body, problemJson),
+        )
+    }
+
+    @Test
+    fun allowedFromAgreesWithTheGeneratedProblemDetail() {
+        // The generated type is the contract's reading of the same body; ours must match it.
+        val body = """{"type":"about:blank","title":"Conflict","status":409,"code":"TIMEZONE_CHANGE_TOO_SOON","allowedFrom":"2027-01-03"}"""
+        val generated = MoyiJson.decodeFromString(ProblemDetail.serializer(), body)
+        assertEquals(generated.allowedFrom?.toString(), ProblemDetailParser.parse(409, body, problemJson).allowedFrom)
+    }
+
+    @Test
+    fun allowedFromAbsentIsNull() {
+        val body = """{"status":409,"code":"TIMEZONE_CHANGE_TOO_SOON","detail":"Too soon."}"""
+        assertEquals(
+            ApiProblem(status = 409, code = ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON),
+            ProblemDetailParser.parse(409, body, problemJson),
+        )
+    }
+
+    @Test
+    fun otherCodesCarryNoAllowedFrom() {
+        val body = """{"status":409,"code":"PROPOSAL_PENDING"}"""
+        assertNull(ProblemDetailParser.parse(409, body, problemJson).allowedFrom)
+    }
+
+    @Test
+    fun anAllowedFromThatIsNotADateIsDropped() {
+        listOf("\"12 December\"", "\"2026-02-30\"", "null", "20261212", "{}").forEach { value ->
+            val body = """{"status":409,"code":"TIMEZONE_CHANGE_TOO_SOON","allowedFrom":$value}"""
+            val problem = ProblemDetailParser.parse(409, body, problemJson)
+            assertEquals(ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON, problem.code, value)
+            assertNull(problem.allowedFrom, value)
+        }
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.moyi.app.feature.bond.resources.settings_error_conflict
 import com.moyi.app.feature.bond.resources.settings_error_rate_limited
 import com.moyi.app.feature.bond.resources.settings_invite_error_full
 import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon
+import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon_from
 import com.moyi.app.feature.bond.resources.settings_tz_error_unsupported
 import com.moyi.app.feature.bond.settings.BondSettingsAction
 import com.moyi.app.feature.bond.settings.BondSettingsEvent
@@ -17,6 +18,8 @@ import com.moyi.app.feature.bond.settings.BondSettingsViewModel
 import com.moyi.app.feature.bond.settings.SettingsError
 import com.moyi.app.feature.bond.settings.SettingsField
 import com.moyi.app.feature.bond.settings.TimeZoneStep
+import com.moyi.app.feature.bond.settings.dayAndMonth
+import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.CompletableDeferred
 import org.jetbrains.compose.resources.StringResource
 import kotlinx.coroutines.test.runTest
@@ -260,6 +263,51 @@ class TimeZoneAndInviteViewModelTest : MainDispatcherTest() {
 
         assertEquals(TimeZoneStep.Propose, state.timeZoneStep)
         assertEquals(error(SettingsField.TimeZone, Res.string.settings_error_conflict), state.error)
+    }
+
+    @Test
+    fun theRefusalNamesTheDayItCanChangeAgain() = runTest {
+        repo.proposeAnswers += apiError(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON, allowedFrom = "2026-12-12")
+        choose("Europe/London")
+
+        viewModel.onAction(BondSettingsAction.OnProposeClick)
+
+        val day = dayAndMonth(LocalDate(2026, 12, 12))
+        assertEquals(
+            SettingsError(SettingsField.TimeZone, UiText.Resource(Res.string.settings_tz_error_too_soon_from, listOf(day))),
+            state.error,
+        )
+        assertFalse(day.contains("2026-12-12"), "the day is written for a person, not as the raw ISO date")
+        assertEquals(1, repo.proposals.size, "still never retried")
+        assertNull(state.saving)
+    }
+
+    @Test
+    fun aMalformedAllowedFromFallsBackToTheUndatedRefusal() = runTest {
+        // The parser only passes real dates; this guards the ViewModel on its own.
+        repo.proposeAnswers += apiError(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON, allowedFrom = "soon")
+        choose("Europe/London")
+
+        viewModel.onAction(BondSettingsAction.OnProposeClick)
+
+        assertEquals(error(SettingsField.TimeZone, Res.string.settings_tz_error_too_soon), state.error)
+    }
+
+    @Test
+    fun theDatedRefusalAlsoComesAtConfirmation() = runTest {
+        repo.server = settingsV1.copy(pendingTimezone = theirProposal)
+        repo.confirmAnswers += apiError(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON, allowedFrom = "2027-01-03")
+
+        viewModel.onAction(BondSettingsAction.OnAgreeClick)
+
+        assertEquals(
+            SettingsError(
+                SettingsField.TimeZone,
+                UiText.Resource(Res.string.settings_tz_error_too_soon_from, listOf(dayAndMonth(LocalDate(2027, 1, 3)))),
+            ),
+            state.error,
+        )
+        assertEquals(TimeZoneStep.Confirm, state.timeZoneStep)
     }
 
     @Test

@@ -6,15 +6,16 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.FakeAuthRepository
+import com.moyi.app.feature.auth.FakeLegalRepository
 import com.moyi.app.feature.auth.MainDispatcherTest
 import com.moyi.app.feature.auth.apiError
 import com.moyi.app.feature.auth.common.LegalDocument
-import com.moyi.app.feature.auth.common.LegalLinks
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.auth_email_error
 import com.moyi.app.feature.auth.resources.auth_error_offline
 import com.moyi.app.feature.auth.resources.auth_error_rate_limited
+import com.moyi.app.feature.auth.resources.register_legal_unavailable
 import com.moyi.app.feature.auth.resources.register_name_error_blank
 import com.moyi.app.feature.auth.resources.register_password_error_breached
 import com.moyi.app.feature.auth.resources.register_password_error_long
@@ -30,8 +31,8 @@ import kotlin.test.assertTrue
 
 class RegisterViewModelTest : MainDispatcherTest() {
     private val repo = FakeAuthRepository()
-    private val legalLinks = LegalLinks(terms = "https://example.test/terms", privacy = null)
-    private val viewModel = RegisterViewModel(repo, legalLinks) { "en-GB" }
+    private val legal = FakeLegalRepository()
+    private val viewModel by lazy { RegisterViewModel(repo, legal) { "en-GB" } }
 
     private fun fillValidForm(consent: Boolean = true) {
         viewModel.onAction(RegisterAction.OnNameChange("Amara"))
@@ -41,19 +42,47 @@ class RegisterViewModelTest : MainDispatcherTest() {
     }
 
     @Test
-    fun aConfiguredLegalLinkOpensItsPage() = runTest {
+    fun eachLegalLinkOpensTheUrlFromMetaLegal() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Terms))
+            assertEquals(RegisterEvent.OpenLegalPage("https://example.test/terms"), awaitItem())
+            viewModel.onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Privacy))
+            assertEquals(RegisterEvent.OpenLegalPage("https://example.test/privacy"), awaitItem())
+        }
+        assertEquals(1, legal.documentsCalls, "read once when the screen opens, then kept")
+    }
+
+    @Test
+    fun aLinkTapReadsTheDocumentsAgainIfTheFirstReadFailed() = runTest {
+        legal.documentsResult = Result.Failure(DataError.Network.NoInternet)
+        viewModel.state.value // opens the screen: the first read fails
+        legal.documentsResult = Result.Success(com.moyi.app.feature.auth.testLegalDocuments)
         viewModel.events.test {
             viewModel.onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Terms))
             assertEquals(RegisterEvent.OpenLegalPage("https://example.test/terms"), awaitItem())
         }
+        assertEquals(2, legal.documentsCalls)
     }
 
     @Test
-    fun anUnpublishedLegalLinkDoesNothing() = runTest {
+    fun aLinkThatCannotBeReadSaysWhatToDoAndOpensNothing() = runTest {
+        legal.documentsResult = Result.Failure(DataError.Network.NoInternet)
         viewModel.events.test {
             viewModel.onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Privacy))
             expectNoEvents()
         }
+        assertEquals(UiText.Resource(Res.string.register_legal_unavailable), viewModel.state.value.legalError)
+    }
+
+    @Test
+    fun signUpStillSendsWhenTheDocumentsCannotBeReadWithNoVersion() = runTest {
+        legal.documentsResult = Result.Failure(DataError.Network.Timeout)
+        fillValidForm()
+        viewModel.events.test {
+            viewModel.onAction(RegisterAction.OnSubmit)
+            assertEquals(RegisterEvent.NavigateToVerify("amara@example.com"), awaitItem())
+        }
+        assertEquals(null, repo.registerCalls.single().acceptedTermsVersion)
     }
 
     @Test
@@ -69,7 +98,7 @@ class RegisterViewModelTest : MainDispatcherTest() {
                 email = "amara@example.com",
                 password = "correct horse",
                 locale = "en-GB",
-                acceptedTermsVersion = "2026-09-01",
+                acceptedTermsVersion = "local-2",
                 over18 = true,
             ),
             repo.registerCalls.single(),

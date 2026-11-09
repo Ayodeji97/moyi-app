@@ -29,6 +29,7 @@ import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.component.TrailingNavRow
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -40,6 +41,7 @@ import com.moyi.app.feature.onboarding.resources.bond_type_have_code
 import com.moyi.app.feature.onboarding.resources.bond_type_heading
 import com.moyi.app.feature.onboarding.resources.bond_type_line
 import com.moyi.app.feature.onboarding.resources.onboarding_eyebrow_new_bond
+import com.moyi.app.feature.onboarding.resources.onboarding_your_account
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -47,6 +49,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun RelationshipTypeRoot(
     onNavigateToCreateBond: (RelationshipType) -> Unit,
     onNavigateToJoin: () -> Unit,
+    onNavigateToAccount: () -> Unit,
     onNavigateBack: (() -> Unit)?,
     viewModel: RelationshipTypeViewModel = koinViewModel(),
 ) {
@@ -56,6 +59,7 @@ fun RelationshipTypeRoot(
             is RelationshipTypeEvent.NavigateToCreateBond -> onNavigateToCreateBond(event.type)
             RelationshipTypeEvent.NavigateBack -> onNavigateBack?.invoke()
             RelationshipTypeEvent.NavigateToJoin -> onNavigateToJoin()
+            RelationshipTypeEvent.NavigateToAccount -> onNavigateToAccount()
         }
     }
     RelationshipTypeScreen(state = state, onAction = viewModel::onAction, showBack = onNavigateBack != null)
@@ -74,6 +78,14 @@ fun RelationshipTypeRoot(
  *
  * [showBack] is false when this is the first screen after sign in (nothing
  * behind it); the eyebrow returns and the heading sits at 107, as on every root form.
+ *
+ * PROPOSED (docs/missing-components.md §57, owner ruling 2026-11-09): as that root, the
+ * account target, a person glyph at the top right ([TrailingNavRow], announced "Your
+ * account"). A person here is in no open bond, so Bond settings (where Figma puts Account)
+ * cannot be reached, and Account is the only way to export, delete the account or sign out.
+ * Pushed from the archived bond (back drawn), the target is left out: the scaffold's top row
+ * is the back target there, and the archived screen one step back already has the account
+ * target.
  */
 @Composable
 fun RelationshipTypeScreen(
@@ -91,6 +103,17 @@ fun RelationshipTypeScreen(
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        },
+        header = if (showBack) {
+            null
+        } else {
+            {
+                TrailingNavRow(
+                    icon = MoyiIcons.User,
+                    contentDescription = stringResource(Res.string.onboarding_your_account),
+                    onClick = { onAction(RelationshipTypeAction.OnAccountClick) },
+                )
+            }
         },
     ) {
         ScreenHeader(
@@ -168,6 +191,12 @@ fun RelationshipCard(
 @Composable
 private fun RelationshipTypeChoosePreview() {
     MoyiTheme(darkTheme = true) { RelationshipTypeScreen(state = RelationshipTypeState(), onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun RelationshipTypeRootPreview() {
+    MoyiTheme(darkTheme = true) { RelationshipTypeScreen(state = RelationshipTypeState(), onAction = {}, showBack = false) }
 }
 
 @Preview
