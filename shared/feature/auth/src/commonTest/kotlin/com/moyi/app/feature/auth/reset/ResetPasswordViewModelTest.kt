@@ -179,4 +179,41 @@ class ResetPasswordViewModelTest : MainDispatcherTest() {
             assertEquals(ResetPasswordEvent.NavigateBack, awaitItem())
         }
     }
+
+    @Test
+    fun aLinkThatOpenedTheAppFillsTheCodeAndSendsNothingUntilSubmit() = runTest {
+        val opened = ResetPasswordViewModel("amara@example.com", repo, linkToken = "fromLink")
+        assertEquals("fromLink", opened.state.value.token.value)
+        assertTrue(repo.resetCalls.isEmpty())
+
+        opened.onAction(ResetPasswordAction.OnPasswordChange("correct horse"))
+        opened.events.test {
+            opened.onAction(ResetPasswordAction.OnSubmit)
+            assertEquals(ResetPasswordEvent.NavigateToHome, awaitItem())
+        }
+        assertEquals(listOf("fromLink" to "correct horse"), repo.resetCalls)
+        assertEquals(listOf("amara@example.com" to "correct horse"), repo.loginCalls)
+    }
+
+    @Test
+    fun withNoAddressTheSavedPasswordGoesToSignInWithoutTryingToSignIn() = runTest {
+        val opened = ResetPasswordViewModel("", repo, linkToken = "fromLink")
+        opened.onAction(ResetPasswordAction.OnPasswordChange("correct horse"))
+        opened.events.test {
+            opened.onAction(ResetPasswordAction.OnSubmit)
+            assertEquals(ResetPasswordEvent.NavigateToLogin(""), awaitItem())
+        }
+        assertEquals(listOf("fromLink" to "correct horse"), repo.resetCalls)
+        assertTrue(repo.loginCalls.isEmpty())
+    }
+
+    @Test
+    fun aSpentLinkShowsTheExpiredFieldError() = runTest {
+        repo.resetResult = Result.Failure(apiError(410, ApiErrorCode.PASSWORD_RESET_TOKEN_EXPIRED))
+        val opened = ResetPasswordViewModel("", repo, linkToken = "spent")
+        opened.onAction(ResetPasswordAction.OnPasswordChange("correct horse"))
+        opened.onAction(ResetPasswordAction.OnSubmit)
+        assertEquals(UiText.Resource(Res.string.reset_token_error_expired), opened.state.value.token.error)
+        assertEquals(SubmitStatus.Idle, opened.state.value.submit)
+    }
 }

@@ -6,11 +6,15 @@ import com.moyi.app.feature.auth.common.SubmitStatus
 
 /**
  * Choose a new password (Account 4, Figma 345:30), plus the paste-code field
- * (not in Figma): a development stand-in until deep links carry the token.
+ * (not in Figma). When the emailed link opened the app, the field arrives filled.
  */
 @Immutable
 data class ResetPasswordState(
-    /** The address from Forgot password, used to sign in once the password is saved. */
+    /**
+     * The address from Forgot password, used to sign in once the password is saved. Empty
+     * when the emailed link opened the app on a phone that does not know it: the password is
+     * saved, then sign in asks for the address.
+     */
     val email: String,
     val token: FieldInput = FieldInput(),
     val password: FieldInput = FieldInput(),
@@ -33,8 +37,9 @@ sealed interface ResetPasswordEvent {
     data object NavigateToHome : ResetPasswordEvent
 
     /**
-     * Saved, but the sign-in after it failed. The new password is set, so
-     * sign in next with the address filled in, and no way back into the reset.
+     * Saved, but not signed in: the sign-in after it failed, or there was no address to sign
+     * in with. The new password is set, so sign in next with the address filled in (when
+     * known), and no way back into the reset.
      */
     data class NavigateToLogin(val email: String) : ResetPasswordEvent
 

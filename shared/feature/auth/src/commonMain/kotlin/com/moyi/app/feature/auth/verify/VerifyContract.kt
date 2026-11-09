@@ -16,7 +16,15 @@ data class VerifyState(
     val submit: SubmitStatus = SubmitStatus.Idle,
     /** Why the last "Send it again" failed, shown above the action; never part of [submit]. */
     val resendFailure: UiText? = null,
-)
+) {
+    /**
+     * False when the screen was opened by the emailed link on a phone that does not know the
+     * address (a cold start, signed out). Nothing can be resent without it, so the screen
+     * drops "Send it again" and "Use a different address", and an expired link sends the
+     * person to sign in, where the unverified gate can send a new one.
+     */
+    val addressKnown: Boolean get() = email.isNotEmpty()
+}
 
 /** The two drawn layouts: waiting for the link (341:17) and the link expired (362:107). */
 enum class VerifyMode { Waiting, Expired }
@@ -39,12 +47,18 @@ sealed interface VerifyAction {
     /** "Send it again" while waiting, or "Send a new link" when expired. */
     data object OnResendClick : VerifyAction
     data object OnChangeEmailClick : VerifyAction
+
+    /** "Sign in" on the expired layout when the address is not known ([VerifyState.addressKnown]). */
+    data object OnSignInClick : VerifyAction
     data object OnBackClick : VerifyAction
 }
 
 sealed interface VerifyEvent {
     /** 200: verified. Sign in next, with the address filled in. */
     data class NavigateToLogin(val email: String) : VerifyEvent
+
+    /** An expired link with no address to resend to: sign in, and the gate sends a new one. */
+    data object NavigateToSignIn : VerifyEvent
 
     /** Back to sign up, whose fields are still there. */
     data object NavigateBack : VerifyEvent

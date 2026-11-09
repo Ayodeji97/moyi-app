@@ -924,3 +924,43 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
 - **Owed outside this repo:** `states.md` §4's row and paragraph, and `SKILL.md` §3's list of
   what is confirmed, need amending in the design system. Open question for the owner: the
   message string, for `copy.md`.
+
+## Links that open the app (universal links and App Links)
+
+### 52. Verify, reset and invite opened from a link
+
+- **Today:** `states.md` §2 draws the invite side: "Join · code from link" is the prefilled
+  code screen, a root with no back (`SKILL.md` §9), and the code resolves only after sign up or
+  sign in and verify. Nothing draws verify or reset reached from the emailed link: the
+  drawn verify screen (341:17) names the address it wrote to, and Choose a new password
+  (345:30) signs in with the address typed on Forgot password. A link opened on a phone that
+  never asked (the email read on another phone, or the app reinstalled) has neither.
+- **Here:** the link fills the existing paste field (§6, §6a), so every outcome is a state
+  the screens already have: verify checks it at once and lands on sign in ("Your email is
+  confirmed"), the expired layout, or the field's "does not match"; reset waits for the new
+  password and shows "That link has expired" under the field for a spent one. When the
+  address is not known:
+  - **Verify (PROPOSED copy):** the line drops the address, `verify_line_no_address` "Open the
+    email we sent, copy the link and paste it below."; "Send it again" and "Use a different
+    address" are not drawn (there is no address to send to or change). Expired says
+    `verify_expired_line_no_address` "Links last 24 hours and work once. Sign in and we can
+    send you a new one." and its action is "Sign in" (`login_action`, reused): signed in,
+    the unverified gate sends a new link.
+  - **Reset (PROPOSED copy):** the password is saved and sign in follows with
+    `login_password_changed` "Your new password is saved. Sign in with it." It is shown too
+    when the sign-in after a save fails, which until now landed on sign in with no word.
+- **Signed in as someone else:** `states.md` and `copy.md` say nothing. What this PR does:
+  an invite opens the prefilled code screen for whoever is signed in, and the confirm step
+  names the inviter and the bond before anything is accepted (`states.md` §2, "Why there is
+  a confirm step"), so a wrong account can back out. A verify link confirms the address it
+  was sent to (the token is the proof) and returns to the signed-in start, which changes
+  nothing for the signed-in account. A reset link opens Choose a new password; "Save and
+  sign in" signs in with the signed-in address, so for another account's link the save
+  succeeds and sign in follows, with the line above.
+- **No new component.** Every screen is an existing one; no spinner while a link is checked
+  (the action says "Checking", `states.md` §1c).
+- **Open questions for the owner:** (1) the three strings; (2) whether a reset link opened
+  while signed in should say whose password it changes; (3) §6 and §6a asked whether the
+  paste fields go "when deep links land": they stay here, as the fallback for an email read
+  on a computer and for the typed six-digit code the backend now sends (row 20 of
+  `backend-contract-gaps.md`).

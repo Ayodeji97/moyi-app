@@ -18,8 +18,9 @@ val authFeatureModule = module {
     single { LegalLinks.fromBuild() }
     viewModelOf(::RegisterViewModel)
     // Navigation arguments arrive as Koin parameters (VerifyRoot, LoginRoot, ForgotPasswordRoot, ResetPasswordRoot).
-    viewModel { (email: String) -> VerifyViewModel(email, get()) }
+    // linkToken: the token from an emailed link that opened the app (DeepLink), or null.
+    viewModel { (email: String, linkToken: String?) -> VerifyViewModel(email, get(), linkToken) }
     viewModel { (email: String, sessionEnded: Boolean) -> LoginViewModel(email, sessionEnded, get()) }
     viewModel { (email: String) -> ForgotPasswordViewModel(email, get()) }
-    viewModel { (email: String) -> ResetPasswordViewModel(email, get()) }
+    viewModel { (email: String, linkToken: String?) -> ResetPasswordViewModel(email, get(), linkToken) }
 }

@@ -31,6 +31,7 @@ import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.common.toActionState
 import com.moyi.app.feature.auth.resources.Res
+import com.moyi.app.feature.auth.resources.login_action
 import com.moyi.app.feature.auth.resources.verify_action
 import com.moyi.app.feature.auth.resources.verify_action_sending
 import com.moyi.app.feature.auth.resources.verify_change_email
@@ -38,9 +39,11 @@ import com.moyi.app.feature.auth.resources.verify_expired_action
 import com.moyi.app.feature.auth.resources.verify_expired_action_sending
 import com.moyi.app.feature.auth.resources.verify_expired_heading
 import com.moyi.app.feature.auth.resources.verify_expired_line
+import com.moyi.app.feature.auth.resources.verify_expired_line_no_address
 import com.moyi.app.feature.auth.resources.verify_eyebrow
 import com.moyi.app.feature.auth.resources.verify_heading
 import com.moyi.app.feature.auth.resources.verify_line
+import com.moyi.app.feature.auth.resources.verify_line_no_address
 import com.moyi.app.feature.auth.resources.verify_resend
 import com.moyi.app.feature.auth.resources.verify_resent
 import com.moyi.app.feature.auth.resources.verify_token_helper
@@ -54,13 +57,16 @@ import org.koin.core.parameter.parametersOf
 fun VerifyRoot(
     email: String,
     onNavigateToLogin: (email: String) -> Unit,
+    onNavigateToSignIn: () -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: VerifyViewModel = koinViewModel { parametersOf(email) },
+    linkToken: String? = null,
+    viewModel: VerifyViewModel = koinViewModel { parametersOf(email, linkToken) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is VerifyEvent.NavigateToLogin -> onNavigateToLogin(event.email)
+            VerifyEvent.NavigateToSignIn -> onNavigateToSignIn()
             VerifyEvent.NavigateBack -> onNavigateBack()
         }
     }
@@ -90,9 +96,25 @@ fun VerifyScreen(
                 InlineError(actionError.asString())
                 Spacer(Modifier.height(spacing.lg))
             }
+            // Expired with no address to resend to: sign in, where the gate sends a new link.
+            val signInInstead = expired && !state.addressKnown
             PrimaryAction(
-                text = stringResource(if (expired) Res.string.verify_expired_action else Res.string.verify_action),
-                onClick = { onAction(if (expired) VerifyAction.OnResendClick else VerifyAction.OnSubmit) },
+                text = stringResource(
+                    when {
+                        signInInstead -> Res.string.login_action
+                        expired -> Res.string.verify_expired_action
+                        else -> Res.string.verify_action
+                    },
+                ),
+                onClick = {
+                    onAction(
+                        when {
+                            signInInstead -> VerifyAction.OnSignInClick
+                            expired -> VerifyAction.OnResendClick
+                            else -> VerifyAction.OnSubmit
+                        },
+                    )
+                },
                 state = state.submit.toActionState(
                     sendingLabel = stringResource(
                         if (expired) Res.string.verify_expired_action_sending else Res.string.verify_action_sending,
@@ -101,13 +123,15 @@ fun VerifyScreen(
                     enabled = !(expired && state.resend == ResendStatus.Sent),
                 ),
             )
-            Spacer(Modifier.height(spacing.lg))
-            TextLink(
-                stringResource(Res.string.verify_change_email),
-                onClick = { onAction(VerifyAction.OnChangeEmailClick) },
-                centered = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (state.addressKnown) {
+                Spacer(Modifier.height(spacing.lg))
+                TextLink(
+                    stringResource(Res.string.verify_change_email),
+                    onClick = { onAction(VerifyAction.OnChangeEmailClick) },
+                    centered = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
     ) {
         ScreenHeader(
@@ -116,7 +140,12 @@ fun VerifyScreen(
         )
         Spacer(Modifier.height(spacing.md))
         MoyiText(
-            text = if (expired) stringResource(Res.string.verify_expired_line) else stringResource(Res.string.verify_line, state.email),
+            text = when {
+                expired && state.addressKnown -> stringResource(Res.string.verify_expired_line)
+                expired -> stringResource(Res.string.verify_expired_line_no_address)
+                state.addressKnown -> stringResource(Res.string.verify_line, state.email)
+                else -> stringResource(Res.string.verify_line_no_address)
+            },
             tone = TextTone.Muted,
         )
         if (expired && state.resend == ResendStatus.Sent) {
@@ -142,8 +171,8 @@ fun VerifyScreen(
                 ),
                 keyboardActions = KeyboardActions(onDone = { onAction(VerifyAction.OnSubmit) }),
             )
-            Spacer(Modifier.height(spacing.lg))
-            when (state.resend) {
+            if (state.addressKnown) Spacer(Modifier.height(spacing.lg))
+            if (state.addressKnown) when (state.resend) {
                 ResendStatus.Sent -> ResentAcknowledgement()
                 ResendStatus.Ready, ResendStatus.Sending -> TextLink(
                     stringResource(Res.string.verify_resend),
@@ -187,5 +216,14 @@ private fun VerifyScreenWaitingPreview() {
 private fun VerifyScreenExpiredPreview() {
     MoyiTheme(darkTheme = true) {
         VerifyScreen(state = VerifyState(email = "amara@example.com", mode = VerifyMode.Expired), onAction = {})
+    }
+}
+
+/** Opened by the emailed link on a phone that does not know the address, and the link had expired. */
+@Preview
+@Composable
+private fun VerifyScreenExpiredFromLinkPreview() {
+    MoyiTheme(darkTheme = true) {
+        VerifyScreen(state = VerifyState(email = "", mode = VerifyMode.Expired), onAction = {})
     }
 }
