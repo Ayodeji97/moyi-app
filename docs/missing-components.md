@@ -393,8 +393,8 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   first if you want to keep them." with it, and the archived line does not promise an
   export. Owed together with the export screen (`Account 8 · export · REQUESTED`).
 - **Update (PR feat/export-and-deletion):** the export screen now exists, reached from
-  Account (§51). Linking it from the archived screens, the block confirm and the cooling-off
-  is still owed: a small follow-up once the owner confirms the placement in §51.
+  Account (§57). Linking it from the archived screens, the block confirm and the cooling-off
+  is still owed: a small follow-up once the owner confirms the placement in §57.
 
 ### 32. Bond · archived: READ ONLY and BLOCKED are one screen
 
@@ -930,10 +930,9 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
 
 ## Account: export and deletion (PR feat/export-and-deletion, 2026-11-09)
 
-Numbered from 51 so they do not collide with sections other open PRs add; renumbered at merge.
 Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 
-### 51. Account, Export your archive, Delete your account
+### 57. Account, Export your archive, Delete your account
 
 - **Today:** Figma draws `Account 7 · settings` (eyebrow "Account", heading "Your account",
   rows Get help and Delete your account, reached by Bond settings' **Account** row), an
