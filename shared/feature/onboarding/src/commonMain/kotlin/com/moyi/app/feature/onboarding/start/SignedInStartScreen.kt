@@ -51,7 +51,7 @@ fun SignedInStartRoot(
  *
  * Failed: the Generic error (Figma 384:341): a StateBlock centred in the
  * content, no header and no back, its action "Try again". Under it, Get help (PROPOSED,
- * docs/missing-components.md §51): the one place a person stuck here can say so.
+ * docs/missing-components.md §55): the one place a person stuck here can say so.
  */
 @Composable
 fun SignedInStartScreen(

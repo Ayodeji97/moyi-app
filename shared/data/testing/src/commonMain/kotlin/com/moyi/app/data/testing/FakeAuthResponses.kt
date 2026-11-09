@@ -15,7 +15,7 @@ fun userJson(displayName: String = "Ada"): String =
 
 /** The body of a 200 from `GET /me`: the user plus the legal versions they accepted. */
 fun profileJson(displayName: String = "Ada"): String =
-    userJson(displayName).dropLast(1) + ""","legalAccepted":{"terms":null,"privacy":null}}"""
+    userJson(displayName).dropLast(1) + ""","legalAccepted":{"terms":null,"privacy":null},"deletionRequest":null}"""
 
 /** The body of a 200 from login or refresh. */
 fun tokenPairJson(access: String, refresh: String, displayName: String = "Ada"): String =

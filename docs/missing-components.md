@@ -927,9 +927,7 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
 
 ## Contact support (FR-102)
 
-### 51. Get help: where it opens from, and the form's undrawn parts
-
-The number may need changing when open PRs #56 to #60 merge: they add sections from 50.
+### 55. Get help: where it opens from, and the form's undrawn parts
 
 - **Today:** `strings-proposed.md` §9 has Support's copy (IN FILE, not decided) and `SKILL.md`
   lists 14 Support screens plus `Account 7 · settings`, whose `account.help` "Get help" opens

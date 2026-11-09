@@ -142,7 +142,7 @@ fun BondSettingsScreen(
  * nothing the bond's settings hold (owner ruling 2026-11-08); Get help there is the way to
  * tell support the settings will not load. Get help sits here in place of Account's
  * (strings-proposed.md §9, `account.help`), whose screen is not built: PROPOSED,
- * docs/missing-components.md §51.
+ * docs/missing-components.md §55.
  */
 @Composable
 private fun JustYouGroup(state: BondSettingsState, busy: Boolean, notifications: Boolean, onAction: (BondSettingsAction) -> Unit) {

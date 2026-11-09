@@ -30,7 +30,7 @@ import com.moyi.app.designsystem.theme.MoyiDimens
  * this builds the one-action shape, which is all onboarding uses, and
  * Waiting's second action ([secondActionLabel]): a second [TextLink] under
  * the first, the same gap apart. The Generic error's Get help uses it
- * (PROPOSED, docs/missing-components.md §51).
+ * (PROPOSED, docs/missing-components.md §55).
  */
 @Composable
 fun StateBlock(
