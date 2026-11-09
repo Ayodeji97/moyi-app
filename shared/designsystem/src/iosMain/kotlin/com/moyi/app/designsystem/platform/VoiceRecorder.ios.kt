@@ -25,7 +25,6 @@ import platform.AVFAudio.AVAudioSessionInterruptionNotification
 import platform.AVFAudio.AVAudioSessionInterruptionTypeBegan
 import platform.AVFAudio.AVAudioSessionInterruptionTypeKey
 import platform.AVFAudio.AVAudioSessionModeDefault
-import platform.AVFAudio.AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
 import platform.AVFAudio.AVEncoderAudioQualityKey
 import platform.AVFAudio.AVEncoderBitRateKey
 import platform.AVFAudio.AVFormatIDKey
@@ -105,6 +104,7 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
             AVEncoderBitRateKey to NSNumber(int = VoiceRecording.BIT_RATE),
             AVEncoderAudioQualityKey to NSNumber(long = AVAudioQualityHigh),
         )
+        AudioSessionOwner.shared.take(this)
         val ready = session.setCategory(
             AVAudioSessionCategoryPlayAndRecord,
             mode = AVAudioSessionModeDefault,
@@ -199,7 +199,7 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
     }
 
     private fun letGoOfSession() {
-        AVAudioSession.sharedInstance().setActive(false, withOptions = AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation, error = null)
+        AudioSessionOwner.shared.letGo(this)
     }
 
     private companion object {

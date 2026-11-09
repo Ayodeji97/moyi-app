@@ -21,7 +21,6 @@ import platform.AVFAudio.AVAudioSessionInterruptionNotification
 import platform.AVFAudio.AVAudioSessionInterruptionTypeBegan
 import platform.AVFAudio.AVAudioSessionInterruptionTypeKey
 import platform.AVFAudio.AVAudioSessionModeSpokenAudio
-import platform.AVFAudio.AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
 import platform.AVFAudio.setActive
 import platform.Foundation.NSData
 import platform.Foundation.NSError
@@ -132,6 +131,7 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
     /** Playback, spoken audio: it plays with the ring switch on silent, as a voice message does. */
     private fun startSession(): Boolean {
         val audio = AVAudioSession.sharedInstance()
+        AudioSessionOwner.shared.take(this)
         val ok = audio.setCategory(AVAudioSessionCategoryPlayback, mode = AVAudioSessionModeSpokenAudio, options = 0u, error = null) &&
             audio.setActive(true, error = null)
         if (ok && interruptions == null) {
@@ -154,7 +154,8 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
     private fun letGoOfSession() {
         interruptions?.let(NSNotificationCenter.defaultCenter::removeObserver)
         interruptions = null
-        AVAudioSession.sharedInstance().setActive(false, withOptions = AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation, error = null)
+        // Only if it is still the player's: Record again starts the recorder before this player is let go.
+        AudioSessionOwner.shared.letGo(this)
     }
 
     private companion object {
