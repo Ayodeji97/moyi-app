@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.SecondaryAction
+import com.moyi.app.designsystem.component.SecondaryActionPair
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
@@ -119,13 +120,16 @@ internal fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
  *
  * [outlined] draws it as a bordered [SecondaryAction] instead of an underlined [TextLink]:
  * for an action that changes the entry here (Edit, Delete; owner ruling 2026-11-06), not
- * for one that goes somewhere.
+ * for one that goes somewhere. Two outlined actions sit side by side when both fit
+ * ([SecondaryActionPair], docs/missing-components.md §48), stacked otherwise.
  */
 internal data class NoteAction(
     val label: String,
     val onClick: () -> Unit,
     val destructive: Boolean = false,
     val outlined: Boolean = false,
+    /** A fuller spoken name containing [label] ("Delete what you wrote" for "Delete"); outlined only. */
+    val spokenLabel: String? = null,
 )
 
 /**
@@ -151,18 +155,22 @@ internal fun DayNote(
             Spacer(Modifier.height(MoyiTheme.spacing.md))
         }
         MoyiText(text = line, tone = TextTone.Muted)
-        if (actions.isNotEmpty()) {
+        if (actions.size == 2 && actions.all { it.outlined }) {
+            // Two outlined actions sit side by side when both labels fit in half the width,
+            // and stack as before when they do not (a large font, a long translation).
+            Spacer(Modifier.height(MoyiTheme.spacing.sm))
+            SecondaryActionPair(
+                first = { OutlinedNoteAction(actions[0]) },
+                second = { OutlinedNoteAction(actions[1]) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else if (actions.isNotEmpty()) {
             Spacer(Modifier.height(MoyiTheme.spacing.sm))
             actions.forEachIndexed { index, action ->
                 if (action.outlined) {
                     // Bordered buttons stacked flush would touch; an 8 gap keeps two targets apart.
                     if (index > 0) Spacer(Modifier.height(MoyiTheme.spacing.sm))
-                    SecondaryAction(
-                        text = action.label,
-                        onClick = action.onClick,
-                        destructive = action.destructive,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    OutlinedNoteAction(action, Modifier.fillMaxWidth())
                 } else {
                     TextLink(
                         text = action.label,
@@ -174,6 +182,17 @@ internal fun DayNote(
             }
         }
     }
+}
+
+@Composable
+private fun OutlinedNoteAction(action: NoteAction, modifier: Modifier = Modifier) {
+    SecondaryAction(
+        text = action.label,
+        onClick = action.onClick,
+        destructive = action.destructive,
+        contentDescription = action.spokenLabel,
+        modifier = modifier,
+    )
 }
 
 /**

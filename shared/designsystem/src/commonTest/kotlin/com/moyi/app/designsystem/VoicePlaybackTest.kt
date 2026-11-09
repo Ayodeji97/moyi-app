@@ -130,6 +130,52 @@ class VoicePlaybackTest {
     }
 
     @Test
+    fun seekingWhilePlayingOrPausedMovesThePlayerAtOnce() = runTest {
+        val player = FakePlayer(this)
+        player.toggle(remote)
+        player.ready(42_000)
+        player.seekTo(21_000)
+        assertEquals(listOf(21_000L), player.seeks)
+        assertEquals(21_000L, player.playback.value.positionMs)
+        assertEquals(PlaybackPhase.Playing, player.playback.value.phase, "seeking never pauses")
+
+        player.toggle(remote)
+        player.seekTo(99_000)
+        assertEquals(42_000L, player.seeks.last(), "never past the end")
+        assertEquals(PlaybackPhase.Paused, player.playback.value.phase, "seeking never plays")
+        player.release()
+    }
+
+    @Test
+    fun seekingBeforeTheFirstPlayStartsThereWithoutFetchingFirst() = runTest {
+        val player = FakePlayer(this)
+        player.seekTo(5_000)
+        assertTrue(player.opened.isEmpty(), "a seek fetches nothing")
+        assertTrue(player.seeks.isEmpty())
+        assertEquals(5_000L, player.playback.value.positionMs)
+
+        player.toggle(remote)
+        assertEquals(5_000L, player.playback.value.positionMs, "the clock keeps the place while it loads")
+        player.ready(42_000)
+        assertEquals(listOf(5_000L), player.seeks, "the player starts where the person pointed")
+        player.release()
+    }
+
+    @Test
+    fun seekingAfterTheEndPlaysFromThereWithoutASecondDownload() = runTest {
+        val player = FakePlayer(this)
+        player.toggle(remote)
+        player.ready(42_000)
+        player.end()
+        player.seekTo(30_000)
+        assertEquals(listOf(30_000L), player.seeks)
+        player.toggle(remote)
+        assertEquals(1, player.opened.size)
+        assertEquals(30_000L, player.playback.value.positionMs)
+        player.release()
+    }
+
+    @Test
     fun theFileSaysHowLongItIsWhenTheServerDidNot() {
         assertEquals(41_960L, VoicePlayback().loading().playing(41_960).durationMs)
         assertEquals(42_000L, VoicePlayback(durationMs = 42_000).playing(null).durationMs)
@@ -152,6 +198,12 @@ class VoicePlaybackTest {
         var resumed = 0
         var released = 0
         var position = 0L
+        val seeks = mutableListOf<Long>()
+
+        override fun seekNative(positionMs: Long) {
+            seeks += positionMs
+            position = positionMs
+        }
 
         override fun open(source: VoiceSource) {
             opened += source.key

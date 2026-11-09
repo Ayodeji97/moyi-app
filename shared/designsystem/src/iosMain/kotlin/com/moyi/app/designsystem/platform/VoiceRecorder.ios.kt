@@ -6,8 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import platform.AVFAudio.AVAudioApplication
 import platform.AVFAudio.AVAudioApplicationRecordPermissionDenied
 import platform.AVFAudio.AVAudioApplicationRecordPermissionGranted
@@ -22,7 +25,6 @@ import platform.AVFAudio.AVAudioSessionInterruptionNotification
 import platform.AVFAudio.AVAudioSessionInterruptionTypeBegan
 import platform.AVFAudio.AVAudioSessionInterruptionTypeKey
 import platform.AVFAudio.AVAudioSessionModeDefault
-import platform.AVFAudio.AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
 import platform.AVFAudio.AVEncoderAudioQualityKey
 import platform.AVFAudio.AVEncoderBitRateKey
 import platform.AVFAudio.AVFormatIDKey
@@ -48,7 +50,8 @@ import platform.darwin.dispatch_get_main_queue
 @Composable
 actual fun rememberVoiceRecorder(onEvent: (RecorderEvent) -> Unit): VoiceRecorder {
     val currentOnEvent by rememberUpdatedState(onEvent)
-    val recorder = remember { IosVoiceRecorder { currentOnEvent(it) } }
+    val scope = rememberCoroutineScope()
+    val recorder = remember { IosVoiceRecorder(scope) { currentOnEvent(it) } }
     // Leaving Write mid-recording throws the recording away: nothing is left on disk.
     DisposableEffect(recorder) { onDispose { recorder.cancel() } }
     return recorder
@@ -59,7 +62,9 @@ actual fun rememberVoiceRecorder(onEvent: (RecorderEvent) -> Unit): VoiceRecorde
  * note is ever on disk, and only while it records: when it stops, the file is read into
  * memory and deleted. The audio session is PlayAndRecord while it records and let go after.
  */
-private class IosVoiceRecorder(private val onEvent: (RecorderEvent) -> Unit) : VoiceRecorder {
+private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (RecorderEvent) -> Unit) : VoiceRecorder {
+    private val meter = RecordingLevels(scope)
+    override val levels: StateFlow<List<Float>> = meter.levels
     private var recorder: AVAudioRecorder? = null
     private var file: NSURL? = null
     private var discarding = false
@@ -99,6 +104,7 @@ private class IosVoiceRecorder(private val onEvent: (RecorderEvent) -> Unit) : V
             AVEncoderBitRateKey to NSNumber(int = VoiceRecording.BIT_RATE),
             AVEncoderAudioQualityKey to NSNumber(long = AVAudioQualityHigh),
         )
+        AudioSessionOwner.shared.take(this)
         val ready = session.setCategory(
             AVAudioSessionCategoryPlayAndRecord,
             mode = AVAudioSessionModeDefault,
@@ -112,6 +118,8 @@ private class IosVoiceRecorder(private val onEvent: (RecorderEvent) -> Unit) : V
             return
         }
         made.delegate = delegate
+        // Metering costs a little CPU while recording, and gives the live waveform its levels.
+        made.meteringEnabled = true
         discarding = false
         recorder = made
         file = url
@@ -132,6 +140,7 @@ private class IosVoiceRecorder(private val onEvent: (RecorderEvent) -> Unit) : V
             onEvent(RecorderEvent.Failed)
             return
         }
+        meter.start { readPeak() }
         onEvent(RecorderEvent.Started)
     }
 
@@ -142,12 +151,21 @@ private class IosVoiceRecorder(private val onEvent: (RecorderEvent) -> Unit) : V
     override fun cancel() {
         val made = recorder ?: return
         discarding = true
+        meter.clear()
         made.stop()
         cleanUp()
     }
 
+    /** The peak since the meters were last updated, in decibels, as a level from 0 to 1. */
+    private fun readPeak(): Float {
+        val made = recorder ?: return 0f
+        made.updateMeters()
+        return levelFromDecibels(made.peakPowerForChannel(0u))
+    }
+
     private fun finished(successfully: Boolean) {
         if (discarding || recorder == null) return
+        val heard = meter.stop()
         val url = file
         val data = if (successfully && url != null) NSData.dataWithContentsOfURL(url) else null
         val bytes = data?.copyBytes()
@@ -155,8 +173,9 @@ private class IosVoiceRecorder(private val onEvent: (RecorderEvent) -> Unit) : V
         cleanUp()
         onEvent(
             if (bytes != null && bytes.isNotEmpty() && durationMs != null && durationMs > 0) {
-                RecorderEvent.Finished(RecordedVoice(bytes, durationMs))
+                RecorderEvent.Finished(RecordedVoice(bytes, durationMs, heard))
             } else {
+                meter.clear()
                 RecorderEvent.Failed
             },
         )
@@ -180,7 +199,7 @@ private class IosVoiceRecorder(private val onEvent: (RecorderEvent) -> Unit) : V
     }
 
     private fun letGoOfSession() {
-        AVAudioSession.sharedInstance().setActive(false, withOptions = AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation, error = null)
+        AudioSessionOwner.shared.letGo(this)
     }
 
     private companion object {
