@@ -98,6 +98,7 @@ fun WriteRoot(
             }
             WriteEvent.StartRecording -> recorder.start()
             WriteEvent.StopRecording -> recorder.stop()
+            WriteEvent.CancelRecording -> recorder.cancel()
         }
     }
     NoArrowBackHandler { viewModel.onAction(WriteAction.OnCloseClick) }
@@ -226,6 +227,7 @@ private fun Attachments(state: WriteState, onAction: (WriteAction) -> Unit, reco
             AttachedVoice(
                 state = voice,
                 onStop = { onAction(WriteAction.OnStopRecordingClick) },
+                onDiscard = { onAction(WriteAction.OnDiscardRecordingClick) },
                 onRecordAgain = if (sending) null else ({ onAction(WriteAction.OnRecordAgainClick) }),
                 onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveVoice) }),
                 recordingLevels = recordingLevels,

@@ -111,6 +111,37 @@ class WriteVoiceTest : MainDispatcherTest() {
     }
 
     @Test
+    fun theTrashThrowsTheRecordingAwayAtOnceAndTheNextTapRecordsAfresh() = runTest {
+        val vm = viewModel()
+        val recorder = recorderFor(vm)
+        vm.onAction(WriteAction.OnTextChange(MINE))
+        vm.onAction(WriteAction.OnRecordVoiceClick)
+        advanceTimeBy(2_100)
+
+        vm.onAction(WriteAction.OnDiscardRecordingClick)
+        assertEquals(listOf("start", "${WriteEvent.CancelRecording}"), recorder.calls, "cancelled, not stopped: nothing is kept")
+        assertNull(vm.state.value.voice)
+        assertNull(vm.state.value.voiceNotice, "no question and no notice: it was never sent")
+        assertTrue(vm.state.value.canSubmit, "the words can go on their own")
+        advanceTimeBy(VoiceRecording.MAX_DURATION_MS)
+        assertNull(vm.state.value.voice, "the clock stopped with it")
+
+        vm.onAction(WriteAction.OnRecordVoiceClick)
+        assertEquals(AttachedVoiceState.Recording(0), vm.state.value.voice)
+    }
+
+    @Test
+    fun theTrashDoesNothingOnceTheRecordingIsKept() = runTest {
+        val vm = viewModel()
+        val recorder = recorderFor(vm)
+        vm.onAction(WriteAction.OnRecordVoiceClick)
+        vm.onAction(WriteAction.OnStopRecordingClick)
+        vm.onAction(WriteAction.OnDiscardRecordingClick)
+        assertEquals(AttachedVoiceState.Recorded(said), vm.state.value.voice)
+        assertEquals(listOf("start", "stop"), recorder.calls)
+    }
+
+    @Test
     fun theRecordingStopsItselfAtTheLimitAndKeepsTheMinute() = runTest {
         val vm = viewModel()
         val recorder = recorderFor(vm)

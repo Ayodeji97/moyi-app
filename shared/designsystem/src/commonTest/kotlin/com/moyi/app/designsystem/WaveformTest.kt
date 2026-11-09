@@ -100,4 +100,37 @@ class WaveformTest {
         assertFalse(ActionPairMath.fitsSideBySide(110, 141, 288, 8), "one too wide stacks both")
         assertFalse(ActionPairMath.fitsSideBySide(10, 10, 8, 8))
     }
+
+    @Test
+    fun theLiveWaveformHasABarFromTheFirstFrameBeforeAnySound() {
+        val first = WaveformMath.liveLevels(emptyList(), elapsedMs = 0)
+        assertEquals(1, first.size, "a bar at 0 ms, before the microphone reports")
+        assertEquals(WaveformMath.idleLevel(0), first.single())
+        // 250 ms is four ticks begun (0, 80, 160, 240), none reported yet: all idle, not blank.
+        val quiet = WaveformMath.liveLevels(emptyList(), elapsedMs = 250)
+        assertEquals(4, quiet.size)
+        assertTrue(quiet.all { it > 0.1f })
+    }
+
+    @Test
+    fun theLiveWaveformDrawsTheVoiceOverTheIdleBaseline() {
+        val shown = WaveformMath.liveLevels(listOf(0.9f, 0f), elapsedMs = 100)
+        assertEquals(0.9f, shown[0], "a loud level wins")
+        assertEquals(WaveformMath.idleLevel(1), shown[1], "silence is the baseline, not a gap")
+        assertEquals(5, WaveformMath.liveLevels(List(5) { 0.5f }, elapsedMs = 0).size, "never fewer than reported")
+    }
+
+    @Test
+    fun theIdleBaselineIsGentleAndRipples() {
+        val idle = (0 until 50).map(WaveformMath::idleLevel)
+        assertTrue(idle.all { it in 0.1f..0.21f })
+        assertTrue(idle.toSet().size > 10, "it varies, so its movement shows")
+    }
+
+    @Test
+    fun theSlideRunsAcrossEachTick() {
+        assertEquals(0f, WaveformMath.tickFraction(0))
+        assertEquals(0.5f, WaveformMath.tickFraction(40))
+        assertEquals(0f, WaveformMath.tickFraction(160))
+    }
 }

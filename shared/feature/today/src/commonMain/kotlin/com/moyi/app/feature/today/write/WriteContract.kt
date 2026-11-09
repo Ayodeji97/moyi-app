@@ -163,8 +163,11 @@ sealed interface WriteAction {
     /** "Record a voice note": asks for the microphone if it must, then records. */
     data object OnRecordVoiceClick : WriteAction
 
-    /** The stop control while recording. */
+    /** The tick while recording: stop, and keep what was said to listen back to. */
     data object OnStopRecordingClick : WriteAction
+
+    /** The trash while recording: stop and throw the unsent recording away, no question asked (states.md §4). */
+    data object OnDiscardRecordingClick : WriteAction
 
     /** Throws the recorded voice note away and records a new one. */
     data object OnRecordAgainClick : WriteAction
@@ -191,6 +194,9 @@ sealed interface WriteEvent {
 
     /** Stop it, keeping what was recorded: the person stopped, or the limit was reached. */
     data object StopRecording : WriteEvent
+
+    /** Stop it and throw the recording away: the recorder reports nothing back. */
+    data object CancelRecording : WriteEvent
 }
 
 enum class PhotoSource { Library, Camera }

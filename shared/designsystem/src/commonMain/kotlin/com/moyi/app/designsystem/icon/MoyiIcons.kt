@@ -157,8 +157,8 @@ object MoyiIcons {
     /**
      * Voice notes (interim, docs/missing-components.md §43 and §44: no frame draws the
      * player or the recorder). Lucide's `play` (`<polygon 6 3 20 12 6 21>`), `pause` (two
-     * `<rect 4x16 rx1>`), `square` (`<rect x3 y3 18x18 rx2>`, the stop) and `rotate-ccw`
-     * (record again), each written as a path.
+     * `<rect 4x16 rx1>`) and `rotate-ccw` (record again), each written as a path. The
+     * recorder stops with [Check] (keep) or [Trash] (discard), owner ruling 2026-11-09.
      */
     val Play: ImageVector by lazy { lucide("Play", "M6 3 20 12 6 21z") }
 
@@ -170,7 +170,19 @@ object MoyiIcons {
         )
     }
 
-    val Stop: ImageVector by lazy { lucide("Stop", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z") }
+    /**
+     * **PROPOSED** (docs/missing-components.md §49): the recorder's discard, left of the live
+     * waveform. Lucide `trash`, three paths, verbatim. Tinted `ink` like every composer glyph:
+     * throwing away an unsent recording is not a destructive confirm, so it is not `danger`.
+     */
+    val Trash: ImageVector by lazy {
+        lucide(
+            "Trash",
+            "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
+            "M3 6h18",
+            "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+        )
+    }
 
     val RecordAgain: ImageVector by lazy {
         lucide("RecordAgain", "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5")

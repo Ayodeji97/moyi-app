@@ -195,6 +195,8 @@ object MoyiDimens {
         val MinBar = 3.dp
         /** Between the waveform and the control or the clock beside it. */
         val Gap = 8.dp
+        /** The `danger` dot before the clock while recording (owner ruling 2026-11-09, §49). */
+        val RecordingDot = 8.dp
     }
 
     /** Today's `nav` row (Figma 159:2: 358 × 48 at y 24; daily-loop spec §2). */

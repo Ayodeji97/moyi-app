@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -30,8 +34,10 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.platform.RecordingLevels
 import com.moyi.app.designsystem.theme.MoyiDimens
 import kotlin.math.max
+import kotlin.math.sin
 
 /**
  * **PROPOSED, not drawn** (docs/missing-components.md §46): a voice note as a row of
@@ -112,13 +118,18 @@ fun VoiceWaveform(
  * **PROPOSED, not drawn** (docs/missing-components.md §47): the microphone's level while a
  * voice note records, drawn as it arrives, in `ink`.
  *
- * - [scrolling]: the newest bar at the end, older ones moving off the start, as messaging
- *   apps do while recording.
+ * - It moves from the first frame it is shown (owner ruling 2026-11-09): time, not the
+ *   microphone, drives it. Each [RecordingLevels.TICK_MS] of recording is a bar whether or
+ *   not its level has arrived, and a quiet bar is never lower than a gentle idle baseline
+ *   ([WaveformMath.idleLevel]), so the row is visibly alive before anyone speaks.
+ * - [scrolling]: the newest bar slides in at the end, older ones move off the start,
+ *   smoothly frame by frame, as messaging apps do while recording.
  * - Not [scrolling] (Reduce Motion, or Android's "Remove animations"): nothing moves. The
  *   band stands for the whole minute allowed; each bar appears in its place, left to right,
  *   and the minute still to come is the row of `outlineStrong` dots after it.
  *
- * Decorative to a screen reader: the clock beside it says the same in words.
+ * The time is read only in the draw phase, so each frame redraws the bars and recomposes
+ * nothing. Decorative to a screen reader: the clock beside it says the same in words.
  */
 @Composable
 fun LiveWaveform(
@@ -131,20 +142,31 @@ fun LiveWaveform(
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val heard = MoyiTheme.colors.ink
     val ahead = MoyiTheme.colors.outlineStrong
+    // Milliseconds since the row appeared, which is the moment recording started.
+    val elapsedMs = remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) {
+        // An infinite-animation frame: a UI test does not wait for it to finish.
+        val start = withInfiniteAnimationFrameMillis { it }
+        while (true) withInfiniteAnimationFrameMillis { elapsedMs.longValue = it - start }
+    }
     Canvas(
         modifier = modifier
             .fillMaxWidth()
             .height(MoyiDimens.Waveform.Target)
+            .clipToBounds()
             .clearAndSetSemantics {},
     ) {
         val count = WaveformMath.barCount(size.width, MoyiDimens.Waveform.BarWidth.toPx(), MoyiDimens.Waveform.BarGap.toPx())
-        val samples = levels()
-        val bars: List<Float?> = if (scrolling) {
-            WaveformMath.latest(samples, count)
+        val ms = elapsedMs.longValue
+        val shown = WaveformMath.liveLevels(levels(), ms)
+        if (scrolling) {
+            // One bar more than fits: the newest slides in from the end over its tick.
+            val pitch = MoyiDimens.Waveform.BarWidth.toPx() + MoyiDimens.Waveform.BarGap.toPx()
+            val shift = WaveformMath.tickFraction(ms) * pitch
+            drawBarSlots(WaveformMath.latest(shown, count + 1), rtl, shift) { level -> if (level == null) ahead else heard }
         } else {
-            WaveformMath.onTimeline(samples, capacity, count)
+            drawBarSlots(WaveformMath.onTimeline(shown, capacity, count), rtl) { level -> if (level == null) ahead else heard }
         }
-        drawBarSlots(bars, rtl) { level -> if (level == null) ahead else heard }
     }
 }
 
@@ -160,17 +182,20 @@ private fun DrawScope.drawBars(levels: List<Float>, rtl: Boolean, colorAt: (Floa
     }
 }
 
-/** Draws one bar per slot; a null slot is the minimum dot (time not recorded yet). */
-private fun DrawScope.drawBarSlots(bars: List<Float?>, rtl: Boolean, colorFor: (Float?) -> Color) {
-    bars.forEachIndexed { index, level -> drawBar(index, level ?: 0f, rtl, colorFor(level)) }
+/**
+ * Draws one bar per slot, moved [shift] px towards the start; a null slot is the minimum
+ * dot (time not recorded yet).
+ */
+private fun DrawScope.drawBarSlots(bars: List<Float?>, rtl: Boolean, shift: Float = 0f, colorFor: (Float?) -> Color) {
+    bars.forEachIndexed { index, level -> drawBar(index, level ?: 0f, rtl, colorFor(level), shift) }
 }
 
-private fun DrawScope.drawBar(index: Int, level: Float, rtl: Boolean, color: Color) {
+private fun DrawScope.drawBar(index: Int, level: Float, rtl: Boolean, color: Color, shift: Float = 0f) {
     val width = MoyiDimens.Waveform.BarWidth.toPx()
     val pitch = width + MoyiDimens.Waveform.BarGap.toPx()
     val tallest = MoyiDimens.Waveform.Height.toPx()
     val height = max(MoyiDimens.Waveform.MinBar.toPx(), level.coerceIn(0f, 1f) * tallest)
-    val start = index * pitch
+    val start = index * pitch - shift
     val x = if (rtl) size.width - start - width else start
     drawRoundRect(
         color = color,
@@ -227,6 +252,30 @@ object WaveformMath {
         val shown = levels.takeLast(count)
         return List(count - shown.size) { null } + shown
     }
+
+    /**
+     * What the live waveform draws [elapsedMs] into a recording: one level per
+     * [RecordingLevels.TICK_MS] that has begun, so the first bar is there at 0 ms, before
+     * the microphone has reported anything. A level not reported yet, or a quiet one, is
+     * the [idleLevel] of its slot, so the row moves from the first frame. Never fewer than
+     * the [samples] reported (the recorder can be a tick ahead of the screen's clock).
+     */
+    fun liveLevels(samples: List<Float>, elapsedMs: Long): List<Float> {
+        val slots = max(samples.size, (elapsedMs.coerceAtLeast(0) / RecordingLevels.TICK_MS).toInt() + 1)
+        return List(slots) { slot -> max(samples.getOrNull(slot) ?: 0f, idleLevel(slot)) }
+    }
+
+    /**
+     * The quiet baseline of the live waveform: a gentle ripple of short bars, 3.5 to 6.5 dp
+     * of the 32 dp band, the same for the same [slot] every time, so it reads as a line
+     * that is listening rather than as noise. Only drawn while recording; never kept with
+     * the recording, so listening back shows the real levels.
+     */
+    fun idleLevel(slot: Int): Float = IDLE_MID + IDLE_SWING * sin(slot * IDLE_STEP)
+
+    /** How far through its current tick [elapsedMs] is, 0 until 1: the live waveform's slide. */
+    fun tickFraction(elapsedMs: Long): Float =
+        (elapsedMs.coerceAtLeast(0) % RecordingLevels.TICK_MS).toFloat() / RecordingLevels.TICK_MS
 
     /**
      * The recording laid out on its whole [capacity] (the minute allowed) in [count] bars:
@@ -286,6 +335,9 @@ object WaveformMath {
 
     /** About one bar per 5 dp of a phone-wide card: resampled to the bars that fit. */
     const val PLACEHOLDER_COUNT = 64
+    private const val IDLE_MID = 0.155f
+    private const val IDLE_SWING = 0.045f
+    private const val IDLE_STEP = 0.9f
     private const val PLACEHOLDER_LOW = 0.2f
     private const val PLACEHOLDER_HIGH = 0.8f
     private const val FNV_OFFSET = -3750763034362895579L // 0xcbf29ce484222325
