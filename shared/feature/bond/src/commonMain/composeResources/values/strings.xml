@@ -219,7 +219,9 @@
     <!-- PROPOSED. Confirm's secondary (397:137): the same DELETE, from the other side. -->
     <string name="settings_tz_decline">Decline</string>
     <string name="settings_tz_declining">Declining</string>
-    <!-- PROPOSED. 409 TIMEZONE_CHANGE_TOO_SOON. states.md §8 wants the date; the contract carries it only in prose (docs/backend-contract-gaps.md, row 24), so it is not shown. -->
+    <!-- PROPOSED. 409 TIMEZONE_CHANGE_TOO_SOON with its allowedFrom: states.md §8's own sentence ("The shared time zone can change again from 28 October 2026"). %1$s is the first day it can change, day first then the month, in the device's language, e.g. 12 December. The year is left out as on every other date in settings: the day is at most 30 days away. -->
+    <string name="settings_tz_error_too_soon_from">The shared time zone can change again from %1$s.</string>
+    <!-- PROPOSED. 409 TIMEZONE_CHANGE_TOO_SOON when the response carried no allowedFrom: the same refusal without the date. -->
     <string name="settings_tz_error_too_soon">The shared time zone changed less than 30 days ago, so it cannot change again yet.</string>
     <!-- PROPOSED. 422 on the zone: not a region zone. -->
     <string name="settings_tz_error_unsupported">That time zone cannot be used. Choose a city.</string>

@@ -47,7 +47,8 @@ val settingsV1 = BondSettings(
     version = "\"1\"",
 )
 
-fun apiError(status: Int, code: ApiErrorCode) = Result.Failure(DataError.Network.Api(ApiProblem(status, code)))
+fun apiError(status: Int, code: ApiErrorCode, allowedFrom: String? = null) =
+    Result.Failure(DataError.Network.Api(ApiProblem(status, code, allowedFrom = allowedFrom)))
 
 /**
  * A scripted [BondSettingsRepository]. Each call answers from its queue, or by
