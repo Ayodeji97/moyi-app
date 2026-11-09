@@ -3,6 +3,7 @@ package com.moyi.app.data.network
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.FieldError
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -39,6 +40,7 @@ object ProblemDetailParser {
             code = ApiErrorCode.entries.find { it != ApiErrorCode.Unknown && it.name == rawCode } ?: ApiErrorCode.Unknown,
             fieldErrors = (json["errors"] as? JsonArray).orEmpty().mapNotNull { it.toFieldError() },
             traceId = json.string("traceId"),
+            allowedFrom = json.date("allowedFrom"),
         )
     }
 
@@ -56,6 +58,21 @@ object ProblemDetailParser {
             code = obj.string("code") ?: return null,
             message = obj.string("message").orEmpty(),
         )
+    }
+
+    /**
+     * A `format: date` field, decoded with the same serializer the generated
+     * `ProblemDetail.allowedFrom` uses, so what passes here is what the contract
+     * calls a date. Anything else (missing, null, not a real day) is null.
+     */
+    private fun JsonObject.date(key: String): String? {
+        val element = this[key] ?: return null
+        return try {
+            MoyiJson.decodeFromJsonElement(LocalDate.serializer(), element).toString()
+        } catch (_: IllegalArgumentException) {
+            // SerializationException is one too: not a string, or not a real day.
+            null
+        }
     }
 
     private fun JsonObject.string(key: String): String? =

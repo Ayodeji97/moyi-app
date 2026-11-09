@@ -63,6 +63,9 @@ internal class PreviewBondSettingsRepository(private val latency: Duration = 800
         pendingDeletion = PendingDeletionRequest(requestedByMe = false, expiresAt = Clock.System.now() + 7.days),
     )
     private var zoneChanged = false
+
+    /** The refusal's `allowedFrom`: 30 days from now, as the server would date it (in UTC here). */
+    private val zoneAllowedFrom: String get() = (Clock.System.now() + 30.days).toString().take(10)
     private var inviteCount = 0
     private var member = MemberSettings(TimeOfDay(20, 0), "Africa/Lagos")
     private var version = 1
@@ -112,7 +115,7 @@ internal class PreviewBondSettingsRepository(private val latency: Duration = 800
 
     override suspend fun proposeTimezone(bondId: String, timezone: String): Result<BondSettings, DataError.Network> {
         delay(latency)
-        if (zoneChanged) return Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON)))
+        if (zoneChanged) return Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON, allowedFrom = zoneAllowedFrom)))
         settings = settings.copy(pendingTimezone = PendingTimezoneChange("preview-mine", timezone, proposedByMe = true), version = next())
         return Result.Success(settings)
     }

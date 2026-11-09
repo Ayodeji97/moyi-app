@@ -23,8 +23,10 @@ import com.moyi.app.feature.bond.resources.settings_error_rate_limited
 import com.moyi.app.feature.bond.resources.settings_invite_error_full
 import com.moyi.app.feature.bond.resources.settings_leave_error_ended
 import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon
+import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon_from
 import com.moyi.app.feature.bond.resources.settings_tz_error_unsupported
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +65,9 @@ import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
  *   change ([BondSettingsState.timeZoneStep]): propose a zone, cancel your own proposal,
  *   or agree to (or decline) the other member's. Proposing on a bond nobody has joined
  *   applies at once, and goes back to the root. The 30-day rule is a `409
- *   TIMEZONE_CHANGE_TOO_SOON`, said plainly and never retried. A `404` from agree or
+ *   TIMEZONE_CHANGE_TOO_SOON`, said plainly with the day it can change again (its
+ *   `allowedFrom`, states.md §8), or without a day when none came, and never retried. A
+ *   `404` from agree or
  *   cancel means nothing is waiting any more (cancelled or lapsed): reload, not Ended.
  * - **The invite** (states.md §2): share and copy the live one, cancel it (`DELETE`), or
  *   create a new one, which replaces any other. `409 BOND_FULL` means someone joined:
@@ -259,9 +263,21 @@ class BondSettingsViewModel(
                 _state.update { it.copy(saving = null) }
                 send(BondSettingsEvent.Ended)
             }
-            error.code() == ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON -> zoneFailed(UiText.Resource(Res.string.settings_tz_error_too_soon))
+            error.code() == ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON -> zoneFailed(tooSoon(error))
             else -> zoneFailed(error.message())
         }
+    }
+
+    /**
+     * The 30-day refusal, naming the day it lifts when the server sent one. The day is a
+     * calendar date in the bond's zone, so it is shown as it is, never moved into the
+     * device's zone; [dayAndMonth] writes it in the device's language.
+     */
+    private fun tooSoon(error: DataError.Network): UiText {
+        val allowedFrom = (error as? DataError.Network.Api)?.problem?.allowedFrom
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?: return UiText.Resource(Res.string.settings_tz_error_too_soon)
+        return UiText.Resource(Res.string.settings_tz_error_too_soon_from, listOf(dayAndMonth(allowedFrom)))
     }
 
     private fun zoneFailed(message: UiText) =
