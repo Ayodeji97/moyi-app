@@ -268,8 +268,8 @@
     <string name="reaction_emoji_thank_you">🙏</string>
     <!-- PROPOSED. SMILE: smiling face with smiling eyes. -->
     <string name="reaction_emoji_smile">😊</string>
-    <!-- PROPOSED. MOVED: face holding back tears (Emoji 14). -->
-    <string name="reaction_emoji_moved">🥹</string>
+    <!-- PROPOSED. MOVED: pleading face (Emoji 11), touched. Owner ruling 2026-11-09: swapped from 🥹 (Emoji 14), which older Android phones draw as an empty box. -->
+    <string name="reaction_emoji_moved">🥺</string>
     <!-- PROPOSED. ME_TOO: handshake, agreeing with what they wrote. -->
     <string name="reaction_emoji_me_too">🤝</string>
     <!-- PROPOSED. Over the chips, under the partner's entry, while I have left none. Names the next action. %1$s = partnerName. -->

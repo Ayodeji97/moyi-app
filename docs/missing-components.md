@@ -761,7 +761,7 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
     by fill and border, not hue (NFR-104).
   - **The partner's reaction on my entry:** the interim `ReactionBadge` under my card (ruling 6
     below): "❤️ Tunde sent a heart." / "🙏 Tunde said thank you." / "😊 Tunde smiled at this." /
-    "🥹 Tunde was moved by this." / "🤝 Tunde is grateful for that too." (the sentences are
+    "🥺 Tunde was moved by this." / "🤝 Tunde is grateful for that too." (the sentences are
     approved, `reaction_from_partner_*`). Spoken as the sentence only. Not a live region, and
     nothing else changes: it does not announce itself when it arrives, so it is no "seen" signal
     beyond the one the owner accepted (ADR-0037 question 6, decision 10).
@@ -774,10 +774,11 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **Owner rulings, 2026-11-09** (the six open questions of PR #50), and how each is applied:
   1. **An emoji and the word on each chip.** The words are approved. The emoji are PROPOSED
      (`reaction_emoji_*`): HEART ❤️ (U+2764 U+FE0F), THANK_YOU 🙏 (U+1F64F), SMILE 😊 (U+1F60A),
-     MOVED 🥹 (U+1F979, face holding back tears), ME_TOO 🤝 (U+1F91D, handshake). They are set
+     MOVED 🥺 (U+1F97A, pleading face; swapped from 🥹, Emoji 14, at the owner's word so
+     older Android phones do not draw an empty box), ME_TOO 🤝 (U+1F91D, handshake). They are set
      in the system face (`FontFamily.Default`), so the platform's colour emoji font draws them
      by fallback: Apple Color Emoji on iOS, Noto Color Emoji on Android (Compose's bundled
-     EmojiCompat brings newer emoji, 🥹 included, to older Android versions that have Google
+     EmojiCompat brings newer emoji to older Android versions that have Google
      Play services). The emoji is never in a chip's spoken label.
   2. **The five partner sentences are approved**, as are the five chip words; their `strings.xml`
      comments say so. The emoji, `reaction_prompt`, `reaction_chosen` and `reaction_take_back`

@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
  */
 class ReactionEmojiTest {
     private val words = listOf("Heart", "Thank you", "Smile", "Moved", "Me too")
-    private val emoji = listOf("❤️", "🙏", "😊", "🥹", "🤝")
+    private val emoji = listOf("❤️", "🙏", "😊", "🥺", "🤝")
 
     private fun SemanticsNode.allSpoken(): List<String> {
         val own = config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
