@@ -289,10 +289,10 @@
     <!--
     Report (FR-100, ADR-0053; `26` §4, Figma Safety 599:1781). strings-proposed.md §10 is
     "IN FILE, not decided", so every string here needs the owner's approval; those taken from
-    §10 say so. The reason names are the contract's five, not §10's four (contract gap row 32,
-    missing-components §50): each reason's words are PROPOSED.
+    §10 say so. The reason names are the contract's five, not §10's four (contract gap row 36,
+    missing-components §53): each reason's words are PROPOSED.
     -->
-    <!-- PROPOSED. The Bond settings row that reports the member (not drawn: missing-components §50). -->
+    <!-- PROPOSED. The Bond settings row that reports the member (not drawn: missing-components §53). -->
     <string name="settings_row_report">Report %1$s</string>
     <!-- report.eyebrow (strings-proposed.md §10). -->
     <string name="report_eyebrow">Report</string>

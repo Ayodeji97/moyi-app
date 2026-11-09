@@ -893,9 +893,41 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   `danger`'s second use; (2) the spoken names "Delete this recording" and "Stop and keep the
   recording" for `copy.md`.
 
+## Deleting before the reveal (owner ruling 2026-11-09)
+
+### 50. Delete before the reveal asks first
+
+- **Today:** `states.md` §4 (the row "Delete before reveal | Free. **No confirmation**, it is
+  not irreversible yet", line ~386, and the paragraph under it, line ~397) and `SKILL.md` §3
+  ("confirm the irreversible, only") made the waiting note's Delete immediate.
+- **Owner ruling, 2026-11-09:** "for a destructive action that is not reversible, we should have
+  a confirmation for the user to know that this is the action they want to perform... ask if
+  the user really wants to delete and what deleting means." The words are gone once deleted, so
+  the delete is irreversible for the person who wrote them, even if the day is not.
+- **Built:** the Delete on Today's waiting note (`WaitingNote`, the Waiting layout, which also
+  draws `PENDING_REVEAL`) opens the same `ConfirmDialog` as Delete after the reveal: same title
+  (`delete_heading` "Delete what you wrote?"), same destructive confirm (`delete_confirm`
+  "Delete", `danger` on Android, the destructive style on iOS), same dismiss (`delete_cancel`
+  "Cancel", copy.md: bare "Cancel" dismisses a dialog). Only the message differs, because
+  deleting means something else here: **PROPOSED** `delete_before_reveal_line` "This cannot
+  be undone. You can write again today." (shortened at the owner's ask, 2026-11-09; the title
+  already says what goes) Every other pre-reveal delete was checked: the Archive
+  day's Delete is drawn only for a revealed day (`canDelete = revealed`), so it already asks.
+- **"You can write again today" was checked against the backend**, not assumed: a pre-reveal
+  `DELETE` erases the row and frees the day's BR-2 slot, and a new entry is accepted
+  (`moyi-backend` `RevealTest`, "deleting on a PENDING_REVEAL day returns it to PARTIAL, and a
+  rewrite follows the reveal rule again"); the partner is shown nothing of it (ADR-0032
+  question 2). After the reveal the same rewrite is `409 DAY_CLOSED`, which is why the line is
+  only used before it.
+- **Not changed (cheap to redo, instant, as in WhatsApp):** the trash while recording a voice note
+  (§49) and "Remove the voice note" / "Remove the photo" in Write. Nothing has been sent there.
+- **Owed outside this repo:** `states.md` §4's row and paragraph, and `SKILL.md` §3's list of
+  what is confirmed, need amending in the design system. Open question for the owner: the
+  message string, for `copy.md`.
+
 ## Reporting (FR-100, ADR-0053)
 
-### 50. The report flow, its reasons, and where it starts
+### 53. The report flow, its reasons, and where it starts
 
 - **Today:** Figma's Safety section draws `Report · choose target` (607:1795), `compose` (599:1782,
   with `KEYBOARD UP` 607:1825), `sent` (608:1811) and `failed · INPUT KEPT` (608:1841), and the
@@ -912,7 +944,7 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   Sent is a root with one action, back to where the report started (SKILL.md §9).
 - **Not drawn, PROPOSED:**
   - **The reasons.** The contract takes five (`NON_CONSENSUAL`, `MINOR_SEXUAL_CONTENT`,
-    `VIOLENCE_OR_SELF_HARM`, `HARASSMENT`, `OTHER`); §10 drew four others (contract gap row 33).
+    `VIOLENCE_OR_SELF_HARM`, `HARASSMENT`, `OTHER`); §10 drew four others (contract gap row 36).
     Words: "How they’re treating me" (§10's `treating`, for `HARASSMENT`, as ADR-0053 maps it),
     "Something shared without my consent", "Violence, threats or self-harm", "Sexual content
     involving a child", "Something else" (§10's `other`). The label is "Why are you reporting

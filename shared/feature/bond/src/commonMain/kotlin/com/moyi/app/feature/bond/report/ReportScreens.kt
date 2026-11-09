@@ -125,7 +125,7 @@ fun ReportComposeScreen(state: ReportState, onAction: (ReportAction) -> Unit, on
 }
 
 /**
- * The reason picker the `Field` Select opens (not drawn: missing-components §50). The
+ * The reason picker the `Field` Select opens (not drawn: missing-components §53). The
  * contract's five reasons as rows; a tap chooses one and goes back to the form, whose
  * field then shows it. The shape of the time-zone picker's list, with no mark of its own.
  */

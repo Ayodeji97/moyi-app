@@ -8,7 +8,7 @@ import com.moyi.app.core.Result
  * contract's `ReportRequest.reason` declares, the same five for an entry and for the
  * member. The names are the wire's; the words a person reads are the presentation
  * layer's (doc 26 §6 proposed four other values; the backend chose these, and the
- * contract wins: docs/backend-contract-gaps.md row 32).
+ * contract wins: docs/backend-contract-gaps.md row 36).
  *
  * `MINOR_SEXUAL_CONTENT` is reviewed first by the server. `HARASSMENT` is T-09's
  * "how they're treating me".

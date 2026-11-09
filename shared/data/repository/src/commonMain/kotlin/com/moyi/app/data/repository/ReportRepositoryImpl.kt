@@ -26,7 +26,7 @@ import io.ktor.client.HttpClient
  * Both routes take the same generated [ReportRequest]. The member route is called
  * through [IdempotentMemberReportsApi], because the vendored contract leaves out the
  * `Idempotency-Key` header the server requires on it (docs/backend-contract-gaps.md
- * row 32): sent without it, every member report is `422`.
+ * row 35): sent without it, every member report is `422`.
  */
 class ReportRepositoryImpl(
     authedClient: AuthedHttpClient,

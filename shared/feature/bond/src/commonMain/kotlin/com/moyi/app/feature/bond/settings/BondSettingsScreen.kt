@@ -279,7 +279,7 @@ private fun SettingsRoot(
                         enabled = !busy,
                         onClick = { onAction(BondSettingsAction.OnBlockClick) },
                     )
-                    // Not drawn (missing-components §50): the member half of FR-100 beside the
+                    // Not drawn (missing-components §53): the member half of FR-100 beside the
                     // remedies it is paired with. Not destructive: it ends nothing.
                     SettingsRow(
                         label = stringResource(Res.string.settings_row_report, partnerName),
