@@ -118,7 +118,7 @@ fun VerifyScreen(
                     sendingLabel = stringResource(
                         if (expired) Res.string.verify_expired_action_sending else Res.string.verify_action_sending,
                     ),
-                    // A link sent in the last minute holds "Send a new link" too (the 1/min limit).
+                    // An email sent in the last minute holds "Send a new email" too (the 1/min limit).
                     enabled = !(expired && state.resend == ResendStatus.Sent),
                 ),
             )
@@ -148,7 +148,7 @@ fun VerifyScreen(
             tone = TextTone.Muted,
         )
         if (expired && state.resend == ResendStatus.Sent) {
-            // Says why "Send a new link" is waiting, so the held button is not a silent no-op.
+            // Says why "Send a new email" is waiting, so the held button is not a silent no-op.
             Spacer(Modifier.height(spacing.lg))
             ResentAcknowledgement()
         }

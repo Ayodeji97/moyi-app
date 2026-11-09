@@ -91,7 +91,7 @@ object AuthErrorMapper {
      * `422 VERIFICATION_TOKEN_INVALID` is one answer for a link that matches nothing and for
      * every refused code: wrong, expired (15 minutes), stopped after five wrong tries, or
      * spent. The server tells them apart for nobody, on purpose (it would say which
-     * addresses have a live code), so [Res.string.code_error_invalid] names all three.
+     * addresses have a live code), so [Res.string.code_error_invalid] covers them all.
      * A field violation on `token`, `code` or `email` reads the same: the app never sends
      * one, so it can only mean the proof was not accepted.
      */

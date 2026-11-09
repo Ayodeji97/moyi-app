@@ -17,7 +17,7 @@ data class VerifyState(
     val mode: VerifyMode = VerifyMode.Waiting,
     val resend: ResendStatus = ResendStatus.Ready,
     /**
-     * The primary action: "Check again" while waiting, "Send a new link" when expired. Sending
+     * The primary action: "Check again" while waiting, "Send a new email" when expired. Sending
      * while a code or link is checked, including the check the sixth digit starts by itself.
      */
     val submit: SubmitStatus = SubmitStatus.Idle,
@@ -52,7 +52,7 @@ sealed interface VerifyAction {
     /** "Check again" (or the keyboard's Done) while waiting: submits the code. */
     data object OnSubmit : VerifyAction
 
-    /** "Send it again" while waiting, or "Send a new link" when expired. */
+    /** "Send it again" while waiting, or "Send a new email" when expired. */
     data object OnResendClick : VerifyAction
     data object OnChangeEmailClick : VerifyAction
 

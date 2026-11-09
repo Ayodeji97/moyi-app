@@ -71,7 +71,7 @@ class ResetScreensTest {
     }
 
     private companion object {
-        const val NON_DISCLOSURE = "If that address has an account, we sent it a 6-digit code. Choose a new password below and type the code there. It works for 15 minutes."
+        const val NON_DISCLOSURE = "If that address has an account, we sent it a 6-digit code. Type it below with your new password."
         const val CONSEQUENCE = "This signs you out everywhere else. You will need to sign in again on your other devices."
     }
 }

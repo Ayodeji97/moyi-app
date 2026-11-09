@@ -237,7 +237,7 @@ class VerifyViewModelTest : MainDispatcherTest() {
         type("https://getmoyi.app/verify?token=old")
         assertEquals(VerifyMode.Expired, viewModel.state.value.mode)
 
-        // "Send a new link" within the minute sends nothing: the server would refuse it.
+        // "Send a new email" within the minute sends nothing: the server would refuse it.
         viewModel.onAction(VerifyAction.OnResendClick)
         assertEquals(1, repo.resendCalls.size)
         assertEquals(VerifyMode.Expired, viewModel.state.value.mode)

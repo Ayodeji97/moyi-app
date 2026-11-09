@@ -142,7 +142,7 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 | `register_action_sending` | Creating your account | Sending label (states.md §1c) |
 | `verify_token_label` / `_helper` | Code from the email / Paste the code from the link we sent, or the whole link. | Paste field (§6) |
 | `verify_token_error_blank` / `_invalid` | Paste the code from the email first. / That code does not match. Copy it again from the email. | `VERIFICATION_TOKEN_INVALID` |
-| `verify_expired_action_sending` | Sending a new link | Sending label for "Send a new link" |
+| `verify_expired_action_sending` | Sending a new email | Sending label for "Send a new email" (reworded by owner ruling 2026-11-09, §58) |
 | `login_password_error_blank` | Add your password to sign in. | Empty password |
 | `login_action_sending` | Signing in | Sending label |
 | `login_error_rate_limited` | Sign in is paused for a short while. Your account is fine. Try again in a few minutes. | `ratelimit.line` plus a "when" (states.md §1b); the full-screen 345:53 is not built |
@@ -1007,10 +1007,10 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   - `code_error_blank` "Type the 6 digits from the email first."; `code_error_short` "A code
     has 6 digits. Check the email for the rest."
   - `code_error_invalid` (422 `VERIFICATION_TOKEN_INVALID` / `PASSWORD_RESET_TOKEN_INVALID`
-    for a code): "That code did not work. A code lasts 15 minutes and stops after 5 wrong
-    tries. Check it, or ask for a new email." The server gives one answer for wrong, expired,
-    five wrong tries and spent, on purpose (a distinct answer would say which addresses hold
-    a live code), so the sentence names all of them and the way out. **There is no separate
+    for a code), **approved 2026-11-09**: "That code did not work. Check the digits, or send a
+    new email." The server gives one answer for wrong, expired, too many wrong tries and
+    spent, on purpose (a distinct answer would say which addresses hold a live code), so the
+    sentence names the way out for all of them, without the numbers. **There is no separate
     "too many attempts" message because the server never says so.**
   - `code_error_link_invalid` (422 for a link): "That link did not work. Copy it again from
     the email, or type the code."
@@ -1027,14 +1027,16 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   - Rewritten (were approved interim lines that said to copy and paste the link):
     `verify_line` "We sent a 6-digit code to %1$s. Type it below, or open the link in the same
     email."; `verify_line_no_address` "Open the link in the email we sent on this phone, or
-    paste it below."; `reset_sent_line` "If that address has an account, we sent it a 6-digit
-    code. Choose a new password below and type the code there. It works for 15 minutes."
-    (still identical whether or not the account exists).
+    paste it below."; `reset_sent_line`, **approved 2026-11-09**: "If that address has an
+    account, we sent it a 6-digit code. Type it below with your new password." (still
+    identical whether or not the account exists).
 - **Removed:** `verify_token_label`, `_helper`, `_error_blank`, `_error_invalid` (§6, §6a),
   replaced by the `code_*` strings above.
-- **Open questions for the owner:** (1) the copy above, in particular whether the invalid-code
-  sentence should carry the numbers (15 minutes, 5 tries: they are the backend's defaults and
-  would drift if configured); (2) "Send a new link" and "Sending a new link" on the expired
-  layout now send an email with a code too: keep, or "Send a new email"; (3) whether the
-  reset flow should become two steps (code, then password) once the backend can check a
-  reset code alone (gaps row 39).
+- **Owner ruling, 2026-11-09:** (1) the invalid-code sentence drops the numbers (15 minutes,
+  5 tries): they are backend defaults and would drift if configured. `code_error_invalid` and
+  `reset_sent_line` are approved as written above. (2) The expired layout's action names the
+  email, since the new email carries a code too: `verify_expired_action` "Send a new email"
+  (was `copy.md`'s "Send a new link") and `verify_expired_action_sending` "Sending a new
+  email", approved. (3) Choose a new password stays one screen (the code field above the
+  password) until the backend can check a reset code alone (gaps row 39); a two-step flow is
+  reconsidered then. The other `code_*` strings and `reset_link_ready` stay PROPOSED.

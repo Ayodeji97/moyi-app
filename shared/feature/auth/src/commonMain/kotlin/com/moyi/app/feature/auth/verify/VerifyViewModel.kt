@@ -141,7 +141,7 @@ class VerifyViewModel(
      *
      * The server allows one resend a minute (ADR-0023) whichever button asks,
      * so a link sent in the last minute ([ResendStatus.Sent]) makes both
-     * "Send it again" and the expired state's "Send a new link" wait.
+     * "Send it again" and the expired state's "Send a new email" wait.
      *
      * Two buttons, two statuses. From the expired state the resend IS the
      * primary action, so it drives [VerifyState.submit]. While waiting,

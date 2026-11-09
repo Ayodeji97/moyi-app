@@ -75,8 +75,8 @@
     <string name="code_error_blank">Type the 6 digits from the email first.</string>
     <!-- PROPOSED (§58). The action pressed with fewer than six digits. -->
     <string name="code_error_short">A code has 6 digits. Check the email for the rest.</string>
-    <!-- PROPOSED (§58). 422 VERIFICATION_TOKEN_INVALID or PASSWORD_RESET_TOKEN_INVALID for a typed code. The server gives one answer for a wrong code, an expired one and one stopped after 5 wrong tries, on purpose, so this names all three and the way out. No blame. -->
-    <string name="code_error_invalid">That code did not work. A code lasts 15 minutes and stops after 5 wrong tries. Check it, or ask for a new email.</string>
+    <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58). 422 VERIFICATION_TOKEN_INVALID or PASSWORD_RESET_TOKEN_INVALID for a typed code. The server gives one answer for a wrong code, an expired one and one stopped after too many wrong tries, on purpose, so this names the way out for all of them. No numbers: the code lifetime and try limit are backend defaults that can drift. No blame. -->
+    <string name="code_error_invalid">That code did not work. Check the digits, or send a new email.</string>
     <!-- PROPOSED (§58). 422 for a pasted or opened link that matches nothing. -->
     <string name="code_error_link_invalid">That link did not work. Copy it again from the email, or type the code.</string>
     <!-- PROPOSED (§58). A code typed on a phone that does not know the address (the screen was opened by a link, signed out): a code alone names no account. -->
@@ -99,10 +99,10 @@
     <string name="verify_expired_heading">That link has expired</string>
     <!-- verify.expired.line. -->
     <string name="verify_expired_line">Links last 24 hours and work once. We can send you a new one.</string>
-    <!-- verify.expired.action. -->
-    <string name="verify_expired_action">Send a new link</string>
-    <!-- PROPOSED. The expired action while the new link is being requested. -->
-    <string name="verify_expired_action_sending">Sending a new link</string>
+    <!-- verify.expired.action, reworded by owner ruling 2026-11-09 (docs/missing-components.md §58): the new email carries a link and a code, so the action names the email. -->
+    <string name="verify_expired_action">Send a new email</string>
+    <!-- Approved (owner ruling 2026-11-09, §58). The expired action while the new email is being requested. -->
+    <string name="verify_expired_action_sending">Sending a new email</string>
     <!-- PROPOSED (docs/missing-components.md §52, reworded §58). verify.line when the emailed link opened the app on a phone that does not know the address (a cold start, signed out). The link was checked at once; this is what the screen says if it did not work. A code cannot be used without the address, so the line names the link. -->
     <string name="verify_line_no_address">Open the link in the email we sent on this phone, or paste it below.</string>
     <!-- PROPOSED (docs/missing-components.md §52). verify.expired.line when the address is not known, so nothing can be resent from here: sign in (login_action), and the unverified gate sends a new link. -->
@@ -156,8 +156,8 @@
     <string name="reset_request_action">Send the link</string>
     <!-- PROPOSED. The action while the request is in flight (states.md §1c). -->
     <string name="reset_request_action_sending">Sending the link</string>
-    <!-- PROPOSED (docs/missing-components.md §58), replacing the owner's 2026-11-06 interim line ("copy the link and paste it in Moyi"): the email now carries a 6-digit code. Still names the next step (owner ruling 2026-11-06). MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
-    <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Choose a new password below and type the code there. It works for 15 minutes.</string>
+    <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58), replacing the owner's 2026-11-06 interim line ("copy the link and paste it in Moyi"): the email now carries a 6-digit code. Still names the next step (owner ruling 2026-11-06). No lifetime: it is a backend default that can drift. MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
+    <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Type it below with your new password.</string>
     <!-- reset.new.heading. The Reset password heading (345:30), and the link on Reset link sent that opens it. -->
     <string name="reset_new_heading">Choose a new password</string>
     <!-- reset.consequence. Placed before the action (states.md §1b: announce the consequence before the action). -->
