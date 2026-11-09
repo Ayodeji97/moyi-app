@@ -10,6 +10,8 @@ import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.archive.joinPage
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.PartnerEntry
+import com.moyi.app.domain.today.Reaction
+import com.moyi.app.domain.today.reactable
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.PartnerVisible
@@ -241,6 +243,12 @@ class ArchiveFeed(
         cache.setMark(bondId, date, entryId, marked)
     }
 
+    /** The server confirmed my reaction on the partner's [entryId] of [date] is [reaction]: the cache follows. */
+    suspend fun keepReaction(date: String, entryId: String, reaction: Reaction?) {
+        val bondId = currentBondId() ?: return
+        cache.setMyReaction(bondId, date, entryId, reaction)
+    }
+
     /** [date] is not in the archive any more (`404`): gone from the list and the cache. */
     suspend fun forget(date: String) {
         _state.update { feed -> feed.copy(days = feed.days.filterNot { it.date == date }) }
@@ -353,6 +361,12 @@ data class ArchiveDayUi(
     val myMarkOnMine: Boolean? = null,
     /** **My** mark on the partner's entry. Null when absent: not revealed to me, or no words. */
     val myMarkOnTheirs: Boolean? = null,
+    /** The partner's entry takes my reaction: revealed, with its words shown (ADR-0037). */
+    val canReact: Boolean = false,
+    /** The reaction I left on the partner's entry. Only where [canReact]. */
+    val myReaction: Reaction? = null,
+    /** The reaction the partner left on my live entry. */
+    val partnerReaction: Reaction? = null,
 ) {
     /**
      * The day card's small filled bookmark: the day holds an entry **I** favourited.
@@ -364,7 +378,8 @@ data class ArchiveDayUi(
     override fun toString(): String =
         "ArchiveDayUi(date=$date, myEntry=${myEntry?.let { "(redacted)" }}, myTombstone=$myTombstone, " +
             "myEntryId=$myEntryId, partnerEntry=${partnerEntry?.let { "(redacted)" }}, canDelete=$canDelete, " +
-            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, partnerEntryId=$partnerEntryId, myMarkOnMine=$myMarkOnMine, myMarkOnTheirs=$myMarkOnTheirs)"
+            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, partnerEntryId=$partnerEntryId, myMarkOnMine=$myMarkOnMine, myMarkOnTheirs=$myMarkOnTheirs, " +
+            "canReact=$canReact, myReaction=$myReaction, partnerReaction=$partnerReaction)"
 }
 
 /**
@@ -390,6 +405,7 @@ internal fun ArchiveDay.toArchiveDayUi(): ArchiveDayUi? {
     // as REVEALED; a solo day's unlocked entry is still SUBMITTED, so it has no toggle.
     val revealed = layout == TodayStatus.Revealed
     val theirEntry = partnerEntry as? PartnerEntry.Revealed
+    val reactable = partnerEntry.reactable()?.takeIf { theirs != null }
     return ArchiveDayUi(
         date = date,
         myEntry = mine,
@@ -405,6 +421,10 @@ internal fun ArchiveDay.toArchiveDayUi(): ArchiveDayUi? {
         // Each entry by its own status: theirs stays markable after I deleted mine.
         myMarkOnMine = entry?.takeIf { mine != null && it.status == EntryStatus.REVEALED }?.let { it.id in markedByMe },
         myMarkOnTheirs = theirEntry?.takeIf { theirs != null }?.let { it.id in markedByMe },
+        // The same entry a mark goes on: theirs, revealed, its words shown. A solo day's is not.
+        canReact = reactable != null,
+        myReaction = reactable?.reaction,
+        partnerReaction = entry?.takeIf { mine != null }?.reaction,
     )
 }
 

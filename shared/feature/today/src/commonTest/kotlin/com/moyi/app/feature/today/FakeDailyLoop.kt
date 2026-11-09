@@ -1,5 +1,7 @@
 package com.moyi.app.feature.today
 
+import com.moyi.app.feature.today.common.ReactResult
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Prompt
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
@@ -102,6 +104,15 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
         deletesBefore++
         gate?.await()
         return deleteBeforeResult
+    }
+
+    var reactResult = ReactResult.Done
+    val reactions = mutableListOf<Reaction?>()
+
+    override suspend fun react(reaction: Reaction?): ReactResult {
+        reactions += reaction
+        gate?.await()
+        return reactResult
     }
 
     override suspend fun deleteAfterReveal(): DeleteResult {

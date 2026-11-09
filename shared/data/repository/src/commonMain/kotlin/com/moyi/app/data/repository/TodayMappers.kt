@@ -4,6 +4,7 @@ import com.moyi.app.api.models.BondDayResponse
 import com.moyi.app.api.models.EntryImageResponse
 import com.moyi.app.api.models.EntryResponse
 import com.moyi.app.api.models.EntryVoiceResponse
+import com.moyi.app.api.models.ReactionRequest
 import com.moyi.app.api.models.TodayPromptResponse
 import com.moyi.app.api.models.TodayResponse
 import com.moyi.app.api.wire.PartnerEntryWire
@@ -15,6 +16,7 @@ import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Prompt
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Today
 
 // TodayResponse and BondDayResponse declare no `required` fields either
@@ -46,6 +48,8 @@ internal fun EntryResponse.toMyEntry(): MyEntry? {
         status = status,
         image = image?.toEntryImage().takeIf { status != EntryStatus.DELETED },
         voice = voice?.toEntryVoice().takeIf { status != EntryStatus.DELETED },
+        // The contract: always null on an erased entry. Dropped there all the same.
+        reaction = reaction?.toDomain().takeIf { status != EntryStatus.DELETED },
     )
 }
 
@@ -97,7 +101,9 @@ internal fun PartnerEntryWire.toPartnerEntry(): PartnerEntry? = when (this) {
         EntryResponse.Status.SUBMITTED ->
             entry.text?.let { PartnerEntry.Submitted(entry.id, it, entry.image?.toEntryImage(), entry.voice?.toEntryVoice()) }
         EntryResponse.Status.REVEALED ->
-            entry.text?.let { PartnerEntry.Revealed(entry.id, it, entry.image?.toEntryImage(), entry.voice?.toEntryVoice()) }
+            entry.text?.let {
+                PartnerEntry.Revealed(entry.id, it, entry.image?.toEntryImage(), entry.voice?.toEntryVoice(), entry.reaction?.toDomain())
+            }
         EntryResponse.Status.DELETED -> PartnerEntry.Deleted(entry.id)
     }
 }
@@ -107,3 +113,9 @@ private fun TodayPromptResponse.toPrompt(): Prompt? = Prompt(id = id ?: return n
 private fun BondDayResponse.Status.toDomain(): BondDayStatus = BondDayStatus.valueOf(name)
 
 private fun EntryResponse.Status.toDomain(): EntryStatus = EntryStatus.valueOf(name)
+
+/** By name: the contract's enum and the domain's are the same five (a test pins it). */
+internal fun EntryResponse.Reaction.toDomain(): Reaction = Reaction.valueOf(name)
+
+/** The request's own enum, by name, for the same reason. */
+internal fun Reaction.toRequest(): ReactionRequest = ReactionRequest(ReactionRequest.Type.valueOf(name))

@@ -8,10 +8,13 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.today.OutboxSender
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.common.DeleteResult
 import com.moyi.app.feature.today.common.PartnerVisible
+import com.moyi.app.feature.today.common.ReactResult
+import com.moyi.app.feature.today.common.nextReaction
 import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.common.TodayStatus
@@ -91,6 +94,7 @@ class TodayViewModel(
             }
             TodayAction.OnDeleteConfirm -> deleteAfterReveal()
             TodayAction.OnDeleteDismiss -> ui.update { it.copy(confirming = false) }
+            is TodayAction.OnReactionClick -> react(action.reaction)
             TodayAction.OnArchiveClick -> send(TodayEvent.NavigateToArchive)
             // The target is drawn only on a loaded day, so there is always a bond to open.
             TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
@@ -167,10 +171,27 @@ class TodayViewModel(
      */
     private fun deleteAfterReveal() {
         if (ui.value.deleting) return
-        ui.value = TodayUi(deleting = true)
+        ui.update { TodayUi(deleting = true, reacting = it.reacting) }
         viewModelScope.launch {
             val result = loop.deleteAfterReveal()
-            ui.value = TodayUi(failed = result == DeleteResult.Failed)
+            ui.update { TodayUi(failed = result == DeleteResult.Failed, reacting = it.reacting) }
+        }
+    }
+
+    /**
+     * A chip of the reaction set (FR-048). **Optimistic**, as a favourite: the loop shows the
+     * new choice at once and puts the old one back if the server refuses, and the line under
+     * the set says so. A tap while one is on its way is ignored, so the calls cannot cross
+     * and the last tap shown is the last one sent.
+     */
+    private fun react(tapped: Reaction) {
+        if (ui.value.reacting) return
+        val view = (loop.state.value as? DailyLoopState.Ready)?.day ?: return
+        if (!view.canReact) return
+        ui.update { it.copy(reacting = true, reactionFailed = false) }
+        viewModelScope.launch {
+            val result = loop.react(nextReaction(view.myReaction, tapped))
+            ui.update { it.copy(reacting = false, reactionFailed = result == ReactResult.Failed) }
         }
     }
 
@@ -216,6 +237,10 @@ class TodayViewModel(
                 confirmingDelete = ui.confirming && view.status == TodayStatus.Revealed,
                 deleting = ui.deleting,
                 actionFailed = ui.failed,
+                canReact = view.canReact,
+                myReaction = view.myReaction.takeIf { view.canReact },
+                partnerReaction = view.partnerReaction,
+                reactionFailed = ui.reactionFailed && view.canReact,
             )
         }
     }
@@ -234,5 +259,9 @@ class TodayViewModel(
         val failed: Boolean = false,
         /** An invite is being found or issued for the share sheet: a second tap waits for it. */
         val sharing: Boolean = false,
+        /** A reaction is on its way: a second tap is ignored until it answers. */
+        val reacting: Boolean = false,
+        /** The last reaction did not go through. */
+        val reactionFailed: Boolean = false,
     )
 }

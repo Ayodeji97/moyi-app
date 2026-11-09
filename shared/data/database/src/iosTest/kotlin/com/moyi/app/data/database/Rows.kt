@@ -22,6 +22,8 @@ internal object Rows {
         partner_entry_text = "You listened.",
         prompt_id = null,
         prompt_text = null,
+        my_entry_reaction = null,
+        partner_entry_reaction = null,
     )
 
     val draft = Draft(
@@ -58,5 +60,7 @@ internal object Rows {
         partner_entry_text = "You waited up.",
         partner_entry_marked = 0L,
         page_cursor = "cursor-1",
+        my_entry_reaction = null,
+        partner_entry_reaction = null,
     )
 }

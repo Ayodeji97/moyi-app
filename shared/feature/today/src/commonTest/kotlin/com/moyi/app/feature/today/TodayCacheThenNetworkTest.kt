@@ -37,7 +37,7 @@ class TodayCacheThenNetworkTest {
     private val cache = FakeTodayCache()
     private val outbox = FakeOutbox()
     private val clock = FixedClock(NOON_ON_THE_DAY)
-    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, clock)
+    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, clock, FakeArchiveCache())
 
     private val ready get() = assertIs<DailyLoopState.Ready>(loop.state.value).day
 
@@ -249,7 +249,7 @@ class TodayCacheThenNetworkTest {
                 return cache.read()
             }
         }
-        val slowLoop = RepositoryDailyLoop(bonds, entries, slowCache, outbox, outbox, clock)
+        val slowLoop = RepositoryDailyLoop(bonds, entries, slowCache, outbox, outbox, clock, FakeArchiveCache())
         bonds.result = Result.Failure(DataError.Network.NoInternet)
         launch(UnconfinedTestDispatcher(testScheduler)) { slowLoop.refresh() }
 

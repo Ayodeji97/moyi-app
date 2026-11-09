@@ -2,6 +2,7 @@ package com.moyi.app.data.repository
 
 import com.moyi.app.api.apis.EntriesControllerApi
 import com.moyi.app.api.apis.EntryChangesControllerApi
+import com.moyi.app.api.apis.ReactionsControllerApi
 import com.moyi.app.api.models.PatchEntryRequest
 import com.moyi.app.api.models.SubmitEntryRequest
 import com.moyi.app.core.DataError
@@ -12,6 +13,7 @@ import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.safeApiCall
 import com.moyi.app.data.network.safeApiCallEmpty
 import com.moyi.app.domain.today.MyEntry
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayRepository
 import kotlin.time.Instant
@@ -33,6 +35,7 @@ class TodayRepositoryImpl(
 ) : TodayRepository {
     private val entriesApi = EntriesControllerApi(config.origin, authedClient.client)
     private val entryChangesApi = EntryChangesControllerApi(config.origin, authedClient.client)
+    private val reactionsApi = ReactionsControllerApi(config.origin, authedClient.client)
 
     override suspend fun today(bondId: String): Result<Today, DataError.Network> =
         safeApiCall { entriesApi.today(bondId) }.mapOrSerialization { it.toToday() }
@@ -62,4 +65,9 @@ class TodayRepositoryImpl(
 
     override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { entryChangesApi.deleteEntry(entryId) }
+
+    override suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network> =
+        safeApiCallEmpty {
+            if (reaction != null) reactionsApi.reactToEntry(entryId, reaction.toRequest()) else reactionsApi.unreactToEntry(entryId)
+        }
 }

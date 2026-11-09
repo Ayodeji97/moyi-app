@@ -6,6 +6,7 @@ import com.moyi.app.api.models.EntryResponse
 import com.moyi.app.api.models.EntryVoiceResponse
 import com.moyi.app.api.models.LockedEntryResponse
 import com.moyi.app.api.models.MemberResponse
+import com.moyi.app.api.models.ReactionRequest
 import com.moyi.app.api.models.TodayPromptResponse
 import com.moyi.app.api.models.TodayResponse
 import com.moyi.app.api.wire.PartnerEntryWire
@@ -17,6 +18,7 @@ import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Prompt
+import com.moyi.app.domain.today.Reaction
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -160,6 +162,31 @@ class TodayMappersTest {
         assertEquals("m1", assertIs<PartnerEntry.Revealed>(theirs).image?.id)
         // The image never reaches a log.
         assertTrue("(redacted)" in image.toEntryImage().toString() && URL !in image.toEntryImage().toString())
+    }
+
+    @Test
+    fun theReactionSetIsTheContractsOwnAndMapsByName() {
+        // Both of the contract's enums (the field and the request) are the domain's five, in order.
+        assertEquals(EntryResponse.Reaction.entries.map { it.name }, Reaction.entries.map { it.name })
+        assertEquals(ReactionRequest.Type.entries.map { it.name }, Reaction.entries.map { it.name })
+        for (reaction in EntryResponse.Reaction.entries) assertEquals(reaction.name, reaction.toDomain().name)
+        for (reaction in Reaction.entries) assertEquals(reaction.name, reaction.toRequest().type.name)
+    }
+
+    @Test
+    fun thePartnersReactionArrivesOnMyEntryAndMineOnTheirs() {
+        val mine = entry(EntryResponse.Status.REVEALED, "w").copy(reaction = EntryResponse.Reaction.MOVED).toMyEntry()
+        assertEquals(Reaction.MOVED, mine?.reaction)
+        val theirs = PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w").copy(reaction = EntryResponse.Reaction.ME_TOO)).toPartnerEntry()
+        assertEquals(Reaction.ME_TOO, (theirs as PartnerEntry.Revealed).reaction)
+        assertNull(entry(EntryResponse.Status.REVEALED, "w").toMyEntry()?.reaction)
+    }
+
+    @Test
+    fun aTombstoneCarriesNoReactionEvenIfOneWasSent() {
+        // The contract: always null on an erased entry.
+        val tombstone = entry(EntryResponse.Status.DELETED, null).copy(reaction = EntryResponse.Reaction.HEART).toMyEntry()
+        assertNull(tombstone?.reaction)
     }
 
     private fun entry(status: EntryResponse.Status, text: String?) = EntryResponse(

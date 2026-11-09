@@ -29,6 +29,8 @@ class LocalDatabaseTest {
         partner_entry_text = "You listened.",
         prompt_id = null,
         prompt_text = null,
+        my_entry_reaction = "HEART",
+        partner_entry_reaction = null,
     )
 
     private val draft = Draft(
@@ -65,7 +67,21 @@ class LocalDatabaseTest {
         partner_entry_text = "You waited up.",
         partner_entry_marked = 0L,
         page_cursor = "cursor-1",
+        my_entry_reaction = null,
+        partner_entry_reaction = "ME_TOO",
     )
+
+    /**
+     * The tables as they were before version 6 (5.sqm), which added each day's reactions:
+     * the rows already in them keep everything else. [archive] when archive_day exists.
+     */
+    private fun app.cash.sqldelight.db.SqlDriver.withoutReactions(archive: Boolean) {
+        val tables = if (archive) listOf("cached_day", "archive_day") else listOf("cached_day")
+        tables.forEach { table ->
+            execute(null, "ALTER TABLE $table DROP COLUMN my_entry_reaction", 0)
+            execute(null, "ALTER TABLE $table DROP COLUMN partner_entry_reaction", 0)
+        }
+    }
 
     @Test
     fun wipeEmptiesEveryTableItFindsSoATableAddedLaterIsWipedToo() = runTest {
@@ -106,10 +122,11 @@ class LocalDatabaseTest {
         val old = LocalDatabase(driver)
         old.io { cachedDayQueries.insert(row("ada")) }
         assertEquals(listOf("cached_day"), old.userTables())
+        driver.withoutReactions(archive = false)
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = MoyiDatabase.Schema.version)
 
-        assertEquals(5L, MoyiDatabase.Schema.version)
+        assertEquals(6L, MoyiDatabase.Schema.version)
         old.io { draftQueries.upsert(draft) }
         assertEquals(draft, old.io { draftQueries.forKey("ada", "bond-1", "NEW_ENTRY").executeAsOne() })
         assertEquals(1L, old.rowCount("cached_day"), "the migration keeps what was there")
@@ -128,6 +145,7 @@ class LocalDatabaseTest {
             draftQueries.upsert(draft)
         }
         assertEquals(setOf("cached_day", "draft"), old.userTables().toSet())
+        driver.withoutReactions(archive = false)
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 2, newVersion = MoyiDatabase.Schema.version)
 
@@ -150,6 +168,7 @@ class LocalDatabaseTest {
             outboxQueries.insert(queued)
         }
         assertEquals(setOf("cached_day", "draft", "outbox_entry"), old.userTables().toSet())
+        driver.withoutReactions(archive = false)
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 3, newVersion = MoyiDatabase.Schema.version)
 
@@ -171,12 +190,40 @@ class LocalDatabaseTest {
             archiveDayQueries.upsert(archived)
         }
         assertEquals(setOf("cached_day", "draft", "outbox_entry", "archive_day"), old.userTables().toSet())
+        driver.withoutReactions(archive = true)
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 4, newVersion = MoyiDatabase.Schema.version)
 
         old.io { archiveEmptyQueries.markEmpty("ada", "bond-2") }
         assertEquals(1L, old.io { archiveEmptyQueries.isEmpty("ada", "bond-2").executeAsOne() })
         listOf("cached_day", "draft", "outbox_entry", "archive_day").forEach { assertEquals(1L, old.rowCount(it), "$it survives") }
+    }
+
+    @Test
+    fun aVersionFiveDatabaseIsMigratedToHoldReactionsAndKeepsEveryRow() = runTest {
+        // Version 5 (#45) had every table, without the reaction columns: build that, then migrate it.
+        val driver = inMemoryDriver()
+        val old = LocalDatabase(driver)
+        old.io {
+            cachedDayQueries.insert(row("ada"))
+            draftQueries.upsert(draft)
+            outboxQueries.insert(queued)
+            archiveDayQueries.upsert(archived)
+            archiveEmptyQueries.markEmpty("ada", "bond-2")
+        }
+        driver.withoutReactions(archive = true)
+
+        MoyiDatabase.Schema.migrate(driver, oldVersion = 5, newVersion = MoyiDatabase.Schema.version)
+
+        listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty").forEach {
+            assertEquals(1L, old.rowCount(it), "$it survives")
+        }
+        // A row cached before has no reaction; the server's next answer fills it in.
+        assertNull(old.io { cachedDayQueries.forUser("ada").executeAsOne().my_entry_reaction })
+        old.io { archiveDayQueries.setPartnerReaction("MOVED", "ada", "bond-1", "2026-09-13", "e4") }
+        assertEquals("MOVED", old.io { archiveDayQueries.forDate("ada", "bond-1", "2026-09-13").executeAsOne().partner_entry_reaction })
+        old.io { cachedDayQueries.deleteAll(); cachedDayQueries.insert(row("ada")) }
+        assertEquals("HEART", old.io { cachedDayQueries.forUser("ada").executeAsOne().my_entry_reaction })
     }
 
     @Test

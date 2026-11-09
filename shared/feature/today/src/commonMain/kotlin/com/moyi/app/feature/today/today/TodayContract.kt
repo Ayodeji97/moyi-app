@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.domain.today.OutboxRefusal
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.feature.today.common.TodayStatus
 import kotlinx.datetime.LocalDate
@@ -62,6 +63,14 @@ data class TodayState(
     val deleting: Boolean = false,
     /** A delete did not go through: the entry is still there, and the Generic error line says so (states.md §10). */
     val actionFailed: Boolean = false,
+    /** The reaction set is drawn under the partner's entry: it is revealed and shown (ADR-0037). */
+    val canReact: Boolean = false,
+    /** The reaction I left on the partner's entry, as shown (optimistically, while it is on its way). */
+    val myReaction: Reaction? = null,
+    /** The reaction the partner left on my entry. */
+    val partnerReaction: Reaction? = null,
+    /** The last reaction tap did not go through: it is back as it was, and the Generic error line says so. */
+    val reactionFailed: Boolean = false,
 )
 
 sealed interface TodayAction {
@@ -84,6 +93,8 @@ sealed interface TodayAction {
 
     /** The delete dialog's Cancel (or Android Back over it): nothing changes. */
     data object OnDeleteDismiss : TodayAction
+    /** A chip of the reaction set: leaves it, replaces mine with it, or (mine already) takes it back. */
+    data class OnReactionClick(val reaction: Reaction) : TodayAction
     data object OnArchiveClick : TodayAction
     data object OnSettingsClick : TodayAction
     data object OnShareInviteClick : TodayAction

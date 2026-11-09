@@ -52,4 +52,14 @@ interface TodayRepository {
 
     /** Deletes my entry: before the reveal it is gone, after it a tombstone stays (doc 06 §3.4). */
     suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network>
+
+    /**
+     * Leaves [reaction] on the partner's entry [entryId] (`PUT /entries/{id}/reaction`),
+     * replacing any I left, or takes mine back when [reaction] is null (`DELETE`). Both are
+     * repeatable `204`s. The refusals a caller can meet: `409 REACTION_ON_OWN_ENTRY`,
+     * `409 ENTRY_IMMUTABLE` (erased meanwhile), `409 BOND_ARCHIVED` (the bond ended, for
+     * either verb), `409 REACTION_BUSY` (another request of mine holds it: retry), and the
+     * one `404` for an entry I was never shown.
+     */
+    suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network>
 }
