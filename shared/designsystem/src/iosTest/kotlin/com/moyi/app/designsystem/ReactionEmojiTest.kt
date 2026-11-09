@@ -6,6 +6,8 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -76,5 +78,22 @@ class ReactionEmojiTest {
         assertEquals(listOf("Tunde sent a heart."), spoken.filter { it.isNotBlank() })
         assertEquals(0, onAllNodesWithText(emoji[0], substring = true, useUnmergedTree = true).fetchSemanticsNodes().size)
         assertTrue(onRoot().fetchSemanticsNode().config.getOrNull(SemanticsProperties.LiveRegion) == null)
+    }
+
+    @Test
+    fun theEmojiIsDrawnInColourByTheSystemEmojiFont() = runComposeUiTest {
+        // The Rosewood palette is all but grey; a red heart can only come from the platform's
+        // colour emoji font, reached by fallback from the system face. A missing glyph (a tofu
+        // box) or a plain character is drawn in the text colour, which is not saturated.
+        setContent {
+            MoyiTheme(darkTheme = true) { ReactionBadge(emoji = emoji[0], text = "Tunde sent a heart.") }
+        }
+        val pixels = onRoot().captureToImage().toPixelMap()
+        var red = 0
+        for (x in 0 until pixels.width) for (y in 0 until pixels.height) {
+            val c = pixels[x, y]
+            if (c.red > 0.6f && c.green < 0.35f && c.blue < 0.35f) red++
+        }
+        assertTrue(red > 20, "no red pixels: the heart did not render in colour ($red)")
     }
 }
