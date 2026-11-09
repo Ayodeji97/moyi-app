@@ -154,10 +154,22 @@ Xcode, Settings, Accounts):
 TEAM_ID=ABCDE12345
 ```
 
-`Config.xcconfig` includes it if present, so the ID never enters the repository. A free
-personal team is enough to run on your own phone. The bundle identifier becomes
-`com.moyi.app.Moyi<TEAM_ID>`, so the app installs as yours. Without the file, simulator
+`Config.xcconfig` includes it if present, so the ID never enters the repository. The bundle
+identifier is `app.getmoyi.moyi`, registered to the owner's team; on another team, override
+it in `Local.xcconfig` (`PRODUCT_BUNDLE_IDENTIFIER=...`) to run on your own phone. Without the file, simulator
 builds still work with ad hoc signing (`docs/session.md`).
+
+**Android release signing.** The release build is signed with the upload key only where
+these four Gradle properties exist, which is the owner's `~/.gradle/gradle.properties`,
+never the repository (issue #49). Without them, as on CI, `assembleRelease` still builds and
+the APK is simply unsigned.
+
+```properties
+MOYI_UPLOAD_STORE_FILE=/absolute/path/to/moyi-upload.jks
+MOYI_UPLOAD_STORE_PASSWORD=...
+MOYI_UPLOAD_KEY_ALIAS=moyi-upload
+MOYI_UPLOAD_KEY_PASSWORD=...
+```
 
 ## Legal page URLs
 
