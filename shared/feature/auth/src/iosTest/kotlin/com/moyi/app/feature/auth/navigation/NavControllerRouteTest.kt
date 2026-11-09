@@ -39,4 +39,26 @@ class NavControllerRouteTest {
         val email = "a+b@exämple.com"
         assertEquals(VerifyRoute(email), SavedStateHandle(mapOf("email" to email)).toRoute<VerifyRoute>())
     }
+
+    @Test
+    fun aLinkTokenAndAnEmptyAddressSurviveNavigation() {
+        // The routes an opened link builds (LinkRouting): base64url token, empty address.
+        val token = "q3Zx-8_kP0aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456"
+        val nav = NavHostController()
+        nav.navigatorProvider.addNavigator(ComposeNavigator())
+        nav.graph = nav.createGraph(startDestination = LoginRoute()) {
+            composable<LoginRoute> {}
+            composable<VerifyRoute> {}
+            composable<ResetPasswordRoute> {}
+        }
+
+        nav.navigate(VerifyRoute("", linkToken = token, signedIn = true))
+        assertEquals(VerifyRoute("", linkToken = token, signedIn = true), nav.currentBackStackEntry!!.toRoute<VerifyRoute>())
+
+        nav.navigate(ResetPasswordRoute("", linkToken = token))
+        assertEquals(ResetPasswordRoute("", linkToken = token), nav.currentBackStackEntry!!.toRoute<ResetPasswordRoute>())
+
+        nav.navigate(LoginRoute(passwordChanged = true))
+        assertEquals(LoginRoute(passwordChanged = true), nav.currentBackStackEntry!!.toRoute<LoginRoute>())
+    }
 }

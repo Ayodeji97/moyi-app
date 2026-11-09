@@ -20,9 +20,15 @@ sealed interface UnverifiedGateAction {
 
     /** The app came back to the foreground: the link may have been opened meanwhile. */
     data object OnResume : UnverifiedGateAction
+
+    /** The account target, top right (PROPOSED, docs/missing-components.md §57): Account, from the gate. */
+    data object OnAccountClick : UnverifiedGateAction
 }
 
 sealed interface UnverifiedGateEvent {
     /** Verified now: on to relationship type. */
     data object NavigateToOnboarding : UnverifiedGateEvent
+
+    /** Account: export or delete, which needs no bond and no verified address. */
+    data object NavigateToAccount : UnverifiedGateEvent
 }

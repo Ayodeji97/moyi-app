@@ -33,4 +33,14 @@ class AuthRouteTest {
         assertEquals(ResetLinkSentRoute(email), Json.decodeFromString<ResetLinkSentRoute>(Json.encodeToString(ResetLinkSentRoute(email))))
         assertEquals(ResetPasswordRoute(email), Json.decodeFromString<ResetPasswordRoute>(Json.encodeToString(ResetPasswordRoute(email))))
     }
+
+    @Test
+    fun theLinkRoutesSurviveTheirSerializers() {
+        val verify = VerifyRoute("", linkToken = "abc-_123", signedIn = true)
+        assertEquals(verify, Json.decodeFromString<VerifyRoute>(Json.encodeToString(verify)))
+        val reset = ResetPasswordRoute(email, linkToken = "abc-_123")
+        assertEquals(reset, Json.decodeFromString<ResetPasswordRoute>(Json.encodeToString(reset)))
+        val login = LoginRoute(email = email, passwordChanged = true)
+        assertEquals(login, Json.decodeFromString<LoginRoute>(Json.encodeToString(login)))
+    }
 }

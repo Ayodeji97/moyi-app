@@ -4,11 +4,16 @@ import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.FieldError
 import com.moyi.app.designsystem.presentation.UiText
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.auth_email_error
 import com.moyi.app.feature.auth.resources.auth_error_generic
 import com.moyi.app.feature.auth.resources.auth_error_offline
 import com.moyi.app.feature.auth.resources.auth_error_rate_limited
+import com.moyi.app.feature.auth.resources.code_error_invalid
+import com.moyi.app.feature.auth.resources.code_error_link_invalid
+import com.moyi.app.feature.auth.resources.code_error_rate_limited
+import com.moyi.app.feature.auth.resources.code_error_unavailable
 import com.moyi.app.feature.auth.resources.login_error_credentials
 import com.moyi.app.feature.auth.resources.login_error_rate_limited
 import com.moyi.app.feature.auth.resources.register_name_error_blank
@@ -17,7 +22,6 @@ import com.moyi.app.feature.auth.resources.register_password_error_breached
 import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
 import com.moyi.app.feature.auth.resources.reset_token_error_expired
-import com.moyi.app.feature.auth.resources.verify_token_error_invalid
 
 /** The register request's fields, as the server names them in `errors[].field`. */
 enum class RegisterField(val wireName: String) {
@@ -81,34 +85,67 @@ object AuthErrorMapper {
         return out
     }
 
-    /** 422 VERIFICATION_TOKEN_INVALID: the pasted code is wrong. Null for anything else. */
-    fun verifyTokenError(error: DataError): UiText? =
-        if (error.code() == ApiErrorCode.VERIFICATION_TOKEN_INVALID) {
-            UiText.Resource(Res.string.verify_token_error_invalid)
-        } else {
-            null
-        }
+    /**
+     * A refused verify proof that belongs under the code field, or null.
+     *
+     * `422 VERIFICATION_TOKEN_INVALID` is one answer for a link that matches nothing and for
+     * every refused code: wrong, expired (15 minutes), stopped after five wrong tries, or
+     * spent. The server tells them apart for nobody, on purpose (it would say which
+     * addresses have a live code), so [Res.string.code_error_invalid] covers them all.
+     * A field violation on `token`, `code` or `email` reads the same: the app never sends
+     * one, so it can only mean the proof was not accepted.
+     */
+    fun verifyProofError(error: DataError, proof: EmailProof): UiText? =
+        proofError(error, proof, ApiErrorCode.VERIFICATION_TOKEN_INVALID)
 
-    /** 410 VERIFICATION_TOKEN_EXPIRED: expired or already used (doc 06 §3.1). */
+    /** 410 VERIFICATION_TOKEN_EXPIRED: a link expired or already used (doc 06 §3.1). A code is never answered 410. */
     fun isVerificationExpired(error: DataError): Boolean = error.code() == ApiErrorCode.VERIFICATION_TOKEN_EXPIRED
 
     /**
-     * The reset-password refusal that belongs under the paste field, or null.
+     * The reset-password refusal that belongs under the code field, or null.
      *
-     * - `422 PASSWORD_RESET_TOKEN_INVALID`, or a field violation on `token`
-     *   (blank or over 256 characters): the code does not match, as on verify.
-     * - `410 PASSWORD_RESET_TOKEN_EXPIRED`: expired or already used. Matched on
-     *   the code, since the contract declares no 410 (backend-contract-gaps.md #15).
+     * - `410 PASSWORD_RESET_TOKEN_EXPIRED`: a link expired or already used. Matched on the
+     *   code, since the contract once declared no 410 (backend-contract-gaps.md #15).
+     * - `422 PASSWORD_RESET_TOKEN_INVALID`, or a field violation on the proof: as on verify.
      */
-    fun resetTokenError(error: DataError): UiText? {
-        val problem = (error as? DataError.Network.Api)?.problem ?: return null
-        return when {
-            problem.code == ApiErrorCode.PASSWORD_RESET_TOKEN_EXPIRED -> UiText.Resource(Res.string.reset_token_error_expired)
-            problem.code == ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID ||
-                problem.fieldErrors.any { it.field == RESET_TOKEN_FIELD } -> UiText.Resource(Res.string.verify_token_error_invalid)
-            else -> null
+    fun resetProofError(error: DataError, proof: EmailProof): UiText? =
+        if (error.code() == ApiErrorCode.PASSWORD_RESET_TOKEN_EXPIRED) {
+            UiText.Resource(Res.string.reset_token_error_expired)
+        } else {
+            proofError(error, proof, ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID)
         }
+
+    /**
+     * A refused proof that is not the field's problem, above the action. Two are a typed
+     * code's own, and both point at the link in the same email, which neither limit touches:
+     *
+     * - `429`: ten codes a day per address (ADR-0023 amended 2026-11-08). No retry offered.
+     * - `503 CODE_CHECK_UNAVAILABLE` (`Retry-After: 60`): nothing was checked or counted.
+     *
+     * Everything else, a link's 429 included, is [formFailure].
+     */
+    fun proofFormFailure(error: DataError, proof: EmailProof): SubmitStatus.Failed = when {
+        proof is EmailProof.Code && error.code() == ApiErrorCode.RATE_LIMITED ->
+            SubmitStatus.Failed(UiText.Resource(Res.string.code_error_rate_limited), offerRetry = false)
+        proof is EmailProof.Code && error.code() == ApiErrorCode.CODE_CHECK_UNAVAILABLE ->
+            SubmitStatus.Failed(UiText.Resource(Res.string.code_error_unavailable), offerRetry = true)
+        else -> formFailure(error)
     }
+
+    private fun proofError(error: DataError, proof: EmailProof, invalid: ApiErrorCode): UiText? {
+        val problem = (error as? DataError.Network.Api)?.problem ?: return null
+        val refused = problem.code == invalid || problem.fieldErrors.any { it.field in PROOF_FIELDS }
+        if (!refused) return null
+        return UiText.Resource(
+            when (proof) {
+                is EmailProof.Link -> Res.string.code_error_link_invalid
+                is EmailProof.Code -> Res.string.code_error_invalid
+            },
+        )
+    }
+
+    /** The proof's fields, as the server names them in `errors[].field`. */
+    private val PROOF_FIELDS = setOf("token", "code", "email")
 
     /**
      * A reset-password 422 on the new password, in register's words: the
@@ -117,9 +154,6 @@ object AuthErrorMapper {
      */
     fun resetPasswordError(error: DataError, submittedPassword: String): UiText? =
         registerFieldErrors(error, submittedPassword)[RegisterField.Password]
-
-    /** The reset request's token field, as the server names it in `errors[].field`. */
-    private const val RESET_TOKEN_FIELD = "token"
 
     private fun registerFieldMessage(field: RegisterField, violation: FieldError, submittedPassword: String): UiText = when (field) {
         RegisterField.Name -> UiText.Resource(

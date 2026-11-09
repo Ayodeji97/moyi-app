@@ -127,7 +127,7 @@ internal val previewTodayModule: Module = module {
     single { PreviewArchiveRepository() }
     single<ArchiveRepository> { get<PreviewArchiveRepository>() }
     single<TodayRepository> { PreviewTodayRepository(get()) }
-    // The Streak screen's four drawn states and a failure, in turn (PreviewStreak.kt).
+    // The Streak screen's four drawn states, a time zone shift and a failure, in turn (PreviewStreak.kt).
     single<StreakRepository> { PreviewStreakRepository() }
     // Today's settings target opens Bond settings on preview settings (PreviewBondSettings).
     single { PreviewBondSettingsRepository() }

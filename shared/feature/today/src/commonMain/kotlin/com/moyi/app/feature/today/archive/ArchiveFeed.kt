@@ -4,6 +4,7 @@ import com.moyi.app.core.Result
 import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.domain.archive.ArchiveCache
+import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.ArchiveRepository
@@ -111,6 +112,7 @@ class ArchiveFeed(
                     load = FeedLoad.Ready,
                     bondId = bond.bondId,
                     partnerName = bond.partnerName,
+                    bondStatus = bond.bondStatus,
                     days = cached.days,
                     nextCursor = cached.nextCursor,
                     pageEnd = cached.days.lastOrNull()?.date,
@@ -131,6 +133,7 @@ class ArchiveFeed(
                             load = FeedLoad.Ready,
                             bondId = bond.bondId,
                             partnerName = bond.partnerName,
+                            bondStatus = bond.bondStatus,
                             days = fallback.days,
                             nextCursor = fallback.nextCursor,
                             pages = 1,
@@ -144,6 +147,7 @@ class ArchiveFeed(
                             load = FeedLoad.Ready,
                             bondId = bond.bondId,
                             partnerName = bond.partnerName,
+                            bondStatus = bond.bondStatus,
                             days = if (asked.plain) joinPage(it.days, page, after = null) ?: page.days else page.days,
                             nextCursor = page.nextCursor,
                             pageEnd = page.days.lastOrNull()?.date,
@@ -302,6 +306,11 @@ data class FeedState(
     val until: LocalDate? = null,
     val bondId: String? = null,
     val partnerName: String? = null,
+    /**
+     * The bond's status when this list was loaded, from Today's day (`GET /bonds`, or the cached
+     * day offline). Null when unknown: then the reaction set is drawn as before (ruling 5).
+     */
+    val bondStatus: BondStatus? = null,
     val days: List<ArchiveDay> = emptyList(),
     val nextCursor: String? = null,
     /**
@@ -322,7 +331,7 @@ data class FeedState(
 
     // The query is a person's own words: never in a log, like the entries.
     override fun toString(): String =
-        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, bondId=$bondId, partnerName=$partnerName, " +
+        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, bondId=$bondId, partnerName=$partnerName, bondStatus=$bondStatus, " +
             "days=$days, nextCursor=$nextCursor, pageEnd=$pageEnd, loadingMore=$loadingMore, pageFailed=$pageFailed, pages=$pages)"
 }
 

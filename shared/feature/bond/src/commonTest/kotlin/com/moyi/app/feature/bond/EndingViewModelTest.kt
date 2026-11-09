@@ -32,6 +32,16 @@ class EndingViewModelTest : MainDispatcherTest() {
 
     private val generic = UiText.Resource(Res.string.settings_error_generic)
 
+    // ----- report the member -----
+
+    @Test
+    fun reportOpensTheReportFlowAboutTheNamedMember() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnReportClick)
+            assertEquals(BondSettingsEvent.OpenReport("b1", "Tunde"), awaitItem())
+        }
+    }
+
     // ----- block and leave -----
 
     @Test

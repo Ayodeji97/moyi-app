@@ -33,6 +33,7 @@ import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
+import com.moyi.app.domain.streak.FrozenReason
 import com.moyi.app.domain.streak.Streak
 import com.moyi.app.domain.streak.StreakDay
 import com.moyi.app.domain.streak.StreakDayStatus
@@ -43,8 +44,11 @@ import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.streak_cell_complete
 import com.moyi.app.feature.today.resources.streak_cell_none
 import com.moyi.app.feature.today.resources.streak_cell_rest
+import com.moyi.app.feature.today.resources.streak_cell_timezone
 import com.moyi.app.feature.today.resources.streak_cell_today
 import com.moyi.app.feature.today.resources.streak_ended
+import com.moyi.app.feature.today.resources.streak_ended_at
+import com.moyi.app.feature.today.resources.streak_ended_at_strict
 import com.moyi.app.feature.today.resources.streak_ended_strict
 import com.moyi.app.feature.today.resources.streak_key_complete
 import com.moyi.app.feature.today.resources.streak_key_none
@@ -57,6 +61,7 @@ import com.moyi.app.feature.today.resources.streak_rest_day_used_none
 import com.moyi.app.feature.today.resources.streak_rest_days_left
 import com.moyi.app.feature.today.resources.streak_rest_days_none
 import com.moyi.app.feature.today.resources.streak_strict
+import com.moyi.app.feature.today.resources.streak_timezone_shift
 import com.moyi.app.feature.today.resources.streak_title
 import com.moyi.app.feature.today.resources.streak_window
 import com.moyi.app.feature.today.resources.today_error_action
@@ -180,7 +185,7 @@ private fun CalendarCell(cell: StreakCell) {
     val description = stringResource(
         when (cell.state) {
             DayCellState.Complete -> Res.string.streak_cell_complete
-            DayCellState.Frozen -> Res.string.streak_cell_rest
+            DayCellState.Frozen -> if (cell.skippedByTimezone) Res.string.streak_cell_timezone else Res.string.streak_cell_rest
             DayCellState.Today -> Res.string.streak_cell_today
             DayCellState.Missed -> Res.string.streak_cell_none
         },
@@ -225,7 +230,13 @@ private fun KeyEntry(state: DayCellState, label: String) {
 
 @Composable
 private fun footerText(footer: StreakFooter): String = when (footer) {
+    is StreakFooter.EndedAt -> pluralStringResource(
+        if (footer.strict) Res.plurals.streak_ended_at_strict else Res.plurals.streak_ended_at,
+        footer.length,
+        footer.length,
+    )
     is StreakFooter.Ended -> stringResource(if (footer.strict) Res.string.streak_ended_strict else Res.string.streak_ended)
+    StreakFooter.TimezoneShift -> stringResource(Res.string.streak_timezone_shift)
     StreakFooter.StrictMode -> stringResource(Res.string.streak_strict)
     is StreakFooter.RestDayUsed ->
         if (footer.left == 0) stringResource(Res.string.streak_rest_day_used_none)
@@ -257,7 +268,7 @@ private fun previewState(strict: Boolean): StreakState {
             12 -> StreakDayStatus.FROZEN
             else -> StreakDayStatus.COMPLETE
         }
-        StreakDay("2025-08-${day.toString().padStart(2, '0')}", status)
+        StreakDay("2025-08-${day.toString().padStart(2, '0')}", status, FrozenReason.REST_DAY.takeIf { status == StreakDayStatus.FROZEN })
     }
     val streak = Streak(22, 41, if (strict) 0 else 2, 0, strict, 57, "2025-08-27", days)
     return StreakState(StreakLoad.Ready, streak.toStreakUi())
