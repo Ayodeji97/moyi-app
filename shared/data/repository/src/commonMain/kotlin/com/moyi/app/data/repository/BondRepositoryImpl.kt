@@ -7,6 +7,7 @@ import com.moyi.app.api.models.CreateBondRequest
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
+import com.moyi.app.core.map
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.safeApiCall
@@ -32,11 +33,7 @@ class BondRepositoryImpl(
     private val invitesApi = InvitesControllerApi(config.origin, authedClient.client)
 
     override suspend fun bonds(): Result<List<Bond>, DataError.Network> =
-        safeApiCall { bondsApi.listBonds() }.mapOrSerialization { response ->
-            // One malformed bond fails the list: routing on a partial list could send a
-            // person with a bond back through onboarding.
-            response.bonds?.map { it.toBond() ?: return@mapOrSerialization null }
-        }
+        safeApiCall { bondsApi.listBonds() }.map { response -> response.bonds.map { it.toBond() } }
 
     override suspend fun createBond(name: String, type: BondType, anchorTimezone: String): Result<Bond, DataError.Network> {
         val request = CreateBondRequest(
@@ -46,18 +43,18 @@ class BondRepositoryImpl(
             // The creator's own reminders follow their device's zone from day one (ADR-0026).
             reminderTimezone = anchorTimezone,
         )
-        return safeApiCall { bondsApi.createBond(request) }.mapOrSerialization { it.toBond() }
+        return safeApiCall { bondsApi.createBond(request) }.map { it.toBond() }
     }
 
     override suspend fun createInvite(bondId: String): Result<Invite, DataError.Network> =
-        safeApiCall { bondInvitesApi.createBondInvite(bondId) }.mapOrSerialization { it.toInvite() }
+        safeApiCall { bondInvitesApi.createBondInvite(bondId) }.map { it.toInvite() }
 
     override suspend fun revokeInvite(bondId: String, inviteId: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { bondInvitesApi.revokeBondInvite(bondId, inviteId) }
 
     override suspend fun resolveInvite(code: String): Result<InvitePreview, DataError.Network> =
-        safeApiCall { invitesApi.resolve(code) }.mapOrSerialization { it.toPreview() }
+        safeApiCall { invitesApi.resolve(code) }.map { it.toPreview() }
 
     override suspend fun acceptInvite(code: String): Result<Bond, DataError.Network> =
-        safeApiCall { invitesApi.accept(code) }.mapOrSerialization { it.toBond() }
+        safeApiCall { invitesApi.accept(code) }.map { it.toBond() }
 }

@@ -6,6 +6,7 @@ import com.moyi.app.api.models.MemberNotificationsResponse
 import com.moyi.app.api.models.NotificationCategoriesRequest
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
+import com.moyi.app.core.map
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.safeApiCall
@@ -28,7 +29,7 @@ class NotificationSettingsRepositoryImpl(
     private val api = BondMemberNotificationsControllerApi(config.origin, authedClient.client)
 
     override suspend fun preferences(bondId: String): Result<NotificationPreferences, DataError.Network> =
-        safeApiCall { api.getMemberNotifications(bondId) }.mapOrSerialization { it.toDomain() }
+        safeApiCall { api.getMemberNotifications(bondId) }.map { it.toDomain() }
 
     override suspend fun change(bondId: String, category: NotificationCategory, on: Boolean): Result<NotificationPreferences, DataError.Network> {
         val categories = when (category) {
@@ -40,24 +41,23 @@ class NotificationSettingsRepositoryImpl(
             NotificationCategory.Proposal -> NotificationCategoriesRequest(proposal = on)
         }
         return safeApiCall { api.replaceMemberNotifications(bondId, MemberNotificationsRequest(categories = categories)) }
-            .mapOrSerialization { it.toDomain() }
+            .map { it.toDomain() }
     }
 }
 
 /**
- * The server answers every toggle (`MemberNotificationsResponse`'s doc); the contract does
- * not mark them required (docs/backend-contract-gaps.md, rows 4 and 5). One missing is a
- * body that did not parse, never a guess at "off".
+ * The server answers every toggle, and the contract marks them required, so a body
+ * missing one fails to decode: never a guess at "off".
  */
-internal fun MemberNotificationsResponse.toDomain(): NotificationPreferences? {
-    val toggles = categories ?: return null
+internal fun MemberNotificationsResponse.toDomain(): NotificationPreferences {
+    val toggles = categories
     val on = buildSet {
-        if (toggles.reminder ?: return null) add(NotificationCategory.Reminder)
-        if (toggles.reveal ?: return null) add(NotificationCategory.Reveal)
-        if (toggles.partnerJoined ?: return null) add(NotificationCategory.PartnerJoined)
-        if (toggles.milestone ?: return null) add(NotificationCategory.Milestone)
-        if (toggles.onThisDay ?: return null) add(NotificationCategory.OnThisDay)
-        if (toggles.proposal ?: return null) add(NotificationCategory.Proposal)
+        if (toggles.reminder) add(NotificationCategory.Reminder)
+        if (toggles.reveal) add(NotificationCategory.Reveal)
+        if (toggles.partnerJoined) add(NotificationCategory.PartnerJoined)
+        if (toggles.milestone) add(NotificationCategory.Milestone)
+        if (toggles.onThisDay) add(NotificationCategory.OnThisDay)
+        if (toggles.proposal) add(NotificationCategory.Proposal)
     }
     return NotificationPreferences(on)
 }
