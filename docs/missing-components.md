@@ -165,7 +165,7 @@ In the same `strings.xml`, marked `PROPOSED`. The rest of the three screens' cop
 
 ### 7b. Destinations PR #6 draws but cannot reach yet
 
-- **Terms** and **Privacy Policy** on sign up: no published URL, so the links do nothing.
+- **Terms** and **Privacy Policy** on sign up: reached since the legal-consent PR (2026-11-09), at the URLs `GET /meta/legal` names (§54).
 - **I forgot my password** on sign in: reached since the password-reset PR (2026-11-05).
 - **Sign in is the root** while the promise screen (Onboarding 1) is unbuilt, so it has no
   back control and its eyebrow sits at the top of the content (as the unverified gate does).
@@ -1122,3 +1122,46 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
     Owed with the archived screen's link to the Archive.
 - **Owed:** `KEYBOARD UP` (607:1825) is the scaffold's ordinary keyboard behaviour, not measured
   against the frame. Neither TalkBack nor VoiceOver has walked the flow.
+## Terms and Privacy (legal consent, 2026-11-09)
+
+### 54. Terms and Privacy: the re-consent step and the settings row
+
+- **Today:** `states.md` §1 row 2 puts "18+ confirmation, Terms and Privacy consent (FR-011)"
+  on Sign up, and `SKILL.md` §12 says the documents are "versioned with recorded consent"
+  (FR-103). Nothing in `states.md`, `copy.md` or Figma draws what happens when the documents
+  change after someone accepted them, or where a signed-in person reads them again.
+- **Built (PROPOSED), from the house parts only:** one screen, `LegalScreen`
+  (feature:auth `legal/`), in two modes.
+  - **The re-consent step.** The shell opens it over Today, once per launch, when `GET /me`'s
+    `legalAccepted` differs from `GET /meta/legal`'s Terms or Privacy version. Back target,
+    ScreenHeader (heading "Our Terms and Privacy Policy have changed"; its eyebrow,
+    "Terms and Privacy", is not drawn under a back target, D1), a `body` `inkMuted` line naming the next step, the three documents as
+    TextLinks, then PrimaryAction **Accept** (Sending "Accepting") with **Not now** as a
+    centred TextLink under it. Not a gate: the backend refuses nothing for an old consent
+    (`docs/backend-contract-gaps.md` row 37), so blocking the app would be the client
+    inventing a rule.
+  - **The read view, from Bond settings.** A new row, **Terms and Privacy**, in *Just you*
+    between Notifications and Sign out (`RowKind.Navigates`, underlined). Also on the failed
+    load, beside Sign out, since it needs nothing the bond holds. Same screen, heading "What
+    you agreed to"; Accept appears only if the consent is out of date, and the screen stays
+    open after it.
+  - **Loading** is the bare `surface`; a failed load is the Generic error with Try again.
+  - **Offline:** the check runs only once Today shows with its day in (the cached day opens
+    straight to Today, owner ruling 2026-11-08); a check that cannot be made shows nothing
+    and is tried again on the next foreground.
+- **Sign up:** a link tapped before `GET /meta/legal` could be read shows an InlineError under
+  the two links (`register_legal_unavailable`).
+- **The data-processing summary** is the third link ("How we handle your data"): `/meta/legal`
+  serves it and says it is "shown, never accepted on its own". Sign up still shows only the
+  two Figma draws.
+- **Strings, all PROPOSED** (feature:auth `legal_*`, `register_legal_unavailable`; feature:bond
+  `settings_row_legal`): eyebrow "Terms and Privacy"; headings "Our Terms and Privacy Policy
+  have changed" and "What you agreed to"; lines "Read them below, then tap Accept to agree to
+  the new versions. Your entries stay exactly as they are." and "You have accepted the current
+  versions. Tap one to read it."; "How we handle your data"; "Accept" / "Accepting"; "Not now";
+  "That didn't go through. Check your connection, then try again."; "That page didn't open.
+  Check your connection, then tap the link again." The failed load reuses the Generic error.
+- **Owner questions:** (1) Is a non-blocking prompt right, or should a changed Terms block
+  until accepted (needs a backend refusal code first)? (2) Is *Just you* the right group for
+  the row, or does it belong on the unbuilt Account screen (`strings-proposed.md`
+  `settings.row.account`)? (3) The heading and line need a human pass for `copy.md`'s voice.

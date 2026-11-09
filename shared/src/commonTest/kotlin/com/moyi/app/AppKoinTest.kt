@@ -1,5 +1,7 @@
 package com.moyi.app
 
+import com.moyi.app.domain.legal.LegalRepository
+import com.moyi.app.feature.auth.legal.LegalViewModel
 import com.moyi.app.debug.PreviewNotificationSettingsRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
 import com.moyi.app.domain.notification.PushTokenRegistration
@@ -87,6 +89,7 @@ class AppKoinTest {
                     single<BondRepository> { PreviewBondRepository() }
                     single<BondSettingsRepository> { PreviewBondSettingsRepository() }
                     single<AccountRepository> { StubAccountRepository }
+                    single<LegalRepository> { StubLegalRepository() }
                     single<TodayCache> { NoCachedDay }
                     single<OutboxSender> { StubOutbox() }
                     single<EntryOutbox> { StubOutbox() }
@@ -104,6 +107,7 @@ class AppKoinTest {
         try {
             koin.get<RegisterViewModel>()
             koin.get<VerifyViewModel> { parametersOf("amara@example.com", null) }
+            assertEquals(true, koin.get<LegalViewModel> { parametersOf(true) }.state.value.prompt)
             val login = koin.get<LoginViewModel> { parametersOf("amara@example.com", true) }
             assertEquals("amara@example.com", login.state.value.email.value)
             koin.get<SignedInStartViewModel>()
@@ -157,7 +161,7 @@ internal class StubAuthRepository(private val onRestore: () -> Unit) : AuthRepos
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network> = Result.Success(Unit)
 

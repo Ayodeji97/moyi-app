@@ -21,13 +21,19 @@ interface AuthRepository {
     /** One-off session events, each delivered once (see [SessionEvent]). */
     val sessionEvents: Flow<SessionEvent>
 
-    /** Creates the account and sends the verification email. Signs nobody in. */
+    /**
+     * Creates the account and sends the verification email. Signs nobody in.
+     *
+     * [acceptedTermsVersion] is the Terms version the person was shown (`GET /meta/legal`),
+     * or null when it could not be read. The server records its own current versions
+     * whatever is sent (ADR-0056), so this is informational only.
+     */
     suspend fun register(
         displayName: String,
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network>
 

@@ -17,6 +17,7 @@ import com.moyi.app.data.testing.InMemoryTokenStore
 import com.moyi.app.data.testing.inMemoryDriver
 import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.auth.AccountRepository
+import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.media.MediaRepository
@@ -53,6 +54,7 @@ class KoinModulesTest {
         try {
             koin.get<AuthRepository>()
             koin.get<AccountRepository>()
+            koin.get<LegalRepository>()
             koin.get<BondRepository>()
             koin.get<TodayRepository>()
             koin.get<MediaRepository>()

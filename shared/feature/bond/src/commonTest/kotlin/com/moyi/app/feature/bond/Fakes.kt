@@ -225,7 +225,7 @@ class FakeAuthRepository : AuthRepository {
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network> = Result.Success(Unit)
 

@@ -6,6 +6,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.moyi.app.domain.auth.SessionEndReason
+import com.moyi.app.feature.auth.legal.LegalRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
 import com.moyi.app.feature.auth.reset.ForgotPasswordRoot
@@ -59,6 +60,14 @@ fun routeAfterSessionEnd(reason: SessionEndReason): Any = when (reason) {
  */
 @Serializable
 data class VerifyRoute(val email: String, val linkToken: String? = null, val signedIn: Boolean = false)
+
+/**
+ * Terms and Privacy, pushed over the signed-in app. [prompt] is the re-consent step the
+ * shell opens over Today when the documents changed; false is the read view from Bond
+ * settings. Either way back pops it.
+ */
+@Serializable
+data class LegalRoute(val prompt: Boolean = false)
 
 /** Forgot password. [email] is prefilled from sign in's email field (possibly empty). */
 @Serializable
@@ -166,6 +175,9 @@ fun NavGraphBuilder.authGraph(
     }
     composable<SessionEndedRoute> {
         SessionEndedScreen(onSignIn = { navController.signInAfterSessionEnded() })
+    }
+    composable<LegalRoute> { entry ->
+        LegalRoot(prompt = entry.toRoute<LegalRoute>().prompt, onClose = { navController.popBackStack() })
     }
 }
 

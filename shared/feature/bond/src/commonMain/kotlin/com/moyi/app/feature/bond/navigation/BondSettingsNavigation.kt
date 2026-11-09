@@ -115,12 +115,19 @@ data class BondArchivedRoute(val partnerName: String? = null)
 fun NavGraphBuilder.bondSettingsGraph(
     navController: NavController,
     onBondEnded: () -> Unit,
+    /** Just you › Terms and Privacy: the shell opens the read view (feature:auth's screen). */
+    onOpenLegal: () -> Unit,
 ) {
     navigation<BondSettingsGraph>(startDestination = BondSettingsRoute) {
         composable<BondSettingsRoute> { entry ->
             SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
-                BondSettingsScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
+                BondSettingsScreen(
+                    state = state,
+                    onAction = viewModel::onAction,
+                    onBack = { navController.popBackStack() },
+                    onOpenLegal = onOpenLegal,
+                )
             }
         }
         composable<BondNameRoute> { entry ->

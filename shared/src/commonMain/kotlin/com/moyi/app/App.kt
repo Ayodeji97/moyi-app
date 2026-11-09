@@ -34,6 +34,7 @@ import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.debug.UiPreviewRoute
 import com.moyi.app.debug.uiPreviewGraph
+import com.moyi.app.feature.auth.navigation.LegalRoute
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
 import com.moyi.app.feature.auth.navigation.RegisterRoute
@@ -99,6 +100,10 @@ import org.koin.compose.viewmodel.koinViewModel
  * A link to getmoyi.app that opened the app ([LinkInbox]) opens its screen the same way:
  * a verify or reset link as soon as there is a screen ([accountLinkRouting]), an invite link
  * once someone is signed in, verified and out of the signed-in start ([inviteRouting]).
+ * The re-consent step (Terms and Privacy, [LegalRoute] with `prompt`) opens over Today
+ * when [AppViewModel.legalConsentDue] says the person's consent is older than the
+ * documents in force. Only over Today with its day in: never over the composer, a
+ * reveal or a settings screen, and never before the cached day has shown.
  */
 @Composable
 fun App(viewModel: AppViewModel = koinViewModel()) {
@@ -172,6 +177,10 @@ private fun MoyiNavHost(
     val dayLoaded = dayState is DailyLoopState.Ready
     var signedInStartFailed by remember { mutableStateOf(false) }
 
+    val legalConsentDue by viewModel.legalConsentDue.collectAsStateWithLifecycle()
+    val todayShowing = session is SessionState.SignedIn && dayLoaded && UiPreviewConfig.UI_PREVIEW.isEmpty() &&
+        currentEntry?.destination?.hasRoute<TodayRoute>() == true
+
     // Composed after NavHost has its graph, so an event buffered during the
     // restore (a refresh token the server no longer accepts) navigates safely.
     ObserveAsEvents(viewModel.sessionEvents) { event ->
@@ -207,6 +216,7 @@ private fun MoyiNavHost(
         )
         bondSettingsGraph(
             navController = navController,
+            onOpenLegal = { navController.navigate(LegalRoute()) { launchSingleTop = true } },
             // Left, blocked, or found ended: the same path as Today finding no open bond.
             onBondEnded = { navController.resetTo(SignedInStartRoute) },
         )
@@ -228,6 +238,13 @@ private fun MoyiNavHost(
     // The launch splash hands over only once the screen under it has drawn something.
     val drawn = firstScreenDrawn(currentEntry?.destination.startScreen(), dayState, signedInStartFailed)
     LaunchedEffect(drawn) { if (drawn) onFirstScreenDrawn() }
+    LaunchedEffect(todayShowing) { viewModel.onTodayShowing(todayShowing) }
+    LaunchedEffect(legalConsentDue, todayShowing) {
+        if (legalConsentDue && todayShowing) {
+            viewModel.onLegalConsentShown()
+            navController.navigate(LegalRoute(prompt = true)) { launchSingleTop = true }
+        }
+    }
 
     // After NavHost, so the graph is set. Runs again on every screen change and session
     // change while a tap waits, which is how a cold start or a sign-in reaches it.

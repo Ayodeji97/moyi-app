@@ -154,11 +154,13 @@ class AuthRepositoryTest {
     fun registerChecksTheStatusOnlyAndNeverDecodesTheBody() = runTest {
         val fixture = Fixture { respond("not json at all", HttpStatusCode.Created) }
 
-        val result = fixture.repository.register("Ada", "ada@example.test", "pw", "en-GB", "2026-09-01", over18 = true)
+        val result = fixture.repository.register("Ada", "ada@example.test", "pw", "en-GB", "local-2", over18 = true)
 
         assertEquals(Result.Success(Unit), result)
         val body = assertIs<TextContent>(fixture.requests.single().body).text
         assertTrue(""""over18":true""" in body && """"displayName":"Ada"""" in body, body)
+        // Sent by name (the generated constructor's order is not the call's).
+        assertTrue(""""acceptedTermsVersion":"local-2"""" in body, body)
     }
 
     @Test

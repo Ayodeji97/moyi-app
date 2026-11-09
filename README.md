@@ -193,16 +193,10 @@ MOYI_UPLOAD_KEY_PASSWORD=...
 
 ## Legal page URLs
 
-Sign up's **Terms** and **Privacy Policy** links open in the in-app browser (Chrome Custom
-Tabs on Android, `SFSafariViewController` on iOS). No legal page is published yet, so the
-URLs are configuration and default to unset, which makes the links do nothing. Set them in
-`local.properties` or with `-P` once the pages exist; a value that is not an `https` URL
-fails the build:
-
-```properties
-moyi.termsUrl=https://...
-moyi.privacyUrl=https://...
-```
-
-They move to `GET /meta/legal` when the contract has it (`docs/backend-contract-gaps.md`,
-row 12).
+Sign up's **Terms** and **Privacy Policy** links, and the Terms and Privacy screen (from Bond
+settings, and the re-consent step over Today), open the URLs `GET /meta/legal` names, in the
+in-app browser (Chrome Custom Tabs on Android, `SFSafariViewController` on iOS). Nothing is
+configured on the app side: a deployment states its documents in the backend's
+`moyi.legal.*` settings (ADR-0056). The local backend names `http://localhost:3000/...`
+pages, which nothing serves, so on a simulator or emulator the browser opens and shows that
+the page cannot be reached.
