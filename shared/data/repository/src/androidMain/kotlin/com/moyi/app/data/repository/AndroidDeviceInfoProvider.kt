@@ -3,13 +3,14 @@ package com.moyi.app.data.repository
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import com.moyi.app.api.models.DeviceRequest
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
 class AndroidDeviceInfoProvider(private val context: Context) : DeviceInfoProvider {
     override fun deviceInfo(): DeviceInfo = DeviceInfo(
-        platform = "ANDROID",
+        platform = DeviceRequest.Platform.ANDROID,
         appVersion = appVersion(),
         osVersion = Build.VERSION.RELEASE ?: "unknown",
     )

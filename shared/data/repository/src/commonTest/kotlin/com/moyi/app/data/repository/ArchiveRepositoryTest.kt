@@ -38,7 +38,7 @@ import kotlin.test.assertTrue
  * [ArchiveRepositoryImpl] against a MockEngine, through the real authed client: the
  * paths and query the contract declares, the cursor passed back unchanged, days drawn
  * from their entries (a tombstone on an EMPTY day), and the partner's `oneOf` decoded
- * through PartnerEntryWire exactly as on Today.
+ * through the generated PartnerEntryResponse exactly as on Today.
  */
 class ArchiveRepositoryTest {
     private class Fixture(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData) {

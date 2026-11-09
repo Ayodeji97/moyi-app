@@ -4,11 +4,11 @@ import com.moyi.app.api.models.DeviceRequest
 
 /**
  * What login tells the server about this device, shown later in the session
- * list (doc 06 §3.1, ADR-0025). [platform] is `ANDROID` or `IOS`: the
- * contract has a pattern rather than an enum (contract gap 8).
+ * list (doc 06 §3.1, ADR-0025). [platform] is the contract's own enum, so a
+ * value the server would refuse cannot be written.
  */
 data class DeviceInfo(
-    val platform: String,
+    val platform: DeviceRequest.Platform,
     val appVersion: String,
     val osVersion: String,
 )

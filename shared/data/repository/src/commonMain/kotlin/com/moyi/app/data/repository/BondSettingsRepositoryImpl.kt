@@ -55,8 +55,7 @@ class BondSettingsRepositoryImpl(
     override suspend fun update(bondId: String, version: String, change: BondSettingsChange): Result<BondSettings, DataError.Network> {
         val request = PatchBondRequest(
             name = change.name,
-            // A free string in the contract, not an enum (docs/backend-contract-gaps.md, row 14).
-            type = change.type?.name,
+            type = change.type?.toPatchRequestType(),
             revealTimeLocal = change.revealTime?.toString(),
             strictMode = change.strictMode,
         )

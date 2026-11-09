@@ -279,7 +279,7 @@ class BondSettingsRepositoryTest {
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":$deletionScheduledFor,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion}"""
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false}"""
 
     private fun pendingJson(proposedBy: String): String =
         """{"id":"p1","proposedTimezone":"Europe/London","proposedByMemberId":"$proposedBy",""" +
@@ -298,7 +298,9 @@ class BondSettingsRepositoryTest {
 
     @Test
     fun aProposalByTheOtherMemberIsTheCallersToAnswer() = runTest {
-        val members = """[{"id":"m1","displayName":"Amara","role":"OWNER"},{"id":"m2","displayName":"Tunde","role":"MEMBER"}]"""
+        val members =
+            """[{"id":"m1","displayName":"Amara","role":"OWNER","joinedAt":"2026-10-29T10:00:00Z","leftAt":null},""" +
+                """{"id":"m2","displayName":"Tunde","role":"MEMBER","joinedAt":"2026-10-30T10:00:00Z","leftAt":null}]"""
         val fixture = Fixture { respondBond(bondJson(pending = pendingJson(proposedBy = "m2"), members = members), etag = "\"7\"") }
 
         val settings = assertIs<Result.Success<BondSettings>>(fixture.repo.settings("b1")).data

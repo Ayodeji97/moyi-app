@@ -3,7 +3,9 @@ package com.moyi.app.data.repository
 import com.moyi.app.api.models.DayResponse
 import com.moyi.app.api.models.DaysResponse
 import com.moyi.app.api.models.EntryResponse
-import com.moyi.app.api.wire.PartnerEntryWire
+import com.moyi.app.api.models.PartnerEntryResponse
+import com.moyi.app.api.models.RevealedPartnerEntryResponse
+import com.moyi.app.api.models.SubmittedPartnerEntryResponse
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.today.BondDayStatus
@@ -28,7 +30,7 @@ internal fun DayResponse.toArchiveDay(): ArchiveDay? = ArchiveDay(
     status = status?.let { BondDayStatus.valueOf(it.name) } ?: return null,
     myEntry = myEntry?.let { it.toMyEntry() ?: return null },
     partnerEntry = partnerEntry?.let { it.toPartnerEntry() ?: return null },
-    markedByMe = setOfNotNull(myEntry?.markedId(), (partnerEntry as? PartnerEntryWire.Entry)?.entry?.markedId()),
+    markedByMe = setOfNotNull(myEntry?.markedId(), partnerEntry?.markedId()),
 )
 
 /**
@@ -37,3 +39,10 @@ internal fun DayResponse.toArchiveDay(): ArchiveDay? = ArchiveDay(
  * tombstone is left out, as `favourites=true` leaves it out ("and can still read").
  */
 private fun EntryResponse.markedId(): String? = id.takeIf { favourited && status != EntryResponse.Status.DELETED }
+
+/** The same for the other member's entry: a locked one has no id to mark, a tombstone is left out. */
+private fun PartnerEntryResponse.markedId(): String? = when (this) {
+    is SubmittedPartnerEntryResponse -> id.takeIf { favourited }
+    is RevealedPartnerEntryResponse -> id.takeIf { favourited }
+    else -> null
+}

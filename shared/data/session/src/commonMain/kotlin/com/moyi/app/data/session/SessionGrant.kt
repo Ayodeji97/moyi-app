@@ -1,6 +1,7 @@
 package com.moyi.app.data.session
 
 import com.moyi.app.api.models.LoginResponse
+import com.moyi.app.api.models.ProfileResponse
 import com.moyi.app.api.models.UserResponse
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
@@ -40,6 +41,18 @@ fun UserResponse.toUser(): User? = User(
     displayName = displayName ?: return null,
     emailVerified = emailVerified ?: false,
     status = status?.name.toUserStatus(),
+)
+
+/**
+ * `GET /me` answers with the profile: the user plus which legal versions they accepted.
+ * The app reads only the user here; `legalAccepted` waits for the consent screen.
+ */
+fun ProfileResponse.toUser(): User = User(
+    id = id,
+    email = email,
+    displayName = displayName,
+    emailVerified = emailVerified,
+    status = status.name.toUserStatus(),
 )
 
 internal fun String?.toUserStatus(): UserStatus =

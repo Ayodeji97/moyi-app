@@ -14,11 +14,11 @@ import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.testing.EventLog
 import com.moyi.app.data.testing.InMemoryTokenStore
 import com.moyi.app.data.testing.NoPersonalData
+import com.moyi.app.data.testing.profileJson
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.data.testing.storedSession
 import com.moyi.app.data.testing.tokenPairJson
-import com.moyi.app.data.testing.userJson
 import com.moyi.app.domain.auth.User
 import com.moyi.app.domain.auth.UserStatus
 import com.moyi.app.domain.bond.Bond
@@ -36,15 +36,15 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.time.Instant
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
 
 /**
  * [BondRepositoryImpl] and [AccountRepositoryImpl] against a MockEngine,
@@ -235,7 +235,7 @@ class BondRepositoryTest {
 
     @Test
     fun currentUserReadsMe() = runTest {
-        val fixture = Fixture { respondJson(userJson()) }
+        val fixture = Fixture { respondJson(profileJson()) }
         assertEquals(
             Result.Success(User("7c9e6679-7425-40de-944b-e07fc1f90ae7", "ada@example.test", "Ada", emailVerified = true, status = UserStatus.ACTIVE)),
             fixture.account.currentUser(),
@@ -268,7 +268,7 @@ class BondRepositoryTest {
         """{"id":"$id","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":null,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":null,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":null,"pendingDeletionRequest":null}"""
+            """"pendingTimezoneChange":null,"pendingDeletionRequest":null,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false}"""
 
     private companion object {
         const val INVITE_JSON =

@@ -39,7 +39,7 @@ class NotificationSettingsRepositoryImpl(
             NotificationCategory.OnThisDay -> NotificationCategoriesRequest(onThisDay = on)
             NotificationCategory.Proposal -> NotificationCategoriesRequest(proposal = on)
         }
-        return safeApiCall { api.replaceMemberNotifications(bondId, MemberNotificationsRequest(categories)) }
+        return safeApiCall { api.replaceMemberNotifications(bondId, MemberNotificationsRequest(categories = categories)) }
             .mapOrSerialization { it.toDomain() }
     }
 }
