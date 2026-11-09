@@ -117,6 +117,13 @@ data object JoinCannotBeUsedRoute
  * An invite link (`https://getmoyi.app/i/{code}`) opens the prefilled code screen, put
  * there by the app shell (App.kt, LinkRouting) once the person is signed in, verified and
  * outside an open bond's Today, or over Today or the archived bond.
+ * Account ([onOpenAccount], in `:shared:feature:bond`): the gate and relationship type as a
+ * root carry the account target (a person glyph, top right) that pushes it, so back returns. A person on either is
+ * in no open bond and cannot reach Bond settings (owner ruling 2026-11-09).
+ *
+ * Owed: a code handed over by the `/i/{code}` lander after sign in (deep
+ * links, site association files). Until then the prefilled layout is reached
+ * only through the debug preview index; pasting the link into manual entry works.
  */
 fun NavGraphBuilder.onboardingGraph(
     navController: NavController,
@@ -126,6 +133,7 @@ fun NavGraphBuilder.onboardingGraph(
     onBondArchived: (partnerName: String?) -> Unit,
     onSignedInStartError: () -> Unit = {},
     onOpenSupport: () -> Unit,
+    onOpenAccount: () -> Unit,
 ) {
     composable<PromiseRoute> {
         PromiseRoot(onBegin = onNavigateToRegister, onHaveAccount = onNavigateToSignIn)
@@ -141,13 +149,17 @@ fun NavGraphBuilder.onboardingGraph(
         )
     }
     composable<UnverifiedGateRoute> {
-        UnverifiedGateRoot(onNavigateToOnboarding = { navController.resetTo(OnboardingRoute) })
+        UnverifiedGateRoot(
+            onNavigateToOnboarding = { navController.resetTo(OnboardingRoute) },
+            onNavigateToAccount = onOpenAccount,
+        )
     }
     navigation<OnboardingRoute>(startDestination = RelationshipTypeRoute) {
         composable<RelationshipTypeRoute> {
             RelationshipTypeRoot(
                 onNavigateToCreateBond = { type -> navController.navigate(CreateBondRoute(type)) },
                 onNavigateToJoin = { navController.navigate(JoinCodeRoute()) },
+                onNavigateToAccount = onOpenAccount,
                 onNavigateBack = navController.upOrNull(),
             )
         }

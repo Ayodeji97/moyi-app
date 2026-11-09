@@ -70,7 +70,7 @@ days (in place) and Sign out (in place) have none.
 |---|---|
 | Your reminder 396:25 | Needs `/members/me/notifications`, which is not in `contracts/openapi.json` yet (a syncContract PR) |
 | Block and leave 617:1833 | Built in the ending PR: see `ending-check.md` |
-| Account 575:1782 | Its screen (help, delete your account) is not built; **Sign out** takes its place in the same group |
+| Account 575:1782 | **Built** (PR feat/export-and-deletion), above Sign out in the same group: its screen has Export your archive and Delete your account; Get help is still left out (no support screen). Account is its own graph, also opened by the account target (a person glyph, top right, "Your account") on the gate, relationship type and the archived bond, and carries Sign out as well; Bond settings keeps its own Sign out row (owner rulings 2026-11-09; missing-components §57) |
 
 ## Bond name (661:1909)
 

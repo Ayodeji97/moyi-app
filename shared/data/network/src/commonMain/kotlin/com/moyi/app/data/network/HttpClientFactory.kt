@@ -74,6 +74,8 @@ object HttpClientFactory {
      *   rotated; dropping the new token would make the next refresh a reuse.
      * - The refresh token never passes through Ktor (`BearerTokens(access, null)`):
      *   only the session reads it, from secure storage.
+     * - A `401` that refused a typed password, not the token ([isPasswordRefusal]),
+     *   is never refreshed: it stands as the answer, and the session is not touched.
      */
     private fun HttpClientConfig<*>.configureBearerAuth(tokens: BearerTokenSource) {
         install(Auth) {
@@ -82,6 +84,9 @@ object HttpClientFactory {
                 nonCancellableRefresh = true
                 loadTokens { tokens.currentAccessToken()?.let { BearerTokens(it, null) } }
                 refreshTokens {
+                    // A wrong password on a password-checking route: no refresh, no retry, and
+                    // the session untouched. The 401 itself goes back to the caller.
+                    if (response.isPasswordRefusal()) return@refreshTokens null
                     val stale = response.request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")
                     tokens.refreshAccessToken(stale)?.let { BearerTokens(it, null) }
                 }

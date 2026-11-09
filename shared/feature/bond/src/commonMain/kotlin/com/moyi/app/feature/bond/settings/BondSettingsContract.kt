@@ -116,6 +116,7 @@ sealed interface BondSettingsAction {
     data object OnRestDaysToggle : BondSettingsAction
     data object OnSignOutClick : BondSettingsAction
     data object OnNotificationsClick : BondSettingsAction
+    data object OnAccountClick : BondSettingsAction
 
     /** Get help: Support, pushed over settings. Needs nothing from the bond, so it works on a failed load too. */
     data object OnGetHelpClick : BondSettingsAction
@@ -182,6 +183,9 @@ sealed interface BondSettingsEvent {
     data class OpenReport(val bondId: String, val partnerName: String) : BondSettingsEvent
     data object OpenNotifications : BondSettingsEvent
     data object OpenSupport : BondSettingsEvent
+
+    /** Account (export, delete your account): needs nothing the bond holds, so it opens even when the bond did not load. */
+    data object OpenAccount : BondSettingsEvent
 
     /**
      * Open the OS share sheet with the invite. Fire and forget: the sheet closing is never

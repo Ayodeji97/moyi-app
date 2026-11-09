@@ -111,6 +111,8 @@ data class BondArchivedRoute(val partnerName: String? = null)
  * - Bond settings → Get help (Just you, on the loaded root and the failed load) calls
  *   [onOpenSupport]: Support is its own feature, pushed by the shell over settings, and
  *   its way back pops to here.
+ * - Bond settings → Account (push), its own graph because a person with no bond reaches it
+ *   too, and from it Delete your account and Export your archive: see [accountGraph].
  * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
  *   person to the signed-in start, which shows the archived bond. Signing out needs
  *   nothing here; the shell routes on the session ending.
@@ -221,6 +223,7 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
             is BondSettingsEvent.OpenReport -> navController.openReport(event.bondId, entryId = null, event.partnerName, fromSettings = true)
             BondSettingsEvent.OpenSupport -> onOpenSupport()
+            BondSettingsEvent.OpenAccount -> navController.navigate(AccountGraph) { launchSingleTop = true }
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
             is BondSettingsEvent.ShareInvite -> scope.launch {
@@ -267,11 +270,18 @@ private fun NavController.closeEditor(viewModel: BondSettingsViewModel) {
 
 /**
  * Bond · archived ([BondArchivedRoute]). A root with no back (SKILL.md); the shell makes it
- * the only screen. [onStartNewBond] pushes onboarding over it, so back from there returns.
+ * the only screen. [onStartNewBond] pushes onboarding over it, Export your archive pushes the
+ * export screen ([navigateToExport]), and [onOpenAccount] pushes Account ([AccountGraph]), so
+ * back from any of them returns here.
  */
-fun NavGraphBuilder.bondArchivedDestination(onStartNewBond: () -> Unit) {
+fun NavGraphBuilder.bondArchivedDestination(navController: NavController, onStartNewBond: () -> Unit, onOpenAccount: () -> Unit) {
     composable<BondArchivedRoute> { entry ->
         val route = entry.toRoute<BondArchivedRoute>()
-        BondArchivedScreen(partnerName = route.partnerName, onStartNewBond = onStartNewBond)
+        BondArchivedScreen(
+            partnerName = route.partnerName,
+            onStartNewBond = onStartNewBond,
+            onExportArchive = { navController.navigateToExport() },
+            onOpenAccount = onOpenAccount,
+        )
     }
 }

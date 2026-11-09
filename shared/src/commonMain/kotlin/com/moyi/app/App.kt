@@ -42,8 +42,10 @@ import com.moyi.app.feature.auth.navigation.ResetLinkSentRoute
 import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
 import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.auth.navigation.authGraph
+import com.moyi.app.feature.bond.navigation.AccountGraph
 import com.moyi.app.feature.bond.navigation.BondArchivedRoute
 import com.moyi.app.feature.bond.navigation.BondSettingsGraph
+import com.moyi.app.feature.bond.navigation.accountGraph
 import com.moyi.app.feature.bond.navigation.bondArchivedDestination
 import com.moyi.app.feature.bond.navigation.bondSettingsGraph
 import com.moyi.app.feature.onboarding.navigation.InviteHandoffRoute
@@ -183,6 +185,8 @@ private fun MoyiNavHost(
     val legalConsentDue by viewModel.legalConsentDue.collectAsStateWithLifecycle()
     val todayShowing = session is SessionState.SignedIn && dayLoaded && UiPreviewConfig.UI_PREVIEW.isEmpty() &&
         currentEntry?.destination?.hasRoute<TodayRoute>() == true
+    // Account needs no bond, so every signed-in place that has no Bond settings opens it too.
+    val openAccount = { navController.navigate(AccountGraph) { launchSingleTop = true } }
 
     // Composed after NavHost has its graph, so an event buffered during the
     // restore (a refresh token the server no longer accepts) navigates safely.
@@ -235,11 +239,15 @@ private fun MoyiNavHost(
             onSignedInStartError = { signedInStartFailed = true },
             // The Generic error's Get help: Support over it, so its way back returns to Try again.
             onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Error)) { launchSingleTop = true } },
+            onOpenAccount = openAccount,
         )
         // Get help (FR-102): pushed over whichever screen opened it, and popped to return there.
         supportDestination(onClose = { navController.popBackStack() })
         // Starting a new bond pushes onboarding over the archived screen, so back returns to it.
-        bondArchivedDestination(onStartNewBond = { navController.navigate(OnboardingRoute) })
+        // Its Export your archive and account target push over it too.
+        bondArchivedDestination(navController, onStartNewBond = { navController.navigate(OnboardingRoute) }, onOpenAccount = openAccount)
+        // Account: from Bond settings, and from each screen a person with no open bond lands on.
+        accountGraph(navController)
         if (UiPreview.onboarding) uiPreviewGraph(navController)
     }
 
@@ -359,7 +367,9 @@ private fun NavHostController.shellPlace(session: SessionState, dayLoaded: Boole
     }
     val outside = destination.hierarchy.any { it.hasRoute<OnboardingRoute>() } ||
         destination.hasRoute<UnverifiedGateRoute>() ||
-        destination.hasRoute<BondArchivedRoute>()
+        destination.hasRoute<BondArchivedRoute>() ||
+        // Account over one of those (over Today it was answered above).
+        destination.hierarchy.any { it.hasRoute<AccountGraph>() }
     // Neither: a sign-in screen in the moment before it moves to the signed-in start.
     return if (outside) ShellPlace.OutsideTheApp else ShellPlace.Settling
 }

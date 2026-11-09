@@ -1,5 +1,7 @@
 package com.moyi.app.feature.bond.di
 
+import com.moyi.app.feature.bond.account.AccountViewModel
+import com.moyi.app.feature.bond.account.ExportViewModel
 import com.moyi.app.feature.bond.notifications.NotificationSettingsViewModel
 import com.moyi.app.feature.bond.report.ReportArgs
 import com.moyi.app.feature.bond.report.ReportViewModel
@@ -16,4 +18,6 @@ val bondFeatureModule = module {
     viewModel { (bondId: String) -> NotificationSettingsViewModel(bondId, notifications = get(), settings = get()) }
     // A report (FR-100), from the Archive day view or Bond settings, over ReportRepository.
     viewModel { (args: ReportArgs) -> ReportViewModel(args, reports = get()) }
+    viewModel { AccountViewModel(deletion = get(), auth = get(), outbox = get(), sender = get()) }
+    viewModel { ExportViewModel(exports = get()) }
 }
