@@ -59,6 +59,12 @@ data class TodayState(
     val refusal: OutboxRefusal? = null,
     /** Deleting my revealed entry is being confirmed, in the platform dialog over Today (D11). */
     val confirmingDelete: Boolean = false,
+    /**
+     * Deleting my entry **before** the reveal is being confirmed, in the same platform dialog
+     * (owner ruling 2026-11-09, which amends states.md §4's "no confirmation"). Its line says
+     * what deleting means here, which is not what it means after the reveal.
+     */
+    val confirmingDeleteBeforeReveal: Boolean = false,
     /** The delete is in flight: its link is disabled so it cannot be sent twice. */
     val deleting: Boolean = false,
     /** A delete did not go through: the entry is still there, and the Generic error line says so (states.md §10). */
@@ -82,13 +88,16 @@ sealed interface TodayAction {
     data object OnWriteClick : TodayAction
     data object OnEditClick : TodayAction
 
-    /** Before the reveal: immediate, no confirmation (states.md §4). */
+    /**
+     * Before the reveal: confirmation first, in the platform dialog (owner ruling 2026-11-09;
+     * states.md §4 said "no confirmation"). Nothing is deleted until [OnDeleteConfirm].
+     */
     data object OnDeleteBeforeRevealClick : TodayAction
 
     /** After the reveal: confirmation first (states.md §5), in the platform dialog (D11). */
     data object OnDeleteAfterRevealClick : TodayAction
 
-    /** The delete dialog's destructive answer. */
+    /** The delete dialog's destructive answer: deletes whichever entry the open dialog asked about. */
     data object OnDeleteConfirm : TodayAction
 
     /** The delete dialog's Cancel (or Android Back over it): nothing changes. */

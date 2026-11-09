@@ -56,6 +56,7 @@ import com.moyi.app.feature.today.resources.today_author_you
 import com.moyi.app.feature.today.resources.delete_cancel
 import com.moyi.app.feature.today.resources.delete_confirm
 import com.moyi.app.feature.today.resources.delete_heading
+import com.moyi.app.feature.today.resources.delete_before_reveal_line
 import com.moyi.app.feature.today.resources.delete_line
 import com.moyi.app.feature.today.resources.today_delete
 import com.moyi.app.feature.today.resources.today_delete_short
@@ -200,6 +201,20 @@ private fun TodayDay(
             destructive = true,
         )
     }
+    if (state.confirmingDeleteBeforeReveal) {
+        // Owner ruling 2026-11-09: deleting before the reveal asks too, in the same dialog with
+        // the same answers. Only the line differs, because it means something different here:
+        // no mark is left, the partner never sees the words, and today can be written again.
+        ConfirmDialog(
+            title = stringResource(Res.string.delete_heading),
+            message = stringResource(Res.string.delete_before_reveal_line, state.partnerName.orEmpty()),
+            confirmLabel = stringResource(Res.string.delete_confirm),
+            dismissLabel = stringResource(Res.string.delete_cancel),
+            onConfirm = { onAction(TodayAction.OnDeleteConfirm) },
+            onDismiss = { onAction(TodayAction.OnDeleteDismiss) },
+            destructive = true,
+        )
+    }
 }
 
 /**
@@ -262,8 +277,8 @@ internal fun WaitingNote(partnerName: String, onEdit: (() -> Unit)?, onDelete: (
         heading = stringResource(Res.string.today_waiting_heading),
         line = stringResource(Res.string.today_waiting_line, partnerName),
         // Outlined buttons, Edit in `ink` and Delete in `danger` (owner ruling 2026-11-06,
-        // PR 30 smoke test: as underlined links they read as text, not actions). Before the
-        // reveal delete is still not irreversible, so it asks no confirmation (states.md §4).
+        // PR 30 smoke test: as underlined links they read as text, not actions). Delete asks
+        // first, in the platform dialog (owner ruling 2026-11-09, amending states.md §4).
         // Short labels, side by side when they fit (owner request 2026-11-09): "Written." and
         // "Yours is saved" above already say whose entry it is. Spoken in full, so a screen
         // reader still hears what each one changes.
@@ -502,6 +517,15 @@ private fun TodayPreview(status: TodayStatus) {
 @Preview @Composable private fun TodayNotWrittenPreview() = TodayPreview(TodayStatus.NotWritten)
 
 @Preview @Composable private fun TodayWaitingPreview() = TodayPreview(TodayStatus.Waiting)
+
+/** Delete before the reveal, asked first (owner ruling 2026-11-09). */
+@Preview
+@Composable
+private fun TodayWaitingDeletePreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(state = previewState(TodayStatus.Waiting).copy(confirmingDeleteBeforeReveal = true), onAction = {})
+    }
+}
 
 @Preview @Composable private fun TodayRevealedPreview() = TodayPreview(TodayStatus.Revealed)
 
