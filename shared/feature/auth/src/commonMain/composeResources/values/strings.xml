@@ -157,7 +157,7 @@
 
     
 
-    <!-- ===== Terms and Privacy (re-consent prompt and settings), PROPOSED: no frame draws it (docs/missing-components.md §51) ===== -->
+    <!-- ===== Terms and Privacy (re-consent prompt and settings), PROPOSED: no frame draws it (docs/missing-components.md §54) ===== -->
 
     <!-- PROPOSED. Eyebrow, label style. -->
     <string name="legal_eyebrow">Terms and Privacy</string>

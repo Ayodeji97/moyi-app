@@ -9,7 +9,7 @@ import com.moyi.app.feature.auth.common.SubmitStatus
 enum class LegalLoad { Loading, Failed, Ready }
 
 /**
- * Terms and Privacy (PROPOSED, docs/missing-components.md §51): the documents in force,
+ * Terms and Privacy (PROPOSED, docs/missing-components.md §54): the documents in force,
  * and Accept while the person's consent is older than them.
  *
  * [prompt] is the re-consent step the shell opens over Today when the versions changed;

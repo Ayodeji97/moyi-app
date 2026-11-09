@@ -161,7 +161,7 @@ In the same `strings.xml`, marked `PROPOSED`. The rest of the three screens' cop
 
 ### 7b. Destinations PR #6 draws but cannot reach yet
 
-- **Terms** and **Privacy Policy** on sign up: reached since the legal-consent PR (2026-11-09), at the URLs `GET /meta/legal` names (§51).
+- **Terms** and **Privacy Policy** on sign up: reached since the legal-consent PR (2026-11-09), at the URLs `GET /meta/legal` names (§54).
 - **I forgot my password** on sign in: reached since the password-reset PR (2026-11-05).
 - **Sign in is the root** while the promise screen (Onboarding 1) is unbuilt, so it has no
   back control and its eyebrow sits at the top of the content (as the unverified gate does).
@@ -927,10 +927,7 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
 
 ## Terms and Privacy (legal consent, 2026-11-09)
 
-### 51. Terms and Privacy: the re-consent step and the settings row
-
-Numbered 51 because open PRs #56, #57 and #58 each add a §50; whichever merges later
-renumbers.
+### 54. Terms and Privacy: the re-consent step and the settings row
 
 - **Today:** `states.md` §1 row 2 puts "18+ confirmation, Terms and Privacy consent (FR-011)"
   on Sign up, and `SKILL.md` §12 says the documents are "versioned with recorded consent"
@@ -944,7 +941,7 @@ renumbers.
     "Terms and Privacy", is not drawn under a back target, D1), a `body` `inkMuted` line naming the next step, the three documents as
     TextLinks, then PrimaryAction **Accept** (Sending "Accepting") with **Not now** as a
     centred TextLink under it. Not a gate: the backend refuses nothing for an old consent
-    (`docs/backend-contract-gaps.md` row 32), so blocking the app would be the client
+    (`docs/backend-contract-gaps.md` row 37), so blocking the app would be the client
     inventing a rule.
   - **The read view, from Bond settings.** A new row, **Terms and Privacy**, in *Just you*
     between Notifications and Sign out (`RowKind.Navigates`, underlined). Also on the failed

@@ -68,7 +68,7 @@ fun LegalRoot(
 }
 
 /**
- * Terms and Privacy. PROPOSED (docs/missing-components.md §51): no frame draws it. Built
+ * Terms and Privacy. PROPOSED (docs/missing-components.md §54): no frame draws it. Built
  * from the house parts only: the back target, ScreenHeader, a `body` line in `inkMuted`,
  * the three documents as TextLinks (an underline goes somewhere), and, while the person's
  * consent is older than the documents, PrimaryAction Accept with its Sending label.

@@ -141,7 +141,7 @@ fun BondSettingsScreen(
  * Just you: Notifications (on the loaded root only: they belong to the bond), Terms and
  * Privacy, and Sign out. Sign out is drawn on the failed load too, because it needs
  * nothing the bond's settings hold (owner ruling 2026-11-08); so is Terms and Privacy,
- * for the same reason. That row is PROPOSED (docs/missing-components.md §51): no frame
+ * for the same reason. That row is PROPOSED (docs/missing-components.md §54): no frame
  * places the legal documents in settings.
  */
 @Composable
