@@ -229,6 +229,8 @@
     <string name="streak_cell_rest">%1$s, rest day</string>
     <string name="streak_cell_today">%1$s, today</string>
     <string name="streak_cell_none">%1$s, no entry</string>
+    <!-- PROPOSED (docs/missing-components.md §59). A frozen cell a shared time zone change stepped over (reason TIMEZONE_SHIFT): drawn as a rest day, heard as what it was. -->
+    <string name="streak_cell_timezone">%1$s, skipped when the time zone changed</string>
     <!-- FIGMA NODE NAME 267:117 for other ("Two rest days left. ..."), with the number as digits. one is PROPOSED. -->
     <plurals name="streak_rest_days_left">
         <item quantity="one">One rest day left. It is used automatically when a day slips by.</item>
@@ -243,11 +245,25 @@
     </plurals>
     <!-- PROPOSED. Yesterday used the last rest day. -->
     <string name="streak_rest_day_used_none">Yesterday slipped by. We used a rest day. None left.</string>
-    <!-- PROPOSED. Figma 401:219 reads "Your streak ended at 21 days. That is 21 days of showing up. No rest days were left."
-         The contract does not send the length of the run that ended (states.md §7a, gap), so the number is left out. -->
+    <!-- FIGMA NODE NAME 401:219 for other ("Your streak ended at 21 days. That is 21 days of showing up. No rest days were left."),
+         with the number from lastRunLength (ADR-0034, the run the latest break ended). one is PROPOSED. -->
+    <plurals name="streak_ended_at">
+        <item quantity="one">Your streak ended at one day. That is one day of showing up. No rest days were left.</item>
+        <item quantity="other">Your streak ended at %1$d days. That is %1$d days of showing up. No rest days were left.</item>
+    </plurals>
+    <!-- PROPOSED. The same in Strict mode: no rest day could have covered it. -->
+    <plurals name="streak_ended_at_strict">
+        <item quantity="one">Your streak ended at one day. That is one day of showing up. Rest days are off.</item>
+        <item quantity="other">Your streak ended at %1$d days. That is %1$d days of showing up. Rest days are off.</item>
+    </plurals>
+    <!-- PROPOSED. Fallback when current is 0 after a run but the server sent no lastRunLength: the same line without the number. -->
     <string name="streak_ended">Your streak ended. No rest days were left.</string>
     <!-- PROPOSED. The same, in Strict mode: no rest day could have covered it. -->
     <string name="streak_ended_strict">Your streak ended. Rest days are off.</string>
+    <!-- PROPOSED (docs/missing-components.md §59). Yesterday is FROZEN with reason TIMEZONE_SHIFT: an approved change of the
+         shared time zone stepped over the date (BR-6), nobody could write on it, no rest day was spent and the run goes on.
+         Said plainly so it never reads as a missed day or a rest day used. -->
+    <string name="streak_timezone_shift">Yesterday was skipped when your shared time zone changed, so there was nothing to write. Your streak carries on.</string>
     <!-- FIGMA NODE NAME 401:309. Strict mode, stated plainly. -->
     <string name="streak_strict">Rest days are off.</string>
 
