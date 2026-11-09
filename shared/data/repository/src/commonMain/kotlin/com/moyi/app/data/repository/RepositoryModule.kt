@@ -11,6 +11,7 @@ import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.media.MediaRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
+import com.moyi.app.domain.report.ReportRepository
 import com.moyi.app.domain.notification.PushTokenRegistration
 import com.moyi.app.domain.notification.PushTokenSource
 import com.moyi.app.domain.streak.StreakRepository
@@ -42,6 +43,8 @@ val repositoryModule = module {
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ArchiveRepository> { ArchiveRepositoryImpl(get(), get()) }
     single<StreakRepository> { StreakRepositoryImpl(get(), get()) }
+    // Reports to a person (FR-100, ADR-0053): an entry of the partner's, or the partner.
+    single<ReportRepository> { ReportRepositoryImpl(get(), get()) }
     // Today's cache-then-network (doc 13 §5), keyed by the signed-in person.
     single<TodayCache> { SqlTodayCache(get(), get<SessionManager>().sessionState) }
     single<ArchiveCache> { SqlArchiveCache(get(), get<SessionManager>().sessionState) }
