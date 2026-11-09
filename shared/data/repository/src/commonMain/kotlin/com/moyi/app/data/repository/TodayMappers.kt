@@ -23,21 +23,19 @@ import com.moyi.app.domain.today.Prompt
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Today
 
-// TodayResponse and BondDayResponse declare no `required` fields either
-// (docs/backend-contract-gaps.md, row 13's pattern), so `bondDay`, its date and
-// its status arrive nullable. Today routes on all three: missing, the body is
-// treated as one that did not parse (null here, Serialization in the caller).
-// The entries' own fields ARE required in the contract, so they arrive non-null;
-// what is checked there is that an entry read in full carries its words.
+// TodayResponse, BondDayResponse and the entries declare their fields `required`
+// (PR #52 synced the contract that says so), so `bondDay`, its date and its status
+// arrive non-null or the body fails to decode. What is still checked here is that
+// an entry read in full carries its words (`text` is nullable: a tombstone has none).
 
 internal fun TodayResponse.toToday(): Today? {
-    val day = bondDay ?: return null
+    val day = bondDay
     return Today(
-        date = day.date?.toString() ?: return null,
-        status = day.status?.toDomain() ?: return null,
+        date = day.date.toString(),
+        status = day.status.toDomain(),
         myEntry = myEntry?.let { it.toMyEntry() ?: return null },
         partnerEntry = partnerEntry?.let { it.toPartnerEntry() ?: return null },
-        // A prompt is an offer, never a requirement: half of one is no prompt, not a broken day.
+        // A prompt is an offer, never a requirement: none is no prompt, not a broken day.
         prompt = prompt?.toPrompt(),
     )
 }
@@ -114,7 +112,7 @@ internal fun PartnerEntryResponse.toPartnerEntry(): PartnerEntry? = when (this) 
     is DeletedPartnerEntryResponse -> PartnerEntry.Deleted(id)
 }
 
-private fun TodayPromptResponse.toPrompt(): Prompt? = Prompt(id = id ?: return null, text = text ?: return null)
+private fun TodayPromptResponse.toPrompt(): Prompt = Prompt(id = id, text = text)
 
 private fun BondDayResponse.Status.toDomain(): BondDayStatus = BondDayStatus.valueOf(name)
 

@@ -4,14 +4,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.legal.LegalDocuments
+import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.feature.auth.common.AuthErrorMapper
 import com.moyi.app.feature.auth.common.AuthValidation
 import com.moyi.app.feature.auth.common.DeviceLocale
 import com.moyi.app.feature.auth.common.FieldInput
-import com.moyi.app.feature.auth.common.LegalLinks
+import com.moyi.app.feature.auth.common.LegalDocument
+import com.moyi.app.feature.auth.common.urlFor
 import com.moyi.app.feature.auth.common.RegisterField
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.designsystem.presentation.UiText
+import com.moyi.app.feature.auth.resources.Res
+import com.moyi.app.feature.auth.resources.register_legal_unavailable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +25,14 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * Sign up. The Terms and the Privacy Policy are the ones `GET /meta/legal` names: read
+ * once when the screen opens, again on a link tap or a submit if that first read failed.
+ * Their URLs open the links; the Terms version is sent as `acceptedTermsVersion`.
+ */
 class RegisterViewModel(
     private val authRepository: AuthRepository,
-    private val legalLinks: LegalLinks,
+    private val legalRepository: LegalRepository,
     private val deviceLocale: DeviceLocale,
 ) : ViewModel() {
     private val _state = MutableStateFlow(RegisterState())
@@ -30,6 +40,13 @@ class RegisterViewModel(
 
     private val _events = Channel<RegisterEvent>()
     val events = _events.receiveAsFlow()
+
+    /** The documents in force, once read. Not UI state: only their URLs and version leave here. */
+    private var legal: LegalDocuments? = null
+
+    init {
+        viewModelScope.launch { legalDocuments() }
+    }
 
     fun onAction(action: RegisterAction) {
         when (action) {
@@ -42,11 +59,27 @@ class RegisterViewModel(
             RegisterAction.OnSubmit -> submit()
             RegisterAction.OnHaveAccountClick -> send(RegisterEvent.NavigateToLogin)
             RegisterAction.OnBackClick -> send(RegisterEvent.NavigateBack)
-            // No published page yet means no URL: the link then does nothing
-            // (owed with the site's legal pages, docs/missing-components.md).
-            is RegisterAction.OnLegalLinkClick ->
-                legalLinks.urlFor(action.document)?.let { send(RegisterEvent.OpenLegalPage(it)) }
+            is RegisterAction.OnLegalLinkClick -> openLegalPage(action.document)
         }
+    }
+
+    /** The page opens if its URL can be read; otherwise a line under the links says what to do. */
+    private fun openLegalPage(document: LegalDocument) {
+        viewModelScope.launch {
+            val documents = legalDocuments()
+            if (documents == null) {
+                _state.update { it.copy(legalError = UiText.Resource(Res.string.register_legal_unavailable)) }
+            } else {
+                _state.update { it.copy(legalError = null) }
+                _events.send(RegisterEvent.OpenLegalPage(documents.urlFor(document)))
+            }
+        }
+    }
+
+    /** The documents already read, or one attempt to read them; null when that fails. */
+    private suspend fun legalDocuments(): LegalDocuments? {
+        legal?.let { return it }
+        return (legalRepository.documents() as? Result.Success)?.data?.also { legal = it }
     }
 
     private fun onBlur(field: RegisterField) {
@@ -76,12 +109,15 @@ class RegisterViewModel(
         _state.update { checked.copy(submit = SubmitStatus.Sending) }
         val email = checked.email.value.trim()
         viewModelScope.launch {
+            // The version shown, or null if it never could be read: the server records its
+            // own current versions either way (ADR-0056), so sign up is never held up by it.
+            val termsVersion = legalDocuments()?.terms?.version
             val result = authRepository.register(
                 displayName = checked.name.value.trim(),
                 email = email,
                 password = checked.password.value,
                 locale = deviceLocale.languageTag(),
-                acceptedTermsVersion = ACCEPTED_TERMS_VERSION,
+                acceptedTermsVersion = termsVersion,
                 over18 = checked.consent,
             )
             when (result) {
@@ -110,11 +146,6 @@ class RegisterViewModel(
 
     private fun send(event: RegisterEvent) {
         viewModelScope.launch { _events.send(event) }
-    }
-
-    companion object {
-        /** The Terms version the person consents to; the same constant Bruno sends. */
-        const val ACCEPTED_TERMS_VERSION = "2026-09-01"
     }
 }
 

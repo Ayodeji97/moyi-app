@@ -106,6 +106,13 @@ data class BondArchivedRoute(val partnerName: String? = null)
  *   times change in place. The phone's permission prompt is shown from here only
  *   (NotificationPermissionPolicy), and Open phone settings leaves the app. Back returns
  *   to the root.
+ * - Bond settings → Report (the member), the report flow ([reportGraph]); leaving it returns
+ *   to the root.
+ * - Bond settings → Get help (Just you, on the loaded root and the failed load) calls
+ *   [onOpenSupport]: Support is its own feature, pushed by the shell over settings, and
+ *   its way back pops to here.
+ * - Bond settings → Account (push), its own graph because a person with no bond reaches it
+ *   too, and from it Delete your account and Export your archive: see [accountGraph].
  * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
  *   person to the signed-in start, which shows the archived bond. Signing out needs
  *   nothing here; the shell routes on the session ending.
@@ -113,59 +120,67 @@ data class BondArchivedRoute(val partnerName: String? = null)
 fun NavGraphBuilder.bondSettingsGraph(
     navController: NavController,
     onBondEnded: () -> Unit,
+    /** Just you › Terms and Privacy: the shell opens the read view (feature:auth's screen). */
+    onOpenLegal: () -> Unit,
+    onOpenSupport: () -> Unit,
 ) {
     navigation<BondSettingsGraph>(startDestination = BondSettingsRoute) {
         composable<BondSettingsRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
-                BondSettingsScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
+                BondSettingsScreen(
+                    state = state,
+                    onAction = viewModel::onAction,
+                    onBack = { navController.popBackStack() },
+                    onOpenLegal = onOpenLegal,
+                )
             }
         }
         composable<BondNameRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondNameScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<TimeZoneRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 TimeZoneScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<ZonePickerRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 ZonePickerScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
             }
         }
         composable<InviteRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 InviteScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<LeaveRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 LeaveScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<BlockRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BlockScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<CloseBoxRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 CloseBoxScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<NotificationsRoute> { entry -> NotificationsDestination(entry, navController, onBondEnded) }
         composable<BondTypeRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondTypeScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
@@ -183,6 +198,7 @@ private fun SettingsDestination(
     entry: NavBackStackEntry,
     navController: NavController,
     onBondEnded: () -> Unit,
+    onOpenSupport: () -> Unit,
     content: @Composable (BondSettingsViewModel) -> Unit,
 ) {
     val graphEntry = remember(entry) { navController.getBackStackEntry<BondSettingsGraph>() }
@@ -205,6 +221,9 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
+            is BondSettingsEvent.OpenReport -> navController.openReport(event.bondId, entryId = null, event.partnerName, fromSettings = true)
+            BondSettingsEvent.OpenSupport -> onOpenSupport()
+            BondSettingsEvent.OpenAccount -> navController.navigate(AccountGraph) { launchSingleTop = true }
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
             is BondSettingsEvent.ShareInvite -> scope.launch {
@@ -251,11 +270,18 @@ private fun NavController.closeEditor(viewModel: BondSettingsViewModel) {
 
 /**
  * Bond · archived ([BondArchivedRoute]). A root with no back (SKILL.md); the shell makes it
- * the only screen. [onStartNewBond] pushes onboarding over it, so back from there returns.
+ * the only screen. [onStartNewBond] pushes onboarding over it, Export your archive pushes the
+ * export screen ([navigateToExport]), and [onOpenAccount] pushes Account ([AccountGraph]), so
+ * back from any of them returns here.
  */
-fun NavGraphBuilder.bondArchivedDestination(onStartNewBond: () -> Unit) {
+fun NavGraphBuilder.bondArchivedDestination(navController: NavController, onStartNewBond: () -> Unit, onOpenAccount: () -> Unit) {
     composable<BondArchivedRoute> { entry ->
         val route = entry.toRoute<BondArchivedRoute>()
-        BondArchivedScreen(partnerName = route.partnerName, onStartNewBond = onStartNewBond)
+        BondArchivedScreen(
+            partnerName = route.partnerName,
+            onStartNewBond = onStartNewBond,
+            onExportArchive = { navController.navigateToExport() },
+            onOpenAccount = onOpenAccount,
+        )
     }
 }

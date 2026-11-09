@@ -3,17 +3,22 @@ package com.moyi.app.data.repository
 import com.moyi.app.data.database.LocalDatabase
 import com.moyi.app.data.session.PersonalData
 import com.moyi.app.data.session.SessionManager
+import com.moyi.app.domain.account.AccountDeletionRepository
+import com.moyi.app.domain.account.DataExportRepository
 import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
+import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.domain.media.MediaRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
+import com.moyi.app.domain.report.ReportRepository
 import com.moyi.app.domain.notification.PushTokenRegistration
 import com.moyi.app.domain.notification.PushTokenSource
 import com.moyi.app.domain.streak.StreakRepository
+import com.moyi.app.domain.support.SupportRepository
 import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.OutboxSender
@@ -35,6 +40,10 @@ val repositoryModule = module {
         PushTokenRegistrar(get(), get(), get(), get<SessionManager>().sessionState, CoroutineScope(SupervisorJob() + Dispatchers.Default))
     } bind PushTokenRegistration::class
     single<AccountRepository> { AccountRepositoryImpl(get(), get()) }
+    // Terms and Privacy: the public documents and the signed-in person's consent (ADR-0056).
+    single<LegalRepository> { LegalRepositoryImpl(get(), get(), get()) }
+    single<AccountDeletionRepository> { AccountDeletionRepositoryImpl(get(), get()) }
+    single<DataExportRepository> { DataExportRepositoryImpl(get(), get()) }
     single<BondRepository> { BondRepositoryImpl(get(), get()) }
     single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get()) }
     single<TodayRepository> { TodayRepositoryImpl(get(), get()) }
@@ -42,6 +51,9 @@ val repositoryModule = module {
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ArchiveRepository> { ArchiveRepositoryImpl(get(), get()) }
     single<StreakRepository> { StreakRepositoryImpl(get(), get()) }
+    // Reports to a person (FR-100, ADR-0053): an entry of the partner's, or the partner.
+    single<ReportRepository> { ReportRepositoryImpl(get(), get()) }
+    single<SupportRepository> { SupportRepositoryImpl(get(), get()) }
     // Today's cache-then-network (doc 13 §5), keyed by the signed-in person.
     single<TodayCache> { SqlTodayCache(get(), get<SessionManager>().sessionState) }
     single<ArchiveCache> { SqlArchiveCache(get(), get<SessionManager>().sessionState) }

@@ -40,6 +40,12 @@ Ink on surface (Rosewood, `tokens.md` §1): dark `#F8EFE9` on `#171313`, light `
 | iOS `icon-tinted.png` | Greyscale: white mark on black; the system tints by luminance |
 | Android `ic_launcher_foreground.xml` | The mark, 48 dp high in the 108 dp adaptive canvas, inside the 66 dp safe zone. Also the monochrome (themed icon) layer |
 | Android background | `@color/ic_launcher_background`, dark surface |
-| Android `drawable-v31/splash_mark.xml` | The Android 12+ splash icon: 128 dp in the 288 dp canvas (the launcher's 48 / 108), in `@color/ink` on `surface`, both following the system mode |
 | Android `mipmap-*/ic_launcher*.png` | API 24 and 25 only: the adaptive icon as a launcher masks it (the visible 72 dp), square and round |
 | Store images (argument only, not committed) | `app-store-1024.png` (no alpha) and `play-store-512.png` |
+
+## The launch splash
+
+Neither platform's native launch frame shows the mark any more: both are `surface` alone, and
+the first Compose frame builds the mark and the wordmark over it
+(`shared/src/commonMain/kotlin/com/moyi/app/splash/LaunchSplash.kt`, owner request
+2026-11-09). That file draws the mark from the geometry above; change both together.

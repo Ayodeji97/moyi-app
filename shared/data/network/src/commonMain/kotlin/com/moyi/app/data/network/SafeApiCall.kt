@@ -18,10 +18,9 @@ import kotlinx.serialization.SerializationException
 /**
  * Runs one generated API call and returns its body or a typed [DataError.Network].
  *
- * Success is checked BEFORE the body is decoded. Most response schemas declare
- * no `required` fields (docs/backend-contract-gaps.md rows 4 and 5), so a
- * problem body decoded as, say, `LoginResponse` "succeeds" with every field
- * null. Non-2xx responses go to [ProblemDetailParser] instead.
+ * Success is checked BEFORE the body is decoded: a problem body is not the
+ * response type, so non-2xx responses go to [ProblemDetailParser] instead. A 2xx
+ * body missing a required field fails to decode, as [DataError.Network.Serialization].
  *
  * [CancellationException] is always rethrown: swallowing it would keep a
  * cancelled coroutine (a closed screen) running as if nothing happened.

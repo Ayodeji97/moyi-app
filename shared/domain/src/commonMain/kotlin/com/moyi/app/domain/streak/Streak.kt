@@ -14,6 +14,11 @@ import com.moyi.app.core.Result
  * @property freezeProgress complete days towards the next rest day. Not drawn.
  * @property totalCompleteDays every complete day of the bond's life. Not drawn.
  * @property lastCompleteDate ISO date (`YYYY-MM-DD`) of the last complete day, if any.
+ * @property lastRunLength the length of the run the latest break ended, or null while no run
+ *   has ended (ADR-0034 amendment, decision 1). It stays set while the next run grows, so it
+ *   says "your streak ended at N days" only when [current] is 0. At least 1, never above [longest].
+ * @property lastRunBrokenOn ISO date of the missed day that ended that run (not part of it);
+ *   null exactly when [lastRunLength] is.
  */
 data class Streak(
     val current: Int,
@@ -24,17 +29,38 @@ data class Streak(
     val totalCompleteDays: Int,
     val lastCompleteDate: String?,
     val days: List<StreakDay>,
+    val lastRunLength: Int? = null,
+    val lastRunBrokenOn: String? = null,
 )
 
-/** One calendar cell: [date] in ISO form, and what the day was **to the streak**. */
-data class StreakDay(val date: String, val status: StreakDayStatus)
+/**
+ * One calendar cell: [date] in ISO form, and what the day was **to the streak**.
+ *
+ * @property reason why a [StreakDayStatus.FROZEN] cell is frozen, and null on every other cell.
+ */
+data class StreakDay(val date: String, val status: StreakDayStatus, val reason: FrozenReason? = null)
+
+/** Why a day is [StreakDayStatus.FROZEN] (the contract's `StreakDayResponse.reason`). */
+enum class FrozenReason {
+    /** Neither or only one wrote, and a banked rest day covered it: "we used a rest day". */
+    REST_DAY,
+
+    /** An approved time zone change stepped over the date, so nobody could write on it. No rest day was spent (BR-6). */
+    TIMEZONE_SHIFT,
+
+    /**
+     * A frozen day whose reason this app does not know: a value added to the contract after this
+     * build, or none sent. Drawn as a frozen day, and nothing is said about why.
+     */
+    UNKNOWN,
+}
 
 /** The contract's five cell values (states.md §7a). */
 enum class StreakDayStatus {
     /** Both wrote. */
     COMPLETE,
 
-    /** A rest day covered it, or a timezone change stepped over it: the payload does not say which. */
+    /** A rest day covered it, or a time zone change stepped over it: [StreakDay.reason] says which. */
     FROZEN,
 
     /** One of the two wrote, and no rest day covered it. */

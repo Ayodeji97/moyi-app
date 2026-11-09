@@ -14,6 +14,9 @@ enum class SignedInStartState {
 
 sealed interface SignedInStartAction {
     data object OnRetryClick : SignedInStartAction
+
+    /** Get help, under Try again on the Generic error. */
+    data object OnGetHelpClick : SignedInStartAction
 }
 
 sealed interface SignedInStartEvent {
@@ -31,4 +34,7 @@ sealed interface SignedInStartEvent {
 
     /** Not verified, in no open bond: the gate (FR-002). */
     data object NavigateToGate : SignedInStartEvent
+
+    /** Support, pushed over the Generic error; its way back returns here. */
+    data object NavigateToSupport : SignedInStartEvent
 }

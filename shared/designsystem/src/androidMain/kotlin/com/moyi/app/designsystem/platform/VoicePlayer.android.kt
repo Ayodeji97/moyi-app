@@ -1,6 +1,8 @@
 package com.moyi.app.designsystem.platform
 
+import android.app.Activity
 import android.content.Context
+import android.media.AudioManager
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
@@ -28,7 +30,46 @@ actual fun rememberVoicePlayer(): VoicePlayer {
     val scope = rememberCoroutineScope()
     val player = remember(context) { AndroidVoicePlayer(context, scope) }
     DisposableEffect(player) { onDispose { player.release() } }
+    VolumeKeysControlMedia()
     return player
+}
+
+/**
+ * The stream each activity's volume keys controlled before the first voice note came on
+ * screen, put back when the last one leaves.
+ */
+private val streamBefore = HashMap<Activity, Int>()
+
+/**
+ * One hold per activity: an Archive list can show several voice notes at once, and the
+ * keys go back only when the last of them leaves. Saving on the first and restoring on
+ * the last (rather than each effect saving and restoring its own) keeps two overlapping
+ * players from restoring each other's value out of order.
+ */
+private val mediaVolumeHolds = KeyedHolds<Activity>(
+    onFirst = { activity ->
+        streamBefore[activity] = activity.volumeControlStream
+        activity.volumeControlStream = AudioManager.STREAM_MUSIC
+    },
+    onLast = { activity ->
+        activity.volumeControlStream = streamBefore.remove(activity) ?: AudioManager.USE_DEFAULT_STREAM_TYPE
+    },
+)
+
+/**
+ * While a voice note is on screen, the hardware volume keys set the media volume, the
+ * stream the player uses (`USAGE_MEDIA`). Without this they set the media volume only
+ * while audio plays and the ringer before that, so someone turning a voice note down
+ * before pressing play turns their ringer down instead.
+ */
+@Composable
+private fun VolumeKeysControlMedia() {
+    // A preview or a test host has no activity: no keys to route.
+    val activity = LocalContext.current.findActivity() ?: return
+    DisposableEffect(activity) {
+        mediaVolumeHolds.acquire(activity)
+        onDispose { mediaVolumeHolds.release(activity) }
+    }
 }
 
 /**

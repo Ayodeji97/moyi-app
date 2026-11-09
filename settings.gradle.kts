@@ -47,6 +47,7 @@ include(":shared:feature:auth")
 include(":shared:feature:onboarding")
 include(":shared:feature:today")
 include(":shared:feature:bond")
+include(":shared:feature:support")
 
 // JVM-only Konsist rules over the shared sources.
 include(":architecture-tests")

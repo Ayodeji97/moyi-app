@@ -13,6 +13,7 @@ import com.moyi.app.data.testing.InMemoryTokenStore
 import com.moyi.app.data.testing.NoPersonalData
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
+import com.moyi.app.domain.streak.FrozenReason
 import com.moyi.app.domain.streak.Streak
 import com.moyi.app.domain.streak.StreakDay
 import com.moyi.app.domain.streak.StreakDayStatus
@@ -25,11 +26,14 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
  * [StreakRepositoryImpl] against a MockEngine, through the real authed client: the path the
- * contract declares, every one of the five cell values, and a body missing what the screen
+ * contract declares, every one of the five cell values, the run the last break ended, each
+ * frozen reason and the neutral fallback for one this build does not know, and a body missing what the screen
  * draws failing as Serialization rather than being drawn as zero.
  */
 class StreakRepositoryTest {
@@ -84,7 +88,8 @@ class StreakRepositoryTest {
                     days = listOf(
                         StreakDay("2026-09-10", StreakDayStatus.MISSED),
                         StreakDay("2026-09-11", StreakDayStatus.SOLO),
-                        StreakDay("2026-09-12", StreakDayStatus.FROZEN),
+                        // No reason sent on a FROZEN cell: the neutral fallback, never a guess.
+                        StreakDay("2026-09-12", StreakDayStatus.FROZEN, FrozenReason.UNKNOWN),
                         StreakDay("2026-09-13", StreakDayStatus.COMPLETE),
                         StreakDay("2026-09-14", StreakDayStatus.OPEN),
                     ),
@@ -94,6 +99,75 @@ class StreakRepositoryTest {
         )
         assertEquals(HttpMethod.Get, fixture.request.method)
         assertEquals("/api/v1/bonds/b1/streak", fixture.request.url.encodedPath)
+    }
+
+    @Test
+    fun theRunTheLastBreakEndedAndEachFrozenReasonAreRead() = runTest {
+        val fixture = Fixture {
+            respondJson(
+                """
+                {"current":0,"longest":41,"freezesAvailable":0,"freezeProgress":0,"strictMode":false,
+                 "totalCompleteDays":57,"lastCompleteDate":"2026-09-12",
+                 "lastRunLength":21,"lastRunBrokenOn":"2026-09-13",
+                 "days":[
+                   {"date":"2026-09-11","status":"FROZEN","reason":"REST_DAY","settlesAt":null},
+                   {"date":"2026-09-12","status":"FROZEN","reason":"TIMEZONE_SHIFT","settlesAt":null},
+                   {"date":"2026-09-13","status":"MISSED","reason":null,"settlesAt":null},
+                   {"date":"2026-09-14","status":"OPEN","reason":null,"settlesAt":"2026-09-15T11:00:00Z"}
+                 ]}
+                """.trimIndent(),
+            )
+        }
+
+        val streak = assertIs<Result.Success<Streak>>(fixture.streak.streak("b1")).data
+
+        assertEquals(21, streak.lastRunLength)
+        assertEquals("2026-09-13", streak.lastRunBrokenOn)
+        assertEquals(
+            listOf(FrozenReason.REST_DAY, FrozenReason.TIMEZONE_SHIFT, null, null),
+            streak.days.map { it.reason },
+        )
+    }
+
+    @Test
+    fun noRunHasEndedYetIsNullNotZero() = runTest {
+        val fixture = Fixture {
+            respondJson(
+                """{"current":3,"longest":3,"freezesAvailable":0,"freezeProgress":3,"strictMode":false,
+                   "totalCompleteDays":3,"lastCompleteDate":"2026-09-13","lastRunLength":null,"lastRunBrokenOn":null,
+                   "days":[{"date":"2026-09-14","status":"OPEN"}]}""",
+            )
+        }
+        val streak = assertIs<Result.Success<Streak>>(fixture.streak.streak("b1")).data
+        assertNull(streak.lastRunLength)
+        assertNull(streak.lastRunBrokenOn)
+    }
+
+    @Test
+    fun aFrozenReasonThisBuildDoesNotKnowIsTheNeutralFallbackNotAFailure() = runTest {
+        // A value added to the contract after this build: coerceInputValues makes it null, the mapper UNKNOWN.
+        val fixture = Fixture {
+            respondJson(
+                """{"current":4,"longest":4,"freezesAvailable":1,"freezeProgress":0,"strictMode":false,
+                   "totalCompleteDays":3,"lastCompleteDate":"2026-09-12",
+                   "days":[{"date":"2026-09-13","status":"FROZEN","reason":"BOND_PAUSED"},{"date":"2026-09-14","status":"OPEN"}]}""",
+            )
+        }
+        val streak = assertIs<Result.Success<Streak>>(fixture.streak.streak("b1")).data
+        assertEquals(StreakDay("2026-09-13", StreakDayStatus.FROZEN, FrozenReason.UNKNOWN), streak.days.first())
+    }
+
+    @Test
+    fun aReasonOnACellThatIsNotFrozenIsDropped() = runTest {
+        val fixture = Fixture {
+            respondJson(
+                """{"current":1,"longest":1,"freezesAvailable":0,"freezeProgress":1,"strictMode":false,
+                   "totalCompleteDays":1,"lastCompleteDate":"2026-09-14",
+                   "days":[{"date":"2026-09-14","status":"COMPLETE","reason":"REST_DAY"}]}""",
+            )
+        }
+        val streak = assertIs<Result.Success<Streak>>(fixture.streak.streak("b1")).data
+        assertNull(streak.days.single().reason)
     }
 
     @Test

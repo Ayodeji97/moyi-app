@@ -15,19 +15,17 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 
-// The generated bond and invite models declare no `required` fields
-// (docs/backend-contract-gaps.md, row 13), so every field arrives nullable. A
-// 2xx missing a field the app routes on is treated as a body that did not
-// parse, [DataError.Network.Serialization], never filled in with a guess.
+// The generated bond and invite models declare their fields `required` and
+// non-null (PR #52 synced the contract that says so), so a 2xx missing one fails
+// to decode as [DataError.Network.Serialization] before it reaches a mapper.
 
-internal fun BondResponse.toBond(): Bond? = Bond(
-    id = id ?: return null,
-    name = name ?: return null,
-    type = type?.toDomain() ?: return null,
-    status = status?.toDomain() ?: return null,
-    // An invite missing its code or link is no invite the person can pass on.
+internal fun BondResponse.toBond(): Bond = Bond(
+    id = id,
+    name = name,
+    type = type.toDomain(),
+    status = status.toDomain(),
     invite = invite?.toInvite(),
-    partnerName = partnerName(members, me?.memberId),
+    partnerName = partnerName(members, me.memberId),
     anchorTimezone = anchorTimezone,
 )
 
@@ -40,35 +38,34 @@ internal fun BondResponse.toBond(): Bond? = Bond(
 internal fun partnerName(members: List<MemberResponse>?, myMemberId: String?): String? {
     if (myMemberId == null) return null
     return members.orEmpty()
-        .filter { it.id != null && it.id != myMemberId && it.displayName != null }
+        .filter { it.id != myMemberId }
         .sortedBy { it.leftAt != null }
         .firstOrNull()
         ?.displayName
 }
 
-internal fun InviteResponse.toInvite(): Invite? = Invite(
-    id = id ?: return null,
-    code = code ?: return null,
-    link = link ?: return null,
+internal fun InviteResponse.toInvite(): Invite = Invite(
+    id = id,
+    code = code,
+    link = link,
     expiresAt = expiresAt,
 )
 
-internal fun InviteDetailResponse.toInvite(): Invite? = Invite(
-    id = id ?: return null,
-    code = code ?: return null,
-    link = link ?: return null,
+internal fun InviteDetailResponse.toInvite(): Invite = Invite(
+    id = id,
+    code = code,
+    link = link,
     expiresAt = expiresAt,
 )
 
 /**
- * All three are needed: the confirm screen names the inviter and the bond.
- * The backend already answers "Someone" for an inviter it no longer knows, so
- * an absent name is a malformed body, not a deleted account.
+ * The confirm screen names the inviter and the bond. The backend answers "Someone"
+ * for an inviter it no longer knows, so the name is always there.
  */
-internal fun InvitePreviewResponse.toPreview(): InvitePreview? = InvitePreview(
-    inviterName = inviterDisplayName ?: return null,
-    bondName = bondName ?: return null,
-    bondType = bondType?.let { BondType.valueOf(it.name) } ?: return null,
+internal fun InvitePreviewResponse.toPreview(): InvitePreview = InvitePreview(
+    inviterName = inviterDisplayName,
+    bondName = bondName,
+    bondType = BondType.valueOf(bondType.name),
 )
 
 private fun BondResponse.Type.toDomain(): BondType = BondType.valueOf(name)
@@ -91,7 +88,7 @@ internal fun BondType.toPatchRequestType(): PatchBondRequest.Type = when (this) 
 
 private fun BondResponse.Status.toDomain(): BondStatus = BondStatus.valueOf(name)
 
-/** Maps a decoded body, turning a missing required field into [DataError.Network.Serialization]. */
+/** Maps a decoded body the mapper may still reject (null), turning that into [DataError.Network.Serialization]. */
 internal inline fun <T, R> Result<T, DataError.Network>.mapOrSerialization(transform: (T) -> R?): Result<R, DataError.Network> =
     when (this) {
         is Result.Failure -> this

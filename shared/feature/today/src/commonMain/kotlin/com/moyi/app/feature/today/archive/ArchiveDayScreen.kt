@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.ConfirmDialog
@@ -29,6 +30,7 @@ import com.moyi.app.feature.today.common.PartnerReaction
 import com.moyi.app.feature.today.common.ReactionControl
 import com.moyi.app.feature.today.common.dayHeader
 import com.moyi.app.feature.today.resources.Res
+import com.moyi.app.feature.today.resources.archive_day_report
 import com.moyi.app.feature.today.resources.delete_cancel
 import com.moyi.app.feature.today.resources.delete_confirm
 import com.moyi.app.feature.today.resources.delete_heading
@@ -49,13 +51,19 @@ import org.koin.core.parameter.parametersOf
 fun ArchiveDayRoot(
     date: String,
     onBack: () -> Unit,
+    onReport: (bondId: String, entryId: String?, partnerName: String?) -> Unit,
     viewModel: ArchiveDayViewModel = koinViewModel { parametersOf(date) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             ArchiveDayEvent.NavigateBack -> onBack()
+            is ArchiveDayEvent.NavigateToReport -> onReport(event.bondId, event.entryId, event.partnerName)
         }
+    }
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onAction(ArchiveDayAction.OnResumed)
+        onPauseOrDispose {}
     }
     ArchiveDayScreen(state = state, onAction = viewModel::onAction)
 }
@@ -71,8 +79,8 @@ fun ArchiveDayRoot(
  * partner's revealed entry, the interim reaction set; under mine, the partner's reaction
  * (docs/missing-components.md §45: no frame draws either yet).
  *
- * Owed and not drawn: the Report link in the header (617:1835; the backend has no
- * report endpoint).
+ * Report in the header, across from the back target (617:1835; `26` §3.2: one discreet
+ * header action, never a control under an entry), once there is someone to report.
  */
 @Composable
 fun ArchiveDayScreen(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
@@ -98,6 +106,11 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
     MoyiScaffold(
         onBack = { onAction(ArchiveDayAction.OnBackClick) },
         backLabel = dayHeader(day.date),
+        backAction = if (state.canReport) {
+            { TextLink(text = stringResource(Res.string.archive_day_report), onClick = { onAction(ArchiveDayAction.OnReportClick) }) }
+        } else {
+            null
+        },
     ) {
         // TODO(#17): the partner's words are protected from screen capture there (R3);
         //  this EntryCard gains it when #17 merges.
@@ -132,7 +145,7 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
                 onToggle = { onAction(ArchiveDayAction.OnFavouriteClick(FavouriteTarget.Mine)) },
             ) {
                 EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry, photo = day.myPhoto, voice = day.myVoice)
-                PartnerReaction(reaction = day.partnerReaction, partnerName = state.partnerName.orEmpty(), modifier = Modifier.fillMaxWidth())
+                PartnerReaction(reaction = day.partnerReaction, partnerName = state.partnerName.orEmpty())
             }
         } else if (day.myTombstone) {
             // states.md Appendix: the tombstone is labelled "From you", never the partner.
@@ -194,6 +207,7 @@ private fun EntryWithMark(
 
 private fun previewDay(tombstone: Boolean = false) = ArchiveDayState(
     load = ArchiveLoad.Ready,
+    canReport = true,
     date = FakeCopy.DATE,
     partnerName = FakeCopy.PARTNER_NAME,
     day = ArchiveDayUi(

@@ -186,6 +186,10 @@ fun RegisterScreen(
                 onClick = { onAction(RegisterAction.OnLegalLinkClick(LegalDocument.Privacy)) },
             )
         }
+        state.legalError?.let { error ->
+            Spacer(Modifier.height(spacing.sm))
+            InlineError(error.asString())
+        }
     }
 }
 

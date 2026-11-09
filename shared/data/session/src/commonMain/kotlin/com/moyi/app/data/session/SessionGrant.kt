@@ -18,34 +18,31 @@ class SessionGrant(
 }
 
 /**
- * The generated `LoginResponse` declares no required fields (contract gaps 4
- * and 5), so every field arrives nullable. A 2xx without a token or a user is
- * not a session: it is [DataError.Network.Serialization], the same as a body
- * that did not parse.
+ * The generated `LoginResponse` declares its fields required, so a 2xx without a
+ * token or a user fails to decode. A blank token is still not a session: it is
+ * [DataError.Network.Serialization], the same as a body that did not parse.
  */
 fun LoginResponse.toSessionGrant(): Result<SessionGrant, DataError.Network> {
-    val access = accessToken?.takeIf { it.isNotBlank() }
-    val refresh = refreshToken?.takeIf { it.isNotBlank() }
-    val mappedUser = user?.toUser()
-    return if (access == null || refresh == null || mappedUser == null) {
+    val access = accessToken.takeIf { it.isNotBlank() }
+    val refresh = refreshToken.takeIf { it.isNotBlank() }
+    return if (access == null || refresh == null) {
         Result.Failure(DataError.Network.Serialization)
     } else {
-        Result.Success(SessionGrant(access, refresh, mappedUser))
+        Result.Success(SessionGrant(access, refresh, user.toUser()))
     }
 }
 
-/** Null when a field the app cannot do without (id, email, display name) is missing. */
-fun UserResponse.toUser(): User? = User(
-    id = id ?: return null,
-    email = email ?: return null,
-    displayName = displayName ?: return null,
-    emailVerified = emailVerified ?: false,
-    status = status?.name.toUserStatus(),
+fun UserResponse.toUser(): User = User(
+    id = id,
+    email = email,
+    displayName = displayName,
+    emailVerified = emailVerified,
+    status = status.name.toUserStatus(),
 )
 
 /**
  * `GET /me` answers with the profile: the user plus which legal versions they accepted.
- * The app reads only the user here; `legalAccepted` waits for the consent screen.
+ * The user only; `legalAccepted` is read by LegalRepositoryImpl, for the re-consent check.
  */
 fun ProfileResponse.toUser(): User = User(
     id = id,

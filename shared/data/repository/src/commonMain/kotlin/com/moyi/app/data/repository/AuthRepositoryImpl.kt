@@ -22,6 +22,7 @@ import com.moyi.app.data.network.safeApiCallEmpty
 import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.session.toSessionGrant
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
@@ -61,7 +62,7 @@ class AuthRepositoryImpl(
         email: String,
         password: String,
         locale: String,
-        acceptedTermsVersion: String,
+        acceptedTermsVersion: String?,
         over18: Boolean,
     ): EmptyResult<DataError.Network> = safeApiCallEmpty {
         // 201 with no body: only the status is checked, the body is never decoded.
@@ -77,8 +78,8 @@ class AuthRepositoryImpl(
         )
     }
 
-    override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> =
-        safeApiCallEmpty { verification.verify(VerifyEmailRequest(token = token)) }
+    override suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { verification.verify(proof.toVerifyRequest()) }
 
     override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { verification.resend(ResendVerificationRequest(email = email)) }
@@ -87,8 +88,8 @@ class AuthRepositoryImpl(
         safeApiCallEmpty { passwordReset.forgot(ForgotPasswordRequest(email = email)) }
 
     // 200 with no body and no session: the person signs in afterwards (doc 06 §3.1).
-    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> =
-        safeApiCallEmpty { passwordReset.reset(ResetPasswordRequest(password = password, token = token)) }
+    override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { passwordReset.reset(proof.toResetRequest(password)) }
 
     override suspend fun login(email: String, password: String): Result<User, DataError> {
         val request = LoginRequest(email = email, password = password, device = deviceInfo.deviceInfo().toRequest())
@@ -135,4 +136,19 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun restoreSession(): SessionState = sessionManager.restore()
+}
+
+/*
+ * Built BY NAME, always: the contract lists `code`, `email` and `token` in that order, so a
+ * positional argument would send a link's token as `code`. Exactly one shape per request; the
+ * fields left out stay null and are not sent (the serializer drops nulls).
+ */
+internal fun EmailProof.toVerifyRequest(): VerifyEmailRequest = when (this) {
+    is EmailProof.Link -> VerifyEmailRequest(token = token)
+    is EmailProof.Code -> VerifyEmailRequest(email = email, code = code)
+}
+
+internal fun EmailProof.toResetRequest(password: String): ResetPasswordRequest = when (this) {
+    is EmailProof.Link -> ResetPasswordRequest(password = password, token = token)
+    is EmailProof.Code -> ResetPasswordRequest(password = password, email = email, code = code)
 }

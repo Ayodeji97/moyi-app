@@ -1,6 +1,5 @@
 package com.moyi.app.feature.today.common
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,20 +11,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.MoyiText
+import com.moyi.app.designsystem.component.NavTarget
 import com.moyi.app.designsystem.component.SecondaryAction
 import com.moyi.app.designsystem.component.SecondaryActionPair
 import com.moyi.app.designsystem.component.TextLink
@@ -95,18 +91,6 @@ internal fun TodayNavRow(
 @Composable
 internal fun DateLabel(date: String, modifier: Modifier = Modifier) {
     MoyiText(text = date, role = TextRole.Label, modifier = modifier)
-}
-
-@Composable
-private fun NavTarget(icon: ImageVector, description: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(MoyiDimens.TouchTarget)
-            .clickable(role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = description, tint = MoyiTheme.colors.ink, modifier = Modifier.size(MoyiDimens.IconGlyph))
-    }
 }
 
 /** A title-style heading, announced as a heading ("Your day is open."). */

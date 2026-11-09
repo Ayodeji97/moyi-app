@@ -11,12 +11,17 @@ package com.moyi.app.core
  * @property status the HTTP status of the response, which wins over the body's.
  * @property traceId present once the backend adds it to the contract
  *   (docs/backend-contract-gaps.md, row 6); worth quoting in a bug report.
+ * @property allowedFrom only with [ApiErrorCode.TIMEZONE_CHANGE_TOO_SOON]: the first
+ *   day the shared time zone can change again, `YYYY-MM-DD` in the bond's
+ *   `anchorTimezone`. A string, not a date type, because core (and so domain)
+ *   carries no date library; the parser has already checked it is a real date.
  */
 data class ApiProblem(
     val status: Int,
     val code: ApiErrorCode,
     val fieldErrors: List<FieldError> = emptyList(),
     val traceId: String? = null,
+    val allowedFrom: String? = null,
 )
 
 /** One rejected request field. The server never echoes the rejected value. */

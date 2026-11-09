@@ -51,7 +51,7 @@ class LoginControllerApiTest {
         assertEquals("a.b.c", response.accessToken)
         assertEquals(900L, response.expiresIn)
         assertEquals("r1", response.refreshToken)
-        assertEquals("Ada", response.user?.displayName)
+        assertEquals("Ada", response.user.displayName)
     }
 
     @Test
