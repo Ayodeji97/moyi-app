@@ -960,9 +960,22 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
     **Your account will be deleted on {date}** with **Keep my account** as the primary, as
     Keep the box is during the cooling-off.
   - **Get help** is left out (no support screen yet), with no dead row.
-- **Open questions for the owner:** (1) the placement (Account inside Bond settings means a
-  person with no open bond cannot reach export or deletion; `Bond · archived` should probably
-  offer both); (2) every string in the "Account (Figma Account 7 · settings ...)" block of
+- **Reachable with no bond (owner ruling 2026-11-09, "it should be moved"):** Account is its
+  own navigation graph beside Bond settings, not inside it, so every signed-in person reaches
+  it. Bond settings keeps its **Account** row (Figma 575:1782 draws it there). The screens a
+  person with no open bond lands on, none of which can reach Bond settings, gain a **Your
+  account** link (`TextLink`, centred, `account.heading`'s words) that pushes Account; back
+  returns:
+  - **Account · unverified gate**: under Send it again (or its Resent acknowledgement).
+  - **Relationship type as the signed-in root**: under I have an invite code. Left out when it
+    is pushed from the archived bond (back drawn), because the screen behind already has it.
+  - **Bond · archived**: under Start a new bond. This is also where the frames draw "Export your
+    archive"; Account carries it, one tap further.
+  - PROPOSED: Figma draws no account entry on any of these three. The closest existing pattern
+    is the secondary link in the action block, which each already uses; no new component.
+- **Open questions for the owner:** (1) the "Your account" link on the gate, relationship type
+  and the archived bond (placement and words; whether the archived bond should instead draw
+  its own "Export your archive" link, as its frames do); (2) every string in the "Account (Figma Account 7 · settings ...)" block of
   `feature/bond` `strings.xml`, for `copy.md`; (3) whether the export's ready line should
   name a time (it does: "until 10 November at 17:30") or only the day.
 

@@ -180,4 +180,7 @@
     <string name="gate_resend">Send it again</string>
     <!-- verify.resent. Replaces the resend link for a minute, so a second tap is not a silent no-op. -->
     <string name="gate_resent">Sent again. You can ask for another in a minute.</string>
+
+    <!-- PROPOSED (docs/missing-components.md §57). The link that opens Account from a screen a person without an open bond lands on (the gate, relationship type as the first screen): account.heading's words. Without it they could not export or delete their account. -->
+    <string name="onboarding_your_account">Your account</string>
 </resources>

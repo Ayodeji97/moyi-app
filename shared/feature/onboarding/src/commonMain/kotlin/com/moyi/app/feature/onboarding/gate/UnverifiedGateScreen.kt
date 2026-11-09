@@ -30,12 +30,14 @@ import com.moyi.app.feature.onboarding.resources.gate_heading
 import com.moyi.app.feature.onboarding.resources.gate_line
 import com.moyi.app.feature.onboarding.resources.gate_resend
 import com.moyi.app.feature.onboarding.resources.gate_resent
+import com.moyi.app.feature.onboarding.resources.onboarding_your_account
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun UnverifiedGateRoot(
     onNavigateToOnboarding: () -> Unit,
+    onNavigateToAccount: () -> Unit,
     viewModel: UnverifiedGateViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -43,6 +45,7 @@ fun UnverifiedGateRoot(
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             UnverifiedGateEvent.NavigateToOnboarding -> onNavigateToOnboarding()
+            UnverifiedGateEvent.NavigateToAccount -> onNavigateToAccount()
         }
     }
     UnverifiedGateScreen(state = state, onAction = viewModel::onAction)
@@ -54,6 +57,10 @@ fun UnverifiedGateRoot(
  * block holds one centred secondary affordance at 772, "Send it again",
  * which becomes the muted acknowledgement once sent (the verify screen's
  * Resent sub-state, 362:95). Drawn as a plain screen, not a StateBlock.
+ *
+ * PROPOSED (docs/missing-components.md §57): under it, a second centred link, **Your
+ * account**, which pushes Account. An unverified person has no bond, so no Bond settings,
+ * and must still be able to export or delete their account.
  */
 @Composable
 fun UnverifiedGateScreen(
@@ -87,6 +94,13 @@ fun UnverifiedGateScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            Spacer(Modifier.height(spacing.sm))
+            TextLink(
+                stringResource(Res.string.onboarding_your_account),
+                onClick = { onAction(UnverifiedGateAction.OnAccountClick) },
+                centered = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
         },
     ) {
         ScreenHeader(

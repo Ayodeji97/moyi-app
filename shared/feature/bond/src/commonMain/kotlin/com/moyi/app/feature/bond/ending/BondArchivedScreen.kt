@@ -1,6 +1,7 @@
 package com.moyi.app.feature.bond.ending
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -10,8 +11,10 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.ScreenHeader
+import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.feature.bond.resources.Res
+import com.moyi.app.feature.bond.resources.archived_account
 import com.moyi.app.feature.bond.resources.archived_eyebrow
 import com.moyi.app.feature.bond.resources.archived_heading
 import com.moyi.app.feature.bond.resources.archived_line
@@ -33,18 +36,28 @@ import org.jetbrains.compose.resources.stringResource
  * the box", is refused on every archived bond (ADR-0030), so it is offered on neither.
  * Nothing on this screen can tell a blocked person they were blocked.
  *
- * The frames' "Export your archive" and the link into this bond's Archive are owed (no
- * export endpoint in the contract copy; the Archive is on another branch). The one action
- * is starting a new bond, which pushes onboarding, so back from there returns here.
+ * The link into this bond's Archive is owed (the Archive is on another branch). The primary
+ * action is starting a new bond, which pushes onboarding, so back from there returns here.
+ * Under it, PROPOSED (docs/missing-components.md §57), **Your account**: a person here has
+ * no Bond settings, and Account is where they export their archive (the frames' "Export
+ * your archive") or delete their account. It pushes Account; back returns here.
  */
 @Composable
 fun BondArchivedScreen(
     partnerName: String?,
     onStartNewBond: () -> Unit,
+    onOpenAccount: () -> Unit,
 ) {
     MoyiScaffold(
         action = {
             PrimaryAction(text = stringResource(Res.string.archived_new_bond), onClick = onStartNewBond)
+            Spacer(Modifier.height(MoyiTheme.spacing.lg))
+            TextLink(
+                stringResource(Res.string.archived_account),
+                onClick = onOpenAccount,
+                centered = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
         },
     ) {
         ScreenHeader(eyebrow = stringResource(Res.string.archived_eyebrow), heading = stringResource(Res.string.archived_heading))
@@ -59,11 +72,11 @@ fun BondArchivedScreen(
 @Preview
 @Composable
 private fun BondArchivedPreview() {
-    MoyiTheme(darkTheme = true) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}) }
+    MoyiTheme(darkTheme = true) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onOpenAccount = {}) }
 }
 
 @Preview
 @Composable
 private fun BondArchivedLightPreview() {
-    MoyiTheme(darkTheme = false) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}) }
+    MoyiTheme(darkTheme = false) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onOpenAccount = {}) }
 }

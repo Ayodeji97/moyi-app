@@ -162,6 +162,8 @@
     <string name="archived_line_unnamed">It is read only for both of you, and your archive stays. What the other person wrote about you stays readable unless they remove it.</string>
     <!-- PROPOSED. The PrimaryAction (399:32), whose words were not read: starting a new bond (copy.md: "New bond"). -->
     <string name="archived_new_bond">Start a new bond</string>
+    <!-- PROPOSED (docs/missing-components.md §57). The link under Start a new bond that opens Account: account.heading's words. Someone with no open bond has no Bond settings, so this is how they reach export and deletion. -->
+    <string name="archived_account">Your account</string>
 
     <!-- states.md §8 (the ETag conflict, "worth drawing"): a 412, after the screen has reloaded. -->
     <string name="settings_error_conflict">This changed while you were looking at it.</string>

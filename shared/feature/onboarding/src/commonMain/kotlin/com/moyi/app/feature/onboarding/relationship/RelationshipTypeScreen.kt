@@ -40,6 +40,7 @@ import com.moyi.app.feature.onboarding.resources.bond_type_have_code
 import com.moyi.app.feature.onboarding.resources.bond_type_heading
 import com.moyi.app.feature.onboarding.resources.bond_type_line
 import com.moyi.app.feature.onboarding.resources.onboarding_eyebrow_new_bond
+import com.moyi.app.feature.onboarding.resources.onboarding_your_account
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -47,6 +48,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun RelationshipTypeRoot(
     onNavigateToCreateBond: (RelationshipType) -> Unit,
     onNavigateToJoin: () -> Unit,
+    onNavigateToAccount: () -> Unit,
     onNavigateBack: (() -> Unit)?,
     viewModel: RelationshipTypeViewModel = koinViewModel(),
 ) {
@@ -56,6 +58,7 @@ fun RelationshipTypeRoot(
             is RelationshipTypeEvent.NavigateToCreateBond -> onNavigateToCreateBond(event.type)
             RelationshipTypeEvent.NavigateBack -> onNavigateBack?.invoke()
             RelationshipTypeEvent.NavigateToJoin -> onNavigateToJoin()
+            RelationshipTypeEvent.NavigateToAccount -> onNavigateToAccount()
         }
     }
     RelationshipTypeScreen(state = state, onAction = viewModel::onAction, showBack = onNavigateBack != null)
@@ -74,6 +77,12 @@ fun RelationshipTypeRoot(
  *
  * [showBack] is false when this is the first screen after sign in (nothing
  * behind it); the eyebrow returns and the heading sits at 107, as on every root form.
+ *
+ * PROPOSED (docs/missing-components.md §57): as that root, a second centred link, **Your
+ * account**, under the invite-code link. A person here is in no open bond, so Bond settings
+ * (where Figma puts Account) cannot be reached, and Account is the only way to export or
+ * delete the account. Pushed from the archived bond (back drawn), the link is left out:
+ * the archived screen behind it already has it.
  */
 @Composable
 fun RelationshipTypeScreen(
@@ -91,6 +100,15 @@ fun RelationshipTypeScreen(
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (!showBack) {
+                Spacer(Modifier.height(spacing.sm))
+                TextLink(
+                    stringResource(Res.string.onboarding_your_account),
+                    onClick = { onAction(RelationshipTypeAction.OnAccountClick) },
+                    centered = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
     ) {
         ScreenHeader(
@@ -168,6 +186,12 @@ fun RelationshipCard(
 @Composable
 private fun RelationshipTypeChoosePreview() {
     MoyiTheme(darkTheme = true) { RelationshipTypeScreen(state = RelationshipTypeState(), onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun RelationshipTypeRootPreview() {
+    MoyiTheme(darkTheme = true) { RelationshipTypeScreen(state = RelationshipTypeState(), onAction = {}, showBack = false) }
 }
 
 @Preview

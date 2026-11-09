@@ -38,6 +38,16 @@ class UnverifiedGateViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun yourAccountOpensAccountWithoutAskingTheServer() = runTest {
+        val viewModel = UnverifiedGateViewModel(auth, account)
+        viewModel.events.test {
+            viewModel.onAction(UnverifiedGateAction.OnAccountClick)
+            assertEquals(UnverifiedGateEvent.NavigateToAccount, awaitItem())
+        }
+        assertEquals(0, auth.resendCalls.size, "opening Account sends no email")
+    }
+
+    @Test
     fun aFailedCheckChangesNothing() = runTest {
         account.result = Result.Failure(DataError.Network.NoInternet)
         val viewModel = UnverifiedGateViewModel(auth, account)

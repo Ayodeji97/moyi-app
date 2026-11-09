@@ -10,6 +10,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.bond.account.AccountAction
 import com.moyi.app.feature.bond.account.AccountEvent
@@ -23,6 +24,15 @@ import com.moyi.app.feature.bond.account.ExportViewModel
 import kotlinx.serialization.Serializable
 import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * Account, its own graph so every signed-in person can reach it, bond or no bond (owner
+ * ruling 2026-11-09): Bond settings' Account row, and the "Your account" link on the
+ * screens a person without an open bond lands on (relationship type, the unverified gate,
+ * the archived bond). Store policy wants account deletion reachable from inside the app.
+ */
+@Serializable
+data object AccountGraph
+
 @Serializable
 internal data object AccountRoute
 
@@ -33,9 +43,10 @@ internal data object DeleteAccountRoute
 internal data object ExportRoute
 
 /**
- * Account and what it opens, inside the Bond settings graph. Back stack:
+ * Account and what it opens ([AccountGraph]). It needs nothing from a bond. Back stack:
  *
- * - Bond settings → Account (push). Back returns to Bond settings.
+ * - Bond settings, relationship type, the unverified gate or the archived bond → Account
+ *   (push). Back returns to the screen it was opened from.
  * - Account → Delete your account (push), sharing Account's ViewModel (from Account's entry),
  *   so the row shows the pending day as soon as it is asked for. Asking stays on the screen,
  *   which turns to the pending state; keeping the account returns to Account. Back clears the
@@ -45,7 +56,13 @@ internal data object ExportRoute
  *   screen, app in front), and stops for good when it is popped. Download leaves the app for
  *   the phone's browser.
  */
-internal fun NavGraphBuilder.accountDestinations(navController: NavController) {
+fun NavGraphBuilder.accountGraph(navController: NavController) {
+    navigation<AccountGraph>(startDestination = AccountRoute) {
+        accountDestinations(navController)
+    }
+}
+
+private fun NavGraphBuilder.accountDestinations(navController: NavController) {
     composable<AccountRoute> { entry ->
         AccountDestination(entry, navController) { viewModel ->
             val state by viewModel.state.collectAsStateWithLifecycle()

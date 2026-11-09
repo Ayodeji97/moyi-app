@@ -106,8 +106,8 @@ data class BondArchivedRoute(val partnerName: String? = null)
  *   times change in place. The phone's permission prompt is shown from here only
  *   (NotificationPermissionPolicy), and Open phone settings leaves the app. Back returns
  *   to the root.
- * - Bond settings → Account (push), and from it Delete your account and Export your
- *   archive: see [accountDestinations].
+ * - Bond settings → Account (push), its own graph because a person with no bond reaches it
+ *   too, and from it Delete your account and Export your archive: see [accountGraph].
  * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
  *   person to the signed-in start, which shows the archived bond. Signing out needs
  *   nothing here; the shell routes on the session ending.
@@ -166,7 +166,6 @@ fun NavGraphBuilder.bondSettingsGraph(
             }
         }
         composable<NotificationsRoute> { entry -> NotificationsDestination(entry, navController, onBondEnded) }
-        accountDestinations(navController)
         composable<BondTypeRoute> { entry ->
             SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
@@ -208,7 +207,7 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
-            BondSettingsEvent.OpenAccount -> navController.navigate(AccountRoute) { launchSingleTop = true }
+            BondSettingsEvent.OpenAccount -> navController.navigate(AccountGraph) { launchSingleTop = true }
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
             is BondSettingsEvent.ShareInvite -> scope.launch {
@@ -255,11 +254,12 @@ private fun NavController.closeEditor(viewModel: BondSettingsViewModel) {
 
 /**
  * Bond · archived ([BondArchivedRoute]). A root with no back (SKILL.md); the shell makes it
- * the only screen. [onStartNewBond] pushes onboarding over it, so back from there returns.
+ * the only screen. [onStartNewBond] pushes onboarding over it, and [onOpenAccount] pushes
+ * Account ([AccountGraph]), so back from either returns here.
  */
-fun NavGraphBuilder.bondArchivedDestination(onStartNewBond: () -> Unit) {
+fun NavGraphBuilder.bondArchivedDestination(onStartNewBond: () -> Unit, onOpenAccount: () -> Unit) {
     composable<BondArchivedRoute> { entry ->
         val route = entry.toRoute<BondArchivedRoute>()
-        BondArchivedScreen(partnerName = route.partnerName, onStartNewBond = onStartNewBond)
+        BondArchivedScreen(partnerName = route.partnerName, onStartNewBond = onStartNewBond, onOpenAccount = onOpenAccount)
     }
 }
