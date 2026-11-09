@@ -167,6 +167,8 @@
     <string name="generic_error_line">Nothing was lost. Try again in a moment.</string>
     <!-- auth_try_again's words (states.md §1c "Try again"). -->
     <string name="generic_error_action">Try again</string>
+    <!-- account.help (strings-proposed.md §9). PROPOSED placement: a second link on the Generic error, opening Support. -->
+    <string name="generic_error_get_help">Get help</string>
 
     <!-- ===== Account 5 · unverified gate (Figma 345:46, states.md §1b) ===== -->
 

@@ -1198,3 +1198,45 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   until accepted (needs a backend refusal code first)? (2) Is *Just you* the right group for
   the row, or does it belong on the unbuilt Account screen (`strings-proposed.md`
   `settings.row.account`)? (3) The heading and line need a human pass for `copy.md`'s voice.
+## Contact support (FR-102)
+
+### 55. Get help: where it opens from, and the form's undrawn parts
+
+- **Today:** `strings-proposed.md` §9 has Support's copy (IN FILE, not decided) and `SKILL.md`
+  lists 14 Support screens plus `Account 7 · settings`, whose `account.help` "Get help" opens
+  Support. Figma's Support section was not read for this PR. The Account screen is not built
+  (Bond settings shows Sign out in its place in Just you).
+- **Built:**
+  - **Bond settings · Just you → Get help** (`settings_row_help`, `account.help`'s words), a
+    navigating row between Notifications and Sign out, on the loaded root and on the failed
+    load (it needs nothing from the bond). **PROPOSED placement**: in place of the Account
+    screen's row, until that screen exists.
+  - **The Generic error on the signed-in start → Get help**, a second `TextLink` under Try
+    again (`generic_error_get_help`). `StateBlock` gained the second action that its Waiting
+    variant already has (`tokens.md` §4), the same gap apart. **PROPOSED**: the Generic error is
+    drawn with one action. It is offered only there, the one Generic error with no other way
+    out (no back, no settings). Today's, the Archive's and the Streak's errors keep one action.
+  - **Support · form**: back, eyebrow Support, heading Get help, `support.privacy` as a muted
+    line, `Field · Text` Subject, `Field · Multiline` Message (the variant `tokens.md` §4 added
+    for this body; the same code as PR #58's, so the two merge cleanly), and Send, which says
+    **Sending** (PROPOSED word) while the request is out. A send that did not go is an
+    `InlineError` above the action (`support.failed.error`) and the action reads Try again
+    (`support.failed.retry`). The placeholders `support.subject.placeholder` and
+    `support.message.placeholder` are not shown: `Field` has no placeholder slot.
+  - **Support · sent** and **Support · paused** (`429`): a centred `StateBlock` with one action,
+    no header and no back (`SKILL.md`, acknowledgement screens). The action is
+    `support.back` "Back to settings" from settings, and **PROPOSED** "Go back" from the
+    Generic error, where "settings" would be untrue.
+  - **PROPOSED field errors**, checked before sending against the contract's limits (120 and
+    5000 code points): "Add a subject so we know what this is about.", "Tell us what is going
+    on.", "A subject can be up to %1$d characters.", "A message can be up to %1$d characters.",
+    and "Something in here can't be sent. Change it and try again." (a NUL or broken character,
+    or a `422` naming the field).
+- **Not built:** **Support · queued** (`support.queued`, "Saved. It'll send when you're back
+  online."). It needs an outbox for support messages; offline is the failed state instead,
+  with the words kept on screen (not across an app restart).
+- **Open questions for the owner:** (1) Get help's place until the Account screen exists, and
+  whether the Generic error should carry it; (2) `support.sent.line` promises "Usually within a
+  day", which nothing in the backend guarantees (the acknowledgement email is best effort and
+  goes only to a confirmed address); (3) the PROPOSED strings above; (4) whether offline should
+  queue (`support.queued`) or stay a failure.

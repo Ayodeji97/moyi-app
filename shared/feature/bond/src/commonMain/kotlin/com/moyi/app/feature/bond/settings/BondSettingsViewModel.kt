@@ -128,6 +128,7 @@ class BondSettingsViewModel(
                 _state.update { it.copy(error = null) }
                 send(BondSettingsEvent.OpenNotifications)
             }
+            BondSettingsAction.OnGetHelpClick -> if (!_state.value.signingOut) send(BondSettingsEvent.OpenSupport)
             BondSettingsAction.OnSignOutUnsentConfirm -> {
                 _state.update { it.copy(confirmingUnsentSignOut = false, signingOut = true) }
                 viewModelScope.launch { auth.logout() }

@@ -10,6 +10,7 @@ import com.moyi.app.feature.auth.di.authFeatureModule
 import com.moyi.app.feature.onboarding.di.onboardingFeatureModule
 import com.moyi.app.feature.bond.di.bondFeatureModule
 import com.moyi.app.feature.today.di.todayFeatureModule
+import com.moyi.app.feature.support.di.supportFeatureModule
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -27,7 +28,7 @@ val appModule: Module = module {
 }
 
 /** Every module the app runs with, data layer first. The platform ones need `androidContext` on Android. */
-val appModules: List<Module> = listOf(networkModule) + sessionModules + databaseModules + repositoryModules + authFeatureModule + onboardingFeatureModule + todayFeatureModule + bondFeatureModule + appModule
+val appModules: List<Module> = listOf(networkModule) + sessionModules + databaseModules + repositoryModules + authFeatureModule + onboardingFeatureModule + todayFeatureModule + bondFeatureModule + supportFeatureModule + appModule
 
 /**
  * Starts Koin once per process. Android calls it from `MoyiApplication`

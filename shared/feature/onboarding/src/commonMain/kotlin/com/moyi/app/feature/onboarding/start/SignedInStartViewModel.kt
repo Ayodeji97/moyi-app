@@ -59,6 +59,9 @@ class SignedInStartViewModel(
     fun onAction(action: SignedInStartAction) {
         when (action) {
             SignedInStartAction.OnRetryClick -> if (_state.value == SignedInStartState.Failed) check()
+            SignedInStartAction.OnGetHelpClick -> if (_state.value == SignedInStartState.Failed) {
+                viewModelScope.launch { _events.send(SignedInStartEvent.NavigateToSupport) }
+            }
         }
     }
 

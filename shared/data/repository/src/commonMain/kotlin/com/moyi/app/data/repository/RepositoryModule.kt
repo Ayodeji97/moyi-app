@@ -16,6 +16,7 @@ import com.moyi.app.domain.report.ReportRepository
 import com.moyi.app.domain.notification.PushTokenRegistration
 import com.moyi.app.domain.notification.PushTokenSource
 import com.moyi.app.domain.streak.StreakRepository
+import com.moyi.app.domain.support.SupportRepository
 import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.OutboxSender
@@ -48,6 +49,7 @@ val repositoryModule = module {
     single<StreakRepository> { StreakRepositoryImpl(get(), get()) }
     // Reports to a person (FR-100, ADR-0053): an entry of the partner's, or the partner.
     single<ReportRepository> { ReportRepositoryImpl(get(), get()) }
+    single<SupportRepository> { SupportRepositoryImpl(get(), get()) }
     // Today's cache-then-network (doc 13 §5), keyed by the signed-in person.
     single<TodayCache> { SqlTodayCache(get(), get<SessionManager>().sessionState) }
     single<ArchiveCache> { SqlArchiveCache(get(), get<SessionManager>().sessionState) }

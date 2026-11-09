@@ -117,6 +117,9 @@ sealed interface BondSettingsAction {
     data object OnSignOutClick : BondSettingsAction
     data object OnNotificationsClick : BondSettingsAction
 
+    /** Get help: Support, pushed over settings. Needs nothing from the bond, so it works on a failed load too. */
+    data object OnGetHelpClick : BondSettingsAction
+
     /** Sign out anyway: the unsent entries are deleted with the session. */
     data object OnSignOutUnsentConfirm : BondSettingsAction
 
@@ -178,6 +181,7 @@ sealed interface BondSettingsEvent {
     /** The report flow about the other member of [bondId], named [partnerName]. */
     data class OpenReport(val bondId: String, val partnerName: String) : BondSettingsEvent
     data object OpenNotifications : BondSettingsEvent
+    data object OpenSupport : BondSettingsEvent
 
     /**
      * Open the OS share sheet with the invite. Fire and forget: the sheet closing is never
