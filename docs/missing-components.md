@@ -1313,4 +1313,32 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   settings ...)" block of `feature/bond` `strings.xml`, for `copy.md`; (2) whether the
   export's ready line should name a time (it does: "until 10 November at 17:30") or only the
   day; (3) a Figma frame for the account target on the three no-bond screens.
+### 59. The streak after a run ends, and a day a time zone change skipped (PR feat/streak-details)
+
+- **Today:** `states.md` §7 draws four streak states (227:3, 401:70, 401:160, 401:250). §7a
+  recorded two gaps the contract has since closed (ADR-0034 amendment): `lastRunLength` (the run
+  the latest break ended) and a `FROZEN` cell's `reason` (`REST_DAY` or `TIMEZONE_SHIFT`).
+- **Built, from a Figma line:** the ended footer now names the length, as 401:219 draws it:
+  `streak_ended_at` "Your streak ended at %1$d days. That is %1$d days of showing up. No rest
+  days were left." Shown only when `current` is 0 and `lastRunLength` is not null (ADR-0034: it
+  stays set while the next run grows). **PROPOSED:** its `one` form ("ended at one day"), and
+  the Strict-mode twin `streak_ended_at_strict` ("... Rest days are off.").
+- **Built, PROPOSED copy, no frame:** when yesterday is `FROZEN` because an approved change of
+  the shared time zone stepped over it (BR-6, `04` §8.5), and a run is going on:
+  `streak_timezone_shift` "Yesterday was skipped when your shared time zone changed, so there
+  was nothing to write. Your streak carries on." It replaces "We used a rest day", which would be
+  false (no rest day is spent) and would imply someone missed a day. It wins over "Rest days are
+  off." in Strict mode, where a frozen yesterday under that line would read as a contradiction.
+  With no run going on it is not said ("carries on" would be untrue); the ordinary line shows.
+- **Built, PROPOSED copy:** a screen reader hears such a cell as `streak_cell_timezone`
+  "%1$s, skipped when the time zone changed" instead of "rest day".
+- **Not designed, raised rather than improvised:** the cell keeps the Rest day shape
+  (`DayCellState.Frozen`) and the key still calls that shape "Rest day". A distinct shape and
+  key entry for a skipped date would be a fifth (sixth, with Solo) calendar state with its own
+  3:1 check. Related, already true before this PR: in Strict mode the Rest day key is hidden
+  (401:296) though a past rest day or a skipped date can still be in the window (FR-073).
+- **Neutral fallback:** a `FROZEN` cell with no reason, or a reason added after this build, is
+  drawn as a rest day and gets the ordinary footer: nothing is said about why.
+- **Owed outside this repo:** `states.md` §7/§7a rows for these two lines, and the copy for
+  `copy.md`.
 
