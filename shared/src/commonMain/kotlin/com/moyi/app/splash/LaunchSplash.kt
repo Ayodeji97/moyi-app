@@ -51,8 +51,9 @@ import org.jetbrains.compose.resources.stringResource
  *
  * It sits **above** the app, which is already composing underneath: the session restore
  * and whatever the first screen loads are never delayed by it. [ready] turns true when the
- * first screen is chosen ([signedIn] says which); the splash then leaves by
- * [SplashTimeline.handOff] and calls [onFinished] once it has faded out.
+ * first screen has drawn something (`firstScreenDrawn`; [signedIn] says which start it
+ * is); the splash then leaves by [SplashTimeline.handOff] and calls [onFinished] once it
+ * has faded out. Until then it holds the finished lockup, never a bare surface.
  *
  * Under Reduce Motion (iOS) or Remove animations (Android) it draws the finished lockup,
  * still, from the first frame, and leaves by the same rule. The timeline is driven frame by

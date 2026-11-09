@@ -910,8 +910,9 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   Medium, 48, 24 below the mark) fades in on `motion.fadeIn` (610 to 820 ms); the lockup holds
   to 1120 ms and cross-fades away (`motion.crossFade`, 200 ms). The app composes underneath
   from the moment the session is known. **Hand-off** (`SplashTimeline.handOff`): signed out,
-  the splash plays out (1.3 s in all); signed in, it leaves at most 400 ms after the session
-  is restored, playing the rest of the entrance faster when it must. Reduce Motion / Remove
+  the splash plays out (1.3 s in all); signed in, it waits until the first screen has drawn
+  something (the cached day, Today's first answer, or another screen; never a bare surface)
+  and leaves at most 400 ms after that, playing the rest of the entrance faster when it must. Reduce Motion / Remove
   animations: the finished lockup, still, under the same rule. Decorative: screen readers
   hear nothing from it, and it swallows touches while it shows.
 - **Removed:** the iOS wordmark PDFs and their script, Android's `splash_mark.xml` and the

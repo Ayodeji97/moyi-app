@@ -43,7 +43,7 @@ internal object SplashTimeline {
     const val NaturalEndMillis = EntranceEndMillis + HoldMillis
 
     /**
-     * The longest the splash may stay after a signed-in session is restored ([handOff]).
+     * The longest a signed-in start's splash stays once its first screen has drawn ([handOff]).
      * Not a motion token; a bound on waiting.
      */
     const val CatchUpCapMillis = 400
@@ -93,15 +93,16 @@ internal object SplashTimeline {
     val FinalFrame: SplashFrame = SplashFrame(ringAlpha = 1f, ringScale = 1f, dotAlpha = 1f, dotLift = 0f, wordmarkAlpha = 1f)
 
     /**
-     * The hand-off rule: what the splash does once the first screen is chosen, when its
+     * The hand-off rule: what the splash does once the first screen has drawn, when its
      * timeline stands at [positionMillis].
      *
      * - **Signed out** (the promise screen, which needs nothing from the network): the
      *   splash plays out at its written pace and leaves at the natural end, or at once if
      *   that has passed. This is the person's first sight of the app, and a fast start
      *   chooses its screen in the first few frames, so anything quicker would never be seen.
-     * - **Signed in** (the daily start, whose screen is already loading underneath): the
-     *   splash leaves at most [CatchUpCapMillis] after the session is restored. If the rest
+     * - **Signed in** (the daily start, whose screen loads underneath): the splash leaves
+     *   at most [CatchUpCapMillis] after that screen has drawn (the cached day, or Today's
+     *   first answer; never Today's bare loading surface). If the rest
      *   of the entrance fits in that time it plays at its own pace and the remainder is
      *   held; if not, it plays faster so that it still finishes, and nothing is held. Ready
      *   at or after the natural end, it leaves at once.
