@@ -286,4 +286,88 @@
     <string name="notifications_quiet_line">Notifications wait until quiet hours end.</string>
     <string name="notifications_quiet_start">From</string>
     <string name="notifications_quiet_end">Until</string>
+
+    <!-- Account (Figma Account 7 · settings, 575:1782; strings-proposed.md §9 support). Its rows, the export and the deletion (FR-008, FR-009). -->
+    <!-- settings.row.account (strings-proposed.md §9): the Just you row that reaches it. -->
+    <string name="settings_row_account">Account</string>
+    <!-- account.eyebrow (strings-proposed.md §9). -->
+    <string name="account_eyebrow">Account</string>
+    <!-- account.heading (strings-proposed.md §9). -->
+    <string name="account_heading">Your account</string>
+    <!-- "Export your archive", the label drawn on the archived screens, the block confirm and the cooling-off (states.md §9). Its place on this screen is PROPOSED. -->
+    <string name="account_row_export">Export your archive</string>
+    <!-- account.delete (strings-proposed.md §9). -->
+    <string name="account_row_delete">Delete your account</string>
+    <!-- PROPOSED. The Delete your account row's value while a deletion is pending. %1$s is the day it happens ("23 November"): a date, never a countdown (states.md §9). -->
+    <string name="account_delete_value_pending">Deleting on %1$s</string>
+
+    <!-- PROPOSED. Delete your account, the confirm. The heading asks; the lines say exactly what happens (owner ruling 2026-11-09: a destructive, irreversible action says what it means). -->
+    <string name="delete_account_heading">Delete your account?</string>
+    <!-- PROPOSED. FR-008 and ADR-0058 as built: nothing goes today, 14 days to call it off, the person can still sign in until then. -->
+    <string name="delete_account_line">Nothing is deleted today. Your account is deleted 14 days from now, and until then you can still sign in and call it off here.</string>
+    <!-- PROPOSED. What the deletion does, from the backend's own description of POST /me/deletion-request. "The other person" because this screen does not know who the bond is with. -->
+    <string name="delete_account_consequence">When it happens, your name and email are erased and you can no longer sign in. Everything you wrote becomes a blank space in your shared archive, so the other person's days and streak stay as they were. Your photos, voice notes, bookmarks and reactions are deleted, and any bond you are in ends as if you had left it. After that it cannot be undone.</string>
+    <!-- PROPOSED. A link to the export before the destruction (states.md §9: export precedes destruction). -->
+    <string name="delete_account_export_first">Export your archive first</string>
+    <!-- field.password.label (strings-proposed.md §5). -->
+    <string name="delete_account_password_label">Password</string>
+    <!-- PROPOSED. Why the password is asked again. -->
+    <string name="delete_account_password_helper">Type your password to confirm it is you.</string>
+    <!-- PROPOSED. The destructive confirm (danger fill). -->
+    <string name="delete_account_confirm">Delete my account</string>
+    <!-- PROPOSED. PrimaryAction Sending: nothing is deleted yet, the request is being asked for (close_box_confirming's word). -->
+    <string name="delete_account_confirming">Asking</string>
+    <!-- PROPOSED. 401 INVALID_CREDENTIALS on POST /me/deletion-request: the password is wrong, the session is fine. -->
+    <string name="delete_account_error_password">That is not the password for this account. Try again.</string>
+    <!-- PROPOSED. Blank, checked here, or 422 from the server. -->
+    <string name="delete_account_error_blank">Type your password to delete your account.</string>
+    <!-- PROPOSED. 429: five tries an hour, wrong passwords included. No blame (copy.md). -->
+    <string name="delete_account_error_rate_limited">This is paused for a while. Your account is fine. Try again in an hour.</string>
+
+    <!-- PROPOSED. The pending deletion. %1$s is cancellableUntil's day: the account is deleted within the hour after it. A date, never a countdown (states.md §9). -->
+    <string name="delete_account_pending_heading">Your account will be deleted on %1$s</string>
+    <!-- PROPOSED. Nothing changes until then (ADR-0058 decision 2). -->
+    <string name="delete_account_pending_line">Until then nothing changes: you can sign in and write as usual, and keep your account here. After that it cannot be called off.</string>
+    <!-- PROPOSED. The safe action is the primary on a pending state, as Keep the box is (states.md §9). -->
+    <string name="delete_account_keep">Keep my account</string>
+    <!-- PROPOSED. Its Sending label. -->
+    <string name="delete_account_keeping">Keeping your account</string>
+    <!-- PROPOSED. 404 on DELETE while /me still shows the deletion: the window has closed. -->
+    <string name="delete_account_error_too_late">It is too late to call this off.</string>
+
+    <!-- Export your archive (FR-009, FR-094; states.md §9, Account 8 · export). PROPOSED throughout: the drawn acknowledgement promised a link by email, and the email carries none (docs/backend-contract-gaps.md, row 32). -->
+    <string name="export_heading">Export your archive</string>
+    <!-- PROPOSED. What is in it, from the backend's description of POST /me/export, and how it arrives. -->
+    <string name="export_line">One file with everything that is yours: your account, every day of your bonds as you see them, and your photos and voice notes. It usually takes a few minutes. We email you when it is ready, and you download it here.</string>
+    <!-- PROPOSED. -->
+    <string name="export_request">Prepare my archive</string>
+    <!-- PROPOSED. PrimaryAction Sending. -->
+    <string name="export_requesting">Asking</string>
+    <!-- PROPOSED. PREPARING: nothing to watch, so no progress is drawn (states.md §9: no progress state is invented). -->
+    <string name="export_preparing_heading">Your archive is being put together</string>
+    <!-- PROPOSED. No push is described for it (docs/backend-contract-gaps.md, row 32), so none is promised. -->
+    <string name="export_preparing_line">It usually takes a few minutes. You can leave this screen: we email you when it is ready, and you download it here.</string>
+    <!-- PROPOSED. READY. -->
+    <string name="export_ready_heading">Your archive is ready</string>
+    <!-- PROPOSED. %1$s is its size ("2.1 MB"), %2$s the day and %3$s the time the download stops working (FR-094, 24 hours). -->
+    <string name="export_ready_line">It is %1$s. You can download it until %2$s at %3$s. After that it is deleted, and you can ask for a new one.</string>
+    <!-- PROPOSED. READY without a size. -->
+    <string name="export_ready_line_unsized">You can download it until %1$s at %2$s. After that it is deleted, and you can ask for a new one.</string>
+    <!-- PROPOSED. The file is not encrypted: anyone who has it can read it. -->
+    <string name="export_ready_private">Anyone who has the file can read it, so keep it somewhere private.</string>
+    <!-- PROPOSED. Opens the download in the phone's browser. -->
+    <string name="export_download">Download</string>
+    <!-- PROPOSED. EXPIRED. -->
+    <string name="export_expired_heading">Your last archive has expired</string>
+    <!-- PROPOSED. -->
+    <string name="export_expired_line">A download lasts 24 hours. Ask for a new one whenever you like.</string>
+    <!-- PROPOSED. FAILED: built three times and not made. The error shape: what happened, what is preserved, what to do. -->
+    <string name="export_failed_heading">That archive could not be made</string>
+    <!-- PROPOSED. -->
+    <string name="export_failed_line">Nothing was lost. Ask again and it is made from the start.</string>
+    <!-- PROPOSED. 429: three new exports a day. Stated as a fact, no blame (support.paused's shape). -->
+    <string name="export_error_rate_limited">That is three archives for today. You can ask again tomorrow.</string>
+    <!-- PROPOSED. Sizes. %1$s is a number in the device's format. -->
+    <string name="export_size_mb">%1$s MB</string>
+    <string name="export_size_kb">%1$s KB</string>
 </resources>

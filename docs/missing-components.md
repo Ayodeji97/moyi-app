@@ -392,6 +392,9 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **Here:** both are left out rather than drawn dead. The block consequence drops "Export
   first if you want to keep them." with it, and the archived line does not promise an
   export. Owed together with the export screen (`Account 8 · export · REQUESTED`).
+- **Update (PR feat/export-and-deletion):** the export screen now exists, reached from
+  Account (§51). Linking it from the archived screens, the block confirm and the cooling-off
+  is still owed: a small follow-up once the owner confirms the placement in §51.
 
 ### 32. Bond · archived: READ ONLY and BLOCKED are one screen
 
@@ -924,3 +927,43 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
 - **Owed outside this repo:** `states.md` §4's row and paragraph, and `SKILL.md` §3's list of
   what is confirmed, need amending in the design system. Open question for the owner: the
   message string, for `copy.md`.
+
+## Account: export and deletion (PR feat/export-and-deletion, 2026-11-09)
+
+Numbered from 51 so they do not collide with sections other open PRs add; renumbered at merge.
+Every string below is **PROPOSED** unless it names its source in `strings.xml`.
+
+### 51. Account, Export your archive, Delete your account
+
+- **Today:** Figma draws `Account 7 · settings` (eyebrow "Account", heading "Your account",
+  rows Get help and Delete your account, reached by Bond settings' **Account** row), an
+  `Account deletion` screen whose words are not in the corpus, and `Account 8 · export ·
+  REQUESTED`, an acknowledgement that promises the archive "arrives by email". The backend as
+  built (e273a416) emails **no link**: the person downloads in the app, and no push is described
+  (`backend-contract-gaps.md` row 32). Nothing draws a READY, EXPIRED or FAILED export, or the
+  pending account deletion.
+- **Here (PROPOSED placement):** Bond settings › Just you › **Account** (between Notifications
+  and Sign out, also under the failed-load error, because it needs nothing from the bond) →
+  **Your account**, with two rows:
+  - **Export your archive** (the drawn label from the ending screens, placed here) → one screen
+    whose content follows the latest export: never asked / EXPIRED / FAILED offer **Prepare my
+    archive**; PREPARING is the acknowledgement (no progress, nothing to watch; it polls quietly
+    while open, backing off 3 s to 60 s, never in the background); READY gives the size, the day
+    and time the download stops working, a line that the file is readable by anyone who has it,
+    and **Download**, which opens the signed URL in the phone's browser (Safari or Chrome), not
+    the in-app browser: a zip has to land in Files or Downloads. The URL is never drawn, logged
+    or kept in saved state.
+  - **Delete your account** (underlined in `danger`, value "Deleting on 23 November" while
+    pending) → the confirm: what happens today (nothing), when (14 days), what goes and what
+    stays for the other person, that it cannot be undone after, a link **Export your archive
+    first**, the password field (the backend asks for it again), **Delete my account**
+    (`danger`, primary: no friction on leaving) and Cancel. Once asked, the same screen shows
+    **Your account will be deleted on {date}** with **Keep my account** as the primary, as
+    Keep the box is during the cooling-off.
+  - **Get help** is left out (no support screen yet), with no dead row.
+- **Open questions for the owner:** (1) the placement (Account inside Bond settings means a
+  person with no open bond cannot reach export or deletion; `Bond · archived` should probably
+  offer both); (2) every string in the "Account (Figma Account 7 · settings ...)" block of
+  `feature/bond` `strings.xml`, for `copy.md`; (3) whether the export's ready line should
+  name a time (it does: "until 10 November at 17:30") or only the day.
+

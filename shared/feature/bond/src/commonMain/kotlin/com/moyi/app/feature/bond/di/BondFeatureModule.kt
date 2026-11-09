@@ -1,5 +1,7 @@
 package com.moyi.app.feature.bond.di
 
+import com.moyi.app.feature.bond.account.AccountViewModel
+import com.moyi.app.feature.bond.account.ExportViewModel
 import com.moyi.app.feature.bond.notifications.NotificationSettingsViewModel
 import com.moyi.app.feature.bond.settings.BondSettingsViewModel
 import org.koin.core.module.dsl.viewModel
@@ -12,4 +14,6 @@ import org.koin.dsl.module
 val bondFeatureModule = module {
     viewModel { (bondId: String) -> BondSettingsViewModel(bondId, repository = get(), auth = get(), bonds = get(), outbox = get(), sender = get()) }
     viewModel { (bondId: String) -> NotificationSettingsViewModel(bondId, notifications = get(), settings = get()) }
+    viewModel { AccountViewModel(deletion = get()) }
+    viewModel { ExportViewModel(exports = get()) }
 }

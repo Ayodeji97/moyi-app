@@ -3,6 +3,8 @@ package com.moyi.app.data.repository
 import com.moyi.app.data.database.LocalDatabase
 import com.moyi.app.data.session.PersonalData
 import com.moyi.app.data.session.SessionManager
+import com.moyi.app.domain.account.AccountDeletionRepository
+import com.moyi.app.domain.account.DataExportRepository
 import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.auth.AccountRepository
@@ -35,6 +37,8 @@ val repositoryModule = module {
         PushTokenRegistrar(get(), get(), get(), get<SessionManager>().sessionState, CoroutineScope(SupervisorJob() + Dispatchers.Default))
     } bind PushTokenRegistration::class
     single<AccountRepository> { AccountRepositoryImpl(get(), get()) }
+    single<AccountDeletionRepository> { AccountDeletionRepositoryImpl(get(), get()) }
+    single<DataExportRepository> { DataExportRepositoryImpl(get(), get()) }
     single<BondRepository> { BondRepositoryImpl(get(), get()) }
     single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get()) }
     single<TodayRepository> { TodayRepositoryImpl(get(), get()) }
