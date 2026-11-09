@@ -12,6 +12,7 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
@@ -228,7 +229,7 @@ class FakeAuthRepository : AuthRepository {
         over18: Boolean,
     ): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-    override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
@@ -236,7 +237,7 @@ class FakeAuthRepository : AuthRepository {
 
     override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> = error("not used")
 
-    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> = error("not used")
 
     override suspend fun logout() {
         logouts++

@@ -8,6 +8,7 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
@@ -160,13 +161,13 @@ internal class StubAuthRepository(private val onRestore: () -> Unit) : AuthRepos
         over18: Boolean,
     ): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-    override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun login(email: String, password: String): Result<User, DataError> =
         Result.Failure(DataError.Network.Unknown)

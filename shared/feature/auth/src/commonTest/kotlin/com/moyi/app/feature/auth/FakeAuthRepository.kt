@@ -4,6 +4,7 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
@@ -50,12 +51,12 @@ class FakeAuthRepository : AuthRepository {
     )
 
     val registerCalls = mutableListOf<RegisterCall>()
-    val verifyCalls = mutableListOf<String>()
+    val verifyCalls = mutableListOf<EmailProof>()
     val resendCalls = mutableListOf<String>()
     val requestResetCalls = mutableListOf<String>()
 
-    /** (token, password) pairs sent to resetPassword. */
-    val resetCalls = mutableListOf<Pair<String, String>>()
+    /** (proof, password) pairs sent to resetPassword. */
+    val resetCalls = mutableListOf<Pair<EmailProof, String>>()
     val loginCalls = mutableListOf<Pair<String, String>>()
     var logoutCalls = 0
 
@@ -72,8 +73,8 @@ class FakeAuthRepository : AuthRepository {
         return registerResult
     }
 
-    override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> {
-        verifyCalls += token
+    override suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network> {
+        verifyCalls += proof
         (verifyGate ?: gate)?.await()
         return verifyResult
     }
@@ -90,8 +91,8 @@ class FakeAuthRepository : AuthRepository {
         return requestResetResult
     }
 
-    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> {
-        resetCalls += token to password
+    override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> {
+        resetCalls += proof to password
         gate?.await()
         return resetResult
     }

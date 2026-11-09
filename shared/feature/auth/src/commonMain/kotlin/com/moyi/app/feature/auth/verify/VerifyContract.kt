@@ -5,14 +5,21 @@ import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
 
-/** Verify email (Onboarding 3, Figma 341:17), plus the paste-token field (not in Figma). */
+/**
+ * Verify email (Onboarding 3, Figma 341:17), plus the code field (not in Figma,
+ * docs/missing-components.md §58): six digits typed from the email, or the whole link pasted.
+ */
 @Immutable
 data class VerifyState(
     val email: String,
-    val token: FieldInput = FieldInput(),
+    /** Only ever zero to six ASCII digits; a pasted link is sent, never shown (parseCodeInput). */
+    val code: FieldInput = FieldInput(),
     val mode: VerifyMode = VerifyMode.Waiting,
     val resend: ResendStatus = ResendStatus.Ready,
-    /** The primary action: "Check again" while waiting, "Send a new link" when expired. */
+    /**
+     * The primary action: "Check again" while waiting, "Send a new link" when expired. Sending
+     * while a code or link is checked, including the check the sixth digit starts by itself.
+     */
     val submit: SubmitStatus = SubmitStatus.Idle,
     /** Why the last "Send it again" failed, shown above the action; never part of [submit]. */
     val resendFailure: UiText? = null,
@@ -39,9 +46,10 @@ enum class ResendStatus {
 }
 
 sealed interface VerifyAction {
-    data class OnTokenChange(val value: String) : VerifyAction
+    /** A keystroke or a paste in the code field: digits, or a whole link. */
+    data class OnCodeChange(val value: String) : VerifyAction
 
-    /** "Check again" while waiting: submits the pasted token. */
+    /** "Check again" (or the keyboard's Done) while waiting: submits the code. */
     data object OnSubmit : VerifyAction
 
     /** "Send it again" while waiting, or "Send a new link" when expired. */

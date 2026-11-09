@@ -24,6 +24,7 @@ import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.data.testing.tokenPairJson
 import com.moyi.app.data.testing.userJson
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
@@ -164,7 +165,7 @@ class AuthRepositoryTest {
     fun anExpiredVerificationLinkIsItsCode() = runTest {
         val fixture = Fixture { respondProblem(HttpStatusCode.Gone, "VERIFICATION_TOKEN_EXPIRED") }
 
-        val result = fixture.repository.verifyEmail("tok")
+        val result = fixture.repository.verifyEmail(EmailProof.Link("tok"))
 
         assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(410, ApiErrorCode.VERIFICATION_TOKEN_EXPIRED))), result)
     }
@@ -175,10 +176,60 @@ class AuthRepositoryTest {
         // a positional argument would have sent the link's token as `code`.
         val fixture = Fixture { respond("", HttpStatusCode.OK) }
 
-        fixture.repository.verifyEmail("tok")
+        fixture.repository.verifyEmail(EmailProof.Link("tok"))
 
         val body = assertIs<TextContent>(fixture.requests.single().body).text
         assertEquals("""{"token":"tok"}""", body)
+    }
+
+    @Test
+    fun aTypedCodeIsSentWithItsAddressAndNoToken() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.OK) }
+
+        fixture.repository.verifyEmail(EmailProof.Code(email = "ada@example.test", code = "042917"))
+
+        val request = fixture.requests.single()
+        assertEquals("/api/v1/auth/verify-email", request.url.encodedPath)
+        val body = assertIs<TextContent>(request.body).text
+        // Leading zero kept: the code is six characters, never a number.
+        assertEquals("""{"code":"042917","email":"ada@example.test"}""", body)
+    }
+
+    @Test
+    fun aRefusedTypedCodeIsItsCode() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.UnprocessableEntity, "VERIFICATION_TOKEN_INVALID") }
+
+        val result = fixture.repository.verifyEmail(EmailProof.Code("ada@example.test", "000000"))
+
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(422, ApiErrorCode.VERIFICATION_TOKEN_INVALID))), result)
+    }
+
+    @Test
+    fun aResetWithATypedCodeSendsCodeEmailAndPasswordAndNoToken() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.OK) }
+
+        fixture.repository.resetPassword(EmailProof.Code("ada@example.test", "123456"), "new password")
+
+        val body = assertIs<TextContent>(fixture.requests.single().body).text
+        assertTrue(""""code":"123456"""" in body && """"email":"ada@example.test"""" in body, body)
+        assertTrue(""""password":"new password"""" in body, body)
+        assertTrue("token" !in body, body)
+    }
+
+    @Test
+    fun aResetWithTheLinkSendsNoCodeOrEmail() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.OK) }
+
+        fixture.repository.resetPassword(EmailProof.Link("tok"), "new password")
+
+        val body = assertIs<TextContent>(fixture.requests.single().body).text
+        assertTrue("code" !in body && "email" !in body, body)
+    }
+
+    @Test
+    fun aTypedCodeNeverPrintsItself() {
+        val printed = EmailProof.Code("ada@example.test", "123456").toString()
+        assertTrue("123456" !in printed && "ada" !in printed, printed)
     }
 
     @Test
@@ -201,7 +252,7 @@ class AuthRepositoryTest {
     fun aResetSendsTokenAndPasswordAndStartsNoSession() = runTest {
         val fixture = Fixture { respond("", HttpStatusCode.OK) }
 
-        assertEquals(Result.Success(Unit), fixture.repository.resetPassword("tok", "new password"))
+        assertEquals(Result.Success(Unit), fixture.repository.resetPassword(EmailProof.Link("tok"), "new password"))
         val request = fixture.requests.single()
         assertEquals("/api/v1/auth/reset-password", request.url.encodedPath)
         val body = assertIs<TextContent>(request.body).text
@@ -214,7 +265,7 @@ class AuthRepositoryTest {
     fun anExpiredResetLinkIsItsCodeThoughTheContractDeclaresNo410() = runTest {
         val fixture = Fixture { respondProblem(HttpStatusCode.Gone, "PASSWORD_RESET_TOKEN_EXPIRED") }
 
-        val result = fixture.repository.resetPassword("old", "new password")
+        val result = fixture.repository.resetPassword(EmailProof.Link("old"), "new password")
 
         assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(410, ApiErrorCode.PASSWORD_RESET_TOKEN_EXPIRED))), result)
     }
