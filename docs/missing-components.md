@@ -909,9 +909,9 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   (`delete_heading` "Delete what you wrote?"), same destructive confirm (`delete_confirm`
   "Delete", `danger` on Android, the destructive style on iOS), same dismiss (`delete_cancel`
   "Cancel", copy.md: bare "Cancel" dismisses a dialog). Only the message differs, because
-  deleting means something else here: **PROPOSED** `delete_before_reveal_line` "Your words are
-  deleted, with any photo or voice note on them. This cannot be undone. {partner} will never see
-  them, and you can write again today." Every other pre-reveal delete was checked: the Archive
+  deleting means something else here: **PROPOSED** `delete_before_reveal_line` "This cannot
+  be undone. You can write again today." (shortened at the owner's ask, 2026-11-09; the title
+  already says what goes) Every other pre-reveal delete was checked: the Archive
   day's Delete is drawn only for a revealed day (`canDelete = revealed`), so it already asks.
 - **"You can write again today" was checked against the backend**, not assumed: a pre-reveal
   `DELETE` erases the row and frees the day's BR-2 slot, and a new entry is accepted

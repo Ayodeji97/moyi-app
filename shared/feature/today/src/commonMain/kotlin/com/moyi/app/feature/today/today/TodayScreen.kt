@@ -207,7 +207,7 @@ private fun TodayDay(
         // no mark is left, the partner never sees the words, and today can be written again.
         ConfirmDialog(
             title = stringResource(Res.string.delete_heading),
-            message = stringResource(Res.string.delete_before_reveal_line, state.partnerName.orEmpty()),
+            message = stringResource(Res.string.delete_before_reveal_line),
             confirmLabel = stringResource(Res.string.delete_confirm),
             dismissLabel = stringResource(Res.string.delete_cancel),
             onConfirm = { onAction(TodayAction.OnDeleteConfirm) },
