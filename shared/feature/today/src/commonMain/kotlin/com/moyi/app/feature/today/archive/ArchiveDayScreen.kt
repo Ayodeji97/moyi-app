@@ -25,6 +25,8 @@ import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.FakeCopy
+import com.moyi.app.feature.today.common.PartnerReaction
+import com.moyi.app.feature.today.common.ReactionControl
 import com.moyi.app.feature.today.common.dayHeader
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.delete_cancel
@@ -65,7 +67,9 @@ fun ArchiveDayRoot(
  * 481-character entry runs to about 2.1 screens). Then "Delete what you wrote" on my
  * live entry of a revealed day, in `danger` with its underline.
  *
- * Under each revealed entry, mine and theirs, **my** FavouriteToggle (664:1939).
+ * Under each revealed entry, mine and theirs, **my** FavouriteToggle (664:1939). Under the
+ * partner's revealed entry, the interim reaction set; under mine, the partner's reaction
+ * (docs/missing-components.md §45: no frame draws either yet).
  *
  * Owed and not drawn: the Report link in the header (617:1835; the backend has no
  * report endpoint).
@@ -111,6 +115,15 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
                     voice = day.partnerVoice,
                 )
             }
+            // Interim (docs/missing-components.md §45): no frame draws a reaction yet.
+            if (day.canReact) {
+                ReactionControl(
+                    partnerName = state.partnerName.orEmpty(),
+                    mine = day.myReaction,
+                    failed = state.reactionFailed,
+                    onChoose = { onAction(ArchiveDayAction.OnReactionClick(it)) },
+                )
+            }
         }
         if (day.myEntry != null) {
             EntryWithMark(
@@ -119,6 +132,7 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
                 onToggle = { onAction(ArchiveDayAction.OnFavouriteClick(FavouriteTarget.Mine)) },
             ) {
                 EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = day.myEntry, photo = day.myPhoto, voice = day.myVoice)
+                PartnerReaction(reaction = day.partnerReaction, partnerName = state.partnerName.orEmpty(), modifier = Modifier.fillMaxWidth())
             }
         } else if (day.myTombstone) {
             // states.md Appendix: the tombstone is labelled "From you", never the partner.

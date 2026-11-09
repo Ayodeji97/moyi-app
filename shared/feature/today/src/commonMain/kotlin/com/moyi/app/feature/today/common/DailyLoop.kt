@@ -4,6 +4,8 @@ import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Prompt
+import com.moyi.app.domain.today.Reaction
+import com.moyi.app.domain.today.reactable
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
@@ -51,6 +53,14 @@ interface DailyLoop {
 
     /** Not optimistic: irreversible, so the tombstone shows only after the server's 204. */
     suspend fun deleteAfterReveal(): DeleteResult
+
+    /**
+     * Leaves [reaction] on the partner's revealed entry, replacing mine, or takes mine back
+     * (null). **Optimistic**, as a favourite is (it is reversible): Today shows it at once,
+     * the cache keeps it only once the server answers `204`, and a refusal puts back what
+     * was shown before. Only where [DayView.canReact] is true; anywhere else it is [ReactResult.Failed].
+     */
+    suspend fun react(reaction: Reaction?): ReactResult
 
     /** The person went to the words a refused entry left in the draft: Today stops saying so. */
     suspend fun dismissRefusal() = Unit
@@ -101,6 +111,15 @@ data class DayView(
     val myVoice: VoiceNote? = null,
     /** The partner's voice note: held exactly where [partnerEntry] is, by the same rule. */
     val partnerVoice: VoiceNote? = null,
+    /**
+     * The partner's entry takes **my** reaction here: it is revealed and its words are shown
+     * ([reactable]). Never on my own entry, never before the reveal, never on a tombstone.
+     */
+    val canReact: Boolean = false,
+    /** The reaction I left on the partner's entry; null when none. Only where [canReact]. */
+    val myReaction: Reaction? = null,
+    /** The reaction the partner left on my live entry; null when none (and on my tombstone). */
+    val partnerReaction: Reaction? = null,
     /** Which Bond-day my queued entry will count for; set exactly in [TodayStatus.Queued]. */
     val queuedDay: QueuedDay? = null,
     /** A queued entry the server refused, whose words went back to the draft: Today says so once. */
@@ -110,7 +129,8 @@ data class DayView(
     override fun toString(): String =
         "DayView(bondId=$bondId, date=$date, status=$status, myEntryId=$myEntryId, " +
             "myEntry=${myEntry?.let { "(redacted)" }}, partnerEntry=${partnerEntry?.let { "(redacted)" }}, " +
-            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, queuedDay=$queuedDay, refusal=$refusal)"
+            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, queuedDay=$queuedDay, refusal=$refusal, " +
+            "canReact=$canReact, myReaction=$myReaction, partnerReaction=$partnerReaction)"
 }
 
 enum class WriteResult {
@@ -134,6 +154,14 @@ enum class WriteResult {
 
     /** As [PhotoRefused], for the voice note (`MEDIA_NOT_ATTACHABLE` on `voiceMediaId`). */
     VoiceRefused,
+}
+
+enum class ReactResult {
+    /** The server has it (or it was already so). */
+    Done,
+
+    /** It did not go through: what was shown before is shown again. */
+    Failed,
 }
 
 enum class DeleteResult {

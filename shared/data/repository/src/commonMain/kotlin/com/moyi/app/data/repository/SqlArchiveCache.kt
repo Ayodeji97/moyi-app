@@ -12,6 +12,7 @@ import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
+import com.moyi.app.domain.today.Reaction
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -96,6 +97,12 @@ class SqlArchiveCache(
                 archiveDayQueries.setPartnerMark(flag, user, bondId, date, entryId)
             }
         }
+    }
+
+    override suspend fun setMyReaction(bondId: String, date: String, entryId: String, reaction: Reaction?) {
+        val user = userId ?: return
+        // Mine is only ever on the partner's entry: the row's partner entry, by its id.
+        database.io { archiveDayQueries.setPartnerReaction(reaction?.name, user, bondId, date, entryId) }
     }
 
     override suspend fun remove(bondId: String, date: String) {
@@ -184,17 +191,28 @@ internal fun ArchiveDay.toRow(userId: String, bondId: String, pageCursor: String
         },
         partner_entry_marked = if (partnerId != null && partnerId in markedByMe) 1L else 0L,
         page_cursor = pageCursor,
+        my_entry_reaction = mine?.reaction?.name,
+        partner_entry_reaction = (partner as? PartnerEntry.Revealed)?.reaction?.name,
     )
 }
 
 internal fun Archive_day.toArchiveDay(): ArchiveDay? {
     val myEntry = my_entry_id?.let { id ->
-        MyEntry(id = id, text = my_entry_text, status = enumByName<EntryStatus>(my_entry_status) ?: return null)
+        MyEntry(
+            id = id,
+            text = my_entry_text,
+            status = enumByName<EntryStatus>(my_entry_status) ?: return null,
+            reaction = my_entry_reaction?.let { enumByName<Reaction>(it) ?: return null },
+        )
     }
     val partnerEntry = when (partner_entry_shape) {
         null -> null
         SHAPE_SUBMITTED -> PartnerEntry.Submitted(partner_entry_id ?: return null, partner_entry_text ?: return null)
-        SHAPE_REVEALED -> PartnerEntry.Revealed(partner_entry_id ?: return null, partner_entry_text ?: return null)
+        SHAPE_REVEALED -> PartnerEntry.Revealed(
+            id = partner_entry_id ?: return null,
+            text = partner_entry_text ?: return null,
+            reaction = partner_entry_reaction?.let { enumByName<Reaction>(it) ?: return null },
+        )
         SHAPE_DELETED -> PartnerEntry.Deleted(partner_entry_id ?: return null)
         SHAPE_LOCKED -> PartnerEntry.Locked
         else -> return null

@@ -7,9 +7,12 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.today.EntryStatus
+import com.moyi.app.domain.today.Reaction
+import com.moyi.app.domain.today.reactable
 import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
+import com.moyi.app.feature.today.common.nextReaction
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +42,12 @@ import kotlinx.coroutines.launch
  *   refresh answering while a mark is on its way keeps that mark as tapped. A failure puts it back and shows the Generic
  *   failure line under that toggle. A tap while that entry's call is in flight is
  *   ignored, so one tap is one call and the calls for an entry can never cross.
+ * - **Reactions** (FR-048, ADR-0037; interim control, docs/missing-components.md §45): under
+ *   the partner's revealed entry only. Optimistic, as a favourite: shown at once here and in
+ *   the list, cached only once the server confirms it, put back with the Generic failure line
+ *   if it does not. A tap while one is on its way is ignored. A refusal that means the day is
+ *   not what is shown (`404`, `409`) reads the day again. If the day is the one Today shows,
+ *   Today is refreshed once the server has it.
  */
 class ArchiveDayViewModel(
     private val date: String,
@@ -59,6 +68,9 @@ class ArchiveDayViewModel(
     /** The entries whose favourite call has not answered yet. */
     private val marking = mutableSetOf<String>()
 
+    /** A reaction call has not answered yet: a refresh keeps what was tapped, and a tap is ignored. */
+    private var reacting = false
+
     init {
         val loaded = feed.find(date)
         val shown = loaded != null && show(loaded)
@@ -78,6 +90,7 @@ class ArchiveDayViewModel(
             ArchiveDayAction.OnDeleteDismiss -> _state.update { it.copy(confirmingDelete = false) }
             ArchiveDayAction.OnDeleteConfirm -> delete()
             is ArchiveDayAction.OnFavouriteClick -> toggleFavourite(action.target)
+            is ArchiveDayAction.OnReactionClick -> react(action.reaction)
         }
     }
 
@@ -105,11 +118,17 @@ class ArchiveDayViewModel(
         }
     }
 
-    /** [this], with my marks on the entries whose call is still on its way as I tapped them. */
+    /**
+     * [this], with my marks on the entries whose call is still on its way as I tapped them,
+     * and my reaction as tapped while its call is on its way.
+     */
     private fun ArchiveDay.withMarksInFlight(): ArchiveDay {
         val shown = day ?: return this
-        if (marking.isEmpty()) return this
-        return copy(markedByMe = (markedByMe - marking) + (shown.markedByMe intersect marking))
+        val marked = if (marking.isEmpty()) this else copy(markedByMe = (markedByMe - marking) + (shown.markedByMe intersect marking))
+        if (!reacting) return marked
+        val tapped = shown.partnerEntry.reactable() ?: return marked
+        val fresh = marked.partnerEntry.reactable()?.takeIf { it.id == tapped.id } ?: return marked
+        return marked.copy(partnerEntry = fresh.copy(reaction = tapped.reaction))
     }
 
     /** False when the day has nothing to draw: the caller shows the error rather than a blank day. */
@@ -182,6 +201,44 @@ class ArchiveDayViewModel(
         }
     }
 
+    /**
+     * A chip of the reaction set: the same one takes mine back, another replaces it. Only on
+     * the partner's revealed entry ([ArchiveDayUi.canReact]); one call at a time.
+     */
+    private fun react(tapped: Reaction) {
+        val current = day ?: return
+        val theirs = current.partnerEntry.reactable() ?: return
+        if (reacting || _state.value.day?.canReact != true) return
+        val reaction = nextReaction(theirs.reaction, tapped)
+        reacting = true
+        showReaction(theirs.id, reaction)
+        _state.update { it.copy(reactionFailed = false) }
+        viewModelScope.launch {
+            val result = entries.setReaction(theirs.id, reaction)
+            reacting = false
+            when (result) {
+                is Result.Success -> {
+                    feed.keepReaction(date, theirs.id, reaction)
+                    refreshTodayIfShowing()
+                }
+                is Result.Failure -> {
+                    showReaction(theirs.id, theirs.reaction)
+                    _state.update { it.copy(reactionFailed = true) }
+                    if (result.error.isConflictOrNotFound()) load()
+                }
+            }
+        }
+    }
+
+    /** My reaction on the partner's [entryId], in the day view and in the list behind it. */
+    private fun showReaction(entryId: String, reaction: Reaction?) {
+        val current = day ?: return
+        val theirs = current.partnerEntry.reactable()?.takeIf { it.id == entryId } ?: return
+        val updated = current.copy(partnerEntry = theirs.copy(reaction = reaction))
+        show(updated)
+        feed.replace(updated)
+    }
+
     /** My mark on [entryId], in the day view and in the list behind it. */
     private fun setMark(entryId: String, marked: Boolean) {
         val current = day ?: return
@@ -196,4 +253,7 @@ class ArchiveDayViewModel(
     }
 
     private fun DataError.Network.isNotFound(): Boolean = this is DataError.Network.Api && problem.status == 404
+
+    private fun DataError.Network.isConflictOrNotFound(): Boolean =
+        this is DataError.Network.Api && (problem.status == 404 || problem.status == 409)
 }

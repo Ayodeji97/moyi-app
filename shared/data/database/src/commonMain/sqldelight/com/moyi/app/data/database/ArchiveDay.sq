@@ -13,7 +13,7 @@
 -- Only what the Archive draws, and only what the person may read (BR-1): the partner's
 -- words are kept only on a day allowed to show them; the feature strips them before a
 -- row gets here. Marks are the person's own favourites (0 or 1), never the partner's.
--- Enums are stored by name; a row this build cannot read back is no cache at all.
+-- Enums are stored by name (a reaction too); a row this build cannot read back is no cache at all.
 CREATE TABLE archive_day (
     user_id TEXT NOT NULL,
     bond_id TEXT NOT NULL,
@@ -28,6 +28,10 @@ CREATE TABLE archive_day (
     partner_entry_text TEXT,
     partner_entry_marked INTEGER NOT NULL,
     page_cursor TEXT,
+    -- The reaction on each entry, by name (ADR-0037): on mine, the partner's; on theirs, mine.
+    -- Last, because 5.sqm adds them to a table that already exists.
+    my_entry_reaction TEXT,
+    partner_entry_reaction TEXT,
     PRIMARY KEY (user_id, bond_id, day_date)
 );
 
@@ -90,3 +94,9 @@ UPDATE archive_day SET my_entry_marked = :marked WHERE user_id = :user AND bond_
 
 setPartnerMark:
 UPDATE archive_day SET partner_entry_marked = :marked WHERE user_id = :user AND bond_id = :bond AND day_date = :date AND partner_entry_id = :entry;
+
+-- Only the server's confirmed answer is written here (a reaction is shown at once, and kept
+-- only once the server took it). Matched on the entry's id, so a day whose partner entry
+-- has changed since is left alone.
+setPartnerReaction:
+UPDATE archive_day SET partner_entry_reaction = :reaction WHERE user_id = :user AND bond_id = :bond AND day_date = :date AND partner_entry_id = :entry;

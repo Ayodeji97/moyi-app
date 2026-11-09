@@ -12,6 +12,7 @@ import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.FakeCopy
@@ -192,6 +193,12 @@ internal class PreviewTodayRepository(private val archive: PreviewArchiveReposit
     override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> {
         delay(800.milliseconds)
         archive.deleted(entryId)
+        return Result.Success(Unit)
+    }
+
+    /** Always taken, after a moment. The preview's days keep no reaction: a refresh shows none. */
+    override suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network> {
+        delay(800.milliseconds)
         return Result.Success(Unit)
     }
 }

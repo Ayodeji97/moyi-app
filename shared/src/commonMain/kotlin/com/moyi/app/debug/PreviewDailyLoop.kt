@@ -5,6 +5,7 @@ import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.today.Prompt
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
@@ -12,6 +13,7 @@ import com.moyi.app.feature.today.common.DayView
 import com.moyi.app.feature.today.common.DeleteResult
 import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.QueuedDay
+import com.moyi.app.feature.today.common.ReactResult
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.common.WriteResult
 import kotlinx.coroutines.delay
@@ -36,6 +38,7 @@ import kotlin.time.Instant
  */
 internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) : DailyLoop {
     private var myEntry = FakeCopy.MY_ENTRY
+    private var myReaction: Reaction? = null
     private val _state = MutableStateFlow<DailyLoopState>(DailyLoopState.Ready(view(TodayStatus.NotWritten)))
     override val state: StateFlow<DailyLoopState> = _state.asStateFlow()
 
@@ -62,6 +65,13 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
         myEntry = text
         show(status)
         return WriteResult.Saved
+    }
+
+    override suspend fun react(reaction: Reaction?): ReactResult {
+        myReaction = reaction
+        show(status)
+        delay(latency)
+        return ReactResult.Done
     }
 
     override suspend fun deleteBeforeReveal(): DeleteResult {
@@ -100,6 +110,10 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
         partnerEntry = FakeCopy.PARTNER_ENTRY.takeIf {
             status == TodayStatus.Revealed || status == TodayStatus.Tombstone || status == TodayStatus.SoloTheyWrote
         },
+        // The reaction set under their revealed entry; the partner's reaction under mine.
+        canReact = status == TodayStatus.Revealed || status == TodayStatus.Tombstone,
+        myReaction = myReaction.takeIf { status == TodayStatus.Revealed || status == TodayStatus.Tombstone },
+        partnerReaction = Reaction.THANK_YOU.takeIf { status == TodayStatus.Revealed },
     )
 }
 

@@ -12,6 +12,7 @@ import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Prompt
+import com.moyi.app.domain.today.Reaction
 import com.moyi.app.domain.today.Today
 import com.moyi.app.domain.today.TodayCache
 import kotlinx.coroutines.flow.StateFlow
@@ -87,6 +88,8 @@ internal fun CachedDay.toRow(userId: String): Cached_day {
         },
         prompt_id = today.prompt?.id,
         prompt_text = today.prompt?.text,
+        my_entry_reaction = today.myEntry?.reaction?.name,
+        partner_entry_reaction = (partner as? PartnerEntry.Revealed)?.reaction?.name,
     )
 }
 
@@ -101,12 +104,21 @@ internal fun Cached_day.toCachedDay(): CachedDay? {
         anchorTimezone = anchor_timezone,
     )
     val myEntry = my_entry_id?.let { id ->
-        MyEntry(id = id, text = my_entry_text, status = enumOrNull<EntryStatus>(my_entry_status) ?: return null)
+        MyEntry(
+            id = id,
+            text = my_entry_text,
+            status = enumOrNull<EntryStatus>(my_entry_status) ?: return null,
+            reaction = my_entry_reaction?.let { enumOrNull<Reaction>(it) ?: return null },
+        )
     }
     val partnerEntry = when (partner_entry_shape) {
         null -> null
         SUBMITTED -> PartnerEntry.Submitted(partner_entry_id ?: return null, partner_entry_text ?: return null)
-        REVEALED -> PartnerEntry.Revealed(partner_entry_id ?: return null, partner_entry_text ?: return null)
+        REVEALED -> PartnerEntry.Revealed(
+            id = partner_entry_id ?: return null,
+            text = partner_entry_text ?: return null,
+            reaction = partner_entry_reaction?.let { enumOrNull<Reaction>(it) ?: return null },
+        )
         DELETED -> PartnerEntry.Deleted(partner_entry_id ?: return null)
         LOCKED -> PartnerEntry.Locked
         else -> return null
