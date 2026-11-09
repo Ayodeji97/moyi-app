@@ -17,9 +17,11 @@ import com.moyi.app.data.testing.InMemoryTokenStore
 import com.moyi.app.data.testing.inMemoryDriver
 import com.moyi.app.domain.archive.ArchiveRepository
 import com.moyi.app.domain.auth.AccountRepository
+import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.media.MediaRepository
+import com.moyi.app.domain.report.ReportRepository
 import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.domain.today.EntryOutbox
@@ -52,12 +54,14 @@ class KoinModulesTest {
         try {
             koin.get<AuthRepository>()
             koin.get<AccountRepository>()
+            koin.get<LegalRepository>()
             koin.get<BondRepository>()
             koin.get<TodayRepository>()
             koin.get<MediaRepository>()
             koin.get<StorageHttpClient>()
             koin.get<ArchiveRepository>()
             koin.get<StreakRepository>()
+            koin.get<ReportRepository>()
             koin.get<TodayCache>()
             koin.get<DraftStore>()
             koin.get<EntryOutbox>()

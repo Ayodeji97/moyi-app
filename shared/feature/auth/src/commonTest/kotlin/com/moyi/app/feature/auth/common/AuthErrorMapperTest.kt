@@ -3,6 +3,7 @@ package com.moyi.app.feature.auth.common
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.designsystem.presentation.UiText
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.feature.auth.apiError
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.auth_email_error
@@ -15,7 +16,11 @@ import com.moyi.app.feature.auth.resources.register_name_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_breached
 import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
-import com.moyi.app.feature.auth.resources.verify_token_error_invalid
+import com.moyi.app.feature.auth.resources.code_error_invalid
+import com.moyi.app.feature.auth.resources.code_error_link_invalid
+import com.moyi.app.feature.auth.resources.code_error_rate_limited
+import com.moyi.app.feature.auth.resources.code_error_unavailable
+import com.moyi.app.feature.auth.resources.reset_token_error_expired
 import com.moyi.app.feature.auth.violation
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -124,9 +129,49 @@ class AuthErrorMapperTest {
 
     @Test
     fun verificationCodes() {
-        assertEquals(res(Res.string.verify_token_error_invalid), AuthErrorMapper.verifyTokenError(apiError(422, ApiErrorCode.VERIFICATION_TOKEN_INVALID)))
-        assertNull(AuthErrorMapper.verifyTokenError(apiError(410, ApiErrorCode.VERIFICATION_TOKEN_EXPIRED)))
+        val code = EmailProof.Code("ada@example.test", "123456")
+        val link = EmailProof.Link("tok")
+        val invalid = apiError(422, ApiErrorCode.VERIFICATION_TOKEN_INVALID)
+        // One answer from the server; the words follow what was sent.
+        assertEquals(res(Res.string.code_error_invalid), AuthErrorMapper.verifyProofError(invalid, code))
+        assertEquals(res(Res.string.code_error_link_invalid), AuthErrorMapper.verifyProofError(invalid, link))
+        assertEquals(
+            res(Res.string.code_error_invalid),
+            AuthErrorMapper.verifyProofError(apiError(422, ApiErrorCode.VALIDATION_FAILED, violation("code", "VALID_VERIFICATION_CODE")), code),
+        )
+        assertNull(AuthErrorMapper.verifyProofError(apiError(410, ApiErrorCode.VERIFICATION_TOKEN_EXPIRED), link))
+        assertNull(AuthErrorMapper.verifyProofError(apiError(429, ApiErrorCode.RATE_LIMITED), code))
         assertTrue(AuthErrorMapper.isVerificationExpired(apiError(410, ApiErrorCode.VERIFICATION_TOKEN_EXPIRED)))
         assertFalse(AuthErrorMapper.isVerificationExpired(apiError(422, ApiErrorCode.VERIFICATION_TOKEN_INVALID)))
+    }
+
+    @Test
+    fun aTypedCodesOwnLimitsPointAtTheLinkButALinksLimitIsTheUsualOne() {
+        val code = EmailProof.Code("ada@example.test", "123456")
+        val limited = apiError(429, ApiErrorCode.RATE_LIMITED)
+        assertEquals(
+            SubmitStatus.Failed(res(Res.string.code_error_rate_limited), offerRetry = false),
+            AuthErrorMapper.proofFormFailure(limited, code),
+        )
+        assertEquals(AuthErrorMapper.formFailure(limited), AuthErrorMapper.proofFormFailure(limited, EmailProof.Link("tok")))
+        assertEquals(
+            SubmitStatus.Failed(res(Res.string.code_error_unavailable), offerRetry = true),
+            AuthErrorMapper.proofFormFailure(apiError(503, ApiErrorCode.CODE_CHECK_UNAVAILABLE), code),
+        )
+        assertEquals(
+            AuthErrorMapper.formFailure(DataError.Network.NoInternet),
+            AuthErrorMapper.proofFormFailure(DataError.Network.NoInternet, code),
+        )
+    }
+
+    @Test
+    fun resetRefusals() {
+        val code = EmailProof.Code("ada@example.test", "123456")
+        val link = EmailProof.Link("tok")
+        assertEquals(res(Res.string.code_error_invalid), AuthErrorMapper.resetProofError(apiError(422, ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID), code))
+        assertEquals(res(Res.string.code_error_link_invalid), AuthErrorMapper.resetProofError(apiError(422, ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID), link))
+        assertEquals(res(Res.string.reset_token_error_expired), AuthErrorMapper.resetProofError(apiError(410, ApiErrorCode.PASSWORD_RESET_TOKEN_EXPIRED), link))
+        // A refused password is the password field's, never the code's.
+        assertNull(AuthErrorMapper.resetProofError(apiError(422, ApiErrorCode.VALIDATION_FAILED, violation("password", "NOT_BREACHED")), code))
     }
 }

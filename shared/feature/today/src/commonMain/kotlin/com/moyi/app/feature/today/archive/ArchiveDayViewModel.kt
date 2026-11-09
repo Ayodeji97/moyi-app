@@ -71,6 +71,9 @@ class ArchiveDayViewModel(
     /** A reaction call has not answered yet: a refresh keeps what was tapped, and a tap is ignored. */
     private var reacting = false
 
+    /** The report flow was opened from here: when the day shows again, it is read again. */
+    private var reportOpened = false
+
     init {
         val loaded = feed.find(date)
         val shown = loaded != null && show(loaded)
@@ -91,15 +94,41 @@ class ArchiveDayViewModel(
             ArchiveDayAction.OnDeleteConfirm -> delete()
             is ArchiveDayAction.OnFavouriteClick -> toggleFavourite(action.target)
             is ArchiveDayAction.OnReactionClick -> react(action.reaction)
+            ArchiveDayAction.OnReportClick -> openReport()
+            ArchiveDayAction.OnResumed -> if (reportOpened) {
+                // A filed entry report holds its photo and voice note back from me at once
+                // (ADR-0053 decision 4): the day, and Today if it is this day, are read again.
+                reportOpened = false
+                viewModelScope.launch {
+                    load()
+                    refreshTodayIfShowing()
+                }
+            }
         }
     }
+
+    /**
+     * The header's Report. Offers this day's entry only when the partner's words are shown
+     * here ([ArchiveDayUi.partnerEntryId]): a locked entry is the server's `404`, and my own is
+     * never named. Otherwise the report is about the member.
+     */
+    private fun openReport() {
+        val current = _state.value
+        val bondId = bondId() ?: return
+        if (!current.canReport) return
+        reportOpened = true
+        viewModelScope.launch {
+            _events.send(ArchiveDayEvent.NavigateToReport(bondId, current.day?.partnerEntryId, current.partnerName))
+        }
+    }
+
+    private fun bondId(): String? = feed.state.value.bondId ?: (loop.state.value as? DailyLoopState.Ready)?.day?.bondId
 
     /** Asks for the day; a day already shown stays shown until the answer replaces it. */
     private suspend fun load() {
         val showing = _state.value.load == ArchiveLoad.Ready
         if (!showing) _state.update { it.copy(load = ArchiveLoad.Loading) }
-        val bondId = feed.state.value.bondId ?: (loop.state.value as? DailyLoopState.Ready)?.day?.bondId
-        val answer = bondId?.let { archive.day(it, date) }
+        val answer = bondId()?.let { archive.day(it, date) }
         when {
             answer is Result.Success -> {
                 // A delete on its way decides the day itself, from its own answer.
@@ -138,12 +167,15 @@ class ArchiveDayViewModel(
         // in its cooling-off), where the server would refuse every tap. Unknown: drawn as before.
         val ui = if (bondTakesWrites()) drawn else drawn.copy(canReact = false)
         day = loaded
+        val partnerName = feed.state.value.partnerName ?: (loop.state.value as? DailyLoopState.Ready)?.day?.partnerName
         _state.update {
             it.copy(
                 load = ArchiveLoad.Ready,
                 date = ui.date,
                 day = ui,
-                partnerName = feed.state.value.partnerName ?: (loop.state.value as? DailyLoopState.Ready)?.day?.partnerName,
+                partnerName = partnerName,
+                // Only with someone to report: a bond nobody joined is the member route's `404`.
+                canReport = partnerName != null && bondId() != null,
             )
         }
         return true

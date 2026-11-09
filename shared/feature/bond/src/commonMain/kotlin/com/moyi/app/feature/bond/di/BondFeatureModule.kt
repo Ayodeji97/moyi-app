@@ -1,6 +1,8 @@
 package com.moyi.app.feature.bond.di
 
 import com.moyi.app.feature.bond.notifications.NotificationSettingsViewModel
+import com.moyi.app.feature.bond.report.ReportArgs
+import com.moyi.app.feature.bond.report.ReportViewModel
 import com.moyi.app.feature.bond.settings.BondSettingsViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -12,4 +14,6 @@ import org.koin.dsl.module
 val bondFeatureModule = module {
     viewModel { (bondId: String) -> BondSettingsViewModel(bondId, repository = get(), auth = get(), bonds = get(), outbox = get(), sender = get()) }
     viewModel { (bondId: String) -> NotificationSettingsViewModel(bondId, notifications = get(), settings = get()) }
+    // A report (FR-100), from the Archive day view or Bond settings, over ReportRepository.
+    viewModel { (args: ReportArgs) -> ReportViewModel(args, reports = get()) }
 }
