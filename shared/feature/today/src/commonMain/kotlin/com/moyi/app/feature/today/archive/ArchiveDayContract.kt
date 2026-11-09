@@ -1,6 +1,7 @@
 package com.moyi.app.feature.today.archive
 
 import androidx.compose.runtime.Immutable
+import com.moyi.app.domain.today.Reaction
 import kotlinx.datetime.LocalDate
 
 /**
@@ -21,6 +22,8 @@ data class ArchiveDayState(
     val actionFailed: Boolean = false,
     /** A favourite toggle did not go through: it is back as it was, and the line under it says so. */
     val markFailed: FavouriteTarget? = null,
+    /** The last reaction tap did not go through: it is back as it was, and the line under the set says so. */
+    val reactionFailed: Boolean = false,
 )
 
 /** Which entry's FavouriteToggle: the one under my entry, or under the partner's. */
@@ -35,6 +38,9 @@ sealed interface ArchiveDayAction {
 
     /** The FavouriteToggle under [target]: marks it if I have not, unmarks it if I have. */
     data class OnFavouriteClick(val target: FavouriteTarget) : ArchiveDayAction
+
+    /** A chip of the reaction set under the partner's entry: leaves, replaces or takes back mine. */
+    data class OnReactionClick(val reaction: Reaction) : ArchiveDayAction
 }
 
 sealed interface ArchiveDayEvent {

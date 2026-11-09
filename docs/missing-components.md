@@ -721,3 +721,54 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   (2) hold to record instead of tap to start and stop; (3) a settings deep link from the refused
   line; (4) queue voice entries offline (the §40 question, for sound); (5) keep the recording with
   the draft.
+
+## Reactions
+
+### 45. Leaving, changing and seeing a reaction
+
+- **Today:** not drawn. ADR-0037 question 9: `states.md` has no reaction in any section and
+  `tokens.md` §4's `EntryCard` has no slot for one; the owner ruled on 2026-10-21 that the gaps
+  are to be written into `states.md` as specifications and drawn when Figma is available. As of
+  this PR, `states.md` §5a's amendment still says "not yet written". `copy.md` names no reaction.
+  What is fixed elsewhere: the set (the contract's `ReactionRequest.type`, the owner's five of
+  2026-10-21: `HEART`, `THANK_YOU`, `SMILE`, `MOVED`, `ME_TOO`); one per member per entry; only
+  on the partner's revealed entry (FR-048 amended, ADR-0037 decision 4); shown to the author
+  (FR-064's one exception, question 6); no time stored or sent, no count; no event and no push
+  (decision 10; T-09: nothing a partner could use to watch the other); refused on an ended bond,
+  both leaving and taking back (question 11, `409 BOND_ARCHIVED`).
+- **Here (interim, the most conservative reading), built only from what the system has:**
+  - **Where:** under the partner's revealed entry on Today (Revealed, and Tombstone, where my
+    entry is deleted but theirs still shows) and in the Archive day view. **Not on the reveal
+    screen**: the reveal is a moment (states.md §5a), and nothing says a control belongs in it.
+    Not on a solo day's unlocked entry (still `SUBMITTED`: FR-048 says revealed, though the
+    server would take one), not on a tombstone, never on my own entry.
+  - **The control:** a muted line, then the five as **words**, one `Chip` each (the Archive
+    filter's pill; uppercased there), wrapping at large text, at most one selected. Tapping
+    another replaces mine; tapping mine takes it back. No confirmation, no undo toast, as the
+    `FavouriteToggle`. The line names the next action: "React to what Tunde wrote." with none,
+    "Tap another to change it, or the same one to take it back." with one (PROPOSED
+    `reaction_prompt`, `reaction_chosen`). Words, not glyphs, because whether each is a glyph or
+    a word is left to the design (ADR-0037 question 1) and the system has no glyph for any of
+    them: "Heart", "Thank you", "Smile", "Moved", "Me too" (PROPOSED `reaction_*`).
+  - **Accessibility:** the set is a `selectableGroup` of radio buttons; each is spoken by its
+    word with its selected state; on the selected one, a double tap is announced as "Take back
+    your reaction" (PROPOSED `reaction_take_back`), since a radio button is not usually cleared.
+    48 pt targets (the Chip's), and selected differs by fill and border, not hue (NFR-104).
+  - **The partner's reaction on my entry:** one muted sentence under my card, "Tunde sent a
+    heart." / "Tunde said thank you." / "Tunde smiled at this." / "Tunde was moved by this." /
+    "Tunde is grateful for that too." (PROPOSED `reaction_from_partner_*`). Not a live region,
+    and nothing else changes: it does not announce itself when it arrives, so it is no "seen"
+    signal beyond the one the owner accepted (question 6).
+  - **Waiting and failing:** optimistic, as a favourite (a reaction is reversible): the choice
+    shows at once; the caches (Today's, the Archive's) keep it only once the server answers
+    `204`. A failure (offline included) puts the previous choice back and shows the Generic error
+    line under the set, "That didn't work. Nothing was lost. Try again in a moment." A refusal
+    that means the day moved (`404`, any `409`) reads the day again. A tap while one is on its
+    way is ignored. Never queued offline: a reaction needs the network.
+  - **An ended bond:** the Archive does not know a bond has ended, so the set is drawn and a tap
+    is refused (`409 BOND_ARCHIVED`): put back, the Generic line. Today never shows an ended
+    bond.
+- **Open questions for the owner:** (1) glyphs or words, and the five words themselves; (2) the
+  partner's-reaction sentences; (3) the set on the reveal screen; (4) the set on a solo day's
+  unlocked entry; (5) hiding the set on an ended bond (needs the bond's status in the Archive);
+  (6) whether the partner's reaction should be more than a muted line, or less.

@@ -11,6 +11,7 @@ import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
+import com.moyi.app.domain.today.Reaction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -278,5 +279,31 @@ class SqlArchiveCacheTest {
         database.io { archiveDayQueries.upsert(day("2026-09-05").toRow("ada-id", "bond-1", null).copy(day_status = "SOMETHING_NEW")) }
 
         assertNull(cache.read("bond-1"))
+    }
+
+    @Test
+    fun reactionsOnBothEntriesComeBackAsTheyWent() = runTest {
+        val reacted = day("2026-09-13", theirs = PartnerEntry.Revealed("t-2026-09-13", "You listened.", reaction = Reaction.HEART))
+            .let { it.copy(myEntry = it.myEntry?.copy(reaction = Reaction.MOVED)) }
+        cache.putPage("bond-1", ArchivePage(listOf(reacted), nextCursor = null), after = null)
+
+        assertEquals(reacted, cache.day("bond-1", "2026-09-13"))
+    }
+
+    @Test
+    fun myConfirmedReactionChangesOnlyThePartnersEntryWithThatId() = runTest {
+        cache.putPage("bond-1", ArchivePage(listOf(day("2026-09-13"), day("2026-09-12")), nextCursor = null), after = null)
+
+        cache.setMyReaction("bond-1", "2026-09-13", "t-2026-09-13", Reaction.THANK_YOU)
+        assertEquals(Reaction.THANK_YOU, (cache.day("bond-1", "2026-09-13")?.partnerEntry as PartnerEntry.Revealed).reaction)
+        assertNull((cache.day("bond-1", "2026-09-12")?.partnerEntry as PartnerEntry.Revealed).reaction, "another day is untouched")
+        assertNull(cache.day("bond-1", "2026-09-13")?.myEntry?.reaction, "my own entry never takes mine")
+
+        // An id that is not that day's partner entry (mine, or another) changes nothing.
+        cache.setMyReaction("bond-1", "2026-09-13", "m-2026-09-13", Reaction.SMILE)
+        assertEquals(Reaction.THANK_YOU, (cache.day("bond-1", "2026-09-13")?.partnerEntry as PartnerEntry.Revealed).reaction)
+
+        cache.setMyReaction("bond-1", "2026-09-13", "t-2026-09-13", null)
+        assertNull((cache.day("bond-1", "2026-09-13")?.partnerEntry as PartnerEntry.Revealed).reaction, "taken back")
     }
 }

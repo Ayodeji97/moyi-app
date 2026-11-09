@@ -59,12 +59,14 @@ data class MyEntry(
     val image: EntryImage? = null,
     /** The voice note on it, as the server plays it to me; null when it has none, or when read from the cache. */
     val voice: EntryVoice? = null,
+    /** The reaction the partner left on it ([Reaction]); null when none, and always on a tombstone. */
+    val reaction: Reaction? = null,
 ) {
     /** Written and not withdrawn. */
     val isLive: Boolean get() = status != EntryStatus.DELETED
 
     /** Never the words: a data class would print them into any log that printed this. */
-    override fun toString(): String = "MyEntry(id=$id, text=${if (text == null) "null" else "(redacted)"}, status=$status, image=$image, voice=$voice)"
+    override fun toString(): String = "MyEntry(id=$id, text=${if (text == null) "null" else "(redacted)"}, status=$status, image=$image, voice=$voice, reaction=$reaction)"
 }
 
 /** An entry's own status, as an entry read in full carries it. */
@@ -92,8 +94,10 @@ sealed interface PartnerEntry {
         val text: String,
         val image: EntryImage? = null,
         val voice: EntryVoice? = null,
+        /** The reaction **I** left on it ([Reaction]); null when none. */
+        val reaction: Reaction? = null,
     ) : PartnerEntry {
-        override fun toString(): String = "Revealed(id=$id, text=(redacted), image=$image, voice=$voice)"
+        override fun toString(): String = "Revealed(id=$id, text=(redacted), image=$image, voice=$voice, reaction=$reaction)"
     }
 
     /** Its tombstone: the partner deleted it after I had been shown it. */

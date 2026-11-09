@@ -26,7 +26,11 @@ CREATE TABLE cached_day (
     partner_entry_id TEXT,
     partner_entry_text TEXT,
     prompt_id TEXT,
-    prompt_text TEXT
+    prompt_text TEXT,
+    -- The reaction on each entry, by name (ADR-0037): on mine, the partner's; on theirs, mine.
+    -- Last, because 5.sqm adds them to a table that already exists.
+    my_entry_reaction TEXT,
+    partner_entry_reaction TEXT
 );
 
 forUser:

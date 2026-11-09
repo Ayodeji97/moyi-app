@@ -1,5 +1,7 @@
 package com.moyi.app.domain.archive
 
+import com.moyi.app.domain.today.Reaction
+
 /**
  * The Archive's days kept on this device, so opening it draws what was last seen at
  * once and refreshes behind it (doc 13 §5: "paged cache in SQLDelight; older pages
@@ -54,6 +56,12 @@ interface ArchiveCache {
 
     /** The server confirmed my mark on [entryId] of [date] is [marked]. */
     suspend fun setMark(bondId: String, date: String, entryId: String, marked: Boolean)
+
+    /**
+     * The server confirmed that the reaction **I** left on the partner's entry [entryId] of
+     * [date] is [reaction] (null: none). Only a cached day holding that entry changes.
+     */
+    suspend fun setMyReaction(bondId: String, date: String, entryId: String, reaction: Reaction?)
 
     /** [date] is not in the archive any more (`404 DAY_NOT_FOUND`). */
     suspend fun remove(bondId: String, date: String)
