@@ -2,28 +2,21 @@
 
 package com.moyi.app.data.session
 
-import com.moyi.app.api.models.UserResponse
+import com.moyi.app.api.models.ProfileResponse
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.data.network.safeApiCall
+import com.moyi.app.data.testing.profileJson
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.data.testing.storedSession
 import com.moyi.app.data.testing.tokenPairJson
-import com.moyi.app.data.testing.userJson
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.runCurrent
-import kotlinx.coroutines.test.runTest
-import kotlinx.io.IOException
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
@@ -33,6 +26,13 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.io.IOException
 
 /**
  * The authed HttpClient and SessionManager together, over MockEngine. The
@@ -54,7 +54,7 @@ class AuthedClientRefreshTest {
                     allTenRefused.await()
                     respondJson(tokenPairJson("a2", "r2"))
                 }
-                request.isMe && request.bearer == "a2" -> respondJson(userJson())
+                request.isMe && request.bearer == "a2" -> respondJson(profileJson())
                 request.isMe -> {
                     if (refused.incrementAndFetch() == 10) allTenRefused.complete(Unit)
                     respondProblem(HttpStatusCode.Unauthorized, "UNAUTHENTICATED", bearerChallenge = true)
@@ -66,7 +66,7 @@ class AuthedClientRefreshTest {
 
         val results = List(10) { async { safeApiCall { server.me.me() } } }.awaitAll()
 
-        results.forEach { assertEquals("Ada", assertIs<Result.Success<UserResponse>>(it).data.displayName) }
+        results.forEach { assertEquals("Ada", assertIs<Result.Success<ProfileResponse>>(it).data.displayName) }
         assertEquals(1, server.refreshCalls.load())
         val log = server.log.snapshot()
         assertEquals(10, log.count { it == "GET /api/v1/me Bearer a1" })
@@ -91,7 +91,7 @@ class AuthedClientRefreshTest {
         val server = TestServer(initial = null) { request ->
             when {
                 request.isRefresh -> respondJson(tokenPairJson("a2", "r2"))
-                request.isMe && request.bearer == "a2" -> respondJson(userJson())
+                request.isMe && request.bearer == "a2" -> respondJson(profileJson())
                 request.isMe -> {
                     bArrived.complete(Unit)
                     bRefusedLate.await()
@@ -107,7 +107,7 @@ class AuthedClientRefreshTest {
         assertEquals("a2", server.sessionManager.refresh(staleAccess = "a1"))
         bRefusedLate.complete(Unit)
 
-        assertIs<Result.Success<UserResponse>>(b.await())
+        assertIs<Result.Success<ProfileResponse>>(b.await())
         assertEquals(1, server.refreshCalls.load())
         assertTrue("GET /api/v1/me Bearer a2" in server.log.snapshot())
     }
@@ -128,7 +128,7 @@ class AuthedClientRefreshTest {
                     aRefusedLate.await()
                     respondProblem(HttpStatusCode.Unauthorized, "UNAUTHENTICATED", bearerChallenge = true)
                 }
-                request.isMe -> respondJson(userJson())
+                request.isMe -> respondJson(profileJson())
                 else -> fail("unexpected ${request.url}")
             }
         }
@@ -157,7 +157,7 @@ class AuthedClientRefreshTest {
                     release.await()
                     respondJson(tokenPairJson("a2", "r2"))
                 }
-                request.isMe && request.bearer == "a2" -> respondJson(userJson())
+                request.isMe && request.bearer == "a2" -> respondJson(profileJson())
                 request.isMe -> respondProblem(HttpStatusCode.Unauthorized, "UNAUTHENTICATED", bearerChallenge = true)
                 else -> fail("unexpected ${request.url}")
             }
@@ -172,7 +172,7 @@ class AuthedClientRefreshTest {
         release.complete(Unit)
 
         assertEquals(SessionState.SignedIn(ada), restore.await())
-        assertIs<Result.Success<UserResponse>>(request.await())
+        assertIs<Result.Success<ProfileResponse>>(request.await())
         assertEquals(1, server.refreshCalls.load())
     }
 

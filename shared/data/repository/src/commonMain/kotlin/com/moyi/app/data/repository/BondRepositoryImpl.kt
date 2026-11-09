@@ -42,8 +42,7 @@ class BondRepositoryImpl(
         val request = CreateBondRequest(
             anchorTimezone = anchorTimezone,
             name = name,
-            // A free string in the contract, not an enum (docs/backend-contract-gaps.md, row 14).
-            type = type.name,
+            type = type.toCreateRequestType(),
             // The creator's own reminders follow their device's zone from day one (ADR-0026).
             reminderTimezone = anchorTimezone,
         )

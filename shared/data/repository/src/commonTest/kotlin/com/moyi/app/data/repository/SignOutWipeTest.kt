@@ -1,6 +1,7 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.apis.RefreshControllerApi
+import com.moyi.app.api.models.DeviceRequest
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.HttpClientFactory
 import com.moyi.app.data.network.PublicHttpClient
@@ -28,12 +29,12 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlinx.coroutines.test.runTest
 
 /**
  * The privacy rule of the local database, end to end through the real session, the
@@ -56,7 +57,7 @@ class SignOutWipeTest {
         }
         val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
         val sessionManager = SessionManager(store, RefreshControllerApi(config.origin, publicClient.client), PersonalData { database.wipe() })
-        val auth = AuthRepositoryImpl(publicClient, config, sessionManager) { DeviceInfo("ANDROID", "1.0", "16") }
+        val auth = AuthRepositoryImpl(publicClient, config, sessionManager) { DeviceInfo(DeviceRequest.Platform.ANDROID, "1.0", "16") }
         val cache = SqlTodayCache(database, sessionManager.sessionState)
         val drafts = SqlDraftStore(database, sessionManager.sessionState)
 
@@ -77,7 +78,7 @@ class SignOutWipeTest {
     private fun loginAnswer(request: HttpRequestData): String {
         val ben = "ben@" in assertIs<TextContent>(request.body).text
         val (id, name) = if (ben) "ben-id" to "Ben" else "ada-id" to "Ada"
-        val user = """{"id":"$id","email":"${name.lowercase()}@example.test","displayName":"$name","emailVerified":true,"status":"ACTIVE"}"""
+        val user = """{"id":"$id","email":"${name.lowercase()}@example.test","displayName":"$name","locale":"en","emailVerified":true,"status":"ACTIVE"}"""
         return """{"accessToken":"a-$id","expiresIn":900,"refreshToken":"r-$id","user":$user}"""
     }
 

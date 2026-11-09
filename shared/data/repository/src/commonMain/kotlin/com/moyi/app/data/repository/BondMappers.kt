@@ -1,10 +1,12 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.models.BondResponse
+import com.moyi.app.api.models.CreateBondRequest
 import com.moyi.app.api.models.InviteDetailResponse
 import com.moyi.app.api.models.InvitePreviewResponse
 import com.moyi.app.api.models.InviteResponse
 import com.moyi.app.api.models.MemberResponse
+import com.moyi.app.api.models.PatchBondRequest
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.Bond
@@ -70,6 +72,22 @@ internal fun InvitePreviewResponse.toPreview(): InvitePreview? = InvitePreview(
 )
 
 private fun BondResponse.Type.toDomain(): BondType = BondType.valueOf(name)
+
+// Spelled out rather than `valueOf(name)`: the compiler checks every type is sent,
+// and a renamed constant on either side fails the build, not a request.
+internal fun BondType.toCreateRequestType(): CreateBondRequest.Type = when (this) {
+    BondType.COUPLE -> CreateBondRequest.Type.COUPLE
+    BondType.FRIENDS -> CreateBondRequest.Type.FRIENDS
+    BondType.FAMILY -> CreateBondRequest.Type.FAMILY
+    BondType.PARENT_CHILD -> CreateBondRequest.Type.PARENT_CHILD
+}
+
+internal fun BondType.toPatchRequestType(): PatchBondRequest.Type = when (this) {
+    BondType.COUPLE -> PatchBondRequest.Type.COUPLE
+    BondType.FRIENDS -> PatchBondRequest.Type.FRIENDS
+    BondType.FAMILY -> PatchBondRequest.Type.FAMILY
+    BondType.PARENT_CHILD -> PatchBondRequest.Type.PARENT_CHILD
+}
 
 private fun BondResponse.Status.toDomain(): BondStatus = BondStatus.valueOf(name)
 

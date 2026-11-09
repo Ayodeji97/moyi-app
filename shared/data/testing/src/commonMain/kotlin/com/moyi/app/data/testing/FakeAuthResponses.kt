@@ -11,7 +11,11 @@ import io.ktor.http.headersOf
 const val USER_ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7"
 
 fun userJson(displayName: String = "Ada"): String =
-    """{"id":"$USER_ID","email":"ada@example.test","displayName":"$displayName","emailVerified":true,"status":"ACTIVE"}"""
+    """{"id":"$USER_ID","email":"ada@example.test","displayName":"$displayName","locale":"en","emailVerified":true,"status":"ACTIVE"}"""
+
+/** The body of a 200 from `GET /me`: the user plus the legal versions they accepted. */
+fun profileJson(displayName: String = "Ada"): String =
+    userJson(displayName).dropLast(1) + ""","legalAccepted":{"terms":null,"privacy":null}}"""
 
 /** The body of a 200 from login or refresh. */
 fun tokenPairJson(access: String, refresh: String, displayName: String = "Ada"): String =

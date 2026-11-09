@@ -5,6 +5,7 @@ package com.moyi.app.data.repository
 import com.moyi.app.api.apis.LoginControllerApi
 import com.moyi.app.api.apis.MeControllerApi
 import com.moyi.app.api.apis.RefreshControllerApi
+import com.moyi.app.api.models.DeviceRequest
 import com.moyi.app.api.models.LoginRequest
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.ApiProblem
@@ -36,13 +37,6 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runTest
-import kotlinx.io.IOException
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
@@ -51,11 +45,18 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.io.IOException
 
 class AuthRepositoryTest {
     private val config = ApiConfig("http://localhost:8080/api/v1")
     private val ada = User(USER_ID, "ada@example.test", "Ada", emailVerified = true, status = UserStatus.ACTIVE)
-    private val device = DeviceInfo(platform = "IOS", appVersion = "1.0", osVersion = "26.0")
+    private val device = DeviceInfo(platform = DeviceRequest.Platform.IOS, appVersion = "1.0", osVersion = "26.0")
 
     private inner class Fixture(val handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData) {
         val log = EventLog()
@@ -166,6 +167,18 @@ class AuthRepositoryTest {
         val result = fixture.repository.verifyEmail("tok")
 
         assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(410, ApiErrorCode.VERIFICATION_TOKEN_EXPIRED))), result)
+    }
+
+    @Test
+    fun theLinksTokenIsSentAsTheTokenNeverAsATypedCode() = runTest {
+        // The contract added `code` and `email` ahead of `token` (typed six-digit codes);
+        // a positional argument would have sent the link's token as `code`.
+        val fixture = Fixture { respond("", HttpStatusCode.OK) }
+
+        fixture.repository.verifyEmail("tok")
+
+        val body = assertIs<TextContent>(fixture.requests.single().body).text
+        assertEquals("""{"token":"tok"}""", body)
     }
 
     @Test

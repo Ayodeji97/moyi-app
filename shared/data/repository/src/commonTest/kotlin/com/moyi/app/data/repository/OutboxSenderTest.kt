@@ -335,7 +335,7 @@ class OutboxSenderTest {
     }
 
     private companion object {
-        const val TOKENS = """{"accessToken":"a1","expiresIn":900,"refreshToken":"r2","user":{"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7","email":"ada@example.test","displayName":"Ada","emailVerified":true,"status":"ACTIVE"}}"""
+        const val TOKENS = """{"accessToken":"a1","expiresIn":900,"refreshToken":"r2","user":{"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7","email":"ada@example.test","displayName":"Ada","locale":"en","emailVerified":true,"status":"ACTIVE"}}"""
         const val ENTRY = """{"id":"e1","bondId":"b1","date":"2026-09-14","authorMemberId":"m1","text":"You fixed the gate.",""" +
             """"status":"SUBMITTED","createdAt":"2026-09-14T11:00:00Z","intendedAt":"2026-09-14T10:59:30.123Z","favourited":false,"reaction":null}"""
     }

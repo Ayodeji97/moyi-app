@@ -245,7 +245,7 @@ class TodayRepositoryTest {
         partnerEntry: String = "null",
         prompt: String = """{"id":"p1","text":"What did Tunde do today that you noticed?"}""",
     ): String =
-        """{"bondDay":{"date":"2026-09-14","status":"$status"},"myEntry":$myEntry,"partnerEntry":$partnerEntry,""" +
+        """{"bondDay":{"date":"2026-09-14","status":"$status","settlesAt":"2026-09-15T08:00:00Z"},"myEntry":$myEntry,"partnerEntry":$partnerEntry,""" +
             """"streak":{"current":3,"longest":5,"freezesAvailable":1,"strictMode":false},"prompt":$prompt}"""
 
     private fun entryJson(id: String, status: String, text: String?): String =

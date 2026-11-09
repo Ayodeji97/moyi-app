@@ -108,7 +108,7 @@ class PushTokenRegistrar(
         if (token == null) return@withLock
         val wanted = Registration(userId, token)
         if (registered == wanted) return@withLock
-        when (val result = safeApiCallEmpty { api.registerPushToken(PushTokenRequest(token)) }) {
+        when (val result = safeApiCallEmpty { api.registerPushToken(PushTokenRequest(token = token)) }) {
             is Result.Success -> {
                 registered = wanted
                 log.i { "Push token registered" }

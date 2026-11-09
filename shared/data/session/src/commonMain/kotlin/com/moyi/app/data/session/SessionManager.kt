@@ -226,7 +226,7 @@ class SessionManager(
             var thrown: Throwable? = null
             val result = safeApiCall {
                 try {
-                    refreshApi.refresh(RefreshRequest(stored.refreshToken))
+                    refreshApi.refresh(RefreshRequest(refreshToken = stored.refreshToken))
                 } catch (e: Throwable) {
                     thrown = e
                     throw e

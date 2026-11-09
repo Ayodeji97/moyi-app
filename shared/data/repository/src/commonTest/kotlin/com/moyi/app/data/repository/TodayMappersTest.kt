@@ -1,15 +1,19 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.models.BondDayResponse
+import com.moyi.app.api.models.DeletedPartnerEntryResponse
 import com.moyi.app.api.models.EntryImageResponse
 import com.moyi.app.api.models.EntryResponse
 import com.moyi.app.api.models.EntryVoiceResponse
 import com.moyi.app.api.models.LockedEntryResponse
 import com.moyi.app.api.models.MemberResponse
+import com.moyi.app.api.models.PartnerEntryResponse
 import com.moyi.app.api.models.ReactionRequest
+import com.moyi.app.api.models.RevealedPartnerEntryResponse
+import com.moyi.app.api.models.SubmittedPartnerEntryResponse
 import com.moyi.app.api.models.TodayPromptResponse
 import com.moyi.app.api.models.TodayResponse
-import com.moyi.app.api.wire.PartnerEntryWire
+import com.moyi.app.api.models.TodayStreakResponse
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryImage
 import com.moyi.app.domain.today.EntryMediaStatus
@@ -32,7 +36,7 @@ class TodayMappersTest {
     @Test
     fun everyDayStatusTheContractDeclaresMapsToTheSameName() {
         for (status in BondDayResponse.Status.entries) {
-            val today = TodayResponse(bondDay = BondDayResponse(DATE, status))
+            val today = today(day(status))
             assertEquals(status.name, today.toToday()?.status?.name)
         }
         assertEquals(BondDayResponse.Status.entries.map { it.name }, BondDayStatus.entries.map { it.name })
@@ -40,15 +44,11 @@ class TodayMappersTest {
 
     @Test
     fun theDateIsTheIsoBondDate() {
-        assertEquals("2026-09-14", TodayResponse(bondDay = BondDayResponse(DATE, BondDayResponse.Status.OPEN)).toToday()?.date)
+        assertEquals("2026-09-14", today(day(BondDayResponse.Status.OPEN)).toToday()?.date)
     }
 
-    @Test
-    fun aMissingBondDayOrItsDateOrStatusIsNoDay() {
-        assertNull(TodayResponse().toToday())
-        assertNull(TodayResponse(bondDay = BondDayResponse(date = DATE)).toToday())
-        assertNull(TodayResponse(bondDay = BondDayResponse(status = BondDayResponse.Status.OPEN)).toToday())
-    }
+    // A missing bondDay, date or status can no longer be built: the contract makes them
+    // required, so such a body fails to decode (TodayDecodeTest), before any mapper runs.
 
     @Test
     fun myEntryInEachStatus() {
@@ -63,27 +63,28 @@ class TodayMappersTest {
 
     @Test
     fun aMalformedEntryFailsTheWholeDay() {
-        val day = BondDayResponse(DATE, BondDayResponse.Status.PARTIAL)
-        assertNull(TodayResponse(bondDay = day, myEntry = entry(EntryResponse.Status.SUBMITTED, null)).toToday())
-        assertNull(
-            TodayResponse(bondDay = day, partnerEntry = PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, null))).toToday(),
-        )
+        val day = day(BondDayResponse.Status.PARTIAL)
+        assertNull(today(day, myEntry = entry(EntryResponse.Status.SUBMITTED, null)).toToday())
+        assertNull(today(day, partnerEntry = revealed(null)).toToday())
     }
 
     @Test
     fun everyPartnerShape() {
-        assertEquals(PartnerEntry.Submitted("e1", "w"), PartnerEntryWire.Entry(entry(EntryResponse.Status.SUBMITTED, "w")).toPartnerEntry())
-        assertEquals(PartnerEntry.Revealed("e1", "w"), PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w")).toPartnerEntry())
-        assertEquals(PartnerEntry.Deleted("e1"), PartnerEntryWire.Entry(entry(EntryResponse.Status.DELETED, null)).toPartnerEntry())
-        assertEquals(PartnerEntry.Locked, PartnerEntryWire.Locked(LockedEntryResponse("m2", LockedEntryResponse.Status.LOCKED)).toPartnerEntry())
+        assertEquals(PartnerEntry.Submitted("e1", "w"), submitted("w").toPartnerEntry())
+        assertEquals(PartnerEntry.Revealed("e1", "w"), revealed("w").toPartnerEntry())
+        assertEquals(PartnerEntry.Deleted("e1"), deleted().toPartnerEntry())
+        assertEquals(PartnerEntry.Locked, LockedEntryResponse("m2").toPartnerEntry())
+        // An entry read in full without its words is no entry.
+        assertNull(submitted(null).toPartnerEntry())
+        assertNull(revealed(null).toPartnerEntry())
     }
 
     @Test
     fun aPromptNeedsBothHalves() {
-        val day = BondDayResponse(DATE, BondDayResponse.Status.OPEN)
-        assertEquals(Prompt("p1", "t"), TodayResponse(bondDay = day, prompt = TodayPromptResponse("p1", "t")).toToday()?.prompt)
-        assertNull(TodayResponse(bondDay = day, prompt = TodayPromptResponse(id = "p1")).toToday()?.prompt)
-        assertNull(TodayResponse(bondDay = day, prompt = TodayPromptResponse(text = "t")).toToday()?.prompt)
+        val day = day(BondDayResponse.Status.OPEN)
+        assertEquals(Prompt("p1", "t"), today(day, prompt = TodayPromptResponse("p1", "t")).toToday()?.prompt)
+        assertNull(today(day).toToday()?.prompt)
+        // Half a prompt can no longer be built: `id` and `text` are required, so it fails to decode.
     }
 
     @Test
@@ -102,7 +103,6 @@ class TodayMappersTest {
         assertNull(partnerName(emptyList(), "m1"))
         assertNull(partnerName(null, "m1"))
         assertNull(partnerName(listOf(member("m1", "Amara"), member("m2", "Tunde")), null), "never name the caller as their own partner")
-        assertNull(partnerName(listOf(member("m1", "Amara"), MemberResponse(id = "m2")), "m1"), "a member without a name names nobody")
     }
 
     @Test
@@ -145,9 +145,9 @@ class TodayMappersTest {
         val voice = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL)
         assertEquals("v1", entry(EntryResponse.Status.SUBMITTED, "w").copy(voice = voice).toMyEntry()?.voice?.id)
         assertNull(entry(EntryResponse.Status.DELETED, null).copy(voice = voice).toMyEntry()?.voice)
-        val revealed = PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w").copy(voice = voice)).toPartnerEntry()
-        assertEquals("v1", assertIs<PartnerEntry.Revealed>(revealed).voice?.id)
-        val solo = PartnerEntryWire.Entry(entry(EntryResponse.Status.SUBMITTED, "w").copy(voice = voice)).toPartnerEntry()
+        val theirs = revealed("w").copy(voice = voice).toPartnerEntry()
+        assertEquals("v1", assertIs<PartnerEntry.Revealed>(theirs).voice?.id)
+        val solo = submitted("w").copy(voice = voice).toPartnerEntry()
         assertEquals("v1", assertIs<PartnerEntry.Submitted>(solo).voice?.id)
         // The voice note's URL never reaches a log.
         assertTrue("(redacted)" in voice.toEntryVoice().toString() && URL !in voice.toEntryVoice().toString())
@@ -158,7 +158,7 @@ class TodayMappersTest {
         val image = EntryImageResponse(height = 960, id = "m1", sensitive = false, status = EntryImageResponse.Status.READY, url = URL, width = 1280)
         assertEquals("m1", entry(EntryResponse.Status.SUBMITTED, "w").copy(image = image).toMyEntry()?.image?.id)
         assertNull(entry(EntryResponse.Status.DELETED, null).copy(image = image).toMyEntry()?.image)
-        val theirs = PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w").copy(image = image)).toPartnerEntry()
+        val theirs = revealed("w").copy(image = image).toPartnerEntry()
         assertEquals("m1", assertIs<PartnerEntry.Revealed>(theirs).image?.id)
         // The image never reaches a log.
         assertTrue("(redacted)" in image.toEntryImage().toString() && URL !in image.toEntryImage().toString())
@@ -166,10 +166,12 @@ class TodayMappersTest {
 
     @Test
     fun theReactionSetIsTheContractsOwnAndMapsByName() {
-        // Both of the contract's enums (the field and the request) are the domain's five, in order.
+        // The contract's enums (my entry's field, the partner's, and the request) are the domain's five, in order.
         assertEquals(EntryResponse.Reaction.entries.map { it.name }, Reaction.entries.map { it.name })
         assertEquals(ReactionRequest.Type.entries.map { it.name }, Reaction.entries.map { it.name })
+        assertEquals(RevealedPartnerEntryResponse.Reaction.entries.map { it.name }, Reaction.entries.map { it.name })
         for (reaction in EntryResponse.Reaction.entries) assertEquals(reaction.name, reaction.toDomain().name)
+        for (reaction in RevealedPartnerEntryResponse.Reaction.entries) assertEquals(reaction.name, reaction.toDomain().name)
         for (reaction in Reaction.entries) assertEquals(reaction.name, reaction.toRequest().type.name)
     }
 
@@ -177,7 +179,7 @@ class TodayMappersTest {
     fun thePartnersReactionArrivesOnMyEntryAndMineOnTheirs() {
         val mine = entry(EntryResponse.Status.REVEALED, "w").copy(reaction = EntryResponse.Reaction.MOVED).toMyEntry()
         assertEquals(Reaction.MOVED, mine?.reaction)
-        val theirs = PartnerEntryWire.Entry(entry(EntryResponse.Status.REVEALED, "w").copy(reaction = EntryResponse.Reaction.ME_TOO)).toPartnerEntry()
+        val theirs = revealed("w").copy(reaction = RevealedPartnerEntryResponse.Reaction.ME_TOO).toPartnerEntry()
         assertEquals(Reaction.ME_TOO, (theirs as PartnerEntry.Revealed).reaction)
         assertNull(entry(EntryResponse.Status.REVEALED, "w").toMyEntry()?.reaction)
     }
@@ -204,14 +206,47 @@ class TodayMappersTest {
         voice = null,
     )
 
+    private fun day(status: BondDayResponse.Status) = BondDayResponse(date = DATE, settlesAt = AT, status = status)
+
+    private fun today(
+        day: BondDayResponse,
+        myEntry: EntryResponse? = null,
+        partnerEntry: PartnerEntryResponse? = null,
+        prompt: TodayPromptResponse? = null,
+    ) = TodayResponse(
+        bondDay = day,
+        myEntry = myEntry,
+        partnerEntry = partnerEntry,
+        prompt = prompt,
+        streak = TodayStreakResponse(current = 0, freezesAvailable = 0, longest = 0, strictMode = false),
+    )
+
+    private fun submitted(text: String?) = SubmittedPartnerEntryResponse(
+        authorMemberId = "m2", bondId = "b1", createdAt = AT, date = DATE, favourited = false, id = "e1",
+        image = null, intendedAt = AT, reaction = null, text = text, voice = null,
+    )
+
+    private fun revealed(text: String?) = RevealedPartnerEntryResponse(
+        authorMemberId = "m2", bondId = "b1", createdAt = AT, date = DATE, favourited = false, id = "e1",
+        image = null, intendedAt = AT, reaction = null, text = text, voice = null,
+    )
+
+    private fun deleted() = DeletedPartnerEntryResponse(
+        authorMemberId = "m2", bondId = "b1", createdAt = AT, date = DATE, favourited = false, id = "e1",
+        image = null, intendedAt = AT, reaction = null, text = null, voice = null,
+    )
+
     private fun member(id: String, name: String, left: Boolean = false) = MemberResponse(
         displayName = name,
         id = id,
+        joinedAt = AT,
         leftAt = if (left) Instant.parse("2026-09-01T00:00:00Z") else null,
+        role = MemberResponse.Role.MEMBER,
     )
 
     private companion object {
         val DATE = LocalDate(2026, 9, 14)
+        val AT = Instant.parse("2026-09-14T19:12:44Z")
         const val URL = "http://localhost:9000/moyi-media/display?X-Amz-Signature=abc"
     }
 }

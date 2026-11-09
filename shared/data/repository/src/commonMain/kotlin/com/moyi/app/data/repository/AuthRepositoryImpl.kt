@@ -78,13 +78,13 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> =
-        safeApiCallEmpty { verification.verify(VerifyEmailRequest(token)) }
+        safeApiCallEmpty { verification.verify(VerifyEmailRequest(token = token)) }
 
     override suspend fun resendVerification(email: String): EmptyResult<DataError.Network> =
-        safeApiCallEmpty { verification.resend(ResendVerificationRequest(email)) }
+        safeApiCallEmpty { verification.resend(ResendVerificationRequest(email = email)) }
 
     override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> =
-        safeApiCallEmpty { passwordReset.forgot(ForgotPasswordRequest(email)) }
+        safeApiCallEmpty { passwordReset.forgot(ForgotPasswordRequest(email = email)) }
 
     // 200 with no body and no session: the person signs in afterwards (doc 06 §3.1).
     override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> =
@@ -130,7 +130,7 @@ class AuthRepositoryImpl(
             }
         }
         if (refreshToken != null) {
-            safeApiCallEmpty { logoutApi.logout(LogoutRequest(refreshToken)) }
+            safeApiCallEmpty { logoutApi.logout(LogoutRequest(refreshToken = refreshToken)) }
         }
     }
 

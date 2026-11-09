@@ -1,13 +1,17 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.models.BondDayResponse
+import com.moyi.app.api.models.DeletedPartnerEntryResponse
 import com.moyi.app.api.models.EntryImageResponse
 import com.moyi.app.api.models.EntryResponse
 import com.moyi.app.api.models.EntryVoiceResponse
+import com.moyi.app.api.models.LockedEntryResponse
+import com.moyi.app.api.models.PartnerEntryResponse
 import com.moyi.app.api.models.ReactionRequest
+import com.moyi.app.api.models.RevealedPartnerEntryResponse
+import com.moyi.app.api.models.SubmittedPartnerEntryResponse
 import com.moyi.app.api.models.TodayPromptResponse
 import com.moyi.app.api.models.TodayResponse
-import com.moyi.app.api.wire.PartnerEntryWire
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryImage
 import com.moyi.app.domain.today.EntryMediaStatus
@@ -95,17 +99,19 @@ internal fun EntryVoiceResponse.toEntryVoice(): EntryVoice {
     )
 }
 
-internal fun PartnerEntryWire.toPartnerEntry(): PartnerEntry? = when (this) {
-    is PartnerEntryWire.Locked -> PartnerEntry.Locked
-    is PartnerEntryWire.Entry -> when (entry.status) {
-        EntryResponse.Status.SUBMITTED ->
-            entry.text?.let { PartnerEntry.Submitted(entry.id, it, entry.image?.toEntryImage(), entry.voice?.toEntryVoice()) }
-        EntryResponse.Status.REVEALED ->
-            entry.text?.let {
-                PartnerEntry.Revealed(entry.id, it, entry.image?.toEntryImage(), entry.voice?.toEntryVoice(), entry.reaction?.toDomain())
-            }
-        EntryResponse.Status.DELETED -> PartnerEntry.Deleted(entry.id)
+/**
+ * The other member's entry. `status` picks the generated subclass while decoding
+ * (`@JsonClassDiscriminator("status")`), so the shape is already known here; an entry
+ * read in full without its words is the one shape that still does not parse. Only a
+ * revealed entry carries a reaction.
+ */
+internal fun PartnerEntryResponse.toPartnerEntry(): PartnerEntry? = when (this) {
+    is LockedEntryResponse -> PartnerEntry.Locked
+    is SubmittedPartnerEntryResponse -> text?.let { PartnerEntry.Submitted(id, it, image?.toEntryImage(), voice?.toEntryVoice()) }
+    is RevealedPartnerEntryResponse -> text?.let {
+        PartnerEntry.Revealed(id, it, image?.toEntryImage(), voice?.toEntryVoice(), reaction?.toDomain())
     }
+    is DeletedPartnerEntryResponse -> PartnerEntry.Deleted(id)
 }
 
 private fun TodayPromptResponse.toPrompt(): Prompt? = Prompt(id = id ?: return null, text = text ?: return null)
@@ -116,6 +122,9 @@ private fun EntryResponse.Status.toDomain(): EntryStatus = EntryStatus.valueOf(n
 
 /** By name: the contract's enum and the domain's are the same five (a test pins it). */
 internal fun EntryResponse.Reaction.toDomain(): Reaction = Reaction.valueOf(name)
+
+/** The revealed partner entry's own copy of the same enum, by name likewise. */
+internal fun RevealedPartnerEntryResponse.Reaction.toDomain(): Reaction = Reaction.valueOf(name)
 
 /** The request's own enum, by name, for the same reason. */
 internal fun Reaction.toRequest(): ReactionRequest = ReactionRequest(ReactionRequest.Type.valueOf(name))

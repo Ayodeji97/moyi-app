@@ -3,6 +3,7 @@
 package com.moyi.app.data.repository
 
 import com.moyi.app.api.apis.RefreshControllerApi
+import com.moyi.app.api.models.DeviceRequest
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.HttpClientFactory
@@ -27,17 +28,17 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /**
  * [PushTokenRegistrar] with a fake [PushTokenSource] and the real session and authed
@@ -88,7 +89,7 @@ class PushTokenRegistrarTest {
             scope = scope.backgroundScope + UnconfinedTestDispatcher(scope.testScheduler),
         )
         val repository = AuthRepositoryImpl(publicClient, config, sessionManager, pushTokens = registrar) {
-            DeviceInfo(platform = "ANDROID", appVersion = "1.0", osVersion = "16")
+            DeviceInfo(platform = DeviceRequest.Platform.ANDROID, appVersion = "1.0", osVersion = "16")
         }
 
         fun pushCalls(): List<HttpRequestData> = requests.filter { it.url.encodedPath == PUSH_TOKEN }
