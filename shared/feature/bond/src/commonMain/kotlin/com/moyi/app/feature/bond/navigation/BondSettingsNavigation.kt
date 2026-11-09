@@ -106,6 +106,8 @@ data class BondArchivedRoute(val partnerName: String? = null)
  *   times change in place. The phone's permission prompt is shown from here only
  *   (NotificationPermissionPolicy), and Open phone settings leaves the app. Back returns
  *   to the root.
+ * - Bond settings → Report (the member), the report flow ([reportGraph]); leaving it returns
+ *   to the root.
  * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
  *   person to the signed-in start, which shows the archived bond. Signing out needs
  *   nothing here; the shell routes on the session ending.
@@ -212,6 +214,7 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
+            is BondSettingsEvent.OpenReport -> navController.openReport(event.bondId, entryId = null, event.partnerName, fromSettings = true)
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
             is BondSettingsEvent.ShareInvite -> scope.launch {

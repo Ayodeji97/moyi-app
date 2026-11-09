@@ -9,7 +9,6 @@ Needs only the Python standard library, rsvg-convert and ImageMagick (`magick`).
 into the repository:
   iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/   icon-any.png, icon-dark.png, icon-tinted.png
   androidApp/src/main/res/drawable/                   ic_launcher_foreground.xml
-  androidApp/src/main/res/drawable-v31/               splash_mark.xml
   androidApp/src/main/res/mipmap-<density>/           ic_launcher.png, ic_launcher_round.png (API 24-25)
 and, when store_out_dir is given, the store listing images there (never committed):
   app-store-1024.png, play-store-512.png
@@ -37,8 +36,6 @@ SURFACE_LIGHT, INK_LIGHT = "#FFF9F5", "#2A2020"
 IOS_MARK_RATIO = 0.625  # mark height / tile side
 ANDROID_CANVAS, ANDROID_MARK = 108.0, 48.0  # adaptive icon canvas and mark height, dp
 ANDROID_VISIBLE = 72.0  # the part of the 108 dp canvas a launcher mask can show
-SPLASH_CANVAS = 288.0  # Android 12 splash icon without background: 288 dp, fits a 192 dp circle
-SPLASH_MARK = SPLASH_CANVAS * ANDROID_MARK / ANDROID_CANVAS  # same proportion as the launcher: 128 dp
 
 ROOT = os.getcwd()
 IOS_DIR = os.path.join(ROOT, "iosApp/iosApp/Assets.xcassets/AppIcon.appiconset")
@@ -128,17 +125,6 @@ def android():
         f.write(vector(ANDROID_CANVAS, ANDROID_MARK, INK_DARK,
                        "The adaptive icon's foreground and monochrome layer: the mark, 48 dp high, "
                        "centred in the 108 dp canvas, inside the 66 dp safe zone."))
-    # drawable-v31: only the API 31+ theme uses it, and at 288 dp it is past the size lint
-    # allows a vector that older devices might rasterise.
-    drawable_v31 = os.path.join(RES, "drawable-v31")
-    os.makedirs(drawable_v31, exist_ok=True)
-    with open(os.path.join(drawable_v31, "splash_mark.xml"), "w") as f:
-        f.write(vector(SPLASH_CANVAS, SPLASH_MARK, "@color/ink",
-                       "The Android 12+ splash icon: the mark in ink on surface (both follow the "
-                       "system mode), 128 dp high in the 288 dp canvas, inside the 192 dp circle. "
-                       "The splash API sizes it at 288 dp, past lint's 200 dp vector limit; that "
-                       "limit is about rasterising for old devices, and this is API 31+ only.",
-                       root_extra='\n    xmlns:tools="http://schemas.android.com/tools"\n    tools:ignore="VectorRaster"'))
     # Before API 26 there is no adaptive icon: the launcher shows these PNGs. They are the
     # adaptive icon as a launcher would mask it, the visible 72 of 108 dp, square and round.
     for density, px in LEGACY.items():

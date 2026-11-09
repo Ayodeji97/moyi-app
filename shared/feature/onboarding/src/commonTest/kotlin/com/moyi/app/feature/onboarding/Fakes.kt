@@ -8,6 +8,7 @@ import com.moyi.app.core.FieldError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
@@ -122,9 +123,9 @@ class FakeAuthRepository(signedIn: User? = user(verified = false)) : AuthReposit
         over18: Boolean,
     ): EmptyResult<DataError.Network> = error("not used")
 
-    override suspend fun verifyEmail(token: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network> = error("not used")
     override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> = error("not used")
-    override suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> = error("not used")
     override suspend fun login(email: String, password: String): Result<User, DataError> = error("not used")
     override suspend fun logout() = error("not used")
     override suspend fun restoreSession(): SessionState = session.value

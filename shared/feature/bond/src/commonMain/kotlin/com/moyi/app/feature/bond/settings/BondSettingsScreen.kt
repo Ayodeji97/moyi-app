@@ -62,6 +62,7 @@ import com.moyi.app.feature.bond.resources.settings_reveal_none
 import com.moyi.app.feature.bond.resources.settings_row_leave
 import com.moyi.app.feature.bond.resources.settings_row_legal
 import com.moyi.app.feature.bond.resources.settings_row_block
+import com.moyi.app.feature.bond.resources.settings_row_report
 import com.moyi.app.feature.bond.resources.settings_row_close_box
 import com.moyi.app.feature.bond.resources.settings_close_box_value_asked
 import com.moyi.app.feature.bond.resources.settings_close_box_value_closing
@@ -286,13 +287,22 @@ private fun SettingsRoot(
                     onClick = { onAction(BondSettingsAction.OnLeaveClick) },
                 )
                 // Only while the other member is known: the confirm names them (`26` §3.1).
-                if (settings.partnerName != null) {
+                val partnerName = settings.partnerName
+                if (partnerName != null) {
                     SettingsRow(
                         label = stringResource(Res.string.settings_row_block),
                         kind = RowKind.Navigates,
                         destructive = true,
                         enabled = !busy,
                         onClick = { onAction(BondSettingsAction.OnBlockClick) },
+                    )
+                    // Not drawn (missing-components §53): the member half of FR-100 beside the
+                    // remedies it is paired with. Not destructive: it ends nothing.
+                    SettingsRow(
+                        label = stringResource(Res.string.settings_row_report, partnerName),
+                        kind = RowKind.Navigates,
+                        enabled = !busy,
+                        onClick = { onAction(BondSettingsAction.OnReportClick) },
                     )
                 }
                 SettingsRow(

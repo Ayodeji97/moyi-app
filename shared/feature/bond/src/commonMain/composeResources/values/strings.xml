@@ -288,4 +288,72 @@
     <string name="notifications_quiet_line">Notifications wait until quiet hours end.</string>
     <string name="notifications_quiet_start">From</string>
     <string name="notifications_quiet_end">Until</string>
+    <!--
+    Report (FR-100, ADR-0053; `26` §4, Figma Safety 599:1781). strings-proposed.md §10 is
+    "IN FILE, not decided", so every string here needs the owner's approval; those taken from
+    §10 say so. The reason names are the contract's five, not §10's four (contract gap row 36,
+    missing-components §53): each reason's words are PROPOSED.
+    -->
+    <!-- PROPOSED. The Bond settings row that reports the member (not drawn: missing-components §53). -->
+    <string name="settings_row_report">Report %1$s</string>
+    <!-- report.eyebrow (strings-proposed.md §10). -->
+    <string name="report_eyebrow">Report</string>
+    <!-- report.target.heading (strings-proposed.md §10). -->
+    <string name="report_target_heading">What are you reporting?</string>
+    <!-- report.target.entry (strings-proposed.md §10). -->
+    <string name="report_target_entry">This day’s entry</string>
+    <!-- PROPOSED. The member row when the other member's name is not known. -->
+    <string name="report_target_member_unnamed">Your person</string>
+    <!-- report.heading (strings-proposed.md §10). -->
+    <string name="report_heading">Tell us what happened</string>
+    <!-- PROPOSED, in place of report.reason.label: the contract's reasons say why, not what (ADR-0053 decision 3), and §10's label repeats the target heading. -->
+    <string name="report_reason_label">Why are you reporting this?</string>
+    <!-- PROPOSED. The reason field before one is chosen. -->
+    <string name="report_reason_none">Choose one</string>
+    <!-- PROPOSED. Spoken on each row of the reason picker: what a tap does. -->
+    <string name="report_reason_pick_hint">Choose this reason</string>
+    <!-- report.reason.treating (strings-proposed.md §10), for HARASSMENT (ADR-0053 decision 14: T-09's reason). -->
+    <string name="report_reason_harassment">How they’re treating me</string>
+    <!-- PROPOSED. NON_CONSENSUAL. -->
+    <string name="report_reason_non_consensual">Something shared without my consent</string>
+    <!-- PROPOSED. VIOLENCE_OR_SELF_HARM. -->
+    <string name="report_reason_violence">Violence, threats or self-harm</string>
+    <!-- PROPOSED. MINOR_SEXUAL_CONTENT: reviewed first by the server. -->
+    <string name="report_reason_minor">Sexual content involving a child</string>
+    <!-- report.reason.other (strings-proposed.md §10), for OTHER. -->
+    <string name="report_reason_other">Something else</string>
+    <!-- report.detail.label (strings-proposed.md §10). -->
+    <string name="report_detail_label">Anything you want to add</string>
+    <!-- report.detail.helper (strings-proposed.md §10). True: ADR-0053 decision 7, the detail is never shown to the other member. -->
+    <string name="report_detail_helper">We do not tell them you reported this.</string>
+    <!-- report.send (strings-proposed.md §10). -->
+    <string name="report_send">Send report</string>
+    <!-- PROPOSED. Sending label (states.md §1c). -->
+    <string name="report_sending">Sending report</string>
+    <!-- report.failed.retry (strings-proposed.md §10). -->
+    <string name="report_retry">Try again</string>
+    <!-- report.failed.error (strings-proposed.md §10): no answer, or the server failed. -->
+    <string name="report_error_failed">That didn’t send. Your report is still here.</string>
+    <!-- PROPOSED. Send tapped with no reason chosen. -->
+    <string name="report_error_reason_missing">Choose a reason to send this.</string>
+    <!-- PROPOSED. The detail is over 500 characters (ReportRequest.detail), checked before sending and on a 422. -->
+    <string name="report_error_detail_long">Keep it to 500 characters or fewer.</string>
+    <!-- PROPOSED. 429 RATE_LIMITED: ten a day across both targets (ADR-0053 decision 9). Says what is kept, never why or how many (support.paused rule); the bucket refills over a day, so no time is promised. -->
+    <string name="report_error_paused">Reports are paused for a while. Your report is still here, and the ones you already sent are with us.</string>
+    <!-- PROPOSED. 404: the entry or the bond is not one this person can report any more. -->
+    <string name="report_error_not_found">This can no longer be reported from here. Nothing was sent.</string>
+    <!-- PROPOSED. 409 REPORT_ON_OWN_ENTRY. Never offered on your own entry, so a guard only. -->
+    <string name="report_error_own_entry">That entry is yours, so it cannot be reported. Nothing was sent.</string>
+    <!-- report.sent.heading (strings-proposed.md §10). -->
+    <string name="report_sent_heading">Thank you. A person will read this.</string>
+    <!-- report.sent.line (strings-proposed.md §10). True for both routes: ADR-0053 decisions 5 and 14, no push, event or field tells them. -->
+    <string name="report_sent_line">%1$s is not told that you reported this.</string>
+    <!-- PROPOSED. report.sent.line when the other member's name is not known. -->
+    <string name="report_sent_line_unnamed">They are not told that you reported this.</string>
+    <!-- PROPOSED. After an entry report only: ADR-0053 decision 4, its photo and voice note are held back from the reporter until a person decides. -->
+    <string name="report_sent_media_line">If that entry has a photo or voice note, it stays hidden from you until a person has looked at it.</string>
+    <!-- report.sent.back (strings-proposed.md §10), from the day view. -->
+    <string name="report_sent_back_day">Back to the day</string>
+    <!-- PROPOSED, support.back's words (strings-proposed.md §9): from Bond settings. -->
+    <string name="report_sent_back_settings">Back to settings</string>
 </resources>
