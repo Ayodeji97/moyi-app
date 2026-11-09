@@ -31,7 +31,13 @@ interface AuthRepository {
         over18: Boolean,
     ): EmptyResult<DataError.Network>
 
-    suspend fun verifyEmail(token: String): EmptyResult<DataError.Network>
+    /**
+     * Confirms the address with the emailed link's token or the typed code ([EmailProof]).
+     * A link that expired or was used is `410 VERIFICATION_TOKEN_EXPIRED`; a link that
+     * matches nothing, and every refused code (wrong, expired, five wrong tries, or spent),
+     * is one answer, `422 VERIFICATION_TOKEN_INVALID`, on purpose.
+     */
+    suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network>
 
     /** Always succeeds on a reachable server, whether or not the address is known (doc 06 §3.1). */
     suspend fun resendVerification(email: String): EmptyResult<DataError.Network>
@@ -44,13 +50,14 @@ interface AuthRepository {
     suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network>
 
     /**
-     * Sets a new password from a reset token. Signs nobody in: every session
-     * on every device is revoked, and the caller signs in afterwards. Refusals:
-     * `422 PASSWORD_RESET_TOKEN_INVALID`, `410 PASSWORD_RESET_TOKEN_EXPIRED`
-     * (expired or already used), or a `422` field violation on `password`,
-     * which does not spend the token.
+     * Sets a new password from the reset email's link or typed code ([EmailProof]).
+     * Signs nobody in: every session on every device is revoked, and the caller
+     * signs in afterwards. Refusals: `422 PASSWORD_RESET_TOKEN_INVALID` (a link
+     * that matches nothing, or any refused code), `410 PASSWORD_RESET_TOKEN_EXPIRED`
+     * (a link expired or already used), or a `422` field violation on `password`,
+     * which spends nothing.
      */
-    suspend fun resetPassword(token: String, password: String): EmptyResult<DataError.Network>
+    suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network>
 
     /**
      * Signs in and keeps the session on this device. [DataError.Local] if the

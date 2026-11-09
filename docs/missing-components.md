@@ -83,6 +83,8 @@ Recorded in PR #5 (design system), 2026-10-27.
 
 ### 6. Verify-email paste-token field
 
+- **Superseded by §58:** the field is now the code field, taking six digits or the link.
+
 - **Today:** not in Figma. `states.md` §1 screen 3 has instruction, resend, "Check again" and
   "Use a different address", with no input. Deep links are meant to make the token invisible.
 - **Here:** PR #6 adds a `Field` `Text` for pasting the token from the local backend log, as a
@@ -93,6 +95,8 @@ Recorded in PR #5 (design system), 2026-10-27.
   In the expired state the field is hidden. Decide whether it ships or is debug-only.
 
 ### 6a. Reset-password paste-code field
+
+- **Superseded by §58:** the field is now the code field, taking six digits or the link.
 
 - **Today:** not in Figma. Choose a new password (345:30) draws only the new password, the
   consequence line and "Save and sign in"; the token is meant to arrive by deep link from the
@@ -138,7 +142,7 @@ All live in `shared/feature/auth/src/commonMain/composeResources/values/strings.
 | `register_action_sending` | Creating your account | Sending label (states.md §1c) |
 | `verify_token_label` / `_helper` | Code from the email / Paste the code from the link we sent, or the whole link. | Paste field (§6) |
 | `verify_token_error_blank` / `_invalid` | Paste the code from the email first. / That code does not match. Copy it again from the email. | `VERIFICATION_TOKEN_INVALID` |
-| `verify_expired_action_sending` | Sending a new link | Sending label for "Send a new link" |
+| `verify_expired_action_sending` | Sending a new email | Sending label for "Send a new email" (reworded by owner ruling 2026-11-09, §58) |
 | `login_password_error_blank` | Add your password to sign in. | Empty password |
 | `login_action_sending` | Signing in | Sending label |
 | `login_error_rate_limited` | Sign in is paused for a short while. Your account is fine. Try again in a few minutes. | `ratelimit.line` plus a "when" (states.md §1b); the full-screen 345:53 is not built |
@@ -964,3 +968,75 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   paste fields go "when deep links land": they stay here, as the fallback for an email read
   on a computer and for the typed six-digit code the backend now sends (row 20 of
   `backend-contract-gaps.md`).
+
+## Typed codes from the email (backend #155, gaps row 20)
+
+### 58. One code field for the six digits or the link
+
+- **Today:** the verify and reset emails carry a link **and** a six-digit code ("Or type this
+  code in the app. It works for 15 minutes", backend `VerificationEmailComposer`, read only).
+  `states.md` §1 draws verify with no input and Choose a new password (345:30) with only the
+  new password; §6 and §6a added a paste field for the link's token, and §52 kept it as the
+  fallback for an email read on a computer.
+- **Here: one field, not two.** The paste field becomes the code field, and it takes either:
+  six digits typed or pasted, or the whole link pasted. A paste containing `token=` is a
+  link and is sent as the link would be when opened; anything else is reduced to its digits,
+  six at most (so "123 456", "123-456" and "Your code: 123456" all work, and an Arabic or
+  Devanagari keyboard's numerals become ASCII). Why one: a person holding an email does not
+  know, and should not have to know, which box a link goes in and which a code goes in; one
+  field keeps one label, one error slot and one focus order, and the link case costs one
+  `token=` check. Two fields would put two empty inputs on a screen whose job is one thing.
+- **Component:** the design system's `Field` `Code` (`tokens.md` §4): one control in the
+  code style, not six boxes (six boxes announce as six controls, break paste and fail at 200 %
+  text). No new component. The keyboard is the number pad (`NumberPassword`) and the field is
+  marked a one-time code for autofill (`ContentType.SmsOtpCode`, iOS `.oneTimeCode`), so iOS
+  can offer a code it finds in Mail above the keyboard. Its name for a screen reader is its
+  label, "6-digit code"; a refusal is the field's error and a polite live region while it
+  shows, so a refusal that arrives with no button pressed is spoken.
+- **Verify:** the sixth digit checks the code at once, with `PrimaryAction` in Sending
+  ("Checking"); no spinner. A refused code is not sent again until it changes (each wrong try
+  spends one of five). "Check again" sends what is typed; with fewer than six it says so.
+  "Send it again" clears the field: a newer email voids the old code.
+- **Choose a new password:** the code field comes first, as §6a placed the paste field. The
+  sixth digit moves focus to the new password and sends nothing: the server checks a reset
+  code only with the new password (gaps row 39). A link that opened the app (§52) or was
+  pasted is held as the proof and the helper says so; typing a digit makes the code the proof.
+- **PROPOSED copy** (all in `strings.xml`, marked PROPOSED):
+  - `code_label` "6-digit code"; `code_helper` "It is in the email we sent. You can paste the
+    whole link here instead."
+  - `code_error_blank` "Type the 6 digits from the email first."; `code_error_short` "A code
+    has 6 digits. Check the email for the rest."
+  - `code_error_invalid` (422 `VERIFICATION_TOKEN_INVALID` / `PASSWORD_RESET_TOKEN_INVALID`
+    for a code), **approved 2026-11-09**: "That code did not work. Check the digits, or send a
+    new email." The server gives one answer for wrong, expired, too many wrong tries and
+    spent, on purpose (a distinct answer would say which addresses hold a live code), so the
+    sentence names the way out for all of them, without the numbers. **There is no separate
+    "too many attempts" message because the server never says so.**
+  - `code_error_link_invalid` (422 for a link): "That link did not work. Copy it again from
+    the email, or type the code."
+  - `code_error_no_address`: "A code needs the address it was sent to. Open the link in the
+    email instead." Shown when the screen was opened by a link on a phone that does not know
+    the address (§52): a code alone names no account.
+  - `code_error_rate_limited` (429 on a code: ten a day per address, ADR-0023 amended
+    2026-11-08), above the action: "That is a lot of codes for one day. Open the link in the
+    email instead, or try again tomorrow." A link's 429 keeps `auth_error_rate_limited`.
+  - `code_error_unavailable` (503 `CODE_CHECK_UNAVAILABLE`), above the action with a retry:
+    "We cannot check codes just now. Open the link in the email, or try again in a minute."
+  - `reset_link_ready`, the helper while a link is the proof: "The link from the email is
+    ready. Choose your new password."
+  - Rewritten (were approved interim lines that said to copy and paste the link):
+    `verify_line` "We sent a 6-digit code to %1$s. Type it below, or open the link in the same
+    email."; `verify_line_no_address` "Open the link in the email we sent on this phone, or
+    paste it below."; `reset_sent_line`, **approved 2026-11-09**: "If that address has an
+    account, we sent it a 6-digit code. Type it below with your new password." (still
+    identical whether or not the account exists).
+- **Removed:** `verify_token_label`, `_helper`, `_error_blank`, `_error_invalid` (§6, §6a),
+  replaced by the `code_*` strings above.
+- **Owner ruling, 2026-11-09:** (1) the invalid-code sentence drops the numbers (15 minutes,
+  5 tries): they are backend defaults and would drift if configured. `code_error_invalid` and
+  `reset_sent_line` are approved as written above. (2) The expired layout's action names the
+  email, since the new email carries a code too: `verify_expired_action` "Send a new email"
+  (was `copy.md`'s "Send a new link") and `verify_expired_action_sending` "Sending a new
+  email", approved. (3) Choose a new password stays one screen (the code field above the
+  password) until the backend can check a reset code alone (gaps row 39); a two-step flow is
+  reconsidered then. The other `code_*` strings and `reset_link_ready` stay PROPOSED.
