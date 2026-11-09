@@ -165,6 +165,20 @@ capability: automatic signing turns it on for an ID on your own paid team, and a
 Personal Team cannot sign it at all. To run on a phone from such a team, also set
 `CODE_SIGN_ENTITLEMENTS=` (empty) in `Local.xcconfig`.
 
+**Links that open the app.** `https://getmoyi.app/verify?token=…`, `/reset-password?token=…`
+and `/i/<code>` open their screens (`DeepLink.parse`, `LinkRouting`): on Android through the
+`autoVerify` intent filter in `AndroidManifest.xml`, verified against the site's
+`assetlinks.json`; on iOS through the entitlement above and the site's AASA, which must list
+the three paths (moyi-backend#157). Neither verification passes for a debug build (debug
+key, no AASA paths yet), so test them by hand:
+
+```sh
+# Android: name the package, so the unverified link still reaches the app
+adb shell am start -a android.intent.action.VIEW -d "https://getmoyi.app/i/7KQ4MZ" app.getmoyi.moyi
+# iOS simulator, debug builds only: a cold launch with the link handed over
+xcrun simctl launch --terminate-running-process booted app.getmoyi.moyi -moyiOpenLink "https://getmoyi.app/i/7KQ4MZ"
+```
+
 **Android release signing.** The release build is signed with the upload key only where
 these four Gradle properties exist, which is the owner's `~/.gradle/gradle.properties`,
 never the repository (issue #49). Without them, as on CI, `assembleRelease` still builds and

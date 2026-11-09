@@ -27,8 +27,8 @@ import org.jetbrains.compose.resources.stringResource
  *
  * Placed per auth-placement-spec §3.4: heading and line as one block 16
  * apart; the action block holds one centred secondary link and no
- * PrimaryAction. The link opens Choose a new password, where the code from
- * the email is pasted (a stand-in until deep links).
+ * PrimaryAction. The link opens Choose a new password, where the six-digit
+ * code from the email is typed (or the link pasted, docs/missing-components.md §58).
  */
 @Composable
 fun ResetLinkSentScreen(

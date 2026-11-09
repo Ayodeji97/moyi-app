@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,9 +29,13 @@ fun SignedInStartRoot(
     onNavigateToOnboarding: () -> Unit,
     onNavigateToGate: () -> Unit,
     onNavigateToArchived: (partnerName: String?) -> Unit,
+    onShowingError: () -> Unit = {},
     viewModel: SignedInStartViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // The shell's launch splash waits for a screen with something on it; Checking is the
+    // bare surface, the Generic error is not (App, `firstScreenDrawn`).
+    if (state == SignedInStartState.Failed) LaunchedEffect(Unit) { onShowingError() }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             SignedInStartEvent.NavigateToToday -> onNavigateToToday()
