@@ -22,3 +22,7 @@ node_modules/
 
 # Local agent notes (handover, worktrees)
 .claude/
+
+# Signing keys never enter the repository (issue #49)
+*.jks
+*.keystore
