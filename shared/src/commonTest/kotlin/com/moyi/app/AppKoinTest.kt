@@ -20,6 +20,10 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.feature.auth.di.authFeatureModule
 import com.moyi.app.feature.bond.di.bondFeatureModule
+import com.moyi.app.feature.support.SupportViewModel
+import com.moyi.app.feature.support.di.supportFeatureModule
+import com.moyi.app.domain.support.SupportRepository
+import com.moyi.app.domain.support.SupportTicket
 import com.moyi.app.feature.bond.settings.BondSettingsViewModel
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
@@ -80,6 +84,7 @@ class AppKoinTest {
                 authFeatureModule,
                 onboardingFeatureModule,
                 bondFeatureModule,
+                supportFeatureModule,
                 appModule,
                 module {
                     single<AuthRepository> { repo }
@@ -90,6 +95,12 @@ class AppKoinTest {
                     single<OutboxSender> { StubOutbox() }
                     single<EntryOutbox> { StubOutbox() }
                     single<NotificationSettingsRepository> { PreviewNotificationSettingsRepository() }
+                    single<SupportRepository> {
+                        object : SupportRepository {
+                            override suspend fun send(subject: String, body: String, idempotencyKey: String) =
+                                Result.Success(SupportTicket("t", kotlin.time.Instant.fromEpochSeconds(0)))
+                        }
+                    }
                     single<PushTokenRegistration> {
                         object : PushTokenRegistration {
                             override fun start() = Unit
@@ -109,6 +120,7 @@ class AppKoinTest {
             koin.get<UnverifiedGateViewModel>()
             koin.get<BondSettingsViewModel> { parametersOf("preview-bond") }
             koin.get<NotificationSettingsViewModel> { parametersOf("preview-bond") }
+            koin.get<SupportViewModel>()
             koin.get<RelationshipTypeViewModel>()
             koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }
             koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD") }

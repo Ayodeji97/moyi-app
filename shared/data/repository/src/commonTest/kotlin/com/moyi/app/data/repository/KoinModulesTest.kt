@@ -21,6 +21,7 @@ import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.media.MediaRepository
 import com.moyi.app.domain.streak.StreakRepository
+import com.moyi.app.domain.support.SupportRepository
 import com.moyi.app.domain.today.DraftStore
 import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.OutboxSender
@@ -58,6 +59,7 @@ class KoinModulesTest {
             koin.get<StorageHttpClient>()
             koin.get<ArchiveRepository>()
             koin.get<StreakRepository>()
+            koin.get<SupportRepository>()
             koin.get<TodayCache>()
             koin.get<DraftStore>()
             koin.get<EntryOutbox>()

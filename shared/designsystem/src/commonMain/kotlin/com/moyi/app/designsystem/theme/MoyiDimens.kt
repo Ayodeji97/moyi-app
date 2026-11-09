@@ -45,6 +45,8 @@ object MoyiDimens {
         val BoxMinHeight = 56.dp
         /** tokens.md L284 "65 for Code"; onboarding spec §3.5 (Field · code 308:9, box 65). A minimum. */
         val CodeBoxMinHeight = 65.dp
+        /** tokens.md §4, component 8: the `Multiline` box is 140 tall, top-aligned (Field · detail 599:1790). A minimum. */
+        val MultilineBoxMinHeight = 140.dp
         /** Figma §4.2: Idle and Disabled stroke 1. */
         val StrokeIdle = 1.dp
         /** Figma §4.2: Focus and Error stroke 2; tokens.md L284 (weight changes, NFR-104). */

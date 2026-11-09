@@ -29,6 +29,8 @@
     <string name="settings_row_rest_days">Rest days</string>
     <!-- PROPOSED. In place of the Account row (its screen is not built): home_sign_out's words. -->
     <string name="settings_row_sign_out">Sign out</string>
+    <!-- account.help (strings-proposed.md §9). PROPOSED placement: in Just you, in place of the Account screen that holds it. Opens Support. -->
+    <string name="settings_row_help">Get help</string>
     <!-- copy.md: "Leave this bond?" is the confirmation; the row is the act. -->
     <string name="settings_row_leave">Leave this bond</string>
 

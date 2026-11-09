@@ -64,6 +64,17 @@ class BondSettingsViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun getHelpOpensSupportEvenWhenTheLoadFailed() = runTest {
+        repo.reads += Result.Failure(DataError.Network.NoInternet)
+        assertEquals(SettingsLoad.Failed, viewModel.state.value.load)
+
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnGetHelpClick)
+            assertEquals(BondSettingsEvent.OpenSupport, awaitItem())
+        }
+    }
+
+    @Test
     fun aBondThePersonIsNoLongerInEndsSettings() = runTest {
         repo.reads += apiError(404, ApiErrorCode.NOT_FOUND)
         viewModel.events.test { assertEquals(BondSettingsEvent.Ended, awaitItem()) }

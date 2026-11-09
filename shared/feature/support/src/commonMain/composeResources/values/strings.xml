@@ -1,0 +1,56 @@
+<resources>
+    <!--
+    Contact support's copy (FR-102). Each string says where it comes from:
+      strings-proposed.md §9: the design system's Support corpus (IN FILE, not decided).
+      PROPOSED: written for this screen, not in the corpus; needs the owner's approval
+      (docs/missing-components.md §51).
+    -->
+
+    <!-- ===== The form ===== -->
+    <!-- support.eyebrow. -->
+    <string name="support_eyebrow">Support</string>
+    <!-- support.heading; also account.help, the row and link that open it. -->
+    <string name="support_heading">Get help</string>
+    <!-- support.privacy. True while the request carries only subject and body (strings-proposed.md §9 note). -->
+    <string name="support_privacy">Support sees only what you write here. Never your entries.</string>
+    <!-- support.subject.label. -->
+    <string name="support_subject_label">Subject</string>
+    <!-- support.message.label. -->
+    <string name="support_message_label">Message</string>
+    <!-- support.send. -->
+    <string name="support_send">Send</string>
+    <!-- PROPOSED. PrimaryAction Sending: the control says what it is doing (states.md). -->
+    <string name="support_sending">Sending</string>
+    <!-- support.failed.retry. The action's label after a send that did not go. -->
+    <string name="support_retry">Try again</string>
+    <!-- support.failed.error. No internet, no answer, or the server failed: the words stay. -->
+    <string name="support_failed_error">That didn't send. Your message is still here.</string>
+
+    <!-- PROPOSED. Field errors, checked before sending (the contract's limits, in code points). -->
+    <string name="support_subject_error_blank">Add a subject so we know what this is about.</string>
+    <!-- PROPOSED. %1$d is the limit, 120. -->
+    <string name="support_subject_error_long">A subject can be up to %1$d characters.</string>
+    <string name="support_message_error_blank">Tell us what is going on.</string>
+    <!-- PROPOSED. %1$d is the limit, 5000. -->
+    <string name="support_message_error_long">A message can be up to %1$d characters.</string>
+    <!-- PROPOSED. A NUL or a broken character the server cannot store, or the server refused the field. -->
+    <string name="support_text_error_unsendable">Something in here can't be sent. Change it and try again.</string>
+
+    <!-- ===== Sent ===== -->
+    <!-- support.sent.heading. -->
+    <string name="support_sent_heading">Sent.</string>
+    <!-- support.sent.line. The backend attempts one acknowledgement email to a confirmed address. -->
+    <string name="support_sent_line">We'll reply by email. Usually within a day.</string>
+
+    <!-- ===== Paused (429 RATE_LIMITED, five a day) ===== -->
+    <!-- support.paused.heading. -->
+    <string name="support_paused_heading">That's five for today</string>
+    <!-- support.paused.line. -->
+    <string name="support_paused_line">You can send more tomorrow. The ones you've already sent are with us.</string>
+
+    <!-- ===== Leaving ===== -->
+    <!-- support.back. From Bond settings. -->
+    <string name="support_back_settings">Back to settings</string>
+    <!-- PROPOSED. From a Generic error, where "settings" would be untrue: back to the screen that failed. -->
+    <string name="support_back_generic">Go back</string>
+</resources>

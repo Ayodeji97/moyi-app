@@ -66,6 +66,7 @@ import com.moyi.app.feature.bond.resources.settings_close_box_value_asked
 import com.moyi.app.feature.bond.resources.settings_close_box_value_closing
 import com.moyi.app.feature.bond.resources.settings_row_name
 import com.moyi.app.feature.bond.resources.settings_row_notifications
+import com.moyi.app.feature.bond.resources.settings_row_help
 import com.moyi.app.feature.bond.resources.settings_row_rest_days
 import com.moyi.app.feature.bond.resources.settings_row_reveal
 import com.moyi.app.feature.bond.resources.settings_row_sign_out
@@ -136,9 +137,12 @@ fun BondSettingsScreen(
 }
 
 /**
- * Just you: Notifications (on the loaded root only: they belong to the bond) and Sign out.
- * Sign out is drawn on the failed load too, because it needs nothing the bond's settings
- * hold (owner ruling 2026-11-08).
+ * Just you: Notifications (on the loaded root only: they belong to the bond), Get help and
+ * Sign out. Get help and Sign out are drawn on the failed load too, because they need
+ * nothing the bond's settings hold (owner ruling 2026-11-08); Get help there is the way to
+ * tell support the settings will not load. Get help sits here in place of Account's
+ * (strings-proposed.md §9, `account.help`), whose screen is not built: PROPOSED,
+ * docs/missing-components.md §51.
  */
 @Composable
 private fun JustYouGroup(state: BondSettingsState, busy: Boolean, notifications: Boolean, onAction: (BondSettingsAction) -> Unit) {
@@ -151,6 +155,12 @@ private fun JustYouGroup(state: BondSettingsState, busy: Boolean, notifications:
                 onClick = { onAction(BondSettingsAction.OnNotificationsClick) },
             )
         }
+        SettingsRow(
+            label = stringResource(Res.string.settings_row_help),
+            kind = RowKind.Navigates,
+            enabled = !busy,
+            onClick = { onAction(BondSettingsAction.OnGetHelpClick) },
+        )
         SettingsRow(
             label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
             kind = RowKind.Acts,

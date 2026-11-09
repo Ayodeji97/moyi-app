@@ -106,6 +106,9 @@ data class BondArchivedRoute(val partnerName: String? = null)
  *   times change in place. The phone's permission prompt is shown from here only
  *   (NotificationPermissionPolicy), and Open phone settings leaves the app. Back returns
  *   to the root.
+ * - Bond settings → Get help (Just you, on the loaded root and the failed load) calls
+ *   [onOpenSupport]: Support is its own feature, pushed by the shell over settings, and
+ *   its way back pops to here.
  * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
  *   person to the signed-in start, which shows the archived bond. Signing out needs
  *   nothing here; the shell routes on the session ending.
@@ -113,59 +116,60 @@ data class BondArchivedRoute(val partnerName: String? = null)
 fun NavGraphBuilder.bondSettingsGraph(
     navController: NavController,
     onBondEnded: () -> Unit,
+    onOpenSupport: () -> Unit,
 ) {
     navigation<BondSettingsGraph>(startDestination = BondSettingsRoute) {
         composable<BondSettingsRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondSettingsScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
             }
         }
         composable<BondNameRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondNameScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<TimeZoneRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 TimeZoneScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<ZonePickerRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 ZonePickerScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
             }
         }
         composable<InviteRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 InviteScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<LeaveRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 LeaveScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<BlockRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BlockScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<CloseBoxRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 CloseBoxScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<NotificationsRoute> { entry -> NotificationsDestination(entry, navController, onBondEnded) }
         composable<BondTypeRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondTypeScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
@@ -183,6 +187,7 @@ private fun SettingsDestination(
     entry: NavBackStackEntry,
     navController: NavController,
     onBondEnded: () -> Unit,
+    onOpenSupport: () -> Unit,
     content: @Composable (BondSettingsViewModel) -> Unit,
 ) {
     val graphEntry = remember(entry) { navController.getBackStackEntry<BondSettingsGraph>() }
@@ -205,6 +210,7 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
+            BondSettingsEvent.OpenSupport -> onOpenSupport()
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
             is BondSettingsEvent.ShareInvite -> scope.launch {

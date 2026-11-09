@@ -49,6 +49,9 @@ import com.moyi.app.feature.today.common.DailyLoopState
 import com.moyi.app.feature.today.navigation.RevealRoute
 import com.moyi.app.feature.today.navigation.TodayRoute
 import com.moyi.app.feature.today.navigation.todayGraph
+import com.moyi.app.feature.support.SupportOrigin
+import com.moyi.app.feature.support.navigation.SupportRoute
+import com.moyi.app.feature.support.navigation.supportDestination
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -155,6 +158,7 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session:
             navController = navController,
             // Left, blocked, or found ended: the same path as Today finding no open bond.
             onBondEnded = { navController.resetTo(SignedInStartRoute) },
+            onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Settings)) { launchSingleTop = true } },
         )
         onboardingGraph(
             navController = navController,
@@ -163,7 +167,11 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session:
             onOnboardingFinished = { navController.resetTo(TodayRoute) },
             // The bond has ended: the archived screen, a root with no back (SKILL.md).
             onBondArchived = { partnerName -> navController.resetTo(BondArchivedRoute(partnerName)) },
+            // The Generic error's Get help: Support over it, so its way back returns to Try again.
+            onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Error)) { launchSingleTop = true } },
         )
+        // Get help (FR-102): pushed over whichever screen opened it, and popped to return there.
+        supportDestination(onClose = { navController.popBackStack() })
         // Starting a new bond pushes onboarding over the archived screen, so back returns to it.
         bondArchivedDestination(onStartNewBond = { navController.navigate(OnboardingRoute) })
         if (UiPreview.onboarding) uiPreviewGraph(navController)

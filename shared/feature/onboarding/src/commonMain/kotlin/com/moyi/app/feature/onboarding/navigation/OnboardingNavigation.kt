@@ -124,6 +124,7 @@ fun NavGraphBuilder.onboardingGraph(
     onNavigateToSignIn: () -> Unit,
     onOnboardingFinished: () -> Unit,
     onBondArchived: (partnerName: String?) -> Unit,
+    onOpenSupport: () -> Unit,
 ) {
     composable<PromiseRoute> {
         PromiseRoot(onBegin = onNavigateToRegister, onHaveAccount = onNavigateToSignIn)
@@ -134,6 +135,7 @@ fun NavGraphBuilder.onboardingGraph(
             onNavigateToOnboarding = { navController.resetTo(OnboardingRoute) },
             onNavigateToGate = { navController.resetTo(UnverifiedGateRoute) },
             onNavigateToArchived = onBondArchived,
+            onNavigateToSupport = onOpenSupport,
         )
     }
     composable<UnverifiedGateRoute> {
