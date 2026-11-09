@@ -109,6 +109,11 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
 
     override fun positionMs(): Long = player?.let { (it.currentTime * MS_PER_SECOND).toLong() } ?: 0
 
+    /** `currentTime` moves a playing or paused AVAudioPlayer; a paused one stays paused. */
+    override fun seekNative(positionMs: Long) {
+        player?.currentTime = positionMs / MS_PER_SECOND
+    }
+
     /** The whole file, in memory, or null. The URL is a credential: it is never logged. */
     private suspend fun fetch(url: String): ByteArray? {
         val address = NSURL.URLWithString(url) ?: return null

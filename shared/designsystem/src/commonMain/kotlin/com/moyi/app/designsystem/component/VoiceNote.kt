@@ -4,15 +4,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,10 +26,12 @@ import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.platform.PlaybackPhase
 import com.moyi.app.designsystem.platform.ProtectFromCapture
 import com.moyi.app.designsystem.platform.RecordedVoice
+import com.moyi.app.designsystem.platform.RecordingLevels
 import com.moyi.app.designsystem.platform.VoicePlayback
 import com.moyi.app.designsystem.platform.VoicePlayer
 import com.moyi.app.designsystem.platform.VoiceRecording
 import com.moyi.app.designsystem.platform.VoiceSource
+import com.moyi.app.designsystem.platform.rememberReduceMotion
 import com.moyi.app.designsystem.platform.rememberVoicePlayer
 import com.moyi.app.designsystem.resources.Res
 import com.moyi.app.designsystem.resources.ds_compose_record_again
@@ -37,6 +45,7 @@ import com.moyi.app.designsystem.resources.ds_entry_voice_sensitive
 import com.moyi.app.designsystem.resources.ds_voice_loading
 import com.moyi.app.designsystem.resources.ds_voice_pause
 import com.moyi.app.designsystem.resources.ds_voice_play
+import com.moyi.app.designsystem.resources.ds_voice_position
 import com.moyi.app.designsystem.resources.ds_voice_progress
 import com.moyi.app.designsystem.resources.ds_voice_unplayable
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -73,10 +82,16 @@ data class VoiceNote(
 }
 
 /**
- * **Interim, not drawn** (docs/missing-components.md §43): the voice note inside an
- * EntryCard, under the words (and under the photo): a 48 play/pause target and the time
- * beside it, "0:12 of 0:45", in `inkMuted`. No waveform, no scrubber. While it is fetched
- * the line says so (no spinner). Leaving the screen, or the app, stops it.
+ * **Interim, not drawn** (docs/missing-components.md §43, the waveform §46): the voice
+ * note inside an EntryCard, under the words (and under the photo). A 48 play/pause target,
+ * the [VoiceWaveform] beside it (tap or drag to move through it), then the clock in
+ * `inkMuted`: the length before it plays, how far it has played while it plays or is
+ * paused. While it is fetched a line under it says so (no spinner). Leaving the screen, or
+ * the app, stops it.
+ *
+ * The server sends no levels for a voice note (docs/backend-contract-gaps.md row 31), so
+ * the bars are [WaveformMath.placeholder], a stand-in shape seeded by the media id: honest
+ * about position and length, not about loudness.
  */
 @Composable
 fun VoiceNoteView(voice: VoiceNote, protectFromCapture: Boolean = false) {
@@ -101,9 +116,13 @@ private fun VoicePlayerRow(voice: VoiceNote) {
     val url = voice.url ?: return
     val player = rememberStoppingPlayer()
     val playback by player.playback.collectAsStateWithLifecycle()
+    val levels = remember(voice.key) { WaveformMath.placeholder(voice.key) }
     PlayerControls(
         playback = playback.withKnownDuration(voice.durationMs),
+        levels = levels,
+        label = stringResource(Res.string.ds_voice_position),
         onToggle = { player.toggle(VoiceSource.Remote(voice.key, url)) },
+        onSeek = player::seekTo,
     )
 }
 
@@ -115,8 +134,22 @@ private fun rememberStoppingPlayer(): VoicePlayer {
     return player
 }
 
+/**
+ * Play or pause, the waveform, the clock; then, at the end of the row, [trailing] (the
+ * composer's Record again and Remove). The lines for loading and failure go under it.
+ */
 @Composable
-private fun PlayerControls(playback: VoicePlayback, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+private fun PlayerControls(
+    playback: VoicePlayback,
+    levels: List<Float>,
+    label: String,
+    onToggle: () -> Unit,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    val duration = playback.durationMs
+    val clock = voiceClock(playback)
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             VoiceIconTarget(
@@ -124,23 +157,33 @@ private fun PlayerControls(playback: VoicePlayback, onToggle: () -> Unit, modifi
                 description = stringResource(if (playback.active) Res.string.ds_voice_pause else Res.string.ds_voice_play),
                 onClick = onToggle,
             )
-            MoyiText(
-                text = when (playback.phase) {
-                    PlaybackPhase.Loading -> stringResource(Res.string.ds_voice_loading)
-                    PlaybackPhase.Idle -> playback.durationMs?.let(::formatClock).orEmpty()
-                    else -> stringResource(
-                        Res.string.ds_voice_progress,
-                        formatClock(playback.positionMs),
-                        playback.durationMs?.let(::formatClock) ?: formatClock(playback.positionMs),
-                    )
-                },
-                tone = TextTone.Muted,
+            VoiceWaveform(
+                levels = levels,
+                progress = { WaveformMath.fractionOf(playback.positionMs, duration) },
+                label = label,
+                position = stringResource(Res.string.ds_voice_progress, formatClock(playback.positionMs), duration?.let(::formatClock) ?: clock),
+                // Seeking needs the length; the server sends it with every playable voice note.
+                onSeek = duration?.let { length -> { fraction: Float -> onSeek(WaveformMath.positionAt(fraction, length)) } },
+                modifier = Modifier.weight(1f),
             )
+            Spacer(Modifier.width(MoyiDimens.Waveform.Gap))
+            // The clock repeats the waveform's position; the waveform already says it to a screen reader.
+            MoyiText(text = clock, tone = TextTone.Muted, modifier = Modifier.clearAndSetSemantics {})
+            trailing()
         }
-        if (playback.phase == PlaybackPhase.Failed) {
-            MoyiText(text = stringResource(Res.string.ds_voice_unplayable), tone = TextTone.Muted)
+        when (playback.phase) {
+            PlaybackPhase.Loading -> MoyiText(text = stringResource(Res.string.ds_voice_loading), tone = TextTone.Muted)
+            PlaybackPhase.Failed -> MoyiText(text = stringResource(Res.string.ds_voice_unplayable), tone = TextTone.Muted)
+            else -> Unit
         }
     }
+}
+
+/** The length before it plays (or once it has ended), how far it has played while it plays or is paused. */
+private fun voiceClock(playback: VoicePlayback): String = when (playback.phase) {
+    PlaybackPhase.Playing, PlaybackPhase.Paused -> formatClock(playback.positionMs)
+    // A seek before the first play shows where it will start.
+    else -> if (playback.positionMs > 0) formatClock(playback.positionMs) else playback.durationMs?.let(::formatClock).orEmpty()
 }
 
 /** What the server said the length is, until the file says otherwise. */
@@ -157,13 +200,16 @@ sealed interface AttachedVoiceState {
 }
 
 /**
- * **Interim, not drawn** (docs/missing-components.md §44): the voice note being added,
- * inside the composer's box above its toolbar, beside or instead of the photo.
+ * **Interim, not drawn** (docs/missing-components.md §44, the waveforms §46 and §47): the
+ * voice note being added, inside the composer's box above its toolbar, beside or instead
+ * of the photo.
  *
- * - Recording: a 48 stop target and "Recording 0:12 of 1:00".
+ * - Recording: a 48 stop target, the [LiveWaveform] of the microphone's level
+ *   ([recordingLevels], read only when it is drawn), and "0:12 of 1:00". With Reduce
+ *   Motion the waveform does not scroll: it fills the minute in place.
  * - Recorded: a 48 play/pause target to listen back (from memory, nothing leaves the
- *   phone), "Your voice note, 0:42", then Record again and Remove. [onRecordAgain] and
- *   [onRemove] are null while it is being sent.
+ *   phone), the [VoiceWaveform] of what was actually recorded (seekable), the clock, then
+ *   Record again and Remove. [onRecordAgain] and [onRemove] are null while it is being sent.
  */
 @Composable
 fun AttachedVoice(
@@ -172,37 +218,48 @@ fun AttachedVoice(
     onRecordAgain: (() -> Unit)?,
     onRemove: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    recordingLevels: () -> List<Float> = { emptyList() },
 ) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        when (state) {
-            is AttachedVoiceState.Recording -> {
-                VoiceIconTarget(MoyiIcons.Stop, stringResource(Res.string.ds_compose_stop_recording), onStop)
-                MoyiText(
-                    text = stringResource(
-                        Res.string.ds_compose_recording,
-                        formatClock(state.elapsedMs),
-                        formatClock(VoiceRecording.MAX_DURATION_MS),
-                    ),
-                    tone = TextTone.Muted,
-                )
-            }
-            is AttachedVoiceState.Recorded -> {
-                val player = rememberStoppingPlayer()
-                val playback by player.playback.collectAsStateWithLifecycle()
-                VoiceIconTarget(
-                    icon = if (playback.active) MoyiIcons.Pause else MoyiIcons.Play,
-                    description = stringResource(if (playback.active) Res.string.ds_voice_pause else Res.string.ds_voice_play),
-                    onClick = { player.toggle(VoiceSource.Local("listen-back-${state.voice.hashCode()}", state.voice)) },
-                )
-                MoyiText(
-                    text = if (playback.phase == PlaybackPhase.Playing || playback.phase == PlaybackPhase.Paused) {
-                        stringResource(Res.string.ds_voice_progress, formatClock(playback.positionMs), formatClock(state.voice.durationMs))
-                    } else {
-                        stringResource(Res.string.ds_compose_recorded, formatClock(state.voice.durationMs))
-                    },
-                    tone = TextTone.Muted,
-                    modifier = Modifier.weight(1f),
-                )
+    when (state) {
+        is AttachedVoiceState.Recording -> Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+            VoiceIconTarget(MoyiIcons.Stop, stringResource(Res.string.ds_compose_stop_recording), onStop)
+            LiveWaveform(
+                levels = recordingLevels,
+                scrolling = !rememberReduceMotion(),
+                capacity = (VoiceRecording.MAX_DURATION_MS / RecordingLevels.TICK_MS).toInt(),
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(MoyiDimens.Waveform.Gap))
+            val spoken = stringResource(
+                Res.string.ds_compose_recording,
+                formatClock(state.elapsedMs),
+                formatClock(VoiceRecording.MAX_DURATION_MS),
+            )
+            MoyiText(
+                text = stringResource(
+                    Res.string.ds_voice_progress,
+                    formatClock(state.elapsedMs),
+                    formatClock(VoiceRecording.MAX_DURATION_MS),
+                ),
+                tone = TextTone.Muted,
+                // "Recording 0:12 of 1:00" to a screen reader: the bars are not read.
+                modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
+            )
+        }
+        is AttachedVoiceState.Recorded -> {
+            val player = rememberStoppingPlayer()
+            val playback by player.playback.collectAsStateWithLifecycle()
+            val voice = state.voice
+            val key = "listen-back-${voice.hashCode()}"
+            val levels = remember(voice) { voice.levels.ifEmpty { WaveformMath.placeholder(key) } }
+            PlayerControls(
+                playback = if (playback.durationMs == null) playback.copy(durationMs = voice.durationMs) else playback,
+                levels = levels,
+                label = stringResource(Res.string.ds_compose_recorded, formatClock(voice.durationMs)),
+                onToggle = { player.toggle(VoiceSource.Local(key, voice)) },
+                onSeek = player::seekTo,
+                modifier = modifier,
+            ) {
                 if (onRecordAgain != null) {
                     VoiceIconTarget(MoyiIcons.RecordAgain, stringResource(Res.string.ds_compose_record_again), onRecordAgain)
                 }

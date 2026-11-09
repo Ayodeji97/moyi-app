@@ -2,12 +2,16 @@ package com.moyi.app.designsystem.platform
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * A voice note recorded on the phone, read back into memory and its file deleted: AAC in
  * an MPEG-4 container (`audio/mp4`), which the backend accepts from both platforms
  * (`VoiceFormat.MP4`: Android's `MediaRecorder` writes the `mp42` brand, iOS's
  * `AVAudioRecorder` the `M4A ` brand) and transcodes to Opus.
+ *
+ * [levels] is how loud it was as it recorded ([RecordingLevels]), for the listen-back
+ * waveform; empty when the recorder could not meter it. It stays on the phone.
  *
  * Treated as immutable: nothing writes to [bytes] after it is made. Never printed: what
  * someone said is entry content.
@@ -16,6 +20,7 @@ import androidx.compose.runtime.Immutable
 class RecordedVoice(
     val bytes: ByteArray,
     val durationMs: Long,
+    val levels: List<Float> = emptyList(),
 ) {
     val contentType: String get() = VoiceRecording.CONTENT_TYPE
 
@@ -54,9 +59,18 @@ sealed interface RecorderEvent {
  *   asked for at the first tap (`NSMicrophoneUsageDescription`); an interruption stops it,
  *   keeping what was said.
  *
+ * Both meter the input as they record: Android polls `MediaRecorder.getMaxAmplitude`, iOS
+ * turns on `meteringEnabled` and reads `peakPower`, each every [RecordingLevels.TICK_MS].
+ *
  * Leaving the composition cancels a recording (its file is deleted, nothing reported).
  */
 interface VoiceRecorder {
+    /**
+     * The microphone's level while it records ([RecordingLevels]), for the live waveform.
+     * Not application state: it is drawn and kept with the [RecordedVoice], nothing else.
+     */
+    val levels: StateFlow<List<Float>>
+
     /** Asks for the microphone if it must, then starts. Reports [RecorderEvent.Started] or why not. */
     fun start()
 

@@ -84,6 +84,9 @@ fun WriteRoot(
     val photoPicker = rememberPhotoPicker { pick -> viewModel.onAction(WriteAction.OnPhotoPicked(pick)) }
     // Held here, as the photo launchers are: leaving Write throws an unfinished recording away.
     val recorder = rememberVoiceRecorder { event -> viewModel.onAction(WriteAction.OnRecorderEvent(event)) }
+    // The microphone's level, drawn by the live waveform and nowhere else: not screen state,
+    // so it stays out of the ViewModel, and it is read only when the bars are drawn.
+    val recordingLevels = recorder.levels.collectAsStateWithLifecycle()
     // The app going to the background ends a recording where it is, and keeps it.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { recorder.stop() }
     ObserveAsEvents(viewModel.events) { event ->
@@ -103,7 +106,13 @@ fun WriteRoot(
         // spinner. The composer then opens with the words in it, focused, cursor at their end.
         Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
     } else {
-        WriteScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools, canTakePhoto = photoPicker.canTakePhoto)
+        WriteScreen(
+            state = state,
+            onAction = viewModel::onAction,
+            debugTools = debugTools,
+            canTakePhoto = photoPicker.canTakePhoto,
+            recordingLevels = { recordingLevels.value },
+        )
     }
 }
 
@@ -123,6 +132,8 @@ fun WriteScreen(
     onAction: (WriteAction) -> Unit,
     debugTools: Boolean = false,
     canTakePhoto: Boolean = false,
+    /** The microphone's level while recording, read when the live waveform draws. */
+    recordingLevels: () -> List<Float> = { emptyList() },
 ) {
     val focusRequester = remember { FocusRequester() }
     // The composer opens ready to type: the keyboard is up in every Write frame.
@@ -166,7 +177,7 @@ fun WriteScreen(
             // One voice note per entry (FR-043): once one is recording or recorded, its own row offers what is next.
             onRecordVoice = if (state.voiceOffered && state.voice == null) ({ onAction(WriteAction.OnRecordVoiceClick) }) else null,
             focusRequester = focusRequester,
-            attachment = if (state.photo == null && state.voice == null) null else ({ Attachments(state, onAction) }),
+            attachment = if (state.photo == null && state.voice == null) null else ({ Attachments(state, onAction, recordingLevels) }),
             modifier = Modifier
                 .weight(1f)
                 .then(if (state.editing) Modifier.semantics { paneTitle = editingAnnounce } else Modifier),
@@ -204,7 +215,7 @@ fun WriteScreen(
 
 /** What is attached, inside the box above its toolbar (interim, §41 and §44): the photo, then the voice note. */
 @Composable
-private fun Attachments(state: WriteState, onAction: (WriteAction) -> Unit) {
+private fun Attachments(state: WriteState, onAction: (WriteAction) -> Unit, recordingLevels: () -> List<Float>) {
     // Not while they are being sent: what is on its way is what is shown.
     val sending = state.submit == WriteSubmit.Sending
     Column {
@@ -217,6 +228,7 @@ private fun Attachments(state: WriteState, onAction: (WriteAction) -> Unit) {
                 onStop = { onAction(WriteAction.OnStopRecordingClick) },
                 onRecordAgain = if (sending) null else ({ onAction(WriteAction.OnRecordAgainClick) }),
                 onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveVoice) }),
+                recordingLevels = recordingLevels,
             )
         }
     }
