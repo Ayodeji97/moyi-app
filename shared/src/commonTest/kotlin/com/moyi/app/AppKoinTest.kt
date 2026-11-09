@@ -102,7 +102,7 @@ class AppKoinTest {
         }.koin
         try {
             koin.get<RegisterViewModel>()
-            koin.get<VerifyViewModel> { parametersOf("amara@example.com") }
+            koin.get<VerifyViewModel> { parametersOf("amara@example.com", null) }
             val login = koin.get<LoginViewModel> { parametersOf("amara@example.com", true) }
             assertEquals("amara@example.com", login.state.value.email.value)
             koin.get<SignedInStartViewModel>()

@@ -52,7 +52,8 @@ fun ResetPasswordRoot(
     onNavigateToHome: () -> Unit,
     onNavigateToLogin: (email: String) -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: ResetPasswordViewModel = koinViewModel { parametersOf(email) },
+    linkToken: String? = null,
+    viewModel: ResetPasswordViewModel = koinViewModel { parametersOf(email, linkToken) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->

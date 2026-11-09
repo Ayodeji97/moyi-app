@@ -150,4 +150,40 @@ class VerifyViewModelTest : MainDispatcherTest() {
             assertEquals(VerifyEvent.NavigateBack, awaitItem())
         }
     }
+
+    @Test
+    fun aLinkThatOpenedTheAppIsCheckedAtOnce() = runTest {
+        val opened = VerifyViewModel("amara@example.com", repo, linkToken = "fromLink")
+        opened.events.test {
+            assertEquals(VerifyEvent.NavigateToLogin("amara@example.com"), awaitItem())
+        }
+        assertEquals(listOf("fromLink"), repo.verifyCalls)
+        assertEquals("fromLink", opened.state.value.token.value)
+    }
+
+    @Test
+    fun aLinkThatDoesNotMatchShowsTheFieldErrorWithTheTokenKept() = runTest {
+        repo.verifyResult = Result.Failure(apiError(422, ApiErrorCode.VERIFICATION_TOKEN_INVALID))
+        val opened = VerifyViewModel("", repo, linkToken = "spent")
+        val state = opened.state.value
+        assertEquals(UiText.Resource(Res.string.verify_token_error_invalid), state.token.error)
+        assertEquals("spent", state.token.value)
+        assertEquals(VerifyMode.Waiting, state.mode)
+    }
+
+    @Test
+    fun anExpiredLinkWithNoAddressOffersSignInAndResendsNothing() = runTest {
+        repo.verifyResult = Result.Failure(apiError(410, ApiErrorCode.VERIFICATION_TOKEN_EXPIRED))
+        val opened = VerifyViewModel("", repo, linkToken = "old")
+        assertEquals(VerifyMode.Expired, opened.state.value.mode)
+        assertEquals(false, opened.state.value.addressKnown)
+
+        // Nowhere to resend to: the screen offers sign in instead, and a stray resend sends nothing.
+        opened.onAction(VerifyAction.OnResendClick)
+        assertTrue(repo.resendCalls.isEmpty())
+        opened.events.test {
+            opened.onAction(VerifyAction.OnSignInClick)
+            assertEquals(VerifyEvent.NavigateToSignIn, awaitItem())
+        }
+    }
 }

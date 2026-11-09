@@ -21,9 +21,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.minutes
 
+/**
+ * [linkToken] is the token from the emailed link when the link opened the app
+ * (`https://getmoyi.app/verify?token=…`, DeepLink): it fills the paste field and is checked
+ * at once, so the person sees the screen's own verdict (signed in next, expired, or the
+ * field's error) without pasting anything.
+ */
 class VerifyViewModel(
     email: String,
     private val authRepository: AuthRepository,
+    linkToken: String? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(VerifyState(email = email))
     val state: StateFlow<VerifyState> = _state.asStateFlow()
@@ -33,6 +40,13 @@ class VerifyViewModel(
 
     private var cooldown: Job? = null
 
+    init {
+        if (linkToken != null) {
+            _state.update { it.copy(token = it.token.copy(value = linkToken)) }
+            submit()
+        }
+    }
+
     fun onAction(action: VerifyAction) {
         when (action) {
             is VerifyAction.OnTokenChange -> _state.update {
@@ -41,6 +55,7 @@ class VerifyViewModel(
             }
             VerifyAction.OnSubmit -> submit()
             VerifyAction.OnResendClick -> resend()
+            VerifyAction.OnSignInClick -> viewModelScope.launch { _events.send(VerifyEvent.NavigateToSignIn) }
             VerifyAction.OnChangeEmailClick, VerifyAction.OnBackClick ->
                 viewModelScope.launch { _events.send(VerifyEvent.NavigateBack) }
         }
@@ -98,6 +113,8 @@ class VerifyViewModel(
      */
     private fun resend() {
         val current = _state.value
+        // Opened by a link with no address: there is nowhere to resend to (VerifyState.addressKnown).
+        if (!current.addressKnown) return
         val fromExpired = current.mode == VerifyMode.Expired
         val coolingDown = current.resend == ResendStatus.Sent
         val inFlight = current.submit == SubmitStatus.Sending || (!fromExpired && current.resend == ResendStatus.Sending)

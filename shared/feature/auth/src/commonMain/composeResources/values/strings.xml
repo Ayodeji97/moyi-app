@@ -93,6 +93,10 @@
     <string name="verify_expired_action">Send a new link</string>
     <!-- PROPOSED. The expired action while the new link is being requested. -->
     <string name="verify_expired_action_sending">Sending a new link</string>
+    <!-- PROPOSED (docs/missing-components.md §50). verify.line when the emailed link opened the app on a phone that does not know the address (a cold start, signed out): verify_line without the address. The link's code is already in the field and being checked; this is what the screen says if it did not match. -->
+    <string name="verify_line_no_address">Open the email we sent, copy the link and paste it below.</string>
+    <!-- PROPOSED (docs/missing-components.md §50). verify.expired.line when the address is not known, so nothing can be resent from here: sign in (login_action), and the unverified gate sends a new link. -->
+    <string name="verify_expired_line_no_address">Links last 24 hours and work once. Sign in and we can send you a new one.</string>
 
     <!-- ===== Sign in (Account 1, Figma 344:18) ===== -->
 
@@ -118,6 +122,8 @@
     <string name="login_session_ended">You have been signed out. Sign in again to continue.</string>
     <!-- Approved (2026-11-08, strings-proposed.md §11). Shown on sign in right after the email link is accepted: names what happened and the one step left. -->
     <string name="login_verified">Your email is confirmed. Sign in to start.</string>
+    <!-- PROPOSED (docs/missing-components.md §50). Shown on sign in after Choose a new password saved the password but did not sign the person in: the emailed link opened the app without the address, or the sign-in after the save failed. Names what happened and the one step left, as login_verified does. -->
+    <string name="login_password_changed">Your new password is saved. Sign in with it.</string>
 
     <!-- ===== Session ended (TOKEN_REUSE_DETECTED, ADR-0021; no Figma frame, auth-placement-spec §7) ===== -->
 

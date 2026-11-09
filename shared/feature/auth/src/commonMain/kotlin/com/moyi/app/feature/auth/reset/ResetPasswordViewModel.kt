@@ -8,6 +8,7 @@ import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.feature.auth.common.AuthErrorMapper
 import com.moyi.app.feature.auth.common.AuthValidation
+import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.common.extractVerificationToken
 import com.moyi.app.feature.auth.register.blurred
@@ -24,11 +25,19 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * [linkToken] is the token from the emailed link when the link opened the app
+ * (`https://getmoyi.app/reset-password?token=…`, DeepLink): it fills the paste field, and the
+ * person chooses the password. Nothing is sent until they do.
+ */
 class ResetPasswordViewModel(
     email: String,
     private val authRepository: AuthRepository,
+    linkToken: String? = null,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ResetPasswordState(email = email))
+    private val _state = MutableStateFlow(
+        ResetPasswordState(email = email, token = FieldInput(value = linkToken.orEmpty())),
+    )
     val state: StateFlow<ResetPasswordState> = _state.asStateFlow()
 
     private val _events = Channel<ResetPasswordEvent>()
@@ -85,6 +94,12 @@ class ResetPasswordViewModel(
     }
 
     private suspend fun signIn(email: String, password: String) {
+        if (email.isEmpty()) {
+            // Opened by the link with no address known: saved, and sign in asks for it.
+            _state.update { it.copy(submit = SubmitStatus.Idle) }
+            _events.send(ResetPasswordEvent.NavigateToLogin(email))
+            return
+        }
         when (authRepository.login(email, password)) {
             is Result.Success -> {
                 _state.update { it.copy(submit = SubmitStatus.Idle) }

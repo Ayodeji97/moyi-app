@@ -19,6 +19,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.moyi.app.designsystem.platform.screenEnterTransition
 import com.moyi.app.designsystem.platform.screenExitTransition
 import com.moyi.app.designsystem.platform.screenPopEnterTransition
@@ -34,11 +35,15 @@ import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
 import com.moyi.app.feature.auth.navigation.RegisterRoute
+import com.moyi.app.feature.auth.navigation.ResetLinkSentRoute
+import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
+import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.auth.navigation.authGraph
 import com.moyi.app.feature.bond.navigation.BondArchivedRoute
 import com.moyi.app.feature.bond.navigation.BondSettingsGraph
 import com.moyi.app.feature.bond.navigation.bondArchivedDestination
 import com.moyi.app.feature.bond.navigation.bondSettingsGraph
+import com.moyi.app.feature.onboarding.navigation.InviteHandoffRoute
 import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
 import com.moyi.app.feature.onboarding.navigation.SignedInStartRoute
@@ -78,6 +83,10 @@ import org.koin.compose.viewmodel.koinViewModel
  * A tapped push ([PushTapInbox]) opens its screen once the signed-in app is showing:
  * on a cold start after the signed-in start has landed on Today, on a warm start at
  * once, and when signed out after signing in ([pushRouting]).
+ *
+ * A link to getmoyi.app that opened the app ([LinkInbox]) opens its screen the same way:
+ * a verify or reset link as soon as there is a screen ([accountLinkRouting]), an invite link
+ * once someone is signed in, verified and out of the signed-in start ([inviteRouting]).
  */
 @Composable
 fun App(viewModel: AppViewModel = koinViewModel()) {
@@ -114,6 +123,9 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session:
     val navController = rememberNavController()
     val pushTaps = koinInject<PushTapInbox>()
     val pendingTap by pushTaps.target.collectAsStateWithLifecycle()
+    val links = koinInject<LinkInbox>()
+    val pendingAccountLink by links.accountLink.collectAsStateWithLifecycle()
+    val pendingInvite by links.inviteLink.collectAsStateWithLifecycle()
     val currentEntry by navController.currentBackStackEntryAsState()
     // The Archive and the Streak read the bond from the day Today loads, so a tap opens
     // nothing above Today until that day is in.
@@ -181,6 +193,75 @@ private fun MoyiNavHost(startDestination: Any, viewModel: AppViewModel, session:
                 pushTaps.consume(target)
                 navController.openAboveToday(routing.routes)
             }
+        }
+    }
+
+    // The same for an opened link. Nothing here logs the link: it may carry a token.
+    LaunchedEffect(pendingAccountLink, currentEntry, session, dayLoaded) {
+        val link = pendingAccountLink ?: return@LaunchedEffect
+        if (currentEntry == null) return@LaunchedEffect
+        val signedInEmail = (session as? SessionState.SignedIn)?.user?.email
+        val routing = accountLinkRouting(link, navController.linkPlace(session, dayLoaded), navController.currentAccountRoute(), signedInEmail)
+        if (routing != LinkRouting.Wait) {
+            links.consume(link)
+            navController.follow(routing)
+        }
+    }
+    LaunchedEffect(pendingInvite, currentEntry, session, dayLoaded) {
+        val link = pendingInvite ?: return@LaunchedEffect
+        if (currentEntry == null) return@LaunchedEffect
+        val routing = inviteRouting(link, navController.linkPlace(session, dayLoaded))
+        if (routing != LinkRouting.Wait) {
+            links.consume(link)
+            navController.follow(routing)
+        }
+    }
+}
+
+/** Where the shell is, for a waiting link (see [LinkPlace]). */
+private fun NavHostController.linkPlace(session: SessionState, dayLoaded: Boolean): LinkPlace {
+    if (UiPreviewConfig.UI_PREVIEW.isNotEmpty() || session == SessionState.Unknown) return LinkPlace.Settling
+    val destination = currentDestination ?: return LinkPlace.Settling
+    if (session !is SessionState.SignedIn) return LinkPlace.SignedOut
+    return when {
+        destination.hasRoute<SignedInStartRoute>() -> LinkPlace.Settling
+        runCatching { getBackStackEntry<TodayRoute>() }.isSuccess ->
+            if (dayLoaded) LinkPlace.SignedInApp else LinkPlace.Settling
+        // The bond was just created and its own invite is on screen: an opened invite waits
+        // for Continue (Today) rather than replace the code the person is about to share.
+        destination.hasRoute<InviteHandoffRoute>() -> LinkPlace.Elsewhere
+        destination.hierarchy.any { it.hasRoute<OnboardingRoute>() } -> LinkPlace.Onboarding
+        destination.hasRoute<UnverifiedGateRoute>() -> LinkPlace.Gate
+        destination.hasRoute<BondArchivedRoute>() -> LinkPlace.Archived
+        else -> LinkPlace.Elsewhere
+    }
+}
+
+/** The route on screen when a verify or reset link continues it ([accountLinkRouting]); else null. */
+private fun NavHostController.currentAccountRoute(): Any? {
+    val entry = currentBackStackEntry ?: return null
+    val destination = entry.destination
+    return when {
+        destination.hasRoute<VerifyRoute>() -> entry.toRoute<VerifyRoute>()
+        destination.hasRoute<ResetLinkSentRoute>() -> entry.toRoute<ResetLinkSentRoute>()
+        destination.hasRoute<ResetPasswordRoute>() -> entry.toRoute<ResetPasswordRoute>()
+        else -> null
+    }
+}
+
+private fun NavHostController.follow(routing: LinkRouting) {
+    when (routing) {
+        LinkRouting.Wait -> Unit
+        is LinkRouting.Push -> {
+            val current = currentDestination
+            navigate(routing.route) {
+                if (routing.replaceCurrent && current != null) popUpTo(current.id) { inclusive = true }
+            }
+        }
+        is LinkRouting.Reset -> resetTo(routing.route)
+        is LinkRouting.AboveToday -> {
+            popBackStack<TodayRoute>(inclusive = false)
+            navigate(routing.route) { launchSingleTop = true }
         }
     }
 }
