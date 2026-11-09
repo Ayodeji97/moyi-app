@@ -940,8 +940,8 @@ renumbers.
   (feature:auth `legal/`), in two modes.
   - **The re-consent step.** The shell opens it over Today, once per launch, when `GET /me`'s
     `legalAccepted` differs from `GET /meta/legal`'s Terms or Privacy version. Back target,
-    ScreenHeader (eyebrow "Terms and Privacy", heading "Our Terms and Privacy Policy have
-    changed"), a `body` `inkMuted` line naming the next step, the three documents as
+    ScreenHeader (heading "Our Terms and Privacy Policy have changed"; its eyebrow,
+    "Terms and Privacy", is not drawn under a back target, D1), a `body` `inkMuted` line naming the next step, the three documents as
     TextLinks, then PrimaryAction **Accept** (Sending "Accepting") with **Not now** as a
     centred TextLink under it. Not a gate: the backend refuses nothing for an old consent
     (`docs/backend-contract-gaps.md` row 32), so blocking the app would be the client
