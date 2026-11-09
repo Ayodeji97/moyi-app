@@ -229,16 +229,65 @@ class TodayViewModelTest : MainDispatcherTest() {
     }
 
     @Test
-    fun deletingBeforeTheRevealNeedsNoConfirmation() = runTest {
+    fun tappingDeleteBeforeTheRevealAsksFirstAndDeletesNothing() = runTest {
+        // Owner ruling 2026-11-09: deleting before the reveal asks too (states.md §4 said not).
         collectState()
         loop.show(dayView(TodayStatus.Waiting))
         viewModel.events.test {
             viewModel.onAction(TodayAction.OnDeleteBeforeRevealClick)
             expectNoEvents()
         }
-        assertEquals(1, loop.deletesBefore)
+        assertTrue(viewModel.state.value.confirmingDeleteBeforeReveal)
+        // The after-reveal question, with its other line, is not the one asked.
         assertFalse(viewModel.state.value.confirmingDelete)
+        assertEquals(0, loop.deletesBefore)
+        assertEquals(TodayStatus.Waiting, viewModel.state.value.status)
+    }
+
+    @Test
+    fun dismissingTheDeleteBeforeTheRevealDeletesNothing() = runTest {
+        collectState()
+        loop.show(dayView(TodayStatus.Waiting))
+        viewModel.onAction(TodayAction.OnDeleteBeforeRevealClick)
+        viewModel.onAction(TodayAction.OnDeleteDismiss)
+        assertFalse(viewModel.state.value.confirmingDeleteBeforeReveal)
+        assertEquals(0, loop.deletesBefore)
+        assertEquals(0, loop.deletesAfter)
+        assertEquals(TodayStatus.Waiting, viewModel.state.value.status)
+    }
+
+    @Test
+    fun confirmingTheDeleteBeforeTheRevealSendsItOnceAndClosesTheDialog() = runTest {
+        collectState()
+        loop.show(dayView(TodayStatus.Waiting))
+        val gate = CompletableDeferred<Unit>()
+        loop.gate = gate
+        viewModel.onAction(TodayAction.OnDeleteBeforeRevealClick)
+        viewModel.onAction(TodayAction.OnDeleteConfirm)
+        assertFalse(viewModel.state.value.confirmingDeleteBeforeReveal)
+        assertTrue(viewModel.state.value.deleting)
+
+        // A second answer, or a second tap while it is on its way, sends nothing more.
+        viewModel.onAction(TodayAction.OnDeleteConfirm)
+        viewModel.onAction(TodayAction.OnDeleteBeforeRevealClick)
+        assertFalse(viewModel.state.value.confirmingDeleteBeforeReveal)
+
+        gate.complete(Unit)
+        assertEquals(1, loop.deletesBefore)
+        assertEquals(0, loop.deletesAfter)
+        assertFalse(viewModel.state.value.deleting)
         assertFalse(viewModel.state.value.actionFailed)
+    }
+
+    @Test
+    fun aDeleteBeforeTheRevealIsNotAskedOverADayThatRevealedMeanwhile() = runTest {
+        collectState()
+        loop.show(dayView(TodayStatus.Waiting))
+        viewModel.onAction(TodayAction.OnDeleteBeforeRevealClick)
+        // The partner wrote and the day opened: "you can write again today" is no longer true.
+        loop.show(dayView(TodayStatus.Revealed))
+        assertFalse(viewModel.state.value.confirmingDeleteBeforeReveal)
+        assertFalse(viewModel.state.value.confirmingDelete)
     }
 
     @Test
@@ -247,11 +296,13 @@ class TodayViewModelTest : MainDispatcherTest() {
         loop.show(dayView(TodayStatus.Waiting))
         loop.deleteBeforeResult = DeleteResult.Failed
         viewModel.onAction(TodayAction.OnDeleteBeforeRevealClick)
+        viewModel.onAction(TodayAction.OnDeleteConfirm)
         assertTrue(viewModel.state.value.actionFailed)
 
         // Already gone (404) is not a failure: Today has caught up.
         loop.deleteBeforeResult = DeleteResult.Gone
         viewModel.onAction(TodayAction.OnDeleteBeforeRevealClick)
+        viewModel.onAction(TodayAction.OnDeleteConfirm)
         assertFalse(viewModel.state.value.actionFailed)
     }
 
