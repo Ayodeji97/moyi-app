@@ -7,6 +7,13 @@ PRODUCT_NAME=Moyi
 // app and the APNs key are registered for exactly this ID.
 PRODUCT_BUNDLE_IDENTIFIER=app.getmoyi.moyi
 
+// Universal links for getmoyi.app (issue #49). Inert until two other things exist: the
+// site's .well-known/apple-app-site-association (moyi-backend#157) and the Associated
+// Domains capability on this App ID in the Apple developer portal. The paths that open
+// the app are chosen by that file, not here: it must list none until the app routes them
+// (no onContinueUserActivity yet), or a tapped link would open Moyi and do nothing.
+CODE_SIGN_ENTITLEMENTS=iosApp/iosApp.entitlements
+
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0
 
