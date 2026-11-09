@@ -2,6 +2,8 @@ package com.moyi.app.feature.today.write
 
 import androidx.compose.runtime.Immutable
 import com.moyi.app.designsystem.component.AttachedVoiceState
+import com.moyi.app.designsystem.component.EntryPhoto
+import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.designsystem.platform.PhotoPick
 import com.moyi.app.designsystem.platform.PickedPhoto
 import com.moyi.app.designsystem.platform.RecorderEvent
@@ -49,8 +51,17 @@ data class WriteState(
      * in memory only: it is not part of the draft (docs/missing-components.md §40).
      */
     val photo: PickedPhoto? = null,
-    /** Whether "Add a photo" is offered: not while editing, and not without an uploader. */
+    /**
+     * Whether a photo can be added: not without an uploader. In Edit it is offered too
+     * (§60): a photo picked there replaces the entry's, or adds one to an entry with none.
+     */
     val photosOffered: Boolean = false,
+    /**
+     * Edit only: the photo already on the entry, as the server shows it to me. Shown while no
+     * new [photo] is picked; a new one goes in its place at Save. Never removed from here:
+     * the contract cannot take a photo off an entry (docs/backend-contract-gaps.md row 41).
+     */
+    val sentPhoto: EntryPhoto? = null,
     /** While [submit] is Sending: true while the photo uploads, false once the words are on their way. */
     val sendingPhoto: Boolean = false,
     /** What went wrong with the photo itself, said above the action. */
@@ -62,8 +73,10 @@ data class WriteState(
      * Held in memory only: like the photo, it is not part of the draft.
      */
     val voice: AttachedVoiceState? = null,
-    /** Whether "Record a voice note" is offered: not while editing, and not without an uploader. */
+    /** Whether a voice note can be recorded: not without an uploader. In Edit too, as [photosOffered]. */
     val voiceOffered: Boolean = false,
+    /** Edit only: the voice note already on the entry, shown while no new [voice] is recording or recorded. As [sentPhoto]. */
+    val sentVoice: VoiceNote? = null,
     /** While [submit] is Sending: true while the voice note uploads (after the photo, before the words). */
     val sendingVoice: Boolean = false,
     /** What went wrong with the voice note itself, said above the action. */
@@ -144,7 +157,7 @@ sealed interface WriteAction {
      */
     data object OnKeepDraft : WriteAction
     /**
-     * "Add a photo". [canTakePhoto]: the phone has a camera, so it asks library or camera;
+     * "Add a photo", or in Edit "Replace the photo" beside the entry's own. [canTakePhoto]: the phone has a camera, so it asks library or camera;
      * without one it opens the library at once.
      */
     data class OnAddPhotoClick(val canTakePhoto: Boolean) : WriteAction
@@ -157,10 +170,10 @@ sealed interface WriteAction {
     /** The picker or camera returned (a cancelled pick sends nothing). Replaces any photo attached. */
     data class OnPhotoPicked(val pick: PhotoPick) : WriteAction
 
-    /** The remove control on the attached photo. */
+    /** The remove control on the attached photo. In Edit, removing a new photo puts the entry's own back. */
     data object OnRemovePhoto : WriteAction
 
-    /** "Record a voice note": asks for the microphone if it must, then records. */
+    /** "Record a voice note", or in Edit Record again beside the entry's own: asks for the microphone if it must, then records. */
     data object OnRecordVoiceClick : WriteAction
 
     /** The tick while recording: stop, and keep what was said to listen back to. */
@@ -172,7 +185,7 @@ sealed interface WriteAction {
     /** Throws the recorded voice note away and records a new one. */
     data object OnRecordAgainClick : WriteAction
 
-    /** The remove control on the recorded voice note. */
+    /** The remove control on the recorded voice note. In Edit, removing a new one puts the entry's own back. */
     data object OnRemoveVoice : WriteAction
 
     /** What the platform recorder reported. */

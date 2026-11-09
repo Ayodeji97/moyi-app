@@ -88,7 +88,13 @@ internal class FakeTodayEntries : TodayRepository {
         submitted += Submitted(bondId, idempotencyKey, intendedAt, imageMediaId, voiceMediaId)
         return submitResult
     }
-    override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String) = editResult
+    data class Edited(val entryId: String, val key: String, val imageMediaId: String?, val voiceMediaId: String?)
+    val edited = mutableListOf<Edited>()
+
+    override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?): Result<MyEntry, DataError.Network> {
+        edited += Edited(entryId, idempotencyKey, imageMediaId, voiceMediaId)
+        return editResult
+    }
 
     override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> {
         deleted += entryId

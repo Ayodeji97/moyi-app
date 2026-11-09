@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,7 +45,9 @@ import com.moyi.app.designsystem.resources.Res
 import com.moyi.app.designsystem.resources.ds_compose_record_again
 import com.moyi.app.designsystem.resources.ds_compose_recorded
 import com.moyi.app.designsystem.resources.ds_compose_recording
+import com.moyi.app.designsystem.resources.ds_compose_keep_sent_voice
 import com.moyi.app.designsystem.resources.ds_compose_remove_voice
+import com.moyi.app.designsystem.resources.ds_compose_sent_voice
 import com.moyi.app.designsystem.resources.ds_compose_discard_recording
 import com.moyi.app.designsystem.resources.ds_compose_keep_recording
 import com.moyi.app.designsystem.resources.ds_entry_voice_not_shared
@@ -239,6 +242,8 @@ fun AttachedVoice(
     onRemove: (() -> Unit)?,
     modifier: Modifier = Modifier,
     recordingLevels: () -> List<Float> = { emptyList() },
+    /** In Edit, where removing this new one puts the entry's own back: [onRemove] is named "Keep the voice note you had" (§60). */
+    removeRestoresSent: Boolean = false,
 ) {
     when (state) {
         is AttachedVoiceState.Recording -> Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
@@ -295,11 +300,56 @@ fun AttachedVoice(
                     VoiceIconTarget(MoyiIcons.RecordAgain, stringResource(Res.string.ds_compose_record_again), onRecordAgain)
                 }
                 if (onRemove != null) {
-                    VoiceIconTarget(MoyiIcons.Close, stringResource(Res.string.ds_compose_remove_voice), onRemove)
+                    VoiceIconTarget(
+                        MoyiIcons.Close,
+                        stringResource(if (removeRestoresSent) Res.string.ds_compose_keep_sent_voice else Res.string.ds_compose_remove_voice),
+                        onRemove,
+                    )
                 }
             }
         }
     }
+}
+
+/**
+ * **PROPOSED, not drawn** (docs/missing-components.md §60): in Edit, the voice note already
+ * on the entry, laid out as a recorded one ([AttachedVoice]): play it from the server, the
+ * waveform and its clock, then Record again ([onRecordAgain]; null while saving), which
+ * records a new one to go in its place. It has **no remove**: the contract cannot take a
+ * voice note off an entry (docs/backend-contract-gaps.md row 41). One the server has not
+ * finished with (no [VoiceNote.url]) is the card's muted line, with Record again beside it.
+ */
+@Composable
+fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val again: @Composable RowScope.() -> Unit = {
+        if (onRecordAgain != null) {
+            VoiceIconTarget(MoyiIcons.RecordAgain, stringResource(Res.string.ds_compose_record_again), onRecordAgain)
+        }
+    }
+    val url = voice.url
+    if (url == null) {
+        Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+            MoyiText(
+                text = stringResource(Res.string.ds_entry_voice_on_its_way),
+                tone = TextTone.Muted,
+                modifier = Modifier.weight(1f).padding(MoyiDimens.ComposeField.Wrap),
+            )
+            again()
+        }
+        return
+    }
+    val player = rememberStoppingPlayer()
+    val playback by player.playback.collectAsStateWithLifecycle()
+    val levels = remember(voice.key) { WaveformMath.placeholder(voice.key) }
+    PlayerControls(
+        playback = playback.withKnownDuration(voice.durationMs),
+        levels = levels,
+        label = stringResource(Res.string.ds_compose_sent_voice),
+        onToggle = { player.toggle(VoiceSource.Remote(voice.key, url)) },
+        onSeek = player::seekTo,
+        modifier = modifier,
+        trailing = again,
+    )
 }
 
 /**

@@ -1342,3 +1342,45 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Owed outside this repo:** `states.md` §7/§7a rows for these two lines, and the copy for
   `copy.md`.
 
+## Editing an entry's photo and voice note (PR feat/edit-replace-media)
+
+### 60. Edit before the reveal can replace the photo or voice note, never remove it
+
+- **Today:** Write in Edit offered no media (`WriteState.photosOffered` and `voiceOffered` were
+  false while editing) and the PATCH carried the words only. `states.md` §4 says "Edit before
+  reveal: free, no warning, no friction", and nothing drawn says the media are fixed once sent.
+- **The backend** (`EntryChangesController`, `ChangeEntry.MediaChange`) takes `imageMediaId` and
+  `voiceMediaId` on `PATCH /entries/{id}`: given, it attaches that upload in place of the
+  entry's (or adds one to an entry with none); absent, it keeps the entry's. It cannot take one
+  off (docs/backend-contract-gaps.md row 41).
+- **Built, interim, not drawn:**
+  - Edit shows the entry's own photo (`SentPhoto`, the §41 preview at 96 tall, from the
+    server's signed URL) and voice note (`SentVoice`, the §44 recorded row playing from the
+    server, its waveform the §46 placeholder) inside the composer's box, where a new one would
+    sit. Neither has a Remove. The photo carries a 48 **Replace** target (the `Image` glyph,
+    spoken "Replace the photo") that opens the same picker as Add a photo; the voice note
+    carries **Record again** (the `RecordAgain` glyph, the same name as §44) that records with
+    the §49 recording row. While the entry's own photo is shown, the toolbar does not also
+    offer Add a photo; while its own voice note is shown, it does not offer the microphone.
+  - A new photo or recording takes the slot exactly as in a new entry. Its remove control (and
+    the trash while recording) throws only the new one away and puts the entry's own back; on
+    a slot that had one, that control is spoken "Keep the photo you had" / "Keep the voice note
+    you had" instead of "Remove the photo" / "Remove the voice note".
+  - At Save the new media upload as at Send, the photo first, with the same action states
+    (`write_sending_photo` "Sending your photo", `write_sending_voice` "Sending your voice
+    note"), then "Saving" while the PATCH goes with the new ids by name. Failures are the
+    §40 and §44 ones: Save failed keeps everything and Try again resumes the upload; a refused
+    photo or voice note says so above the action and must be removed (which puts the entry's
+    own back) before the words can go.
+  - An entry with no photo or voice note can add one in Edit the same way.
+  - **Offline:** an edit is never queued (unchanged), with or without media: it needs a
+    connection, and without one it is Save failed with the words and the new media kept.
+- **PROPOSED copy** (spoken names, icon only, `ds_` strings): `ds_compose_sent_photo` "The photo
+  on your entry"; `ds_compose_replace_photo` "Replace the photo"; `ds_compose_sent_voice` "The
+  voice note on your entry"; `ds_compose_keep_sent_photo` "Keep the photo you had";
+  `ds_compose_keep_sent_voice` "Keep the voice note you had".
+- **Open questions for the owner:** (1) the five spoken names above, for `copy.md`; (2) whether
+  Edit should say in words that a photo or voice note cannot be taken off yet, or whether its
+  missing Remove is enough until the backend adds one (row 41); (3) the `Image` glyph for
+  Replace, the same as Add a photo, since no swap glyph is drawn; (4) the library or camera
+  question (§41) keeps its title "Add a photo" when it is opened by Replace.

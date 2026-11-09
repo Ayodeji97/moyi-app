@@ -344,7 +344,7 @@ class WriteVoiceTest : MainDispatcherTest() {
     }
 
     @Test
-    fun aVoiceNoteNeverStandsInForWordsAndIsNotOfferedWhileEditing() = runTest {
+    fun aVoiceNoteNeverStandsInForWordsAndIsOfferedWhileEditingToo() = runTest {
         val vm = viewModel()
         recorderFor(vm)
         vm.onAction(WriteAction.OnRecordVoiceClick)
@@ -352,6 +352,6 @@ class WriteVoiceTest : MainDispatcherTest() {
         assertFalse(vm.state.value.canSubmit)
 
         loop.show(dayView(TodayStatus.Waiting))
-        assertFalse(viewModel(editing = true).state.value.voiceOffered)
+        assertTrue(viewModel(editing = true).state.value.voiceOffered, "§60: Edit can replace or add one")
     }
 }

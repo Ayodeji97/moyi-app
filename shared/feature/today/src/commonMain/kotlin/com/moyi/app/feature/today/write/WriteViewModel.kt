@@ -75,9 +75,16 @@ import kotlin.uuid.Uuid
  * the same way, after the photo ("Sending your voice note"), and goes as `voiceMediaId`. An
  * entry may carry both. Like a photo, it is never queued offline and not part of the draft.
  *
+ * **Editing** (§60) shows the photo and voice note already on the entry ([WriteState.sentPhoto],
+ * [WriteState.sentVoice]). A new photo or recording uploads at Save exactly as at Send and
+ * goes in the PATCH in place of the entry's; removing the new one before Save keeps the
+ * entry's. Nothing takes one off: the contract cannot (docs/backend-contract-gaps.md row 41).
+ * An edit is never queued, with or without media: it needs a connection, and without one it
+ * is Save failed with everything kept.
+ *
  * @param editing true when reached from "Edit what you wrote" (before the reveal).
  * @param drafts where the unsent words are kept, on this device only.
- * @param uploader sends a photo; null offers no photo (the debug preview).
+ * @param uploader sends a photo or a voice note; null offers neither (the debug preview).
  * @param newIdempotencyKey mints the `Idempotency-Key` at the tap; tests pass a counter.
  * @param clock reads the instant of the Send tap, sent as `intendedAt`; tests pass a fixed one.
  */
@@ -99,13 +106,15 @@ class WriteViewModel(
 
     private val _state = MutableStateFlow(
         if (editing) {
-            day?.myEntry.orEmpty().let { mine -> WriteState(text = mine, prompt = null, editing = true, originalText = mine) }
+            day?.myEntry.orEmpty().let { mine ->
+                WriteState(text = mine, prompt = null, editing = true, originalText = mine, sentPhoto = day?.myPhoto, sentVoice = day?.myVoice)
+            }
         } else {
             WriteState(prompt = day?.prompt?.text)
         }.copy(
             restoringDraft = day != null,
-            photosOffered = uploader != null && !editing,
-            voiceOffered = uploader != null && !editing,
+            photosOffered = uploader != null,
+            voiceOffered = uploader != null,
         ),
     )
     val state: StateFlow<WriteState> = _state.asStateFlow()
@@ -220,8 +229,9 @@ class WriteViewModel(
     private fun submit() {
         val current = _state.value
         if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
-        val photo = current.photo?.takeIf { !current.editing }
-        val voice = current.recordedVoice?.voice?.takeIf { !current.editing }
+        // In Edit, a new photo or voice note replaces the entry's (§60); none keeps the entry's.
+        val photo = current.photo
+        val voice = current.recordedVoice?.voice
         // Taken at the tap, before any upload: the instant the person sent it.
         val tap = tapInstant()
         _state.update {
@@ -240,14 +250,15 @@ class WriteViewModel(
             _state.update { it.copy(sendingPhoto = false, sendingVoice = voice != null) }
             val voiceMediaId = if (voice == null) null else sendVoice(voice) ?: return@launch
             _state.update { it.copy(sendingVoice = false) }
-            // An edit (PATCH) sends only the words; a new entry sends the prompt id unless dismissed.
+            // An edit (PATCH) sends no prompt id; a new entry sends it unless dismissed.
             val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null }, imageMediaId, voiceMediaId)
             val reused = pending?.takeIf { it.payload == payload }
             val key = reused?.key ?: newIdempotencyKey()
             val intendedAt = reused?.intendedAt ?: tap
             pending = Pending(payload, key, intendedAt)
             val result = if (current.editing) {
-                loop.edit(payload.text, key)
+                // By name: absent media keep the entry's, so only a new upload is sent.
+                loop.edit(payload.text, key, imageMediaId = imageMediaId, voiceMediaId = voiceMediaId)
             } else {
                 loop.submit(payload.text, payload.promptId, key, intendedAt, imageMediaId, voiceMediaId)
             }

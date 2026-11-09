@@ -66,9 +66,10 @@ class WritePhotoTest : MainDispatcherTest() {
     }
 
     @Test
-    fun noPhotoIsOfferedWhileEditing() {
+    fun aPhotoIsOfferedWhileEditingToo() {
         written()
-        assertFalse(viewModel(editing = true).state.value.photosOffered)
+        // §60: Edit can replace the entry's photo, or add one to an entry with none.
+        assertTrue(viewModel(editing = true).state.value.photosOffered)
     }
 
     @Test
