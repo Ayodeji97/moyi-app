@@ -115,6 +115,7 @@ class WriteViewModel(
             restoringDraft = day != null,
             photosOffered = uploader != null,
             voiceOffered = uploader != null,
+            partnerName = day?.partnerName,
         ),
     )
     val state: StateFlow<WriteState> = _state.asStateFlow()
@@ -165,13 +166,14 @@ class WriteViewModel(
         when (action) {
             is WriteAction.OnTextChange -> {
                 // The words being sent are the words on screen: no edits in flight.
-                if (_state.value.submit == WriteSubmit.Sending || _state.value.restoringDraft) return
+                if (_state.value.submit == WriteSubmit.Sending || _state.value.submit == WriteSubmit.Revealed || _state.value.restoringDraft) return
                 _state.update { it.copy(text = action.text, submit = it.submit.afterEdit()) }
                 saveDraftAfterPause()
             }
             // A dismissed prompt sends no promptId with the entry (submit, below).
             WriteAction.OnDismissPrompt -> _state.update { it.copy(prompt = null) }
             WriteAction.OnSubmit -> submit()
+            WriteAction.OnSeeTodayClick -> seeToday()
             WriteAction.OnCloseClick -> requestClose()
             WriteAction.OnDiscardConfirm -> {
                 _state.update { it.copy(confirmingDiscard = false) }
@@ -228,7 +230,7 @@ class WriteViewModel(
      */
     private fun submit() {
         val current = _state.value
-        if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued) return
+        if (!current.canSubmit || current.submit == WriteSubmit.Sending || current.submit == WriteSubmit.Queued || current.submit == WriteSubmit.Revealed) return
         // In Edit, a new photo or voice note replaces the entry's (§60); none keeps the entry's.
         val photo = current.photo
         val voice = current.recordedVoice?.voice
@@ -285,6 +287,12 @@ class WriteViewModel(
                 WriteResult.VoiceRefused -> {
                     voiceUpload = UploadProgress.None
                     _state.update { it.copy(submit = WriteSubmit.Idle, voiceNotice = VoiceNotice.Refused) }
+                }
+                // The day opened while editing (BR-7): no Save, no retry. The words stay on screen to
+                // copy; the new photo and voice note were never attached, and are deleted on leaving.
+                WriteResult.Revealed -> {
+                    pending = null
+                    _state.update { it.copy(submit = WriteSubmit.Revealed, photosOffered = false, voiceOffered = false) }
                 }
             }
         }
@@ -461,12 +469,27 @@ class WriteViewModel(
      */
     private fun requestClose() {
         val current = _state.value
+        if (current.submit == WriteSubmit.Revealed) return seeToday()
         // Recording stops before the question: what was said so far is kept, and is what Discard throws away.
         if (current.recording) send(WriteEvent.StopRecording)
         when {
             current.submit == WriteSubmit.Sending || current.confirmingDiscard -> Unit
             current.wouldLoseWords -> _state.update { it.copy(confirmingDiscard = true) }
             else -> close()
+        }
+    }
+
+    /**
+     * Leaves a composer whose edit found the day revealed. The edit can never be saved, so
+     * its draft goes (it would come back as an edit of an entry that can no longer change),
+     * and so do the uploads that were never attached. Today was reloaded before this state.
+     */
+    private fun seeToday() {
+        if (_state.value.submit != WriteSubmit.Revealed) return
+        viewModelScope.launch {
+            discardUploads()
+            deleteDraft()
+            _events.send(WriteEvent.Close)
         }
     }
 

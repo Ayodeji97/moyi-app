@@ -172,6 +172,13 @@ enum class WriteResult {
 
     /** As [PhotoRefused], for the voice note (`MEDIA_NOT_ATTACHABLE` on `voiceMediaId`). */
     VoiceRefused,
+
+    /**
+     * An edit only: `409 ENTRY_IMMUTABLE`. The partner wrote while the composer was open, so the
+     * day is revealed and the entry can no longer change (BR-7). Today has been reloaded and
+     * shows the revealed day; the composer says so and offers no retry. Never from a new entry.
+     */
+    Revealed,
 }
 
 enum class ReactResult {
