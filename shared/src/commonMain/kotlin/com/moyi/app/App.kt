@@ -29,12 +29,14 @@ import com.moyi.app.designsystem.platform.screenPopExitTransition
 import coil3.compose.setSingletonImageLoaderFactory
 import com.moyi.app.data.network.StorageHttpClient
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.MoyiSnackbar
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.debug.UiPreviewRoute
 import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.LegalRoute
+import com.moyi.app.feature.auth.navigation.alreadyVerifiedNotice
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
 import com.moyi.app.feature.auth.navigation.RegisterRoute
@@ -136,6 +138,8 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         var splashDone by rememberSaveable { mutableStateOf(start != null) }
         // Latched: once the first screen has drawn something, later screens change nothing.
         var firstScreenDrawn by remember { mutableStateOf(false) }
+        // A verify link that opened nothing because the address is already confirmed (§62).
+        var alreadyVerified by remember { mutableStateOf(false) }
 
         val startDestination = start
         Box(Modifier.fillMaxSize()) {
@@ -148,6 +152,7 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     viewModel = viewModel,
                     session = session,
                     onFirstScreenDrawn = { firstScreenDrawn = true },
+                    onAlreadyVerified = { alreadyVerified = true },
                 )
             }
             if (!splashDone) {
@@ -155,6 +160,12 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     ready = firstScreenDrawn,
                     signedIn = session is SessionState.SignedIn,
                     onFinished = { splashDone = true },
+                )
+            } else {
+                // Over every screen, and only once the splash has gone, so its time is all seen.
+                MoyiSnackbar(
+                    message = if (alreadyVerified) alreadyVerifiedNotice() else null,
+                    onDismiss = { alreadyVerified = false },
                 )
             }
         }
@@ -167,6 +178,8 @@ private fun MoyiNavHost(
     viewModel: AppViewModel,
     session: SessionState,
     onFirstScreenDrawn: () -> Unit,
+    /** A verify link opened nothing because the address is already confirmed: say so. */
+    onAlreadyVerified: () -> Unit,
 ) {
     val navController = rememberNavController()
     val pushTaps = koinInject<PushTapInbox>()
@@ -298,7 +311,7 @@ private fun MoyiNavHost(
         )
         if (routing != LinkRouting.Wait) {
             links.consume(link)
-            navController.follow(routing)
+            if (routing == LinkRouting.AlreadyVerified) onAlreadyVerified() else navController.follow(routing)
         }
     }
     LaunchedEffect(pendingInvite, currentEntry, session, dayLoaded) {
@@ -361,7 +374,7 @@ private fun NavHostController.follow(routing: LinkRouting) {
                 if (routing.replaceCurrent && current != null) popUpTo(current.id) { inclusive = true }
             }
         }
-        LinkRouting.Drop -> Unit
+        LinkRouting.AlreadyVerified -> Unit
         is LinkRouting.Reset -> resetTo(routing.route)
         is LinkRouting.AboveToday -> {
             popBackStack<TodayRoute>(inclusive = false)

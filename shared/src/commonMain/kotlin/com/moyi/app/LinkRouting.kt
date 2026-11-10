@@ -90,8 +90,12 @@ internal sealed interface LinkRouting {
     /** Back to Today, then [route] over it. */
     data class AboveToday(val route: Any) : LinkRouting
 
-    /** Nothing to open: the link is used up and the person stays where they are. */
-    data object Drop : LinkRouting
+    /**
+     * A verify link for someone whose address is already confirmed: nothing opens, the person
+     * stays where they are, and the shell says "Your email is already confirmed." (owner ruling
+     * 2026-11-10, docs/missing-components.md §62).
+     */
+    data object AlreadyVerified : LinkRouting
 }
 
 /**
@@ -111,10 +115,11 @@ internal sealed interface LinkRouting {
  *   account, that account is confirmed (the token is the proof) and this one is unchanged.
  * - Signed in with the address already confirmed ([signedInVerified], or a place only a
  *   verified person reaches: onboarding, Today, the archived bond), a verify link has nothing
- *   left to do: it is dropped and the person stays where they belong, which on a cold start
- *   is their own start (Today). Opening Verify there would show an old link as expired and
- *   offer "Use a different address" to someone whose address is done (smoke test
- *   2026-11-09, docs/missing-components.md §61).
+ *   left to do ([LinkRouting.AlreadyVerified]): the person stays where they belong, which on a
+ *   cold start is their own start (Today), and is told their email is already confirmed.
+ *   Opening Verify there would show an old link as expired and offer "Use a different
+ *   address" to someone whose address is done (smoke test 2026-11-09, §61). A link for another
+ *   account opened here is ignored the same way (owner ruling 2026-11-10).
  */
 internal fun accountLinkRouting(
     link: DeepLink,
@@ -129,7 +134,7 @@ internal fun accountLinkRouting(
     val verified = signedIn && (signedInVerified || place in VERIFIED_PLACES)
     return when (link) {
         is DeepLink.VerifyEmail -> when {
-            verified -> LinkRouting.Drop
+            verified -> LinkRouting.AlreadyVerified
             current is VerifyRoute -> LinkRouting.Push(current.copy(linkToken = link.token), replaceCurrent = true)
             else -> LinkRouting.Push(VerifyRoute(email = email, linkToken = link.token, signedIn = signedIn))
         }
