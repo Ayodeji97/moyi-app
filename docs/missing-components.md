@@ -1399,10 +1399,12 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   opened from Account says **Go back** (`support_back_generic`, PROPOSED in §55) when done,
   not "Back to settings", since a person with no bond has no settings behind it
   (`SupportOrigin.Account`). Bond settings keeps both rows, so a person in a bond sees them
-  twice (in Just you, and one tap deeper in Account): **owner question**, below.
+  twice (in Just you, and one tap deeper in Account). **Owner ruling 2026-11-10:** keep them
+  in both.
 - **Forgot password names the code.** Since §58 the reset email carries a 6-digit code and a
   link, and "Check your email" already says so (`reset_sent_line`, approved 2026-11-09). The
-  screen before it still promised a link. PROPOSED, replacing the 2026-11-05 words:
+  screen before it still promised a link. **Approved 2026-11-10** (owner ruling), replacing
+  the 2026-11-05 words:
 
   | Key | Was | Now |
   |---|---|---|
@@ -1415,7 +1417,8 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   `reset_link_ready` stay: only a link is ever answered 410, and the second is shown only
   when a link opened the screen.
 - **The library or camera question says Replace when a photo is already there.** Answers §60's
-  open question (4) the conservative way: the title follows what the pick does. PROPOSED:
+  open question (4) the conservative way: the title follows what the pick does. **Approved
+  2026-11-10** (owner ruling):
   `write_photo_source_title_replace` "Replace the photo" (the words of
   `ds_compose_replace_photo`, the Replace target that opens it), shown when the entry's own
   photo is in the slot (Edit) or a photo was already picked (`WriteState.replacingPhoto`);
@@ -1426,14 +1429,43 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   account. It used to open Verify, whose 410 (an old link is spent) showed the expired layout
   with "Send a new email" and "Use a different address". Now the link is consumed and the
   app comes to the front where the person is; on a cold start that is their own start
-  (Today). No new screen or string. **Owner questions:** (1) whether a short "Your email is
-  already confirmed" should be said instead of nothing (it needs a component the design
-  system lacks: no toast or snackbar is drawn); (2) a verify link for **another** account
-  opened on this phone while signed in to a verified one is dropped too, so that account is
-  not confirmed from here (it still can be with its code, or its link opened signed out).
-  Before, it was confirmed. The client cannot tell the two apart without sending the token,
-  and sending it is what produced the expired layout.
-- **Not changed, owner question:** `register_email_helper` "We will send a verification
-  link." on sign up names a link, though the email now carries a code too (§58). It is not on
-  the forgot-password path, so it is left for a ruling: for example "We will send a 6-digit
-  code to confirm it."
+  (Today). A verify link for **another** account opened on this phone while signed in to a
+  verified one is ignored the same way, so that account is not confirmed from here (it still
+  can be with its code, or its link opened signed out). The client cannot tell the two apart
+  without sending the token, and sending it is what produced the expired layout. **Owner
+  ruling 2026-11-10:** that stays ignored. The same ruling adds a snackbar saying why nothing
+  opened: §62.
+- **Sign up's email helper names the code.** `register_email_helper`, "We will send a
+  verification link.", is now "We will send a 6-digit code to confirm it." (**approved
+  2026-11-10**, owner ruling).
+
+### 62. A snackbar: "Your email is already confirmed." (owner ruling 2026-11-10)
+
+- **Why:** a verify link opened by someone signed in whose address is already confirmed opens
+  nothing (§61). Without a word the tap looks broken. The owner asked for a snackbar; the
+  design system draws none, so this is the smallest one, built from Rosewood tokens only.
+- **Built, PROPOSED component** (`MoyiSnackbar`, designsystem `component/MoyiSnackbar.kt`):
+  - One line of `body` in `ink` on `surfaceRaised`, bordered by the hairline `outline`,
+    radius 12, padding 16 (tokens.md §3: a floating surface is raised, never shadowed). Full
+    width inside the gutter, 24 above the bottom of the safe area.
+  - **No action button and no close control.** It goes away by itself after 4 seconds
+    (`SnackbarShowMillis`, PROPOSED: no token sets how long a note stays), or longer when
+    Android's accessibility timeout setting asks for more time
+    (`LocalAccessibilityManager.calculateRecommendedTimeoutMillis`).
+  - **Announced** through a polite live region, so TalkBack and VoiceOver read it without
+    moving focus.
+  - **Motion:** fades in over `motion.crossFade` (200 ms) while rising a quarter of its
+    height on `motion.push`'s 300 ms `FastOutSlowIn`, and the reverse on the way out. With
+    iOS Reduce Motion it only fades (`rememberReduceMotion`); Android's "Remove animations"
+    scales both to nothing on its own.
+  - Drawn by the shell over every screen and only after the launch splash has gone, so a
+    link that opened the app cold is not told about under the splash. It takes no touches.
+- **PROPOSED string:** `verify_already_confirmed` "Your email is already confirmed." (the
+  owner's words, 2026-11-10; kept PROPOSED until it is in `copy.md`).
+- **When it shows:** only when `accountLinkRouting` answers `LinkRouting.AlreadyVerified`: a
+  verify link, someone signed in, and the address confirmed (the session says so, or a screen
+  only a verified person reaches is on screen or under it). Never for a reset link, never
+  signed out, never at the unverified gate. `LinkRoutingTest` covers each case.
+- **Open questions for the owner:** (1) the 4-second stay; (2) whether this component should
+  become the design system's one snackbar for other one-line notes, or stay single-use until a
+  frame is drawn.
