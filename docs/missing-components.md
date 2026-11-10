@@ -1447,7 +1447,9 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Built, PROPOSED component** (`MoyiSnackbar`, designsystem `component/MoyiSnackbar.kt`):
   - One line of `body` in `ink` on `surfaceRaised`, bordered by the hairline `outline`,
     radius 12, padding 16 (tokens.md §3: a floating surface is raised, never shadowed). Full
-    width inside the gutter, 24 above the bottom of the safe area.
+    width inside the gutter, 16 above where a screen's `PrimaryAction` sits (88 above the
+    bottom of the safe area), so it never covers the main action. (First built at 24 above
+    the safe area; the 2026-11-10 smoke test showed it hiding Today's Write for its 4 s.)
   - **No action button and no close control.** It goes away by itself after 4 seconds
     (`SnackbarShowMillis`, PROPOSED: no token sets how long a note stays), or longer when
     Android's accessibility timeout setting asks for more time

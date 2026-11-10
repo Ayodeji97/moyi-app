@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.platform.rememberReduceMotion
+import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.theme.MoyiMotion
 import kotlinx.coroutines.delay
 
@@ -41,7 +42,9 @@ import kotlinx.coroutines.delay
  * docs/missing-components.md §62: the design system draws no snackbar). Single-use (the
  * already-confirmed note) until a Figma frame draws one (owner ruling 2026-11-10). One line of `body` in
  * `ink` on `surfaceRaised`, the hairline `outline` and radius 12 (tokens.md §3: a surface that
- * floats is raised, not shadowed), inset by the gutter and 24 from the bottom of the safe area.
+ * floats is raised, not shadowed), inset by the gutter, and held one item gap (16) above
+ * where a screen's `PrimaryAction` sits (24 from the safe area, 48 tall), so it never covers
+ * the main action (smoke test 2026-11-10: on Today it hid Write).
  *
  * - **No action and no close control.** It only says what happened; nothing needs doing.
  * - **Goes away by itself** after [SnackbarShowMillis], or longer when the platform asks for
@@ -81,7 +84,7 @@ fun MoyiSnackbar(message: String?, onDismiss: () -> Unit, modifier: Modifier = M
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(start = spacing.gutter, end = spacing.gutter, bottom = spacing.lg),
+            .padding(start = spacing.gutter, end = spacing.gutter, bottom = AboveThePrimaryAction),
         contentAlignment = Alignment.BottomCenter,
     ) {
         val fade = tween<Float>(MoyiMotion.CrossFadeMillis)
@@ -109,6 +112,10 @@ private fun SnackbarNote(text: String) {
             .semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
+
+/** The scaffold's bottom padding, a `PrimaryAction`'s height and the scaffold's item gap. */
+private val AboveThePrimaryAction =
+    MoyiDimens.Scaffold.PaddingVertical + MoyiDimens.PrimaryAction.MinHeight + MoyiDimens.Scaffold.ItemSpacing
 
 /** How long the note stays (§62, kept by owner ruling 2026-11-10): one short sentence, read twice. */
 const val SnackbarShowMillis = 4_000L
