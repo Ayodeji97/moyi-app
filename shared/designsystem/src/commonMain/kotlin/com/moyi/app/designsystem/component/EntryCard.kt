@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.em
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.platform.ProtectFromCapture
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -143,7 +144,7 @@ fun EntryCard(
 }
 
 /**
- * **PROPOSED** (§67): the same pill as the speed pill (`label` in `ink`, a `hairline` of
+ * **PROPOSED** (§67): the same pill as the speed pill (`label` without its tracking, in `ink`, a `hairline` of
  * `outlineStrong`, `shapes.full`, padded `sm` across and `xs` down), but display-only: no
  * target, nothing to tap. Drawn text is cleared and [EntryCardReaction.spoken] stands in for it.
  */
@@ -151,7 +152,8 @@ fun EntryCard(
 private fun ReactionPill(reaction: EntryCardReaction) {
     Text(
         text = reaction.text,
-        style = MoyiTheme.type.label,
+        // Sentence case, so the label style's uppercase tracking would space the letters apart.
+        style = MoyiTheme.type.label.copy(letterSpacing = 0.em),
         color = MoyiTheme.colors.ink,
         maxLines = 1,
         modifier = Modifier
