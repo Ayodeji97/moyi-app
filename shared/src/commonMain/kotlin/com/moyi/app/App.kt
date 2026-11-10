@@ -253,6 +253,9 @@ private fun MoyiNavHost(
             // The Generic error's Get help: Support over it, so its way back returns to Try again.
             onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Error)) { launchSingleTop = true } },
             onOpenAccount = openAccount,
+            // The gate's "Type the code": the verify screen over the gate, signed in, so a
+            // confirmed address returns to the signed-in start and back returns to the gate.
+            onOpenVerify = { email -> navController.navigate(VerifyRoute(email = email, signedIn = true)) { launchSingleTop = true } },
         )
         // Get help (FR-102): pushed over whichever screen opened it, and popped to return there.
         supportDestination(onClose = { navController.popBackStack() })

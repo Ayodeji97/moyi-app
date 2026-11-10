@@ -32,6 +32,7 @@ import com.moyi.app.feature.onboarding.resources.gate_heading
 import com.moyi.app.feature.onboarding.resources.gate_line
 import com.moyi.app.feature.onboarding.resources.gate_resend
 import com.moyi.app.feature.onboarding.resources.gate_resent
+import com.moyi.app.feature.onboarding.resources.gate_type_code
 import com.moyi.app.feature.onboarding.resources.onboarding_your_account
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -39,6 +40,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun UnverifiedGateRoot(
     onNavigateToOnboarding: () -> Unit,
+    onNavigateToVerify: (email: String) -> Unit,
     onNavigateToAccount: () -> Unit,
     viewModel: UnverifiedGateViewModel = koinViewModel(),
 ) {
@@ -47,6 +49,7 @@ fun UnverifiedGateRoot(
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             UnverifiedGateEvent.NavigateToOnboarding -> onNavigateToOnboarding()
+            is UnverifiedGateEvent.NavigateToVerify -> onNavigateToVerify(event.email)
             UnverifiedGateEvent.NavigateToAccount -> onNavigateToAccount()
         }
     }
@@ -59,6 +62,11 @@ fun UnverifiedGateRoot(
  * block holds one centred secondary affordance at 772, "Send it again",
  * which becomes the muted acknowledgement once sent (the verify screen's
  * Resent sub-state, 362:95). Drawn as a plain screen, not a StateBlock.
+ *
+ * PROPOSED (docs/missing-components.md §63): a second centred link above it, "Type the
+ * code", which pushes the verify screen for the session's address. The email carries a
+ * 6-digit code since #64, and without this the gate offered only the link, which opens the
+ * app only on the phone that reads the email.
  *
  * PROPOSED (docs/missing-components.md §57, owner ruling 2026-11-09): the account target,
  * a person glyph at the top right ([TrailingNavRow], announced "Your account"), which pushes
@@ -73,6 +81,17 @@ fun UnverifiedGateScreen(
     val spacing = MoyiTheme.spacing
     MoyiScaffold(
         action = {
+            // PROPOSED (docs/missing-components.md §63): the code's way in, above the resend
+            // affordance. Hidden until the address is known: a code alone names no account.
+            if (state.email.isNotEmpty()) {
+                TextLink(
+                    stringResource(Res.string.gate_type_code),
+                    onClick = { onAction(UnverifiedGateAction.OnTypeCodeClick) },
+                    centered = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(spacing.sm))
+            }
             state.resendFailure?.let {
                 InlineError(it.asString())
                 Spacer(Modifier.height(spacing.sm))

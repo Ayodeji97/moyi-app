@@ -120,6 +120,8 @@ data object JoinCannotBeUsedRoute
  * Account ([onOpenAccount], in `:shared:feature:bond`): the gate and relationship type as a
  * root carry the account target (a person glyph, top right) that pushes it, so back returns. A person on either is
  * in no open bond and cannot reach Bond settings (owner ruling 2026-11-09).
+ * Verify ([onOpenVerify], in `:shared:feature:auth`): the gate's "Type the code" pushes it for
+ * the session's address (PROPOSED, docs/missing-components.md §63).
  *
  * Owed: a code handed over by the `/i/{code}` lander after sign in (deep
  * links, site association files). Until then the prefilled layout is reached
@@ -134,6 +136,7 @@ fun NavGraphBuilder.onboardingGraph(
     onSignedInStartError: () -> Unit = {},
     onOpenSupport: () -> Unit,
     onOpenAccount: () -> Unit,
+    onOpenVerify: (email: String) -> Unit,
 ) {
     composable<PromiseRoute> {
         PromiseRoot(onBegin = onNavigateToRegister, onHaveAccount = onNavigateToSignIn)
@@ -151,6 +154,7 @@ fun NavGraphBuilder.onboardingGraph(
     composable<UnverifiedGateRoute> {
         UnverifiedGateRoot(
             onNavigateToOnboarding = { navController.resetTo(OnboardingRoute) },
+            onNavigateToVerify = onOpenVerify,
             onNavigateToAccount = onOpenAccount,
         )
     }

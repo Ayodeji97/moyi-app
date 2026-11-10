@@ -18,6 +18,9 @@ enum class GateResendStatus { Ready, Sending, Sent }
 sealed interface UnverifiedGateAction {
     data object OnResendClick : UnverifiedGateAction
 
+    /** "Type the code" (PROPOSED, docs/missing-components.md §63): the verify screen, where the emailed code is typed. */
+    data object OnTypeCodeClick : UnverifiedGateAction
+
     /** The app came back to the foreground: the link may have been opened meanwhile. */
     data object OnResume : UnverifiedGateAction
 
@@ -28,6 +31,9 @@ sealed interface UnverifiedGateAction {
 sealed interface UnverifiedGateEvent {
     /** Verified now: on to relationship type. */
     data object NavigateToOnboarding : UnverifiedGateEvent
+
+    /** The verify screen for [email], signed in: the 6-digit code from the email is typed there. */
+    data class NavigateToVerify(val email: String) : UnverifiedGateEvent
 
     /** Account: export or delete, which needs no bond and no verified address. */
     data object NavigateToAccount : UnverifiedGateEvent

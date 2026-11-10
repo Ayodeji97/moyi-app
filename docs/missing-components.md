@@ -1474,3 +1474,42 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   adds it in the parent repo); (4) a native VoiceOver announcement
   (`UIAccessibility.post(.announcement)`) is added only if the smoke test shows VoiceOver
   stays silent on the live region.
+
+## The Queued line names the day, and the gate names the code (PR feat/queued-names-the-day)
+
+### 63. Queued on an earlier Bond-day names it; the unverified gate offers the code
+
+- **Why (Queued):** the owner held `today_queued_line_earlier` on 2026-11-08 (strings-proposed.md
+  §12) until the backend kept a Bond-day open about 12 h past its end. Backend #154 shipped it
+  (`settlesAt`, `LateEntryGrace`; backend-contract-gaps.md row 25, resolved), so an entry written
+  offline on an earlier day and sent within 12 h of the Send tap now counts for that day.
+- **The rule (`QueuedDay`, `LateEntryGrace` = 12 h, was the 36 h `OfflineWindow`):** if it sends
+  now, which day does it count for? Written on the current Bond-day (read from the clock in the
+  bond's zone, not from the day Today last showed): that day. Written on an earlier Bond-day and
+  at most 12 h ago: that day. Older: the day it sends. `settlesAt` never comes first: the server
+  trusts `intendedAt` for 12 h, and the day it falls on settles 12 h after its *end*, which is
+  later. A refresh that fails offline works the line out again, so it changes when the grace runs
+  out without a connection.
+- **Strings (PROPOSED):**
+  - `today_queued_line_earlier`: "It'll send when you're back online. It will count for {day}."
+    The wording §12 said it would become; it reads exactly like `today_queued_line`, because the
+    promise is the same one. `{day}` is `dayInSentence`, locale-aware ("Saturday, 7 November").
+  - `today_announce_queued_earlier`: "Written for {day}. It will send when you're back online"
+    (the pane title, read by TalkBack and VoiceOver). states.md "Queued offline" asks that an
+    earlier day be announced; `today_announce_queued` stays for the current day.
+- **Why (gate):** since #64 and #70 the verification email carries a 6-digit code as well as the
+  link, and the owner approved "We will send a 6-digit code to confirm it." for sign up. The gate
+  still said only "We sent a link to {email}", and offered no way to type a code, so a person
+  reading the email on another device (where the link opens the website) had no way forward.
+- **Built, PROPOSED placement:** a second centred `TextLink`, "Type the code", above "Send it
+  again" in the gate's action block, 8 apart (`spacing.sm`). It pushes the existing verify screen
+  for the session's address, signed in (`VerifyRoute(email, signedIn = true)`), the same screen a
+  verify link already opens over the gate; a confirmed address returns to the signed-in start,
+  and back returns to the gate. Hidden while the address is not known: a code alone names no
+  account. Figma 345:46 draws one affordance; this adds a second from existing components only.
+- **Strings (PROPOSED):**
+  - `gate_line`: "You can sign in, but creating or joining a bond needs a verified address. We
+    sent a 6-digit code to {email}. Type the code below, or open the link in the same email."
+    (was "... We sent a link to {email}.")
+  - `gate_type_code`: "Type the code".
+  - `gate_resend` "Send it again" is unchanged: "it" is the email, which carries both.

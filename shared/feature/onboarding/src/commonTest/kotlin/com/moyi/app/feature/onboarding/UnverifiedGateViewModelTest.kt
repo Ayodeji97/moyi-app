@@ -48,6 +48,28 @@ class UnverifiedGateViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun typeTheCodeOpensVerifyForTheSessionsAddressWithoutSendingAnything() = runTest {
+        val viewModel = UnverifiedGateViewModel(auth, account)
+        viewModel.events.test {
+            viewModel.onAction(UnverifiedGateAction.OnTypeCodeClick)
+            assertEquals(UnverifiedGateEvent.NavigateToVerify("tunde@example.com"), awaitItem())
+        }
+        assertEquals(0, auth.resendCalls.size, "the code already sent is the one typed")
+    }
+
+    @Test
+    fun typeTheCodeDoesNothingWhileTheAddressIsUnknown() = runTest {
+        // No session yet and GET /me not answered: nothing names the address.
+        account.result = Result.Failure(DataError.Network.NoInternet)
+        val viewModel = UnverifiedGateViewModel(FakeAuthRepository(signedIn = null), account)
+        assertEquals("", viewModel.state.value.email)
+        viewModel.events.test {
+            viewModel.onAction(UnverifiedGateAction.OnTypeCodeClick)
+            expectNoEvents()
+        }
+    }
+
+    @Test
     fun aFailedCheckChangesNothing() = runTest {
         account.result = Result.Failure(DataError.Network.NoInternet)
         val viewModel = UnverifiedGateViewModel(auth, account)
