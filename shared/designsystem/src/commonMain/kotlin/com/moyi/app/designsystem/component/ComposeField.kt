@@ -3,8 +3,25 @@ package com.moyi.app.designsystem.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Constraints
+import com.moyi.app.designsystem.platform.rememberReduceMotion
+import com.moyi.app.designsystem.theme.MoyiMotion
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,7 +80,15 @@ import org.jetbrains.compose.resources.stringResource
  *   always sufficient (NFR-103); a null callback hides the button.
  *
  * The box fills whatever height the caller gives it (at least
- * [MoyiDimens.ComposeField.MinHeight] by default) and the text scrolls inside it.
+ * [MoyiDimens.ComposeField.MinHeight] by default). **The words are never squeezed**
+ * (docs/missing-components.md §66, the owner's iPhone, 2026-11-10): the text keeps at least
+ * three lines of `entry` ([MoyiDimens.ComposeField.MinTextLines]) and takes whatever room the
+ * rest leaves; when that is not enough, everything inside the box scrolls as one column
+ * ([ComposerColumn]) and the line with the cursor is kept in view as you type.
+ *
+ * What is attached ([attachment]) is laid out by [AttachmentsLayout]: stacked at full size,
+ * or, while [compactAttachments] (by default, while the keyboard is up), compact on one row,
+ * so the words keep the room above the keyboard (PROPOSED, §66). The slot is told which.
  *
  * Words it opens with (a restored draft, my entry being edited) have the cursor after
  * their last character, ready to carry on, exactly as [Field] does.
@@ -81,82 +106,214 @@ fun ComposeField(
     onAddPhoto: (() -> Unit)? = null,
     onRecordVoice: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
-    attachment: (@Composable () -> Unit)? = null,
+    /**
+     * What is attached, inside the box above its toolbar: emit each attachment (the photo,
+     * then the voice note) as a sibling; [AttachmentsLayout] places them. `compact` says
+     * whether they are to step back (§66).
+     */
+    attachment: (@Composable (compact: Boolean) -> Unit)? = null,
+    /** Whether the attachments are drawn compact. By default, while the keyboard is up. */
+    compactAttachments: Boolean = rememberImeVisible(),
 ) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
     val wrap = MoyiDimens.ComposeField.Wrap
     val strokeWidth = if (invalid) MoyiDimens.Field.StrokeEmphasis else MoyiDimens.ComposeField.Stroke
     val strokeColor = if (invalid) colors.danger else colors.outlineStrong
+    val scroll = rememberScrollState()
+    val reduceMotion = rememberReduceMotion()
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = MoyiDimens.ComposeField.MinHeight)
+            .clip(shapes.radius)
             .background(colors.surfaceRaised, shapes.radius)
             .border(strokeWidth, strokeColor, shapes.radius)
             .padding(MoyiDimens.ComposeField.BoxPadding),
     ) {
-        if (prompt != null) {
-            Row(verticalAlignment = Alignment.Top) {
-                // The prompt is an offer, never a requirement (states.md §4).
-                MoyiText(
-                    text = prompt,
-                    tone = TextTone.Muted,
-                    modifier = Modifier.weight(1f).padding(wrap),
-                )
-                if (onDismissPrompt != null) {
-                    IconTarget(MoyiIcons.Close, stringResource(Res.string.ds_compose_dismiss_prompt), enabled, onDismissPrompt)
+        // The height inside the box: the room the column fills before it has to scroll.
+        val viewport = if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.minHeight
+        ComposerColumn(
+            viewport = viewport,
+            modifier = Modifier.fillMaxWidth().verticalScroll(scroll),
+        ) {
+            if (prompt != null) {
+                Row(verticalAlignment = Alignment.Top) {
+                    // The prompt is an offer, never a requirement (states.md §4).
+                    MoyiText(
+                        text = prompt,
+                        tone = TextTone.Muted,
+                        modifier = Modifier.weight(1f).padding(wrap),
+                    )
+                    if (onDismissPrompt != null) {
+                        IconTarget(MoyiIcons.Close, stringResource(Res.string.ds_compose_dismiss_prompt), enabled, onDismissPrompt)
+                    }
+                }
+            }
+            // Field's pattern, for the same reasons (see Field): a TextFieldValue so prefilled words
+            // open with the cursor at their end; otherwise exactly the String overload, which shows
+            // the caller's text, keeps its own cursor and composition, and reports real changes only.
+            var fieldValueState by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+            val fieldValue = fieldValueState.copy(text = value)
+            SideEffect {
+                if (fieldValue.selection != fieldValueState.selection || fieldValue.composition != fieldValueState.composition) {
+                    fieldValueState = fieldValue
+                }
+            }
+            var lastText by remember(value) { mutableStateOf(value) }
+            var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+            var focused by remember { mutableStateOf(false) }
+            val caretInView = remember { BringIntoViewRequester() }
+            // The line being written stays on screen: after every keystroke, cursor move or change of
+            // room (the keyboard rising, the attachments stepping back), the column scrolls the
+            // cursor's line into view. The text field asks for this itself on focus; this covers the rest.
+            LaunchedEffect(fieldValue.selection, textLayout, focused, viewport) {
+                val layout = textLayout
+                if (!focused || layout == null) return@LaunchedEffect
+                val offset = fieldValue.selection.end.coerceIn(0, layout.layoutInput.text.length)
+                caretInView.bringIntoView(layout.getCursorRect(offset))
+            }
+            BasicTextField(
+                value = fieldValue,
+                onValueChange = { next ->
+                    fieldValueState = next
+                    val changed = lastText != next.text
+                    lastText = next.text
+                    if (changed) onValueChange(next.text)
+                },
+                enabled = enabled,
+                textStyle = MoyiTheme.type.entry.copy(color = colors.ink),
+                cursorBrush = SolidColor(colors.ink),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                // Never fewer than three lines of the words, however much is attached (§66).
+                minLines = MoyiDimens.ComposeField.MinTextLines,
+                onTextLayout = { textLayout = it },
+                modifier = Modifier
+                    .layoutId(ComposerSlot.Text)
+                    .fillMaxWidth()
+                    .padding(wrap)
+                    // After the wrap: the requester's box is the text's own, so the cursor's rect needs no offset.
+                    .bringIntoViewRequester(caretInView)
+                    .onFocusChanged { focused = it.isFocused }
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
+            )
+            // Interim (docs/missing-components.md §41): what is attached sits above the toolbar, inside the box.
+            if (attachment != null) {
+                AttachmentsLayout(
+                    compact = compactAttachments,
+                    // The change of size eases on `motion.control`; with Reduce Motion it is a cut.
+                    modifier = if (reduceMotion) Modifier else Modifier.animateContentSize(tween(MoyiMotion.ControlMillis)),
+                ) { attachment(compactAttachments) }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onAddPhoto != null) {
+                    IconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_add_photo), enabled, onAddPhoto)
+                }
+                if (onRecordVoice != null) {
+                    IconTarget(MoyiIcons.Mic, stringResource(Res.string.ds_compose_record_voice), enabled, onRecordVoice)
+                }
+                Spacer(Modifier.weight(1f))
+                if (counter != null) {
+                    MoyiText(
+                        text = counter,
+                        tone = if (invalid) TextTone.Danger else TextTone.Muted,
+                        modifier = Modifier
+                            .padding(wrap)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    )
                 }
             }
         }
-        // Field's pattern, for the same reasons (see Field): a TextFieldValue so prefilled words
-        // open with the cursor at their end; otherwise exactly the String overload, which shows
-        // the caller's text, keeps its own cursor and composition, and reports real changes only.
-        var fieldValueState by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
-        val fieldValue = fieldValueState.copy(text = value)
-        SideEffect {
-            if (fieldValue.selection != fieldValueState.selection || fieldValue.composition != fieldValueState.composition) {
-                fieldValueState = fieldValue
+    }
+}
+
+private enum class ComposerSlot { Text }
+
+/**
+ * **PROPOSED** (docs/missing-components.md §66, design review of the owner's screenshot): each
+ * attachment sits in its own frame, a `hairline` of the decorative `outline` on `shapes.radius`,
+ * so its remove control is visibly inside the thing it removes and is not read as the prompt's
+ * dismiss a few rows up (the same glyph). Not a control's border: the frame itself does nothing.
+ */
+@Composable
+internal fun AttachmentFrame(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier.border(MoyiTheme.shapes.hairline, MoyiTheme.colors.outline, MoyiTheme.shapes.radius)) { content() }
+}
+
+/**
+ * The composer's inside, top to bottom: the prompt, the words, the attachments, the toolbar.
+ * Everything but the words takes its own height; the words take the rest of [viewport] (the
+ * box's inner height), and never less than their own three lines. When the parts add up to
+ * more than the viewport the column is simply taller than it, and the caller's scroll moves
+ * it: the words are never clipped to make the rest fit (§66).
+ */
+@Composable
+private fun ComposerColumn(viewport: Int, modifier: Modifier, content: @Composable () -> Unit) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val loose = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+        val text = measurables.indexOfFirst { it.layoutId == ComposerSlot.Text }
+        val placeables = arrayOfNulls<Placeable>(measurables.size)
+        var others = 0
+        measurables.forEachIndexed { index, measurable ->
+            if (index != text) {
+                val placeable = measurable.measure(loose)
+                placeables[index] = placeable
+                others += placeable.height
             }
         }
-        var lastText by remember(value) { mutableStateOf(value) }
-        BasicTextField(
-            value = fieldValue,
-            onValueChange = { next ->
-                fieldValueState = next
-                val changed = lastText != next.text
-                lastText = next.text
-                if (changed) onValueChange(next.text)
-            },
-            enabled = enabled,
-            textStyle = MoyiTheme.type.entry.copy(color = colors.ink),
-            cursorBrush = SolidColor(colors.ink),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(wrap)
-                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
-        )
-        // Interim (docs/missing-components.md §41): what is attached sits above the toolbar, inside the box.
-        attachment?.invoke()
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (onAddPhoto != null) {
-                IconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_add_photo), enabled, onAddPhoto)
+        if (text >= 0) {
+            placeables[text] = measurables[text].measure(loose.copy(minHeight = (viewport - others).coerceAtLeast(0)))
+        }
+        val height = placeables.sumOf { it?.height ?: 0 }
+        layout(constraints.maxWidth, height) {
+            var y = 0
+            placeables.forEach { placeable ->
+                if (placeable != null) {
+                    placeable.place(0, y)
+                    y += placeable.height
+                }
             }
-            if (onRecordVoice != null) {
-                IconTarget(MoyiIcons.Mic, stringResource(Res.string.ds_compose_record_voice), enabled, onRecordVoice)
+        }
+    }
+}
+
+/**
+ * **PROPOSED, not drawn** (docs/missing-components.md §66): where the composer's attachments go.
+ *
+ * - Not [compact]: one under the other, each the full width, as §41 and §44 place them, `sm` apart.
+ * - [compact] (the keyboard is up): side by side on one row, each as wide as it needs,
+ *   [MoyiTheme.spacing] `sm` apart and centred on the row, so the photo's thumbnail and the voice
+ *   note's chip together take one 48 high line. If they do not fit across, they stack, so nothing
+ *   is cut.
+ *
+ * One layout for both, so a voice note being listened to keeps playing when the keyboard comes or goes.
+ */
+@Composable
+fun AttachmentsLayout(compact: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val gap = MoyiTheme.spacing.sm
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(loose) }
+        val gapPx = gap.roundToPx()
+        val across = placeables.sumOf { it.width } + gapPx * (placeables.size - 1).coerceAtLeast(0)
+        val width = constraints.maxWidth
+        if (compact && across <= width) {
+            val height = placeables.maxOfOrNull { it.height } ?: 0
+            layout(width, height) {
+                var x = 0
+                placeables.forEach {
+                    it.place(x, (height - it.height) / 2)
+                    x += it.width + gapPx
+                }
             }
-            Spacer(Modifier.weight(1f))
-            if (counter != null) {
-                MoyiText(
-                    text = counter,
-                    tone = if (invalid) TextTone.Danger else TextTone.Muted,
-                    modifier = Modifier
-                        .padding(wrap)
-                        .semantics { liveRegion = LiveRegionMode.Polite },
-                )
+        } else {
+            layout(width, placeables.sumOf { it.height } + gapPx * (placeables.size - 1).coerceAtLeast(0)) {
+                var y = 0
+                placeables.forEach {
+                    it.place(0, y)
+                    y += it.height + gapPx
+                }
             }
         }
     }

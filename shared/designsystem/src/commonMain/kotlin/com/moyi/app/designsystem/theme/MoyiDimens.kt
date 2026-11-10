@@ -176,6 +176,16 @@ object MoyiDimens {
         val Stroke = 1.dp
         /** Icon-only media and dismiss controls, 48 targets (tokens.md §4). */
         val IconTarget = TouchTarget
+        /**
+         * PROPOSED (docs/missing-components.md §66, the owner's iPhone, 2026-11-10): the words
+         * never get fewer lines than this, however much is attached; the box scrolls instead.
+         */
+        const val MinTextLines = 3
+        /**
+         * PROPOSED (§66), **Interpreted**: the photo's thumbnail while the keyboard is up, inside
+         * its 48 line with the 4 pt half-step above and below, like a 24 glyph in its 48 target.
+         */
+        val CompactThumbnail = 40.dp
     }
 
     /**

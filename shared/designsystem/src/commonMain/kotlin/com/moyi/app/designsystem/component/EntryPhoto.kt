@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -149,6 +150,9 @@ private const val WIDEST = 2f
  *
  * [removeRestoresSent]: in Edit, where taking this new photo away puts the entry's own back,
  * the target is named "Keep the photo you had" instead of "Remove the photo" (§60).
+ *
+ * [compact] (PROPOSED, §66: the keyboard is up): a [MoyiDimens.ComposeField.CompactThumbnail]
+ * square instead of the preview, the same 48 target beside it, so the words keep their room.
  */
 @Composable
 fun AttachedPhoto(
@@ -156,6 +160,7 @@ fun AttachedPhoto(
     onRemove: (() -> Unit)?,
     modifier: Modifier = Modifier,
     removeRestoresSent: Boolean = false,
+    compact: Boolean = false,
 ) {
     val removeLabel = stringResource(if (removeRestoresSent) Res.string.ds_compose_keep_sent_photo else Res.string.ds_compose_remove_photo)
     PhotoRow(
@@ -163,6 +168,7 @@ fun AttachedPhoto(
         ratio = (photo.width.toFloat() / photo.height).coerceIn(TALLEST, WIDEST),
         description = stringResource(Res.string.ds_compose_attached_photo),
         modifier = modifier,
+        compact = compact,
     ) {
         if (onRemove != null) PhotoIconTarget(MoyiIcons.Close, removeLabel, onRemove)
     }
@@ -174,13 +180,16 @@ fun AttachedPhoto(
  * in its place ([onReplace]; null while saving). It has **no remove**: the contract cannot
  * take a photo off an entry (docs/backend-contract-gaps.md row 41). A photo the server has
  * not finished with (no [EntryPhoto.url]) is the card's muted line instead of the image.
+ * [compact] as [AttachedPhoto]'s (§66).
  */
 @Composable
-fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = Modifier, compact: Boolean = false) {
     if (photo.url == null) {
-        Row(modifier = modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.CenterVertically) {
-            MoyiText(text = stringResource(Res.string.ds_entry_photo_on_its_way), tone = TextTone.Muted, modifier = Modifier.weight(1f))
-            if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
+        AttachmentFrame(modifier) {
+            Row(modifier = Modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.CenterVertically) {
+                MoyiText(text = stringResource(Res.string.ds_entry_photo_on_its_way), tone = TextTone.Muted, modifier = Modifier.weight(1f))
+                if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
+            }
         }
         return
     }
@@ -189,21 +198,60 @@ fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = 
         ratio = photo.aspectRatio(),
         description = stringResource(Res.string.ds_compose_sent_photo),
         modifier = modifier,
+        compact = compact,
     ) {
         if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
     }
 }
 
-/** The small preview and, beside it, the [trailing] 48 target: shared by [AttachedPhoto] and [SentPhoto]. */
+/**
+ * The small preview and, beside it, the [trailing] 48 target: shared by [AttachedPhoto] and [SentPhoto].
+ * [compact]: a square thumbnail centred in one 48 line, starting where the words start.
+ */
 @Composable
 private fun PhotoRow(
     model: Any?,
     ratio: Float,
     description: String,
     modifier: Modifier,
+    compact: Boolean,
     trailing: @Composable () -> Unit,
 ) {
-    Row(modifier = modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.Top) {
+    // In its own frame, so the control beside it is plainly the photo's (§66).
+    AttachmentFrame(modifier) {
+        PhotoRowContent(model, ratio, description, compact, trailing)
+    }
+}
+
+@Composable
+private fun PhotoRowContent(
+    model: Any?,
+    ratio: Float,
+    description: String,
+    compact: Boolean,
+    trailing: @Composable () -> Unit,
+) {
+    if (compact) {
+        Row(
+            modifier = Modifier
+                .heightIn(min = MoyiDimens.ComposeField.IconTarget)
+                .padding(start = MoyiDimens.ComposeField.Wrap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AsyncImage(
+                model = model,
+                contentDescription = description,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(MoyiDimens.ComposeField.CompactThumbnail)
+                    .clip(MoyiTheme.shapes.radius)
+                    .background(MoyiTheme.colors.surface),
+            )
+            trailing()
+        }
+        return
+    }
+    Row(modifier = Modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.Top) {
         AsyncImage(
             model = model,
             contentDescription = description,

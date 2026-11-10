@@ -33,7 +33,6 @@ import com.moyi.app.designsystem.platform.rememberPhotoPicker
 import com.moyi.app.designsystem.platform.rememberVoiceRecorder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import androidx.compose.foundation.layout.Column
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.resources.Res
@@ -187,7 +186,8 @@ fun WriteScreen(
             // entry, its own row offers what is next.
             onRecordVoice = if (state.voiceOffered && state.voice == null && state.sentVoice == null) ({ onAction(WriteAction.OnRecordVoiceClick) }) else null,
             focusRequester = focusRequester,
-            attachment = if (state.hasAttachments) ({ Attachments(state, onAction, canTakePhoto, recordingLevels) }) else null,
+            // With the keyboard up they step back to one compact row (§66), so the words keep their room.
+            attachment = if (state.hasAttachments) ({ compact -> Attachments(state, onAction, canTakePhoto, recordingLevels, compact) }) else null,
             modifier = Modifier
                 .weight(1f)
                 .then(if (state.editing) Modifier.semantics { paneTitle = editingAnnounce } else Modifier),
@@ -235,6 +235,9 @@ private val WriteState.hasAttachments: Boolean
  * new one is picked or recorded; they offer Replace and Record again, never Remove (the
  * contract cannot take one off, docs/backend-contract-gaps.md row 41). Removing a new one
  * puts the entry's own back, and its control says so.
+ *
+ * Emitted as siblings for the composer's `AttachmentsLayout`, which stacks them, or, when
+ * [compact] (the keyboard is up, §66), sets them side by side on one row.
  */
 @Composable
 private fun Attachments(
@@ -242,40 +245,43 @@ private fun Attachments(
     onAction: (WriteAction) -> Unit,
     canTakePhoto: Boolean,
     recordingLevels: () -> List<Float>,
+    compact: Boolean,
 ) {
     // Not while they are being sent: what is on its way is what is shown.
     val sending = state.submit == WriteSubmit.Sending
-    Column {
-        val photo = state.photo
-        val sentPhoto = state.sentPhoto
-        when {
-            photo != null -> AttachedPhoto(
-                photo = photo,
-                onRemove = if (sending) null else ({ onAction(WriteAction.OnRemovePhoto) }),
-                removeRestoresSent = sentPhoto != null,
-            )
-            sentPhoto != null -> SentPhoto(
-                photo = sentPhoto,
-                onReplace = if (sending || !state.photosOffered) null else ({ onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }),
-            )
-        }
-        val voice = state.voice
-        val sentVoice = state.sentVoice
-        when {
-            voice != null -> AttachedVoice(
-                state = voice,
-                onStop = { onAction(WriteAction.OnStopRecordingClick) },
-                onDiscard = { onAction(WriteAction.OnDiscardRecordingClick) },
-                onRecordAgain = if (sending) null else ({ onAction(WriteAction.OnRecordAgainClick) }),
-                onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveVoice) }),
-                recordingLevels = recordingLevels,
-                removeRestoresSent = sentVoice != null,
-            )
-            sentVoice != null -> SentVoice(
-                voice = sentVoice,
-                onRecordAgain = if (sending || !state.voiceOffered) null else ({ onAction(WriteAction.OnRecordVoiceClick) }),
-            )
-        }
+    val photo = state.photo
+    val sentPhoto = state.sentPhoto
+    when {
+        photo != null -> AttachedPhoto(
+            photo = photo,
+            onRemove = if (sending) null else ({ onAction(WriteAction.OnRemovePhoto) }),
+            removeRestoresSent = sentPhoto != null,
+            compact = compact,
+        )
+        sentPhoto != null -> SentPhoto(
+            photo = sentPhoto,
+            onReplace = if (sending || !state.photosOffered) null else ({ onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }),
+            compact = compact,
+        )
+    }
+    val voice = state.voice
+    val sentVoice = state.sentVoice
+    when {
+        voice != null -> AttachedVoice(
+            state = voice,
+            onStop = { onAction(WriteAction.OnStopRecordingClick) },
+            onDiscard = { onAction(WriteAction.OnDiscardRecordingClick) },
+            onRecordAgain = if (sending) null else ({ onAction(WriteAction.OnRecordAgainClick) }),
+            onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveVoice) }),
+            recordingLevels = recordingLevels,
+            removeRestoresSent = sentVoice != null,
+            compact = compact,
+        )
+        sentVoice != null -> SentVoice(
+            voice = sentVoice,
+            onRecordAgain = if (sending || !state.voiceOffered) null else ({ onAction(WriteAction.OnRecordVoiceClick) }),
+            compact = compact,
+        )
     }
 }
 
