@@ -571,7 +571,7 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
   view").
 - **Here (interim, the most conservative reading):** the photo sits **under the words**, the
   card's full inner width, its own shape kept between 3:4 and 2:1 (4:3 when the server gives no
-  size), the card's 12 radius, on `surface` until it loads: no spinner, no shimmer, no fade.
+  size; **superseded by §70**: a height cap at 3:4 and no floor for wide photos), the card's 12 radius, on `surface` until it loads: no spinner, no shimmer, no fade.
   Processing is one muted line and no image (PROPOSED `ds_entry_photo_on_its_way`, "A photo is on
   its way."); not shared is the photo (when the server still gives it) with one muted line under
   it (PROPOSED `ds_entry_photo_not_shared`, "This photo is not shared."); sensitive is the same
@@ -603,7 +603,8 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **No disk cache for photos:** Coil keeps photos in memory only, for the same reason (a disk
   cache would hold the partner's photos as plain files). A photo is loaded again after the app
   restarts, and is not shown offline. The Today and Archive caches do not keep the photo or its
-  URL (the URL is a credential that lasts 24 hours).
+  URL (the URL is a credential that lasts 24 hours). Since §70, Today's cache keeps the photo's
+  size and the voice note's length (never the URL), so its cards keep their size on open.
 - **Open questions for the owner:** (1) the card layout, the four states and their copy; (2)
   queue photo entries offline (an encrypted file in the outbox) or keep failing them in the
   composer; (3) keep the photo with the draft (same encryption question); (4) an encrypted disk
@@ -644,7 +645,7 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **Here:** nothing; tapping a photo does nothing (except uncovering a sensitive one). Not
   improvised.
 - **Open question for the owner:** a full-screen viewer (with pinch to zoom, and the capture
-  protection a partner's photo needs) or none.
+  protection a partner's photo needs) or none. **Answered 2026-11-10:** a viewer, §70.
 
 ## Voice notes on entries
 
@@ -1731,3 +1732,54 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Today's date header wraps:** the nav row's height was clamped to 48. It is now a minimum,
   so at the largest Dynamic Type the date wraps onto as many lines as it needs and the
   calendar and settings targets stay centred.
+
+## The photo on a card: a height cap, a full-screen viewer, and no jump on open (PR feat/photo-cap-viewer)
+
+### 70. Photo height cap, full-screen viewer, and media sizes in Today's cache (owner approval 2026-11-10)
+
+- **Why:** a tall photo (a 9:16 screenshot) took most of the screen, a panorama wider than 2:1
+  was cropped, nothing opened a photo larger (§42), and Today, drawn first from its cache, grew
+  when the photo and the voice note arrived from the server, because the cache kept neither.
+  The owner approved all three, with a reviewer's condition: a height cap, not a fixed crop.
+  Rosewood draws none of it, so it is **PROPOSED, not drawn**.
+- **Height cap (`photoFrame`, EntryPhoto.kt):** the card's full inner width at the photo's own
+  shape, never taller than **3:4**. A photo taller than that is centre-cropped to 3:4; a camera
+  portrait (3:4), a square, a landscape and a panorama are shown whole, never cropped (the old
+  2:1 floor is gone). **Interpreted:** 3:4 because it is the shape a phone camera takes, so
+  every ordinary portrait shows whole, and on a 306-wide card (iPhone 17 Pro) it is at most
+  408 tall, under half the screen, so the words above stay in view. A ratio rather than a
+  fixed height, so a wider card (a tablet) never crops a square. The card's 12 radius, on
+  `surface` until it loads, as before. With no size from the server, the frame is the cap
+  (a placeholder holding the tallest place the photo can take) and the photo is fitted in it,
+  never cropped. The composer's previews (§41, §60) keep their own 3:4 to 2:1 clamp.
+- **Full-screen viewer (`PhotoViewer`, PROPOSED):**
+  - A tap on a shown photo opens it (spoken action PROPOSED `ds_entry_photo_open`, "View the
+    photo full screen"). A sensitive photo opens only once uncovered; a photo with no URL yet
+    (drawn from the cache) opens nothing.
+  - **Layout:** `surface` edge to edge (no black: Rosewood has no black, and `surface` follows
+    the theme); a 48 row at the top with the close target at its **start** on both platforms,
+    the house `Close` glyph (24, `ink`), spoken "Close" (`ds_close`). Start, because Android's
+    full-screen dialogs and iOS's own photo viewers both put the way out at the top left. The
+    whole photo under it, fitted, centred; the close target never sits on the photo, so it
+    keeps its contrast on any picture.
+  - **Closing:** the ✕ and system Back. No tap outside (there is no outside).
+  - **Pinch to zoom:** 1× to 4×, a drag moves the zoomed photo; each opening starts at 1×.
+  - **Capture protection (R3):** a partner's photo stays protected. Android: the viewer is a
+    dialog, a window of its own, so it sets `FLAG_SECURE` on that window
+    (`SecureFlagPolicy.SecureOn`); the card's flag on the activity would not cover it. iOS:
+    the dialog is a layer of the app's window, and the viewer holds the app-switcher cover
+    (`ProtectFromCapture`) as the card does.
+  - **Accessibility:** the photo keeps its description ("Photo"); "Close" is a button; the
+    dialog takes focus when it opens.
+- **No jump on open:** Today's cache (`cached_day`, migration `6.sqm`, version 7) keeps the
+  shape of each entry's photo and voice note: the media id, its status, the photo's width and
+  height, the voice note's length, and whether it is sensitive. **Never the signed URL**, a
+  credential. From the cache a photo draws its frame at its final size, on `surface`; a voice
+  note's row is laid out at its final size but not drawn or read (nothing in it could play
+  yet). When the server answers, the URL fills them in and nothing moves.
+- **Not done here:** the Archive's day cache (`archive_day`) still keeps no media, so an
+  Archive day drawn from its cache can still grow; the same columns would fix it.
+- **Open for the owner:** (1) `surface` or black behind the viewer; (2) whether a cached voice
+  note should show its row (visible, with play disabled until the URL arrives) rather than an
+  empty space of the same height, which is what it is offline; (3) the 3:4 cap.
+

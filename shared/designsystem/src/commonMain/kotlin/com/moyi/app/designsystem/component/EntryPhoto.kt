@@ -40,6 +40,7 @@ import com.moyi.app.designsystem.resources.ds_compose_sent_photo
 import com.moyi.app.designsystem.resources.ds_entry_photo
 import com.moyi.app.designsystem.resources.ds_entry_photo_not_shared
 import com.moyi.app.designsystem.resources.ds_entry_photo_on_its_way
+import com.moyi.app.designsystem.resources.ds_entry_photo_open
 import com.moyi.app.designsystem.resources.ds_entry_photo_sensitive
 import com.moyi.app.designsystem.theme.MoyiDimens
 import org.jetbrains.compose.resources.stringResource
@@ -76,28 +77,43 @@ data class EntryPhoto(
 }
 
 /**
- * **Interim, not drawn** (docs/missing-components.md §40): the photo inside an EntryCard,
- * under the words, the card's full inner width, its own shape kept (clamped so a
- * panorama or a tall screenshot stays readable), on `surface` until it loads: no
- * spinner, no shimmer. The card's corner radius. Nothing opens it larger: no viewer is
- * drawn (§42).
+ * **Interim, not drawn** (docs/missing-components.md §40, §70): the photo inside an EntryCard,
+ * under the words, the card's full inner width at the photo's own shape, up to a height cap
+ * ([photoFrame]): a photo taller than 3:4 is centre-cropped to 3:4, anything wider is never
+ * cropped. On `surface` until it loads: no spinner, no shimmer. The card's corner radius.
+ *
+ * A tap on a shown photo opens it full screen ([PhotoViewer], PROPOSED §70). Drawn from the
+ * cache, a photo has its size and no [EntryPhoto.url] yet: the frame holds its place and
+ * nothing opens until the server's answer brings the URL.
+ *
+ * [protectFromCapture]: R3, for a partner's photo. Drawn outside an EntryCard (the Archive
+ * list's day card) it protects the screen; inside one, the card already does, and it is passed
+ * on to the viewer, whose window on Android is its own.
  */
 @Composable
 fun EntryPhotoView(photo: EntryPhoto, protectFromCapture: Boolean = false) {
-    // R3, for a partner's photo drawn outside an EntryCard (the Archive list's day card).
     if (protectFromCapture) ProtectFromCapture()
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
     var uncovered by rememberSaveable(photo.key) { mutableStateOf(false) }
+    // Which photo is open full screen, by its key: survives rotation like [uncovered].
+    var viewing by rememberSaveable(photo.key) { mutableStateOf(false) }
+    val shape = photoFrame(photo.width, photo.height)
     val frame = Modifier
         .fillMaxWidth()
-        .aspectRatio(photo.aspectRatio())
+        .aspectRatio(shape.ratio)
         .clip(shapes.radius)
         .background(colors.surface)
+    val openLabel = stringResource(Res.string.ds_entry_photo_open)
+    val opens: Modifier = if (photo.url != null) {
+        Modifier.clickable(onClickLabel = openLabel, role = Role.Image) { viewing = true }
+    } else {
+        Modifier
+    }
     when (photo.look) {
-        EntryPhotoLook.Shown -> PhotoImage(photo.url, frame)
+        EntryPhotoLook.Shown -> PhotoImage(photo.url, shape, frame.then(opens))
         EntryPhotoLook.Covered -> if (uncovered) {
-            PhotoImage(photo.url, frame)
+            PhotoImage(photo.url, shape, frame.then(opens))
         } else {
             Box(
                 modifier = frame.clickable(role = Role.Button) { uncovered = true },
@@ -113,25 +129,53 @@ fun EntryPhotoView(photo: EntryPhoto, protectFromCapture: Boolean = false) {
         EntryPhotoLook.OnItsWay -> MoyiText(text = stringResource(Res.string.ds_entry_photo_on_its_way), tone = TextTone.Muted)
         EntryPhotoLook.NotShared -> Column {
             if (photo.url != null) {
-                PhotoImage(photo.url, frame)
+                PhotoImage(photo.url, shape, frame.then(opens))
                 Spacer(Modifier.height(MoyiTheme.spacing.sm))
             }
             MoyiText(text = stringResource(Res.string.ds_entry_photo_not_shared), tone = TextTone.Muted)
         }
     }
+    val url = photo.url
+    if (viewing && url != null) {
+        PhotoViewer(url = url, onClose = { viewing = false }, protectFromCapture = protectFromCapture)
+    }
 }
 
 @Composable
-private fun PhotoImage(url: String?, modifier: Modifier) {
+private fun PhotoImage(url: String?, shape: PhotoFrame, modifier: Modifier) {
     AsyncImage(
         model = url,
         contentDescription = stringResource(Res.string.ds_entry_photo),
-        contentScale = ContentScale.Crop,
+        // Crop only matters when the cap cut the frame shorter than the photo; otherwise the
+        // frame is the photo's own shape. With no size known, fit: never crop a guess.
+        contentScale = if (shape.known) ContentScale.Crop else ContentScale.Fit,
         modifier = modifier,
     )
 }
 
-/** The photo's own shape, held between 3:4 (tall) and 2:1 (wide); 4:3 when the server did not say. */
+/**
+ * The frame an EntryCard draws a photo in, as a width-to-height [ratio] of the card's
+ * inner width. [crops] when the photo is taller than the cap and is centre-cropped to it;
+ * [known] false when the server gave no size, and the frame is then the cap itself.
+ */
+internal data class PhotoFrame(val ratio: Float, val crops: Boolean, val known: Boolean)
+
+/**
+ * The height cap (owner ruling 2026-11-10): the photo's own shape, but never taller than
+ * 3:4 (portrait), the shape a phone camera takes. So a camera portrait, a square and every
+ * landscape or panorama are shown whole; only something taller (a 9:16 screenshot or a
+ * tall crop) is centre-cropped to 3:4. On a 306-wide card (iPhone 17 Pro) that is at most
+ * 408 tall: under half the screen, so the words above it stay in view. With no size (the
+ * server gives none until the photo is ready), the frame is the cap, a placeholder that
+ * holds the tallest place the photo can take.
+ */
+internal fun photoFrame(width: Int?, height: Int?): PhotoFrame {
+    if (width == null || height == null || width <= 0 || height <= 0) return PhotoFrame(TALLEST, crops = false, known = false)
+    val ratio = width.toFloat() / height
+    return if (ratio < TALLEST) PhotoFrame(TALLEST, crops = true, known = true) else PhotoFrame(ratio, crops = false, known = true)
+}
+
+/** The composer's preview ([SentPhoto]): the photo's own shape, held between 3:4 (tall) and 2:1 (wide); 4:3 when the server did not say. */
 internal fun EntryPhoto.aspectRatio(): Float {
     val w = width ?: return DEFAULT_RATIO
     val h = height ?: return DEFAULT_RATIO

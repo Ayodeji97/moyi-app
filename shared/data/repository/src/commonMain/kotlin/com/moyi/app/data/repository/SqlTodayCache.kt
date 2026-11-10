@@ -8,6 +8,9 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.CachedDay
+import com.moyi.app.domain.today.EntryImage
+import com.moyi.app.domain.today.EntryMediaStatus
+import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
@@ -55,6 +58,19 @@ class SqlTodayCache(
 
 internal fun CachedDay.toRow(userId: String): Cached_day {
     val partner = today.partnerEntry
+    // The media's shape only: the signed URL is a credential and is never written here.
+    val myImage = today.myEntry?.image
+    val myVoice = today.myEntry?.voice
+    val partnerImage = when (partner) {
+        is PartnerEntry.Submitted -> partner.image
+        is PartnerEntry.Revealed -> partner.image
+        is PartnerEntry.Deleted, PartnerEntry.Locked, null -> null
+    }
+    val partnerVoice = when (partner) {
+        is PartnerEntry.Submitted -> partner.voice
+        is PartnerEntry.Revealed -> partner.voice
+        is PartnerEntry.Deleted, PartnerEntry.Locked, null -> null
+    }
     return Cached_day(
         user_id = userId,
         bond_id = bond.id,
@@ -90,6 +106,24 @@ internal fun CachedDay.toRow(userId: String): Cached_day {
         prompt_text = today.prompt?.text,
         my_entry_reaction = today.myEntry?.reaction?.name,
         partner_entry_reaction = (partner as? PartnerEntry.Revealed)?.reaction?.name,
+        my_photo_id = myImage?.id,
+        my_photo_status = myImage?.status?.name,
+        my_photo_width = myImage?.width?.toLong(),
+        my_photo_height = myImage?.height?.toLong(),
+        my_photo_sensitive = myImage?.sensitive?.toFlag(),
+        my_voice_id = myVoice?.id,
+        my_voice_status = myVoice?.status?.name,
+        my_voice_duration_ms = myVoice?.durationMs?.toLong(),
+        my_voice_sensitive = myVoice?.sensitive?.toFlag(),
+        partner_photo_id = partnerImage?.id,
+        partner_photo_status = partnerImage?.status?.name,
+        partner_photo_width = partnerImage?.width?.toLong(),
+        partner_photo_height = partnerImage?.height?.toLong(),
+        partner_photo_sensitive = partnerImage?.sensitive?.toFlag(),
+        partner_voice_id = partnerVoice?.id,
+        partner_voice_status = partnerVoice?.status?.name,
+        partner_voice_duration_ms = partnerVoice?.durationMs?.toLong(),
+        partner_voice_sensitive = partnerVoice?.sensitive?.toFlag(),
     )
 }
 
@@ -103,20 +137,34 @@ internal fun Cached_day.toCachedDay(): CachedDay? {
         partnerName = partner_name,
         anchorTimezone = anchor_timezone,
     )
+    val myImage = cachedImage(my_photo_id, my_photo_status, my_photo_width, my_photo_height, my_photo_sensitive) ?: return null
+    val myVoice = cachedVoice(my_voice_id, my_voice_status, my_voice_duration_ms, my_voice_sensitive) ?: return null
+    val partnerImage = cachedImage(partner_photo_id, partner_photo_status, partner_photo_width, partner_photo_height, partner_photo_sensitive)
+        ?: return null
+    val partnerVoice = cachedVoice(partner_voice_id, partner_voice_status, partner_voice_duration_ms, partner_voice_sensitive) ?: return null
     val myEntry = my_entry_id?.let { id ->
         MyEntry(
             id = id,
             text = my_entry_text,
             status = enumOrNull<EntryStatus>(my_entry_status) ?: return null,
+            image = myImage.value,
+            voice = myVoice.value,
             reaction = my_entry_reaction?.let { enumOrNull<Reaction>(it) ?: return null },
         )
     }
     val partnerEntry = when (partner_entry_shape) {
         null -> null
-        SUBMITTED -> PartnerEntry.Submitted(partner_entry_id ?: return null, partner_entry_text ?: return null)
+        SUBMITTED -> PartnerEntry.Submitted(
+            id = partner_entry_id ?: return null,
+            text = partner_entry_text ?: return null,
+            image = partnerImage.value,
+            voice = partnerVoice.value,
+        )
         REVEALED -> PartnerEntry.Revealed(
             id = partner_entry_id ?: return null,
             text = partner_entry_text ?: return null,
+            image = partnerImage.value,
+            voice = partnerVoice.value,
             reaction = partner_entry_reaction?.let { enumOrNull<Reaction>(it) ?: return null },
         )
         DELETED -> PartnerEntry.Deleted(partner_entry_id ?: return null)
@@ -144,3 +192,41 @@ private const val SUBMITTED = "SUBMITTED"
 private const val REVEALED = "REVEALED"
 private const val DELETED = "DELETED"
 private const val LOCKED = "LOCKED"
+
+/**
+ * A column read back: [value] is null when the entry had none. The function returning the
+ * holder itself null means the columns hold something this build cannot read (an unknown
+ * status), and the whole row is then no cache, never a guess.
+ */
+private class Cached<T>(val value: T?)
+
+private fun Boolean.toFlag(): Long = if (this) 1L else 0L
+
+/** The photo as Today was last shown it, without its URL: a card drawn from it keeps its size. */
+private fun cachedImage(id: String?, status: String?, width: Long?, height: Long?, sensitive: Long?): Cached<EntryImage>? {
+    if (id == null) return Cached(null)
+    return Cached(
+        EntryImage(
+            id = id,
+            status = enumOrNull<EntryMediaStatus>(status) ?: return null,
+            url = null,
+            width = width?.toInt(),
+            height = height?.toInt(),
+            sensitive = sensitive == 1L,
+        ),
+    )
+}
+
+/** The voice note as Today was last shown it, without its URL: its row is reserved, at its length. */
+private fun cachedVoice(id: String?, status: String?, durationMs: Long?, sensitive: Long?): Cached<EntryVoice>? {
+    if (id == null) return Cached(null)
+    return Cached(
+        EntryVoice(
+            id = id,
+            status = enumOrNull<EntryMediaStatus>(status) ?: return null,
+            url = null,
+            durationMs = durationMs?.toInt(),
+            sensitive = sensitive == 1L,
+        ),
+    )
+}

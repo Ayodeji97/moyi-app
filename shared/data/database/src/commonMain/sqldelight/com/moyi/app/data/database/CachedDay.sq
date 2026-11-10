@@ -30,7 +30,30 @@ CREATE TABLE cached_day (
     -- The reaction on each entry, by name (ADR-0037): on mine, the partner's; on theirs, mine.
     -- Last, because 5.sqm adds them to a table that already exists.
     my_entry_reaction TEXT,
-    partner_entry_reaction TEXT
+    partner_entry_reaction TEXT,
+    -- The shape of each entry's photo and voice note, so a card drawn from the cache keeps
+    -- the size it will have once the server answers (no jump on open). Never the signed
+    -- URL: it is a credential, and it is fetched again with every answer. Status by name
+    -- (EntryMediaStatus), sensitive 0 or 1, all null when the entry has none.
+    -- Last, because 6.sqm adds them to a table that already exists.
+    my_photo_id TEXT,
+    my_photo_status TEXT,
+    my_photo_width INTEGER,
+    my_photo_height INTEGER,
+    my_photo_sensitive INTEGER,
+    my_voice_id TEXT,
+    my_voice_status TEXT,
+    my_voice_duration_ms INTEGER,
+    my_voice_sensitive INTEGER,
+    partner_photo_id TEXT,
+    partner_photo_status TEXT,
+    partner_photo_width INTEGER,
+    partner_photo_height INTEGER,
+    partner_photo_sensitive INTEGER,
+    partner_voice_id TEXT,
+    partner_voice_status TEXT,
+    partner_voice_duration_ms INTEGER,
+    partner_voice_sensitive INTEGER
 );
 
 forUser:
