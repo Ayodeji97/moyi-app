@@ -45,14 +45,37 @@ class LinkRoutingTest {
     }
 
     @Test
-    fun `signed in and a verify link carries the session's address and returns to the signed-in start`() {
-        listOf(LinkPlace.Gate, LinkPlace.Onboarding, LinkPlace.SignedInApp, LinkPlace.Archived, LinkPlace.Elsewhere).forEach {
+    fun `signed in and not yet verified and a verify link carries the session's address and returns to the signed-in start`() {
+        listOf(LinkPlace.Gate, LinkPlace.Elsewhere).forEach {
             assertEquals(
                 LinkRouting.Push(VerifyRoute(email = me, linkToken = token, signedIn = true)),
                 accountLinkRouting(verify, it, null, me),
                 it.toString(),
             )
         }
+    }
+
+    @Test
+    fun `signed in and already verified and a verify link is dropped so the person stays where they belong`() {
+        // Only a verified person reaches these, whatever the session's sign-in-time flag says.
+        listOf(LinkPlace.Onboarding, LinkPlace.SignedInApp, LinkPlace.Archived).forEach {
+            assertEquals(LinkRouting.Drop, accountLinkRouting(verify, it, null, me, signedInVerified = false), it.toString())
+        }
+        // Anywhere else (Account, say) the flag decides: the session's, or a verified-only screen under it.
+        assertEquals(LinkRouting.Drop, accountLinkRouting(verify, LinkPlace.Elsewhere, null, me, signedInVerified = true))
+        assertEquals(LinkRouting.Drop, accountLinkRouting(verify, LinkPlace.Gate, null, me, signedInVerified = true))
+    }
+
+    @Test
+    fun `signed out the verified flag changes nothing and a reset link is never dropped`() {
+        assertEquals(
+            LinkRouting.Push(VerifyRoute(email = "", linkToken = token, signedIn = false)),
+            accountLinkRouting(verify, LinkPlace.SignedOut, null, null, signedInVerified = true),
+        )
+        assertEquals(
+            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token)),
+            accountLinkRouting(reset, LinkPlace.SignedInApp, null, me, signedInVerified = true),
+        )
     }
 
     @Test
