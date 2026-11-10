@@ -314,6 +314,26 @@ class RepositoryDailyLoopTest {
     }
 
     @Test
+    fun anEditRefusedAsImmutableIsRevealedAndTodayIsReadAgainShowingTheRevealedDay() = runTest {
+        entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY))
+        loop.refresh()
+        val ready = (loop.state.value as DailyLoopState.Ready).day
+        assertEquals(TodayStatus.Waiting, ready.status)
+
+        // The partner wrote meanwhile: the server refuses the edit and now says the day is revealed.
+        entries.editResult = Result.Failure(api(409, ApiErrorCode.ENTRY_IMMUTABLE))
+        entries.todayResult = Result.Success(today(BondDayStatus.REVEALED, my = MY_ENTRY, theirs = PartnerEntry.Revealed("entry-2", THEIRS)))
+        val before = entries.todayCalls.size
+        assertEquals(WriteResult.Revealed, loop.edit("changed", "key-1", imageMediaId = "m2", voiceMediaId = "v2"))
+        assertEquals(before + 1, entries.todayCalls.size, "Today is read again")
+        assertEquals(TodayStatus.Revealed, (loop.state.value as DailyLoopState.Ready).day.status)
+
+        // Any other 409 on an edit is still the generic failure.
+        entries.editResult = Result.Failure(api(409, ApiErrorCode.BOND_ARCHIVED))
+        assertEquals(WriteResult.Failed, loop.edit("changed", "key-2"))
+    }
+
+    @Test
     fun aQueueThatCannotBeWrittenFailsTheSendSoTheComposerKeepsTheWords() = runTest {
         loop.refresh()
         outbox.failEnqueue = true
