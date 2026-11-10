@@ -302,8 +302,10 @@
     <string name="reaction_emoji_me_too">🤝</string>
     <!-- PROPOSED. Over the chips, under the partner's entry, while I have left none. Names the next action. %1$s = partnerName. -->
     <string name="reaction_prompt">React to what %1$s wrote.</string>
-    <!-- PROPOSED. Over the chips once I have left one: how to change it and how to take it back. -->
-    <string name="reaction_chosen">Tap another to change it, or the same one to take it back.</string>
+    <!-- PROPOSED (§67). My reaction, as a pill at the right of the partner's card label: %1$s = its emoji, %2$s = its word. The "You:" says it is mine, not the partner's. -->
+    <string name="reaction_mine_pill">You: %1$s %2$s</string>
+    <!-- PROPOSED (§67). What a screen reader says for that pill, in place of the drawn text: %1$s = the word. -->
+    <string name="reaction_mine_spoken">You reacted: %1$s</string>
     <!-- PROPOSED. Spoken as what a double tap on my chosen reaction does (a radio button is not usually cleared). -->
     <string name="reaction_take_back">Take back your reaction</string>
     <!-- Approved (owner ruling 2026-11-09). Under my entry: the reaction the partner left on it, after its emoji. No time, no count. %1$s = partnerName. -->

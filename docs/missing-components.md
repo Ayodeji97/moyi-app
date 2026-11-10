@@ -760,8 +760,9 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
     wrapping inside the column (320 at the narrowest) and at large text, at most one selected.
     Tapping another replaces mine; tapping mine takes it back. No confirmation, no undo toast, as
     the `FavouriteToggle`. The line names the next action: "React to what Tunde wrote." with none,
-    "Tap another to change it, or the same one to take it back." with one (PROPOSED
-    `reaction_prompt`, `reaction_chosen`).
+    nothing once one is chosen (the pill on the card says which, §67; the line
+    "Tap another to change it, or the same one to take it back." was removed there) (PROPOSED
+    `reaction_prompt`).
   - **Accessibility:** the set is a `selectableGroup` of radio buttons; each is spoken by its
     **word only** (the emoji is drawn, never spoken) with its selected state; on the selected
     one, a double tap is announced as "Take back your reaction" (PROPOSED `reaction_take_back`),
@@ -789,7 +790,7 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
      EmojiCompat brings newer emoji to older Android versions that have Google
      Play services). The emoji is never in a chip's spoken label.
   2. **The five partner sentences are approved**, as are the five chip words; their `strings.xml`
-     comments say so. The emoji, `reaction_prompt`, `reaction_chosen` and `reaction_take_back`
+     comments say so. The emoji, `reaction_prompt`, and `reaction_take_back`
      stay PROPOSED.
   3. **The set is on the reveal screen too**, under the partner's entry as on Today. It is laid
      out with the after frame from the turn, so nothing moves when it appears, but it is
@@ -1637,3 +1638,29 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Checked, not a bug:** a recording's waveform drawn as flat dots on the iOS simulator is a quiet
   Mac microphone. The levels are sampled by the recorder whatever the layout shows, and a
   recording made while compact keeps its bars when the full row comes back (Android emulator).
+
+## My reaction on the partner's card (PR feat/reaction-pill)
+
+### 67. A pill "You: 🥺 Moved" on the partner's card, and the hint that goes once I have reacted (owner request 2026-11-10)
+
+- **Why:** after reacting, nothing on the partner's card said which reaction was mine except
+  the selected chip below it. The owner asked for a small pill on the card itself. Rosewood
+  draws no reaction (§45), so this is **PROPOSED, not drawn**.
+- **Built, PROPOSED (`EntryCardReaction`, the `reaction` slot of `EntryCard`):** a pill at the
+  right of the "From {partner}" label row of a `Partner` card, once I have reacted to it.
+  - **Look, tokens only:** the `label` style in `ink`, a `hairline` of `outlineStrong`,
+    `shapes.full`, no fill, padded `spacing.sm` across and `spacing.xs` down: the speed pill's
+    look (§64). It is not uppercased, so it reads "You: 🥺 Moved".
+  - **Display-only:** no target and no click, so no 48 (NFR-101 is about targets).
+  - **Spoken:** "You reacted: Moved", as part of the card's one stop (after the words); the
+    drawn text is cleared from the tree, so it is never read twice.
+  - **When:** the moment a chip is tapped (the chips are optimistic), and gone when it is
+    taken back. On Today and in the Archive day view (both draw the chips), wherever
+    `canReact`; never on an ended bond, which hides reactions. Not on the reveal turn, which
+    settles into Today.
+- **Hint:** "React to what {name} wrote." shows only before I have reacted. Once one is chosen
+  it is hidden (it carried "Tap another to change it, or the same one to take it back.",
+  `reaction_chosen`, now removed); the chips stay for changing or taking back.
+- **Strings (PROPOSED):**
+  - `reaction_mine_pill`: "You: {emoji} {word}" (emoji and word are the chips' own resources).
+  - `reaction_mine_spoken`: "You reacted: {word}".

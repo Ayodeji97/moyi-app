@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.EntryCardReaction
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.ReactionBadge
@@ -13,7 +14,6 @@ import com.moyi.app.designsystem.component.ReactionChoices
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.resources.Res
-import com.moyi.app.feature.today.resources.reaction_chosen
 import com.moyi.app.feature.today.resources.reaction_emoji_heart
 import com.moyi.app.feature.today.resources.reaction_emoji_me_too
 import com.moyi.app.feature.today.resources.reaction_emoji_moved
@@ -26,6 +26,8 @@ import com.moyi.app.feature.today.resources.reaction_from_partner_smile
 import com.moyi.app.feature.today.resources.reaction_from_partner_thank_you
 import com.moyi.app.feature.today.resources.reaction_heart
 import com.moyi.app.feature.today.resources.reaction_me_too
+import com.moyi.app.feature.today.resources.reaction_mine_pill
+import com.moyi.app.feature.today.resources.reaction_mine_spoken
 import com.moyi.app.feature.today.resources.reaction_moved
 import com.moyi.app.feature.today.resources.reaction_prompt
 import com.moyi.app.feature.today.resources.reaction_smile
@@ -41,9 +43,26 @@ import org.jetbrains.compose.resources.stringResource
  */
 internal fun nextReaction(current: Reaction?, tapped: Reaction): Reaction? = if (current == tapped) null else tapped
 
+/** The line over the chips is shown only while I have not reacted (§67). */
+internal fun showsReactionHint(mine: Reaction?): Boolean = mine == null
+
+/**
+ * My reaction as the pill on the partner's card, or null when I have not reacted (§67).
+ * The emoji and word are the chips' own resources; spoken as "You reacted: Moved".
+ */
+@Composable
+internal fun myReactionPill(mine: Reaction?): EntryCardReaction? {
+    if (mine == null) return null
+    val word = stringResource(mine.word)
+    return EntryCardReaction(
+        text = stringResource(Res.string.reaction_mine_pill, stringResource(mine.emoji), word),
+        spoken = stringResource(Res.string.reaction_mine_spoken, word),
+    )
+}
+
 /**
  * Under the partner's revealed entry, wherever it is shown (Today, the Archive day view):
- * a line saying what to do, then the interim [ReactionChoices] with [mine] selected, then
+ * a line saying what to do (until I have reacted), then the interim [ReactionChoices] with [mine] selected, then
  * the Generic failure line when the last tap did not go through ([failed]; the choice is
  * already back as it was). Interim: docs/missing-components.md §45.
  */
@@ -57,10 +76,11 @@ internal fun ReactionControl(
 ) {
     val all = Reaction.entries
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.sm)) {
-        MoyiText(
-            text = if (mine == null) stringResource(Res.string.reaction_prompt, partnerName) else stringResource(Res.string.reaction_chosen),
-            tone = TextTone.Muted,
-        )
+        // Before one is chosen only: once it is, the pill on the card says which, and the chips
+        // stay for changing it or taking it back (§67).
+        if (showsReactionHint(mine)) {
+            MoyiText(text = stringResource(Res.string.reaction_prompt, partnerName), tone = TextTone.Muted)
+        }
         ReactionChoices(
             labels = all.map { stringResource(it.word) },
             emoji = all.map { stringResource(it.emoji) },

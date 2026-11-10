@@ -5,6 +5,7 @@ import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.common.ReactResult
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.common.nextReaction
+import com.moyi.app.feature.today.common.showsReactionHint
 import com.moyi.app.feature.today.today.TodayAction
 import com.moyi.app.feature.today.today.TodayViewModel
 import kotlinx.coroutines.CompletableDeferred
@@ -89,5 +90,19 @@ class ReactionsTodayViewModelTest : MainDispatcherTest() {
         assertFalse(viewModel.state.value.canReact)
         viewModel.onAction(TodayAction.OnReactionClick(Reaction.HEART))
         assertTrue(loop.reactions.isEmpty())
+    }
+
+    @Test
+    fun theHintShowsBeforeOneIsChosenGoesOnceItIsAndReturnsWhenItIsTakenBack() = runTest {
+        open()
+        assertTrue(showsReactionHint(viewModel.state.value.myReaction), "before: the hint shows")
+
+        // The loop is optimistic: the chosen reaction is in the view the moment it is tapped.
+        loop.show(dayView(TodayStatus.Revealed).copy(canReact = true, myReaction = Reaction.MOVED))
+        assertEquals(Reaction.MOVED, viewModel.state.value.myReaction)
+        assertFalse(showsReactionHint(viewModel.state.value.myReaction), "chosen: the hint is gone")
+
+        loop.show(dayView(TodayStatus.Revealed).copy(canReact = true, myReaction = null))
+        assertTrue(showsReactionHint(viewModel.state.value.myReaction), "taken back: the hint returns")
     }
 }

@@ -12,7 +12,6 @@ import androidx.compose.foundation.border
 import androidx.compose.material3.Text
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.role
@@ -46,6 +45,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.testTag
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -468,6 +468,9 @@ private fun SentVoiceContent(voice: VoiceNote, onRecordAgain: (() -> Unit)?, com
  *
  * Spoken "Playback speed, 1.5 times" ("Playback speed, normal" at 1x), a button.
  */
+/** Finds the drawn speed pill in tests; its text is not in the semantics tree. */
+const val SPEED_PILL_VISIBLE_TAG = "speedPillVisible"
+
 @Composable
 private fun SpeedPill(speed: PlaybackSpeed, onClick: () -> Unit) {
     val colors = MoyiTheme.colors
@@ -494,7 +497,10 @@ private fun SpeedPill(speed: PlaybackSpeed, onClick: () -> Unit) {
                 color = colors.ink,
                 maxLines = 1,
                 modifier = Modifier
-                    .semantics { hideFromAccessibility() }
+                    // Cleared, not hidden: a hidden node still joins a merged parent's label
+                    // (the EntryCard reads it), a cleared one adds nothing (as the clock's). The tag
+                    // is for tests to find the drawn pill by; it is not spoken.
+                    .clearAndSetSemantics { testTag = SPEED_PILL_VISIBLE_TAG }
                     .border(MoyiTheme.shapes.hairline, colors.outlineStrong, pill)
                     .padding(horizontal = MoyiTheme.spacing.sm, vertical = MoyiTheme.spacing.xs),
             )
