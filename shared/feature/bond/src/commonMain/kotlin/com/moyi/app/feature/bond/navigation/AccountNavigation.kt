@@ -57,10 +57,17 @@ internal data object ExportRoute
  *   ViewModel of its own, keyed to its entry: polling runs only while it is started (on
  *   screen, app in front), and stops for good when it is popped. Download leaves the app for
  *   the phone's browser.
+ * - Account → Get help ([onOpenSupport]) or Terms and Privacy ([onOpenLegal]): the shell's
+ *   own screens, the same ones Bond settings opens, pushed over Account so back returns to it.
+ *   They are here so a person with no bond can reach them (smoke test 2026-11-09).
  */
-fun NavGraphBuilder.accountGraph(navController: NavController) {
+fun NavGraphBuilder.accountGraph(
+    navController: NavController,
+    onOpenLegal: () -> Unit,
+    onOpenSupport: () -> Unit,
+) {
     navigation<AccountGraph>(startDestination = AccountRoute) {
-        accountDestinations(navController)
+        accountDestinations(navController, onOpenLegal, onOpenSupport)
     }
 }
 
@@ -72,11 +79,21 @@ fun NavController.navigateToExport() {
     navigate(ExportRoute) { launchSingleTop = true }
 }
 
-private fun NavGraphBuilder.accountDestinations(navController: NavController) {
+private fun NavGraphBuilder.accountDestinations(
+    navController: NavController,
+    onOpenLegal: () -> Unit,
+    onOpenSupport: () -> Unit,
+) {
     composable<AccountRoute> { entry ->
         AccountDestination(entry, navController) { viewModel ->
             val state by viewModel.state.collectAsStateWithLifecycle()
-            AccountScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
+            AccountScreen(
+                state = state,
+                onAction = viewModel::onAction,
+                onBack = { navController.popBackStack() },
+                onOpenHelp = onOpenSupport,
+                onOpenLegal = onOpenLegal,
+            )
         }
     }
     composable<DeleteAccountRoute> { entry ->

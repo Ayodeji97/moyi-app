@@ -10,6 +10,12 @@ enum class SupportOrigin {
 
     /** A Generic error. "Go back" (PROPOSED): the screen behind is not settings. */
     Error,
+
+    /**
+     * Account's Get help, often with no bond and so no settings behind it (relationship type,
+     * the unverified gate, the archived bond). "Go back", as [Error]: it returns to Account.
+     */
+    Account,
 }
 
 /** The screen's three faces: the form, and the two answers that replace it. */
