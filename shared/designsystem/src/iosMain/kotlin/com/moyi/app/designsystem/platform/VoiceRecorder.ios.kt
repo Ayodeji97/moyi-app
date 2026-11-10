@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalForeignApi::class)
+@file:OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 
 package com.moyi.app.designsystem.platform
 
@@ -8,6 +8,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import co.touchlab.kermit.Logger
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.value
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +40,7 @@ import platform.AVFAudio.AVSampleRateKey
 import platform.AVFAudio.setActive
 import platform.CoreAudioTypes.kAudioFormatMPEG4AAC
 import platform.Foundation.NSData
+import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSNotification
 import platform.Foundation.NSNotificationCenter
@@ -69,6 +77,7 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
     private var file: NSURL? = null
     private var discarding = false
     private var interruptions: NSObjectProtocol? = null
+    private val whenActive = WhenActive()
 
     /** Held strongly: `AVAudioRecorder.delegate` is weak. */
     private val delegate = object : NSObject(), AVAudioRecorderDelegateProtocol {
@@ -86,7 +95,8 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
             // Undetermined: asked now, at the tap, with NSMicrophoneUsageDescription.
             else -> AVAudioApplication.requestRecordPermissionWithCompletionHandler { granted ->
                 dispatch_async(dispatch_get_main_queue()) {
-                    if (granted) begin() else onEvent(RecorderEvent.PermissionDenied)
+                    // The alert has just closed and the app is not active yet: wait for it.
+                    if (granted) whenActive.run(::begin) else onEvent(RecorderEvent.PermissionDenied)
                 }
             }
         }
@@ -105,13 +115,20 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
             AVEncoderAudioQualityKey to NSNumber(long = AVAudioQualityHigh),
         )
         AudioSessionOwner.shared.take(this)
-        val ready = session.setCategory(
-            AVAudioSessionCategoryPlayAndRecord,
-            mode = AVAudioSessionModeDefault,
-            options = AVAudioSessionCategoryOptionDefaultToSpeaker,
-            error = null,
-        ) && session.setActive(true, error = null)
-        val made = if (ready) failable { AVAudioRecorder(uRL = url, settings = settings, error = null) } else null
+        val ready = attempt("setCategory") { error ->
+            session.setCategory(
+                AVAudioSessionCategoryPlayAndRecord,
+                mode = AVAudioSessionModeDefault,
+                options = AVAudioSessionCategoryOptionDefaultToSpeaker,
+                error = error,
+            )
+        } && attempt("setActive") { error -> session.setActive(true, error = error) }
+        val made = if (ready) {
+            failable { AVAudioRecorder(uRL = url, settings = settings, error = null) }
+                .also { if (it == null) log.w { "AVAudioRecorder could not be made" } }
+        } else {
+            null
+        }
         if (made == null) {
             letGoOfSession()
             onEvent(RecorderEvent.Failed)
@@ -134,6 +151,7 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
         }
         // The platform stops it at the limit too: recordForDuration ends it and calls the delegate.
         if (!made.prepareToRecord() || !made.recordForDuration(VoiceRecording.MAX_DURATION_MS / MS_PER_SECOND)) {
+            log.w { "The recorder would not start" }
             discarding = true
             made.stop()
             cleanUp()
@@ -149,6 +167,7 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
     }
 
     override fun cancel() {
+        whenActive.cancel()
         val made = recorder ?: return
         discarding = true
         meter.clear()
@@ -175,6 +194,7 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
             if (bytes != null && bytes.isNotEmpty() && durationMs != null && durationMs > 0) {
                 RecorderEvent.Finished(RecordedVoice(bytes, durationMs, heard))
             } else {
+                log.w { "The recording finished unusable (successfully=$successfully, bytes=${bytes?.size}, ms=$durationMs)" }
                 meter.clear()
                 RecorderEvent.Failed
             },
@@ -202,7 +222,20 @@ private class IosVoiceRecorder(scope: CoroutineScope, private val onEvent: (Reco
         AudioSessionOwner.shared.letGo(this)
     }
 
+    /**
+     * Runs one AVAudioSession call and logs its error's domain and code if it fails. Nothing
+     * the person said or wrote is in it: only which step failed and why, so a failure on a
+     * phone can be read from the console.
+     */
+    private inline fun attempt(step: String, call: (kotlinx.cinterop.CPointer<ObjCObjectVar<NSError?>>) -> Boolean): Boolean = memScoped {
+        val error = alloc<ObjCObjectVar<NSError?>>()
+        val ok = call(error.ptr)
+        if (!ok) log.w { "$step failed: ${error.value?.domain} ${error.value?.code}" }
+        ok
+    }
+
     private companion object {
+        val log = Logger.withTag("VoiceRecorder")
         const val MS_PER_SECOND = 1000.0
         const val PREFIX = "voice-"
     }

@@ -30,6 +30,10 @@ kotlin {
         }
         // Compose UI tests run on iOS (Skiko, no device needed beyond the test
         // runner); on the Android host they would need Robolectric.
+        // The iOS recorder logs which audio call failed, with its error code (VoiceRecorder.ios.kt).
+        iosMain.dependencies {
+            implementation(libs.kermit)
+        }
         iosTest.dependencies {
             implementation(libs.compose.uiTest)
         }
