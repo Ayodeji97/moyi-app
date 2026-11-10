@@ -114,10 +114,10 @@ data class VoiceNote(
 
 /**
  * **Interim, not drawn** (docs/missing-components.md §43, the waveform §46): the voice
- * note inside an EntryCard, under the words (and under the photo). A 48 play/pause target,
- * the [VoiceWaveform] beside it (tap or drag to move through it), and under the bars the
- * clock in `inkMuted`, how far it has played of its length: "0:12 of 0:42" ("0:00 of 0:42"
- * before it plays; owner ruling 2026-11-09). While it is fetched a line under it says so (no spinner). Leaving the screen, or
+ * note inside an EntryCard, under the words (and under the photo). One line (§68): a 48
+ * play/pause target, the [VoiceWaveform] (tap or drag to move through it), then the clock in
+ * `inkMuted`, how far it has played of its length: "0:12 of 0:42" ("0:00 of 0:42" before it
+ * plays; owner ruling 2026-11-09), and the speed pill. While it is fetched a line under it says so (no spinner). Leaving the screen, or
  * the app, stops it.
  *
  * The server sends no levels for a voice note (docs/backend-contract-gaps.md row 31), so
@@ -169,9 +169,10 @@ private fun rememberStoppingPlayer(): VoicePlayer {
 }
 
 /**
- * Play or pause, the waveform with its clock ("0:12 of 0:42") under it and the [SpeedPill]
- * at the clock's end; then, at the end of the row, [trailing] (the composer's Record again
- * and Remove). The lines for loading and failure go under it.
+ * One [VoiceRow] (§68): play or pause, the waveform, its clock ("0:12 of 0:42") and the
+ * [SpeedPill]; then, at the end of the row, [trailing] (the composer's Record again and
+ * Remove). The clock and the pill move under the bars only when the bars would get too narrow.
+ * The lines for loading and failure go under it.
  *
  * [compact] (PROPOSED, docs/missing-components.md §66: the composer with the keyboard up): one
  * 48 line, as wide as it needs, of play/pause, the clock and [trailing]; no waveform and no
@@ -221,15 +222,9 @@ private fun PlayerControls(
         return
     }
     Column(modifier) {
-        // Top-aligned: the play target, the waveform's band and the trailing targets are all
-        // 48 and share a centre line; the clock sits under the bars, as messaging apps put it.
-        Row(verticalAlignment = Alignment.Top) {
-            VoiceIconTarget(
-                icon = if (playback.active) MoyiIcons.Pause else MoyiIcons.Play,
-                description = stringResource(if (playback.active) Res.string.ds_voice_pause else Res.string.ds_voice_play),
-                onClick = onToggle,
-            )
-            Column(Modifier.weight(1f)) {
+        VoiceRow(
+            play = { VoicePlayTarget(playing = playback.active, onClick = onToggle) },
+            waveform = {
                 VoiceWaveform(
                     levels = levels,
                     progress = { WaveformMath.fractionOf(playback.positionMs, duration) },
@@ -238,15 +233,132 @@ private fun PlayerControls(
                     // Seeking needs the length; the server sends it with every playable voice note.
                     onSeek = duration?.let { length -> { fraction: Float -> onSeek(WaveformMath.positionAt(fraction, length)) } },
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // "0:12 of 0:42". It repeats the waveform's position, which a screen reader already hears.
-                    MoyiText(text = clock, tone = TextTone.Muted, modifier = Modifier.weight(1f).clearAndSetSemantics {})
-                    SpeedPill(speed = speed, onClick = onCycleSpeed)
-                }
-            }
-            trailing()
-        }
+            },
+            // "0:12 of 0:42". It repeats the waveform's position, which a screen reader already
+            // hears. Tabular figures, so the line keeps its width as the seconds change and the
+            // bars never shift while it plays.
+            clock = {
+                Text(
+                    text = clock,
+                    style = MoyiTheme.type.body.copy(fontFeatureSettings = TABULAR_FIGURES),
+                    color = MoyiTheme.colors.inkMuted,
+                    modifier = Modifier.clearAndSetSemantics { testTag = VOICE_CLOCK_TAG },
+                )
+            },
+            pill = { SpeedPill(speed = speed, onClick = onCycleSpeed) },
+            trailing = { Row(verticalAlignment = Alignment.CenterVertically, content = trailing) },
+        )
         PlaybackLine(playback.phase)
+    }
+}
+
+/** Finds the drawn clock ("0:12 of 0:42") in tests; it is not spoken (the waveform says it). */
+const val VOICE_CLOCK_TAG = "voiceClock"
+
+/** Finds the voice note's row (play, bars, clock, pill and any trailing controls) in tests. */
+const val VOICE_ROW_TAG = "voiceRow"
+
+private const val TABULAR_FIGURES = "tnum"
+
+/**
+ * **PROPOSED** (docs/missing-components.md §68, owner request 2026-11-10): the voice note on one
+ * 48 line: [play], the [waveform] taking what is left, then the [clock] and the [pill], then
+ * [trailing] (the composer's Record again and Remove).
+ *
+ * When that would leave the bars narrower than [MoyiDimens.Waveform.MinWidth] (large text, or
+ * the composer's two extra targets on a narrow phone), the clock and the pill move under the
+ * bars instead, starting where the bars start; and the pill under the clock if even that line
+ * cannot hold both. Nothing is squeezed or clipped: the text keeps its natural width (up to the
+ * line), and the bars keep a usable band to tap and drag.
+ */
+@Composable
+private fun VoiceRow(
+    play: @Composable () -> Unit,
+    waveform: @Composable () -> Unit,
+    clock: @Composable () -> Unit,
+    pill: @Composable () -> Unit,
+    trailing: @Composable () -> Unit,
+) {
+    val gapPx = with(LocalDensity.current) { MoyiDimens.Waveform.Gap.roundToPx() }
+    val minBarsPx = with(LocalDensity.current) { MoyiDimens.Waveform.MinWidth.roundToPx() }
+    val clockToPillPx = with(LocalDensity.current) { MoyiTheme.spacing.sm.roundToPx() }
+    // The circle sits 4 inside its 48 target: `xs` more puts the bars a clear 8 past it.
+    val playToBarsPx = with(LocalDensity.current) { MoyiTheme.spacing.xs.roundToPx() }
+    Layout(
+        contents = listOf(play, waveform, clock, pill, trailing),
+        modifier = Modifier.semantics { testTag = VOICE_ROW_TAG },
+    ) { (playM, waveM, clockM, pillM, trailM), constraints ->
+        val width = constraints.maxWidth
+        val loose = Constraints(maxWidth = width)
+        val playP = playM.first().measure(loose)
+        val trailP = trailM.first().measure(Constraints(maxWidth = (width - playP.width).coerceAtLeast(0)))
+        // Under the bars, a line runs from where the bars start to the row's end.
+        val barsStart = playP.width + playToBarsPx
+        val underWidth = (width - barsStart).coerceAtLeast(0)
+        val clockP = clockM.first().measure(Constraints(maxWidth = underWidth))
+        val pillP = pillM.first().measure(Constraints(maxWidth = underWidth))
+        val besideBars = width - barsStart - trailP.width - gapPx - clockP.width - clockToPillPx - pillP.width
+        val oneLine = besideBars >= minBarsPx
+        val barsWidth = if (oneLine) besideBars else (width - barsStart - trailP.width - gapPx).coerceAtLeast(0)
+        val waveP = waveM.first().measure(Constraints.fixedWidth(barsWidth))
+        val lineHeight = maxOf(playP.height, waveP.height, trailP.height, if (oneLine) maxOf(clockP.height, pillP.height) else 0)
+        // Under the bars: the clock and the pill side by side if they fit, the pill under the clock if not.
+        val pillBesideClock = clockP.width + clockToPillPx + pillP.width <= underWidth
+        val underHeight = when {
+            oneLine -> 0
+            pillBesideClock -> maxOf(clockP.height, pillP.height)
+            else -> clockP.height + pillP.height
+        }
+        layout(width, lineHeight + underHeight) {
+            fun centred(h: Int) = (lineHeight - h) / 2
+            playP.placeRelative(0, centred(playP.height))
+            waveP.placeRelative(barsStart, centred(waveP.height))
+            trailP.placeRelative(width - trailP.width, centred(trailP.height))
+            if (oneLine) {
+                val clockX = barsStart + waveP.width + gapPx
+                clockP.placeRelative(clockX, centred(clockP.height))
+                pillP.placeRelative(clockX + clockP.width + clockToPillPx, centred(pillP.height))
+            } else if (pillBesideClock) {
+                clockP.placeRelative(barsStart, lineHeight + (underHeight - clockP.height) / 2)
+                // Under the bars' end, as the pill sat before; never over the clock.
+                val pillX = maxOf(barsStart + clockP.width + clockToPillPx, width - trailP.width - pillP.width)
+                pillP.placeRelative(pillX, lineHeight + (underHeight - pillP.height) / 2)
+            } else {
+                clockP.placeRelative(barsStart, lineHeight)
+                pillP.placeRelative(barsStart, lineHeight + clockP.height)
+            }
+        }
+    }
+}
+
+/**
+ * **PROPOSED** (docs/missing-components.md §68): play or pause, visibly a button but lighter
+ * than the words it sits under: a 40 circle with a `hairline` of `outlineStrong` and no fill
+ * (the border Rosewood gives a control, as [Chip] and the [SpeedPill]), the 24 glyph in `ink`,
+ * in a 48 target. Spoken "Play the voice note" or "Pause the voice note", a button.
+ */
+@Composable
+private fun VoicePlayTarget(playing: Boolean, onClick: () -> Unit) {
+    val colors = MoyiTheme.colors
+    Box(
+        modifier = Modifier
+            .size(MoyiDimens.VoicePlay.Target)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(MoyiDimens.VoicePlay.Circle)
+                .border(MoyiTheme.shapes.hairline, colors.outlineStrong, MoyiTheme.shapes.full),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (playing) MoyiIcons.Pause else MoyiIcons.Play,
+                contentDescription = stringResource(if (playing) Res.string.ds_voice_pause else Res.string.ds_voice_play),
+                tint = colors.ink,
+                modifier = Modifier.size(MoyiDimens.IconGlyph),
+            )
+        }
     }
 }
 

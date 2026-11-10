@@ -209,6 +209,22 @@ object MoyiDimens {
         val Gap = 8.dp
         /** The `danger` dot before the clock while recording (owner ruling 2026-11-09, §49). */
         val RecordingDot = 8.dp
+        /**
+         * PROPOSED (docs/missing-components.md §68), **Interpreted**: the narrowest the bars may
+         * get with the clock and the speed pill beside them on one line (16 bars). Narrower, and
+         * the clock and the pill move to a second line under the bars instead.
+         */
+        val MinWidth = 80.dp
+    }
+
+    /**
+     * The voice note's play/pause control (PROPOSED, docs/missing-components.md §68).
+     * **Interpreted** from [Chip]: a 40 visible circle with a `hairline` of `outlineStrong`,
+     * centred in its 48 target (NFR-101), the 24 glyph in `ink` inside it.
+     */
+    object VoicePlay {
+        val Target = TouchTarget
+        val Circle = 40.dp
     }
 
     /**
