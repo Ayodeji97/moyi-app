@@ -201,6 +201,16 @@ object MoyiDimens {
         val RecordingDot = 8.dp
     }
 
+    /**
+     * The speed pill beside a voice note's clock (PROPOSED, docs/missing-components.md §64).
+     * **Interpreted**: the visible pill hugs its `label` line (`spacing.xs` above and below,
+     * `spacing.sm` across) so the clock line keeps its height; its target is the full 48
+     * (NFR-101), reaching past the pill above and below.
+     */
+    object SpeedPill {
+        val Target = TouchTarget
+    }
+
     /** Today's `nav` row (Figma 159:2: 358 × 48 at y 24; daily-loop spec §2). */
     /**
      * tokens.md §4 row 9, `Chip` (Archive's filters): a 48 pt target wrapping a 40 pt

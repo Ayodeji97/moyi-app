@@ -1513,3 +1513,38 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
     (was "... We sent a link to {email}.")
   - `gate_type_code`: "Type the code".
   - `gate_resend` "Send it again" is unchanged: "it" is the email, which carries both.
+
+## Voice note playback speed (PR feat/voice-playback-speed)
+
+### 64. A speed pill on every voice note: 1×, 1.5×, 2× (owner request 2026-11-10)
+
+- **Why:** the owner asked that a voice note can be listened to faster, "maybe 1.5x".
+  Rosewood has no speed control, so this one is **PROPOSED, not drawn**.
+- **Built, PROPOSED (`SpeedPill`, private to `VoiceNote.kt`):** at the end of the clock line
+  under the waveform ("0:12 of 0:42 ... 1×"), on every voice note: the EntryCard's, Write's
+  listen-back and Edit's sent voice note, before play too. A tap moves it 1× → 1.5× → 2× → 1×.
+  - **Look, tokens only, no new colour:** the `label` style in `ink`, inside a `shapes.full`
+    pill with a `hairline` of `outlineStrong` (a control's border, as `Chip`'s), no fill,
+    padded `spacing.sm` across and `spacing.xs` down. It is smaller than the clock beside it
+    so it reads as the clock's companion, not a second clock.
+  - **Target:** a 48 × 48 box (NFR-101) centred on the pill. The layout reports only the
+    pill's height, so the clock line does not grow; the target reaches about 11 above and
+    below it, over the waveform band's empty bottom edge. A tap there, in the last 48 of the
+    waveform's width, changes the speed rather than seeking.
+  - **Spoken:** a button, "Playback speed, 1.5 times" ("Playback speed, normal" at 1×). The
+    drawn "1.5×" is hidden from screen readers so it is not read twice.
+- **Behaviour:**
+  - The speed is the **session's**, one for the whole app (`SessionPlaybackSpeed.shared`):
+    every pill shows it, the next voice note starts at it, and a tap on any pill changes the
+    one playing at once, from where it is, without a restart. Held in memory only, never
+    written to disk: a new process starts at 1×.
+  - **Pitch is kept:** Android sets `ExoPlayer.setPlaybackSpeed` (PlaybackParameters, pitch 1),
+    iOS sets `AVAudioPlayer.enableRate` before `prepareToPlay`, then `rate`. Both stretch time.
+  - The waveform and clock still read the player's own position, which is in the voice
+    note's time, so at 2× they move twice as fast and end together at the note's length.
+- **Strings (PROPOSED):**
+  - `ds_voice_speed`: "{speed}×" (the pill).
+  - `ds_voice_speed_spoken`: "Playback speed, {speed} times".
+  - `ds_voice_speed_spoken_normal`: "Playback speed, normal" ("1 times" does not read).
+  - `ds_voice_speed_1`, `ds_voice_speed_1_5`, `ds_voice_speed_2`: "1", "1.5", "2", one string
+    each so a locale can write its own decimal separator ("1,5").

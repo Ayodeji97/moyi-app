@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -77,9 +78,49 @@ data class VoicePlayback(
     fun failed(): VoicePlayback = copy(phase = PlaybackPhase.Failed, positionMs = 0)
 }
 
+/**
+ * How fast a voice note plays (owner request 2026-11-10). The pitch stays the same at every
+ * speed: both platform players stretch time rather than resampling.
+ */
+enum class PlaybackSpeed(val factor: Float) {
+    Normal(1f),
+    OneAndAHalf(1.5f),
+    Twice(2f),
+    ;
+
+    /** The tap on the speed pill: 1x, 1.5x, 2x, then 1x again. */
+    fun next(): PlaybackSpeed = entries[(ordinal + 1) % entries.size]
+}
+
+/**
+ * The speed chosen last, **for this session only**: every voice note plays at it until it is
+ * changed, and it is held in memory, never written to disk, so a new process starts at 1x.
+ * [shared] is the app's one; a test makes its own.
+ */
+class SessionPlaybackSpeed {
+    private val state = MutableStateFlow(PlaybackSpeed.Normal)
+    val speed: StateFlow<PlaybackSpeed> = state.asStateFlow()
+
+    /** Moves to the next speed and returns it. */
+    fun cycle(): PlaybackSpeed = state.updateAndGet { it.next() }
+
+    companion object {
+        val shared = SessionPlaybackSpeed()
+    }
+}
+
 /** One voice note's player. Only one plays at a time, app-wide: starting one pauses any other. */
 interface VoicePlayer {
     val playback: StateFlow<VoicePlayback>
+
+    /** The session's speed, the same for every voice note: the pill on each one shows it. */
+    val speed: StateFlow<PlaybackSpeed>
+
+    /**
+     * Moves the session's speed on ([PlaybackSpeed.next]). The voice note playing now, this
+     * one or another, changes speed at once, from where it is; the next one starts at it.
+     */
+    fun cycleSpeed()
 
     /** Pause when playing; otherwise play [source] (resuming where it paused, if it is the same one). */
     fun toggle(source: VoiceSource)
@@ -118,9 +159,16 @@ expect fun rememberVoicePlayer(): VoicePlayer
  * A subclass opens, resumes, pauses and releases its own player, and reports back through
  * [onReady], [onEnded] and [onFailed]; it is driven on the main thread only.
  */
-abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer {
+abstract class BaseVoicePlayer(
+    private val scope: CoroutineScope,
+    private val speeds: SessionPlaybackSpeed = SessionPlaybackSpeed.shared,
+) : VoicePlayer {
     private val state = MutableStateFlow(VoicePlayback())
     override val playback: StateFlow<VoicePlayback> = state.asStateFlow()
+    override val speed: StateFlow<PlaybackSpeed> = speeds.speed
+
+    /** The factor [open] starts the platform player at, before it plays its first sound. */
+    protected val speedFactor: Float get() = speeds.speed.value.factor
 
     /** The voice note open in the platform player, if any. */
     private var openKey: String? = null
@@ -144,6 +192,19 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
     /** Moves the open platform player to [positionMs], playing or paused as it was. */
     protected abstract fun seekNative(positionMs: Long)
 
+    /**
+     * Sets the open platform player's speed to [factor], keeping its pitch and its place, and
+     * playing or paused as it was. Nothing to do when nothing is open: [open] reads [speedFactor].
+     */
+    protected abstract fun setSpeedNative(factor: Float)
+
+    override fun cycleSpeed() {
+        val factor = speeds.cycle().factor
+        setSpeedNative(factor)
+        // The pill on another voice note changes the one playing too: every pill shows one speed.
+        ActiveVoicePlayer.current?.takeIf { it !== this }?.setSpeedNative(factor)
+    }
+
     override fun toggle(source: VoiceSource) {
         if (state.value.active) {
             pause()
@@ -152,6 +213,8 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
         ActiveVoicePlayer.claim(this)
         // Still open (paused, or played to the end and rewound): play it again without fetching it again.
         if (source.key == openKey && (state.value.phase == PlaybackPhase.Paused || state.value.phase == PlaybackPhase.Idle)) {
+            // The speed may have changed on another voice note while this one waited.
+            setSpeedNative(speedFactor)
             resume()
             state.update { it.playing(null) }
             tick()
@@ -244,15 +307,16 @@ abstract class BaseVoicePlayer(private val scope: CoroutineScope) : VoicePlayer 
 
 /** The one player allowed to play: starting another pauses it. Main thread only. */
 internal object ActiveVoicePlayer {
-    private var current: VoicePlayer? = null
+    var current: BaseVoicePlayer? = null
+        private set
 
-    fun claim(player: VoicePlayer) {
+    fun claim(player: BaseVoicePlayer) {
         val previous = current
         current = player
         if (previous != null && previous !== player) previous.pause()
     }
 
-    fun letGo(player: VoicePlayer) {
+    fun letGo(player: BaseVoicePlayer) {
         if (current === player) current = null
     }
 }

@@ -48,6 +48,16 @@
     <string name="ds_voice_loading">Getting the voice note</string>
     <!-- PROPOSED (voice notes). It could not be fetched or played. Names the next action (owner: copy names the next action). -->
     <string name="ds_voice_unplayable">This voice note couldn't be played. Tap play to try again.</string>
+    <!-- PROPOSED (voice playback speed, docs/missing-components.md §64). The speed pill beside a voice note's clock: {speed}x, "1.5×". {speed} is one of ds_voice_speed_1, ds_voice_speed_1_5, ds_voice_speed_2. A sign, not words, as the clock is numbers. -->
+    <string name="ds_voice_speed">%1$s×</string>
+    <!-- PROPOSED (§64). What a screen reader says for the speed pill (role button): "Playback speed, 1.5 times". {speed} as ds_voice_speed. -->
+    <string name="ds_voice_speed_spoken">Playback speed, %1$s times</string>
+    <!-- PROPOSED (§64). The same at 1x, where "1 times" would not read: "Playback speed, normal". -->
+    <string name="ds_voice_speed_spoken_normal">Playback speed, normal</string>
+    <!-- PROPOSED (§64). The speeds as numbers, one string each so a locale writes its own decimal separator ("1,5"). -->
+    <string name="ds_voice_speed_1">1</string>
+    <string name="ds_voice_speed_1_5">1.5</string>
+    <string name="ds_voice_speed_2">2</string>
     <!-- PROPOSED (voice notes). EntryCard: the voice note is not playable to this reader yet (EntryVoiceResponse PROCESSING). Never says why (spec §4 D3). -->
     <string name="ds_entry_voice_on_its_way">A voice note is on its way.</string>
     <!-- PROPOSED (voice notes). EntryCard, its author only: moderation held it back from the other member (NOT_SHARED, Q10). -->

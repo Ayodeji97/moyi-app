@@ -3,6 +3,8 @@ package com.moyi.app.designsystem
 import com.moyi.app.designsystem.component.formatClock
 import com.moyi.app.designsystem.platform.BaseVoicePlayer
 import com.moyi.app.designsystem.platform.PlaybackPhase
+import com.moyi.app.designsystem.platform.PlaybackSpeed
+import com.moyi.app.designsystem.platform.SessionPlaybackSpeed
 import com.moyi.app.designsystem.platform.RecordedVoice
 import com.moyi.app.designsystem.platform.VoicePlayback
 import com.moyi.app.designsystem.platform.VoiceSource
@@ -176,6 +178,92 @@ class VoicePlaybackTest {
     }
 
     @Test
+    fun aTapOnTheSpeedPillGoesOneThenOneAndAHalfThenTwiceThenBack() {
+        assertEquals(PlaybackSpeed.OneAndAHalf, PlaybackSpeed.Normal.next())
+        assertEquals(PlaybackSpeed.Twice, PlaybackSpeed.OneAndAHalf.next())
+        assertEquals(PlaybackSpeed.Normal, PlaybackSpeed.Twice.next())
+        assertEquals(listOf(1f, 1.5f, 2f), PlaybackSpeed.entries.map { it.factor })
+    }
+
+    @Test
+    fun theSpeedIsRememberedForTheSessionAndANewSessionStartsAtOne() {
+        val session = SessionPlaybackSpeed()
+        assertEquals(PlaybackSpeed.Normal, session.speed.value)
+        assertEquals(PlaybackSpeed.OneAndAHalf, session.cycle())
+        assertEquals(PlaybackSpeed.OneAndAHalf, session.speed.value, "kept until it is changed")
+        // A new process makes a new one: nothing was written anywhere to bring it back.
+        assertEquals(PlaybackSpeed.Normal, SessionPlaybackSpeed().speed.value)
+    }
+
+    @Test
+    fun changingTheSpeedWhilePlayingAppliesAtOnceWithoutRestarting() = runTest {
+        val session = SessionPlaybackSpeed()
+        val player = FakePlayer(this, session)
+        player.toggle(remote)
+        assertEquals(listOf(1f), player.openedAt, "a first note plays at 1x")
+        player.ready(42_000)
+        player.position = 12_000
+
+        player.cycleSpeed()
+
+        assertEquals(listOf(1.5f), player.speeds, "the platform player is told at once")
+        assertEquals(1, player.opened.size, "not opened again")
+        assertTrue(player.seeks.isEmpty(), "not moved: it carries on from where it is")
+        assertEquals(PlaybackPhase.Playing, player.playback.value.phase)
+        advanceTimeBy(250)
+        assertEquals(12_000L, player.playback.value.positionMs, "the clock still follows the player")
+        assertEquals(PlaybackSpeed.OneAndAHalf, player.speed.value)
+        player.release()
+    }
+
+    @Test
+    fun theNextVoiceNoteStartsAtTheLastChosenSpeed() = runTest {
+        val session = SessionPlaybackSpeed()
+        val first = FakePlayer(this, session)
+        first.cycleSpeed()
+        first.cycleSpeed()
+        first.release()
+
+        val next = FakePlayer(this, session)
+        assertEquals(PlaybackSpeed.Twice, next.speed.value, "its pill shows 2x before play")
+        next.toggle(VoiceSource.Remote("v2", "https://storage.test/v2.ogg?sig"))
+        assertEquals(listOf(2f), next.openedAt)
+        next.release()
+    }
+
+    @Test
+    fun thePillOnAnotherVoiceNoteChangesTheOnePlaying() = runTest {
+        val session = SessionPlaybackSpeed()
+        val playing = FakePlayer(this, session)
+        val other = FakePlayer(this, session)
+        playing.toggle(remote)
+        playing.ready(42_000)
+
+        other.cycleSpeed()
+
+        assertEquals(listOf(1.5f), playing.speeds)
+        assertEquals(PlaybackSpeed.OneAndAHalf, playing.speed.value)
+        playing.release()
+        other.release()
+    }
+
+    @Test
+    fun aPausedVoiceNoteResumesAtTheSpeedChosenWhileItWaited() = runTest {
+        val session = SessionPlaybackSpeed()
+        val player = FakePlayer(this, session)
+        player.toggle(remote)
+        player.ready(42_000)
+        player.toggle(remote)
+        session.cycle()
+
+        player.toggle(remote)
+
+        assertEquals(1.5f, player.speeds.last())
+        assertEquals(1, player.resumed)
+        player.release()
+    }
+
+    @Test
     fun theFileSaysHowLongItIsWhenTheServerDidNot() {
         assertEquals(41_960L, VoicePlayback().loading().playing(41_960).durationMs)
         assertEquals(42_000L, VoicePlayback(durationMs = 42_000).playing(null).durationMs)
@@ -193,8 +281,17 @@ class VoicePlaybackTest {
     }
 
     /** A platform player that does what it is told, and reports when the test says. */
-    private class FakePlayer(scope: TestScope) : BaseVoicePlayer(scope as CoroutineScope) {
+    private class FakePlayer(
+        scope: TestScope,
+        session: SessionPlaybackSpeed = SessionPlaybackSpeed(),
+    ) : BaseVoicePlayer(scope as CoroutineScope, session) {
         val opened = mutableListOf<String>()
+
+        /** The speed each [open] started at. */
+        val openedAt = mutableListOf<Float>()
+
+        /** Every speed the platform player was set to after it opened. */
+        val speeds = mutableListOf<Float>()
         var resumed = 0
         var released = 0
         var position = 0L
@@ -207,6 +304,11 @@ class VoicePlaybackTest {
 
         override fun open(source: VoiceSource) {
             opened += source.key
+            openedAt += speedFactor
+        }
+
+        override fun setSpeedNative(factor: Float) {
+            speeds += factor
         }
 
         override fun resume() {
