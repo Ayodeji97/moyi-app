@@ -162,7 +162,7 @@ fun MoyiScaffold(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         BackAffordance(onBack)
                         Box(Modifier.weight(1f)) {
-                            if (backLabel != null) MoyiText(text = backLabel, role = TextRole.Label)
+                            if (backLabel != null) MoyiText(text = backLabel, role = TextRole.Tag)
                         }
                         backAction?.invoke()
                     }

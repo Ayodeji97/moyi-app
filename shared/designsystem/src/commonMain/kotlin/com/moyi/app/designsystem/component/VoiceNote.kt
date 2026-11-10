@@ -605,7 +605,7 @@ private fun SpeedPill(speed: PlaybackSpeed, onClick: () -> Unit) {
             // The visible pill: drawn, never spoken (the target below says it).
             Text(
                 text = stringResource(Res.string.ds_voice_speed, value),
-                style = MoyiTheme.type.label,
+                style = MoyiTheme.type.tag,
                 color = colors.ink,
                 maxLines = 1,
                 modifier = Modifier

@@ -17,7 +17,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.em
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.platform.ProtectFromCapture
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -152,8 +151,7 @@ fun EntryCard(
 private fun ReactionPill(reaction: EntryCardReaction) {
     Text(
         text = reaction.text,
-        // Sentence case, so the label style's uppercase tracking would space the letters apart.
-        style = MoyiTheme.type.label.copy(letterSpacing = 0.em),
+        style = MoyiTheme.type.tag,
         color = MoyiTheme.colors.ink,
         maxLines = 1,
         modifier = Modifier

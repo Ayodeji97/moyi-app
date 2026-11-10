@@ -73,11 +73,11 @@ internal fun TodayNavRow(
     onDebugCycle: (() -> Unit)?,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(MoyiDimens.NavRow.Height),
+        modifier = Modifier.fillMaxWidth().heightIn(min = MoyiDimens.NavRow.Height),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.weight(1f).height(MoyiDimens.NavRow.Height).debugLongPress(onDebugCycle),
+            modifier = Modifier.weight(1f).heightIn(min = MoyiDimens.NavRow.Height).debugLongPress(onDebugCycle),
             contentAlignment = Alignment.CenterStart,
         ) {
             DateLabel(date)

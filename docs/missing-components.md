@@ -1708,3 +1708,26 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   should be shorter with its targets reaching past it, as the speed pill's does; (2) whether
   Write's listen-back should also be one line, which would need Record again and Remove to
   move (for example under the bars, or behind one "More" target).
+
+## The label diet (PR feat/label-diet)
+
+### 69. Tracked capitals only for author lines, section heads and date headers (owner ruling 2026-11-10, option C)
+
+- **Why:** the tracked uppercase `label` style had spread to every small piece of text
+  (chips, legends, field captions), so capitals stopped meaning "this names something". The
+  owner ruled it back to three jobs. **PROPOSED, not drawn**: Figma draws these chips and
+  legends in capitals.
+- **Kept as `TextRole.Label`:** (a) author lines on cards ("FROM PAX", "FROM YOU"); (b) section
+  heads (Bond settings group heads, the Archive month heading, the Streak window head, the
+  onboarding samples head, the screen eyebrow); (c) dates used as headers (Today, Reveal,
+  an Archive row's day name).
+- **Changed to `TextRole.Tag`:** the same size and weight as `label`, sentence case, no
+  tracking (`label.copy(letterSpacing = 0.em)`), `inkMuted` by default. Chips (Archive
+  filters, reactions, relationship type), the reaction pill, the speed pill, the Streak
+  legend and its "Now" and "Longest" captions, field captions, the back label, and the invite
+  code caption and copy label.
+- **Strings:** unchanged; they were already sentence case, the uppercasing was in `MoyiText`.
+- **Accessibility:** unchanged; Label already spoke its original casing.
+- **Today's date header wraps:** the nav row's height was clamped to 48. It is now a minimum,
+  so at the largest Dynamic Type the date wraps onto as many lines as it needs and the
+  calendar and settings targets stay centred.

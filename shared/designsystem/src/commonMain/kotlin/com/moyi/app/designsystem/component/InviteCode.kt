@@ -66,7 +66,7 @@ fun InviteCode(
             .border(shapes.hairline, colors.outline, shapes.radius)
             .padding(MoyiDimens.InviteCode.Padding),
     ) {
-        MoyiText(stringResource(Res.string.ds_invite_code_caption), role = TextRole.Label)
+        MoyiText(stringResource(Res.string.ds_invite_code_caption), role = TextRole.Tag)
         Spacer(Modifier.height(MoyiDimens.InviteCode.Gap))
         MoyiText(
             text = code,
@@ -89,7 +89,7 @@ fun InviteCode(
                 tint = colors.ink,
                 modifier = Modifier.size(MoyiDimens.IconGlyph),
             )
-            MoyiText(copyLabel, role = TextRole.Label, tone = TextTone.Ink)
+            MoyiText(copyLabel, role = TextRole.Tag, tone = TextTone.Ink)
         }
     }
 }

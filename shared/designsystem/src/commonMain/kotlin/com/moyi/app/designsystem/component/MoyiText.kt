@@ -17,10 +17,20 @@ import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiColors
+import androidx.compose.ui.unit.em
 import com.moyi.app.designsystem.theme.MoyiTypography
 
 /** One of the six text styles in `tokens.md` §2. */
-enum class TextRole { Entry, Title, Body, Label, Action, Code }
+enum class TextRole {
+    Entry, Title, Body, Label, Action, Code,
+
+    /**
+     * **PROPOSED** (§69): the `label` size and weight in sentence case, with no tracking and no
+     * uppercasing. For chips, pills, legends, field captions: small text that is not an author
+     * line, a section head or a date header (those stay [Label]).
+     */
+    Tag,
+}
 
 /**
  * Which colour token the text takes. A token, not a [Color], so a screen
@@ -36,7 +46,8 @@ enum class TextTone { Ink, Muted, Danger }
  *   `i` uppercases differently), because a `TextStyle` cannot carry a
  *   transform. The screen reader still gets the original casing: some
  *   readers spell short all-caps words letter by letter.
- * - The default tone is `Muted` for labels and `Ink` for everything else.
+ * - [TextRole.Tag] is the same size and weight, kept as typed and untracked.
+ * - The default tone is `Muted` for labels, tags and `Ink` for everything else.
  * - No `maxLines` by default: at 200 % font scale text wraps, it never
  *   truncates (NFR-102). The one place that cuts text is the Archive list
  *   (states.md §6: two lines with an ellipsis, the day view shows it all);
@@ -47,7 +58,7 @@ fun MoyiText(
     text: String,
     modifier: Modifier = Modifier,
     role: TextRole = TextRole.Body,
-    tone: TextTone = if (role == TextRole.Label) TextTone.Muted else TextTone.Ink,
+    tone: TextTone = if (role == TextRole.Label || role == TextRole.Tag) TextTone.Muted else TextTone.Ink,
     textAlign: TextAlign? = null,
     maxLines: Int = Int.MAX_VALUE,
     /** End a cut line with an ellipsis instead of clipping it. Ignored for labels. */
@@ -57,7 +68,7 @@ fun MoyiText(
     val color = MoyiTheme.colors.colorFor(tone)
     if (role == TextRole.Label) {
         Text(
-            text = text.toUpperCase(Locale.current),
+            text = displayedText(role, text),
             modifier = modifier.clearAndSetSemantics { this.text = AnnotatedString(text) },
             style = style,
             color = color,
@@ -78,12 +89,20 @@ fun MoyiText(
     }
 }
 
+/** What is drawn for [text] in [role]: capitals for [TextRole.Label] (reader's locale), as typed for every other role. */
+internal fun displayedText(role: TextRole, text: String): String =
+    if (role == TextRole.Label) text.toUpperCase(Locale.current) else text
+
+/** `label` without its tracking: tracking spaces capitals apart, and a [TextRole.Tag] is sentence case. */
+val MoyiTypography.tag: TextStyle get() = label.copy(letterSpacing = 0.em)
+
 /** The style for a role. Exposed for components that draw text themselves (text fields). */
 fun MoyiTypography.styleFor(role: TextRole): TextStyle = when (role) {
     TextRole.Entry -> entry
     TextRole.Title -> title
     TextRole.Body -> body
     TextRole.Label -> label
+    TextRole.Tag -> tag
     TextRole.Action -> action
     TextRole.Code -> code
 }

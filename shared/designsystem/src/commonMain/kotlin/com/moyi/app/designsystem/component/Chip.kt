@@ -19,8 +19,6 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.intl.Locale
-import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -98,9 +96,9 @@ fun Chip(
                     )
                 }
                 Text(
-                    text = text.toUpperCase(Locale.current),
+                    text = text,
                     modifier = Modifier.clearAndSetSemantics { this.text = AnnotatedString(text) },
-                    style = MoyiTheme.type.label,
+                    style = MoyiTheme.type.tag,
                     color = if (selected) colors.surface else colors.ink,
                     maxLines = 1,
                 )
