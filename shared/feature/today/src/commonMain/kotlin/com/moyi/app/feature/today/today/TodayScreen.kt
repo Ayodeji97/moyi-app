@@ -48,6 +48,7 @@ import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.today_announce_not_written
 import com.moyi.app.feature.today.resources.today_announce_partner_not_joined
 import com.moyi.app.feature.today.resources.today_announce_queued
+import com.moyi.app.feature.today.resources.today_announce_queued_earlier
 import com.moyi.app.feature.today.resources.today_announce_revealed
 import com.moyi.app.feature.today.resources.today_announce_solo
 import com.moyi.app.feature.today.resources.today_announce_waiting
@@ -69,6 +70,7 @@ import com.moyi.app.feature.today.resources.today_error_line
 import com.moyi.app.feature.today.resources.today_partner_pending_line
 import com.moyi.app.feature.today.resources.today_partner_pending_line_unnamed
 import com.moyi.app.feature.today.resources.today_queued_line
+import com.moyi.app.feature.today.resources.today_queued_line_earlier
 import com.moyi.app.feature.today.resources.today_queued_line_late
 import com.moyi.app.feature.today.resources.today_queued_refused
 import com.moyi.app.feature.today.resources.today_queued_refused_open_write
@@ -82,6 +84,8 @@ import com.moyi.app.feature.today.resources.today_invite_share_text
 import com.moyi.app.designsystem.platform.rememberShareSheet
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
 import org.jetbrains.compose.resources.getString
 import com.moyi.app.feature.today.resources.today_solo_line
 import com.moyi.app.feature.today.resources.today_tombstone_line
@@ -391,7 +395,11 @@ private fun ColumnScope.SoloTheyWrote(state: TodayState) {
 /** 384:327. My entry is safe on the device and says which Bond-day it counts for. */
 @Composable
 private fun ColumnScope.Queued(state: TodayState) {
-    val announce = stringResource(Res.string.today_announce_queued)
+    // states.md "Queued offline": an earlier Bond-day is announced, not only shown.
+    val announce = when (val day = state.queuedDay) {
+        is QueuedDay.EarlierDay -> stringResource(Res.string.today_announce_queued_earlier, dayInSentence(day.date))
+        else -> stringResource(Res.string.today_announce_queued)
+    }
     CenteredContent(Modifier.semantics { paneTitle = announce }) {
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
@@ -402,17 +410,18 @@ private fun ColumnScope.Queued(state: TodayState) {
 }
 
 /**
- * states.md §10's Offline line, naming the day; `.late` when that day has gone.
+ * states.md §10's Offline line, naming the day it will count for.
  *
- * An entry written on an earlier day that has closed also says `.late`: the owner held
- * `today_queued_line_earlier` on 2026-11-08 (strings-proposed.md §12) until the backend
- * keeps a day open about 12 h past its end (docs/backend-contract-gaps.md row 25). Then
- * that case gets its own line, naming the day it counts for.
+ * An entry written on an earlier Bond-day names that day while its late-entry grace runs
+ * (`today_queued_line_earlier`, held by the owner on 2026-11-08 until the backend kept a day
+ * open 12 h past its end, strings-proposed.md §12; shipped as backend #154). Past the grace it
+ * counts for the day it sends, and says so (`.late`).
  */
 @Composable
 private fun queuedLine(day: QueuedDay?): String = when (day) {
     is QueuedDay.ThisDay -> stringResource(Res.string.today_queued_line, dayInSentence(day.date))
-    is QueuedDay.EarlierDayClosed, QueuedDay.DayItSends, null -> stringResource(Res.string.today_queued_line_late)
+    is QueuedDay.EarlierDay -> stringResource(Res.string.today_queued_line_earlier, dayInSentence(day.date))
+    QueuedDay.DayItSends, null -> stringResource(Res.string.today_queued_line_late)
 }
 
 /**
@@ -538,6 +547,18 @@ private fun TodayWaitingDeletePreview() {
 @Preview @Composable private fun TodaySoloTheyWrotePreview() = TodayPreview(TodayStatus.SoloTheyWrote)
 
 @Preview @Composable private fun TodayQueuedPreview() = TodayPreview(TodayStatus.Queued)
+
+/** Queued on yesterday's Bond-day, inside its late-entry grace: the line names that day. */
+@Preview
+@Composable
+private fun TodayQueuedEarlierPreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(
+            state = previewState(TodayStatus.Queued).copy(queuedDay = QueuedDay.EarlierDay(FakeCopy.DATE.minus(1, DateTimeUnit.DAY))),
+            onAction = {},
+        )
+    }
+}
 
 /** A queued entry the server refused: the neutral line and Open Write (owner ruling 2026-11-08). */
 @Preview

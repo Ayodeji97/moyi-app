@@ -176,9 +176,11 @@
     <string name="gate_eyebrow">New account</string>
     <!-- gate.heading (strings-proposed.md §4a). -->
     <string name="gate_heading">Verify your email first</string>
-    <!-- gate.line. %1$s is {email}. -->
-    <string name="gate_line">You can sign in, but creating or joining a bond needs a verified address. We sent a link to %1$s.</string>
-    <!-- verify.resend: states.md §1b, "one resend affordance". -->
+    <!-- PROPOSED (docs/missing-components.md §63), replacing gate.line "We sent a link to {email}.": since #64 and #70 the email carries a 6-digit code as well as the link, and the code works on any phone. Names the next action: the "Type the code" link below it opens the field. %1$s is {email}, the session's address. -->
+    <string name="gate_line">You can sign in, but creating or joining a bond needs a verified address. We sent a 6-digit code to %1$s. Type the code below, or open the link in the same email.</string>
+    <!-- PROPOSED (§63). A centred secondary link above "Send it again": opens the verify screen for the session's address, where the code is typed. -->
+    <string name="gate_type_code">Type the code</string>
+    <!-- verify.resend: states.md §1b, "one resend affordance". "It" is the email, which carries both the code and the link. -->
     <string name="gate_resend">Send it again</string>
     <!-- verify.resent. Replaces the resend link for a minute, so a second tap is not a silent no-op. -->
     <string name="gate_resent">Sent again. You can ask for another in a minute.</string>

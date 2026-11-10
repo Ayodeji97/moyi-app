@@ -361,14 +361,19 @@ class RepositoryDailyLoop(
             }
         }
         if (queued == null || view.status != TodayStatus.NotWritten) return view.copy(refusal = refusal)
-        val zone = bond.anchorTimezone?.let { runCatching { TimeZone.of(it) }.getOrNull() }
-        val writtenOn = runCatching { LocalDate.parse(queued.dayDate) }.getOrNull()
         return view.copy(
             status = TodayStatus.Queued,
             myEntry = queued.text,
-            queuedDay = queuedDay(queued.intendedAt, clock.now(), view.date, zone, writtenOn),
+            queuedDay = queued.dayFor(view.date, bond),
             refusal = refusal,
         )
+    }
+
+    /** Which day [this] queued entry counts for if it sends now, while [shown] is on Today. */
+    private fun QueuedEntry.dayFor(shown: LocalDate, bond: Bond): QueuedDay {
+        val zone = bond.anchorTimezone?.let { runCatching { TimeZone.of(it) }.getOrNull() }
+        val writtenOn = runCatching { LocalDate.parse(dayDate) }.getOrNull()
+        return queuedDay(intendedAt, clock.now(), shown, zone, writtenOn)
     }
 
     /** The outbox is local and should not fail; if it does, Today still draws the server's day. */
@@ -386,9 +391,22 @@ class RepositoryDailyLoop(
         publish(currentBond, day.copy(myEntry = entry))
     }
 
-    /** A failed refresh keeps what is shown (states.md §10: no "may be out of date" banner); a failed first load is the error. */
-    private fun failed() {
-        if (_state.value !is DailyLoopState.Ready) _state.value = DailyLoopState.Failed
+    /**
+     * A failed refresh keeps what is shown (states.md §10: no "may be out of date" banner),
+     * except that a Queued line is worked out again; a failed first load is the error.
+     */
+    private suspend fun failed() {
+        val shown = _state.value
+        if (shown !is DailyLoopState.Ready) {
+            _state.value = DailyLoopState.Failed
+            return
+        }
+        // Offline the day cannot be asked for, but the Queued line can still be told again:
+        // which day the entry counts for moves with the clock as the late-entry grace runs out.
+        val currentBond = bond ?: return
+        if (shown.day.status != TodayStatus.Queued) return
+        val queued = outboxQuietly { outbox.queuedFor(currentBond.id) } ?: return
+        _state.value = DailyLoopState.Ready(shown.day.copy(queuedDay = queued.dayFor(shown.day.date, currentBond)))
     }
 
     private fun DataError.Network.isNotFound(): Boolean = this is DataError.Network.Api && problem.status == 404

@@ -38,7 +38,8 @@ class RepositoryDailyLoopTest {
     private val cache = FakeTodayCache()
     private val outbox = FakeOutbox()
     private val archiveCache = FakeArchiveCache()
-    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, FixedClock(NOON_ON_THE_DAY), archiveCache)
+    private val clock = FixedClock(NOON_ON_THE_DAY)
+    private val loop = RepositoryDailyLoop(bonds, entries, cache, outbox, outbox, clock, archiveCache)
 
     private val ready get() = assertIs<DailyLoopState.Ready>(loop.state.value).day
 
@@ -335,16 +336,33 @@ class RepositoryDailyLoopTest {
     }
 
     @Test
-    fun anEntryQueuedOnAnEarlierBondDaySaysThatDayHasClosed() = runTest {
-        // Tapped at 23:30 in Lagos on the 13th; it is now noon on the 14th.
+    fun anEntryQueuedOnAnEarlierBondDayNamesThatDayWhileTheGraceRuns() = runTest {
+        // Tapped at 23:30 in Lagos on the 13th; it is now 07:00 on the 14th, eight hours later.
+        clock.instant = Instant.parse("2026-09-14T06:00:00Z")
         outbox.queue += queuedAt(Instant.parse("2026-09-13T22:30:00Z"), dayDate = "2026-09-13")
         loop.refresh()
-        assertEquals(QueuedDay.EarlierDayClosed(LocalDate(2026, 9, 13)), ready.queuedDay)
+        assertEquals(QueuedDay.EarlierDay(LocalDate(2026, 9, 13)), ready.queuedDay)
     }
 
     @Test
-    fun anEntryQueuedMoreThan36HoursAgoCountsForTheDayItSends() = runTest {
-        outbox.queue += queuedAt(Instant.parse("2026-09-12T22:00:00Z"), dayDate = "2026-09-12")
+    fun anOfflineRefreshTellsTheQueuedLineAgainOnceTheGraceRunsOut() = runTest {
+        clock.instant = Instant.parse("2026-09-14T06:00:00Z")
+        outbox.queue += queuedAt(Instant.parse("2026-09-13T22:30:00Z"), dayDate = "2026-09-13")
+        loop.refresh()
+        assertEquals(QueuedDay.EarlierDay(LocalDate(2026, 9, 13)), ready.queuedDay)
+
+        // Still offline at noon, twelve and a half hours after the tap: the 13th can no longer take it.
+        clock.instant = NOON_ON_THE_DAY
+        bonds.result = Result.Failure(DataError.Network.NoInternet)
+        loop.refresh()
+        assertEquals(TodayStatus.Queued, ready.status, "a refresh that failed keeps the day")
+        assertEquals(QueuedDay.DayItSends, ready.queuedDay)
+    }
+
+    @Test
+    fun anEntryQueuedMoreThan12HoursAgoOnAnEarlierDayCountsForTheDayItSends() = runTest {
+        // 23:30 in Lagos on the 13th, seen at noon on the 14th: past the late-entry grace.
+        outbox.queue += queuedAt(Instant.parse("2026-09-13T22:30:00Z"), dayDate = "2026-09-13")
         loop.refresh()
         assertEquals(QueuedDay.DayItSends, ready.queuedDay)
     }

@@ -60,9 +60,11 @@
     <!-- proposed -->
     <!-- PROPOSED. states.md §3 has no announce for Queued (384:327). Shaped like the others ("Written. ..."), and it says only what is true of my entry: it is on the device and will send. No partner status. -->
     <string name="today_announce_queued">Written. It will send when you're back online</string>
-    <!-- PROPOSED. Queued, written on an earlier Bond-day that has closed (BR-3a (c): a closed day takes no entry, so it counts for the day it sends). states.md §10 has only the same-day line. %1$s = the locale date it was written on, "Saturday, 7 November". -->
-    <string name="today_queued_line_earlier">It'll send when you're back online. %1$s has closed, so it will count for the day it sends.</string>
-    <!-- Approved (2026-11-08, strings-proposed.md §12). Queued for a day that will have closed by the time it sends: it counts for the day it sends. Stays until the backend keeps a day open about 12 h past its end (docs/backend-contract-gaps.md row 25). -->
+    <!-- PROPOSED (docs/missing-components.md §63). today.queued.line.earlier, held by the owner on 2026-11-08 (strings-proposed.md §12) until the backend kept a Bond-day open about 12 h past its end, now shipped (backend #154, settlesAt). Queued, written on an earlier Bond-day whose late-entry grace has not run out: sent now, it counts for that day. Worded as §12 said it would become, so it reads exactly like today_queued_line. %1$s is {day}, the Bond-day it was written on, as dayInSentence formats it for the locale ("Saturday, 7 November"). -->
+    <string name="today_queued_line_earlier">It'll send when you're back online. It will count for %1$s.</string>
+    <!-- PROPOSED (§63). The pane announcement for Queued on an earlier Bond-day: states.md "Queued offline" asks for the day it counts for to be announced. Shaped like today_announce_queued, with the day named. %1$s is {day}, as above. -->
+    <string name="today_announce_queued_earlier">Written for %1$s. It will send when you're back online</string>
+    <!-- Approved (2026-11-08, strings-proposed.md §12). Queued on an earlier Bond-day more than 12 h ago (the late-entry grace, FR-045 as amended): it counts for the day it sends. -->
     <string name="today_queued_line_late">It'll send when you're back online. It will count for the day it sends.</string>
     <!-- Approved (2026-11-08, strings-proposed.md §12). Neutral, never danger: nothing was lost. Shown with the "Open Write" action. A queued entry the server refused (not a connection problem): copy.md's error shape, what happened, what is kept, where to go next. -->
     <string name="today_queued_refused">That didn't send. Your words are kept in Write, ready to send again.</string>

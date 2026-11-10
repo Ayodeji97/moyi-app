@@ -25,7 +25,10 @@ import kotlin.time.Duration.Companion.minutes
  * which is when someone who opened the link in their mail app comes back
  * (states.md §10: show the correct state on foreground refresh).
  *
- * "Send it again" asks for a new link and turns into the acknowledgement for
+ * "Type the code" opens the verify screen, signed in, for the session's address: the email
+ * carries a 6-digit code as well as the link (docs/missing-components.md §58, §63).
+ *
+ * "Send it again" asks for a new email and turns into the acknowledgement for
  * a minute, the server's own cooldown (ADR-0023).
  */
 class UnverifiedGateViewModel(
@@ -46,6 +49,7 @@ class UnverifiedGateViewModel(
     fun onAction(action: UnverifiedGateAction) {
         when (action) {
             UnverifiedGateAction.OnResendClick -> resend()
+            UnverifiedGateAction.OnTypeCodeClick -> typeCode()
             UnverifiedGateAction.OnResume -> recheck()
             UnverifiedGateAction.OnAccountClick -> viewModelScope.launch { _events.send(UnverifiedGateEvent.NavigateToAccount) }
         }
@@ -64,6 +68,13 @@ class UnverifiedGateViewModel(
                 }
             }
         }
+    }
+
+    /** A code names no account on its own: with no address known yet there is nowhere to type it. */
+    private fun typeCode() {
+        val email = _state.value.email
+        if (email.isEmpty()) return
+        viewModelScope.launch { _events.send(UnverifiedGateEvent.NavigateToVerify(email)) }
     }
 
     private fun resend() {
