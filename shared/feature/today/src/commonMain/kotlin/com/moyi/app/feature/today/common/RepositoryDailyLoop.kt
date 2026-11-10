@@ -1,5 +1,6 @@
 package com.moyi.app.feature.today.common
 
+import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchiveCache
@@ -207,10 +208,16 @@ class RepositoryDailyLoop(
                 // composer says so, as it does for a new entry. The entry keeps the one it had.
                 imageMediaId != null && result.error.isNotAttachable(IMAGE_FIELD) -> WriteResult.PhotoRefused
                 voiceMediaId != null && result.error.isNotAttachable(VOICE_FIELD) -> WriteResult.VoiceRefused
+                // The partner wrote while the composer was open: BR-7, immutable once revealed. Retrying
+                // can never work, so it is its own result (not Save failed), and Today is read again
+                // so that it shows the revealed day by the time the person leaves the composer.
+                result.error.isEntryImmutable() -> {
+                    load()
+                    WriteResult.Revealed
+                }
                 else -> {
-                    // 409 ENTRY_IMMUTABLE (the day opened while editing) or BOND_ARCHIVED: no state is
-                    // drawn for either (states.md §5a), so the composer shows Save failed and Today
-                    // underneath catches up.
+                    // 409 BOND_ARCHIVED (the bond ended while editing): no state is drawn
+                    // (states.md §5a), so the composer shows Save failed and Today underneath catches up.
                     if (result.error.isConflictOrGone()) load()
                     WriteResult.Failed
                 }
@@ -414,6 +421,10 @@ class RepositoryDailyLoop(
     /** `422 VALIDATION_FAILED` naming [field] (`MEDIA_NOT_ATTACHABLE`, backend `GratitudeErrors`). */
     private fun DataError.Network.isNotAttachable(field: String): Boolean =
         this is DataError.Network.Api && problem.fieldErrors.any { it.field == field }
+
+    /** `409 ENTRY_IMMUTABLE`: the entry's day has been revealed (BR-7). */
+    private fun DataError.Network.isEntryImmutable(): Boolean =
+        this is DataError.Network.Api && problem.status == 409 && problem.code == ApiErrorCode.ENTRY_IMMUTABLE
 
     private fun DataError.Network.isConflictOrGone(): Boolean =
         this is DataError.Network.Api && (problem.status == 409 || problem.status == 404)

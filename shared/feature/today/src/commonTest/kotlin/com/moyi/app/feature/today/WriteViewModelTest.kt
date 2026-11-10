@@ -212,6 +212,47 @@ class WriteViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun anEditOnADayThatOpenedMeanwhileOffersNoRetryAndKeepsTheWordsUntilSeeToday() = runTest {
+        written("Already written.")
+        loop.editResult = WriteResult.Revealed
+        val vm = viewModel(editing = true)
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("Already written, and more."))
+            vm.onAction(WriteAction.OnSubmit)
+            expectNoEvents()
+            val state = vm.state.value
+            assertEquals(WriteSubmit.Revealed, state.submit)
+            assertEquals("Already written, and more.", state.text, "the words stay, to copy")
+            assertEquals(PARTNER, state.partnerName)
+            assertFalse(state.canSubmit, "no Save, no Try again")
+            assertFalse(state.wouldLoseWords, "nothing left to save, so leaving asks nothing")
+
+            // Save does nothing more, and typing is ignored.
+            vm.onAction(WriteAction.OnSubmit)
+            vm.onAction(WriteAction.OnTextChange("changed again"))
+            assertEquals(1, loop.edits.size)
+            assertEquals("Already written, and more.", vm.state.value.text)
+
+            vm.onAction(WriteAction.OnSeeTodayClick)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+    }
+
+    @Test
+    fun closingAnEditThatFoundTheDayOpenDoesNotAskToDiscard() = runTest {
+        written("Already written.")
+        loop.editResult = WriteResult.Revealed
+        val vm = viewModel(editing = true)
+        vm.events.test {
+            vm.onAction(WriteAction.OnTextChange("Already written, and more."))
+            vm.onAction(WriteAction.OnSubmit)
+            vm.onAction(WriteAction.OnCloseClick)
+            assertEquals(WriteEvent.Close, awaitItem())
+        }
+        assertFalse(vm.state.value.confirmingDiscard)
+    }
+
+    @Test
     fun savingAnEditSendsAnEditNotASecondEntry() = runTest {
         written("Already written.")
         val vm = viewModel(editing = true)

@@ -20,6 +20,13 @@ enum class WriteSubmit {
 
     /** Offline: accepted on the device, waiting for a connection (PrimaryAction State=QueuedOffline). */
     Queued,
+
+    /**
+     * Edit only: the partner wrote while the composer was open, so the day has opened and the
+     * entry stays as it was (`409 ENTRY_IMMUTABLE`, BR-7). No Save, no Try again: the action
+     * is "See today". The typed words stay on screen, to copy, until the person leaves.
+     */
+    Revealed,
 }
 
 /**
@@ -81,6 +88,8 @@ data class WriteState(
     val sendingVoice: Boolean = false,
     /** What went wrong with the voice note itself, said above the action. */
     val voiceNotice: VoiceNotice? = null,
+    /** The other member's name, for the line shown in [WriteSubmit.Revealed]; null when the day did not carry one. */
+    val partnerName: String? = null,
 ) {
     /**
      * Whether a photo is already in the slot, the entry's own (Edit) or one picked here, so
@@ -119,7 +128,8 @@ data class WriteState(
      * Keep as a draft, closes and keeps it.
      */
     val wouldLoseWords: Boolean
-        get() = ((text.isNotBlank() && text != originalText) || photo != null || voice != null) && submit != WriteSubmit.Queued
+        get() = ((text.isNotBlank() && text != originalText) || photo != null || voice != null) &&
+            submit != WriteSubmit.Queued && submit != WriteSubmit.Revealed
 
     /**
      * 1 to 500, with at least one non-space character (FR-041). A photo or a voice note never
@@ -128,7 +138,7 @@ data class WriteState(
      * recording, the recording is stopped first: Send waits for it.
      */
     val canSubmit: Boolean
-        get() = text.isNotBlank() && !overLimit && photoNotice != PhotoNotice.Refused &&
+        get() = submit != WriteSubmit.Revealed && text.isNotBlank() && !overLimit && photoNotice != PhotoNotice.Refused &&
             voiceNotice != VoiceNotice.Refused && !recording
 
     companion object {
@@ -146,6 +156,10 @@ sealed interface WriteAction {
 
     /** Send, Save, or Try again: whichever the action reads. */
     data object OnSubmit : WriteAction
+
+    /** "See today", once an edit found the day revealed: close, to Today, which shows the revealed day. */
+    data object OnSeeTodayClick : WriteAction
+
     /**
      * Close the task (D10): the X on Android, Cancel on iOS, Android Back, or a
      * swipe down on the iOS sheet. Asks first when [WriteState.wouldLoseWords].

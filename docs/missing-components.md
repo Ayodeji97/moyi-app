@@ -1549,6 +1549,32 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   - `ds_voice_speed_1`, `ds_voice_speed_1_5`, `ds_voice_speed_2`: "1", "1.5", "2", one string
     each so a locale can write its own decimal separator ("1,5").
 
+## Edit after the reveal (PR fix/edit-after-reveal)
+
+### 65. Write, Edit mode, when the day opened while editing (`409 ENTRY_IMMUTABLE`)
+
+- **Why:** the owner added a photo and a voice note in Edit and tapped Save. The partner had
+  written meanwhile, so the day was revealed and the server refused the edit (BR-7: an entry
+  is immutable once revealed). The composer said "That didn't save. Your words ... are still
+  here" with Try again, which can never work. states.md §5 "Endpoints and states with no
+  screen" recorded the gap ("`409 ENTRY_IMMUTABLE` on save: Nothing draws 'it was revealed
+  while you were editing'. Needs a state on the composer, and copy"). **That gap is now
+  built**, as PROPOSED, with no Figma frame.
+- **Built, PROPOSED:** `WriteSubmit.Revealed` (Edit only). The action is no longer Save or Try
+  again: it is **See today**, which closes the composer onto Today, already read again, now
+  showing the revealed day. Above the action, one centred `body` line in `ink` (neutral, not
+  `danger`: nothing went wrong that the person could mend), announced politely. The typed
+  words stay in the field to copy; typing is ignored and the photo and voice controls are
+  hidden. Leaving by the X, Back or See today never asks to discard, deletes the edit draft,
+  and deletes the photo and voice note uploaded for the failed edit (they were never attached).
+- **Strings (PROPOSED):**
+  - `write_revealed`: "{partner} has written, so today has opened. Your entry stays as it was
+    before this edit."
+  - `write_revealed_no_name`: "Your partner has written, so today has opened. Your entry stays
+    as it was before this edit." (only if the day carried no partner name)
+  - `write_see_today`: "See today".
+- Other 409s on an edit (`BOND_ARCHIVED`) keep the generic Save failed, as before.
+
 ## The composer keeps room for the words (PR fix/composer-keyboard-room)
 
 ### 66. With the keyboard up, the words keep three lines and the attachments step back (owner's iPhone, 2026-11-10)

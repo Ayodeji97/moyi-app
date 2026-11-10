@@ -13,7 +13,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +27,7 @@ import com.moyi.app.designsystem.component.ComposeField
 import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
+import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.SentPhoto
@@ -51,6 +55,9 @@ import com.moyi.app.feature.today.resources.write_photo_source_title
 import com.moyi.app.feature.today.resources.write_photo_source_title_replace
 import com.moyi.app.feature.today.resources.write_photo_unreadable
 import com.moyi.app.feature.today.resources.write_queued
+import com.moyi.app.feature.today.resources.write_revealed
+import com.moyi.app.feature.today.resources.write_revealed_no_name
+import com.moyi.app.feature.today.resources.write_see_today
 import com.moyi.app.feature.today.resources.write_save
 import com.moyi.app.feature.today.resources.write_save_failed
 import com.moyi.app.feature.today.resources.write_save_failed_photo
@@ -147,6 +154,19 @@ fun WriteScreen(
         onClose = { onAction(WriteAction.OnCloseClick) },
         scrollContent = false,
         action = {
+            if (state.submit == WriteSubmit.Revealed) {
+                // Not an error and not danger (docs/missing-components.md §65): nothing went wrong
+                // that the person could mend. It says what happened, what is kept, and what is next.
+                MoyiText(
+                    text = state.partnerName?.let { stringResource(Res.string.write_revealed, it) }
+                        ?: stringResource(Res.string.write_revealed_no_name),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                Spacer(Modifier.height(MoyiTheme.spacing.sm))
+            }
             errorLine(state)?.let { line ->
                 InlineError(stringResource(line))
                 Spacer(Modifier.height(MoyiTheme.spacing.sm))
@@ -159,7 +179,9 @@ fun WriteScreen(
             ) {
                 PrimaryAction(
                     text = stringResource(actionLabel(state)),
-                    onClick = { onAction(WriteAction.OnSubmit) },
+                    onClick = {
+                        onAction(if (state.submit == WriteSubmit.Revealed) WriteAction.OnSeeTodayClick else WriteAction.OnSubmit)
+                    },
                     state = actionState(state),
                 )
             }
@@ -302,6 +324,7 @@ private fun errorLine(state: WriteState): StringResource? = when {
 }
 
 private fun actionLabel(state: WriteState) = when {
+    state.submit == WriteSubmit.Revealed -> Res.string.write_see_today
     state.submit == WriteSubmit.Failed -> Res.string.write_try_again
     state.editing -> Res.string.write_save
     else -> Res.string.write_send
@@ -322,6 +345,7 @@ private fun actionState(state: WriteState): PrimaryActionState = when (state.sub
     )
     WriteSubmit.Queued -> PrimaryActionState.QueuedOffline(stringResource(Res.string.write_queued))
     // Over the limit or empty: not sendable (181:83's state was not read; Disabled is the reading).
+    WriteSubmit.Revealed -> PrimaryActionState.Idle
     WriteSubmit.Idle, WriteSubmit.Failed -> if (state.canSubmit) PrimaryActionState.Idle else PrimaryActionState.Disabled
 }
 
@@ -347,5 +371,8 @@ private const val PREVIEW_TEXT = "The way you sat on the phone with me until I f
 @Preview @Composable private fun WriteSaveFailedPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, submit = WriteSubmit.Failed))
 
 @Preview @Composable private fun WriteDiscardPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, confirmingDiscard = true))
+
+@Preview @Composable private fun WriteRevealedPreview() =
+    WritePreview(WriteState(text = PREVIEW_TEXT, prompt = null, editing = true, submit = WriteSubmit.Revealed, partnerName = "Tola"))
 
 @Preview @Composable private fun WriteQueuedPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, submit = WriteSubmit.Queued))
