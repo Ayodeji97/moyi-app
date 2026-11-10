@@ -123,6 +123,8 @@ private class AndroidVoicePlayer(
                 exo = it
             }
         player.setMediaSource(mediaSource(source))
+        // Before prepare, so the first sound is already at the session's speed.
+        player.setPlaybackSpeed(speedFactor)
         player.prepare()
         player.playWhenReady = true
     }
@@ -147,6 +149,15 @@ private class AndroidVoicePlayer(
 
     override fun seekNative(positionMs: Long) {
         exo?.seekTo(positionMs)
+    }
+
+    /**
+     * `PlaybackParameters(speed)` with its default pitch of 1: ExoPlayer's Sonic processor
+     * stretches time, so a voice sounds like itself, only quicker. It applies from the current
+     * position, playing or paused, without a seek.
+     */
+    override fun setSpeedNative(factor: Float) {
+        exo?.setPlaybackSpeed(factor)
     }
 
     private fun mediaSource(source: VoiceSource): MediaSource = when (source) {

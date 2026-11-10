@@ -81,6 +81,11 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
                 return@launch
             }
             made.delegate = delegate
+            // enableRate must be set before prepareToPlay, or rate is ignored. AVAudioPlayer's
+            // rate keeps the pitch (time-stretching), so 1.5x and 2x still sound like the voice.
+            made.enableRate = true
+            made.prepareToPlay()
+            made.rate = speedFactor
             player = made
             if (made.play()) onReady((made.duration * MS_PER_SECOND).toLong()) else onFailed()
         }
@@ -111,6 +116,11 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
     /** `currentTime` moves a playing or paused AVAudioPlayer; a paused one stays paused. */
     override fun seekNative(positionMs: Long) {
         player?.currentTime = positionMs / MS_PER_SECOND
+    }
+
+    /** `rate` changes a playing AVAudioPlayer at once, from where it is. */
+    override fun setSpeedNative(factor: Float) {
+        player?.rate = factor
     }
 
     /** The whole file, in memory, or null. The URL is a credential: it is never logged. */

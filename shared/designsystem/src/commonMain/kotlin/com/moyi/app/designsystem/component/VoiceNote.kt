@@ -8,6 +8,22 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.material3.Text
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.unit.Constraints
+import com.moyi.app.designsystem.platform.PlaybackSpeed
+import com.moyi.app.designsystem.resources.ds_voice_speed
+import com.moyi.app.designsystem.resources.ds_voice_speed_1
+import com.moyi.app.designsystem.resources.ds_voice_speed_1_5
+import com.moyi.app.designsystem.resources.ds_voice_speed_2
+import com.moyi.app.designsystem.resources.ds_voice_speed_spoken
+import com.moyi.app.designsystem.resources.ds_voice_speed_spoken_normal
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -128,6 +144,7 @@ private fun VoicePlayerRow(voice: VoiceNote) {
     val url = voice.url ?: return
     val player = rememberStoppingPlayer()
     val playback by player.playback.collectAsStateWithLifecycle()
+    val speed by player.speed.collectAsStateWithLifecycle()
     val levels = remember(voice.key) { WaveformMath.placeholder(voice.key) }
     PlayerControls(
         playback = playback.withKnownDuration(voice.durationMs),
@@ -135,6 +152,8 @@ private fun VoicePlayerRow(voice: VoiceNote) {
         label = stringResource(Res.string.ds_voice_position),
         onToggle = { player.toggle(VoiceSource.Remote(voice.key, url)) },
         onSeek = player::seekTo,
+        speed = speed,
+        onCycleSpeed = player::cycleSpeed,
     )
 }
 
@@ -147,9 +166,9 @@ private fun rememberStoppingPlayer(): VoicePlayer {
 }
 
 /**
- * Play or pause, the waveform with its clock ("0:12 of 0:42") under it; then, at the end
- * of the row, [trailing] (the composer's Record again and Remove). The lines for loading
- * and failure go under it.
+ * Play or pause, the waveform with its clock ("0:12 of 0:42") under it and the [SpeedPill]
+ * at the clock's end; then, at the end of the row, [trailing] (the composer's Record again
+ * and Remove). The lines for loading and failure go under it.
  */
 @Composable
 private fun PlayerControls(
@@ -158,6 +177,8 @@ private fun PlayerControls(
     label: String,
     onToggle: () -> Unit,
     onSeek: (Long) -> Unit,
+    speed: PlaybackSpeed,
+    onCycleSpeed: () -> Unit,
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
@@ -181,8 +202,11 @@ private fun PlayerControls(
                     // Seeking needs the length; the server sends it with every playable voice note.
                     onSeek = duration?.let { length -> { fraction: Float -> onSeek(WaveformMath.positionAt(fraction, length)) } },
                 )
-                // "0:12 of 0:42". It repeats the waveform's position, which a screen reader already hears.
-                MoyiText(text = clock, tone = TextTone.Muted, modifier = Modifier.clearAndSetSemantics {})
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // "0:12 of 0:42". It repeats the waveform's position, which a screen reader already hears.
+                    MoyiText(text = clock, tone = TextTone.Muted, modifier = Modifier.weight(1f).clearAndSetSemantics {})
+                    SpeedPill(speed = speed, onClick = onCycleSpeed)
+                }
             }
             trailing()
         }
@@ -285,6 +309,7 @@ fun AttachedVoice(
         is AttachedVoiceState.Recorded -> {
             val player = rememberStoppingPlayer()
             val playback by player.playback.collectAsStateWithLifecycle()
+            val speed by player.speed.collectAsStateWithLifecycle()
             val voice = state.voice
             val key = "listen-back-${voice.hashCode()}"
             val levels = remember(voice) { voice.levels.ifEmpty { WaveformMath.placeholder(key) } }
@@ -294,6 +319,8 @@ fun AttachedVoice(
                 label = stringResource(Res.string.ds_compose_recorded, formatClock(voice.durationMs)),
                 onToggle = { player.toggle(VoiceSource.Local(key, voice)) },
                 onSeek = player::seekTo,
+                speed = speed,
+                onCycleSpeed = player::cycleSpeed,
                 modifier = modifier,
             ) {
                 if (onRecordAgain != null) {
@@ -340,6 +367,7 @@ fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier
     }
     val player = rememberStoppingPlayer()
     val playback by player.playback.collectAsStateWithLifecycle()
+    val speed by player.speed.collectAsStateWithLifecycle()
     val levels = remember(voice.key) { WaveformMath.placeholder(voice.key) }
     PlayerControls(
         playback = playback.withKnownDuration(voice.durationMs),
@@ -347,9 +375,83 @@ fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier
         label = stringResource(Res.string.ds_compose_sent_voice),
         onToggle = { player.toggle(VoiceSource.Remote(voice.key, url)) },
         onSeek = player::seekTo,
+        speed = speed,
+        onCycleSpeed = player::cycleSpeed,
         modifier = modifier,
         trailing = again,
     )
+}
+
+/**
+ * **PROPOSED, not drawn** (docs/missing-components.md §64, owner request 2026-11-10): how
+ * fast the voice note plays, "1×", "1.5×" or "2×", at the end of its clock line, on every
+ * voice note and before play too. A tap moves it on ([PlaybackSpeed.next]); the speed is the
+ * session's, so every pill shows the same one.
+ *
+ * Built from Rosewood tokens only, matched to its neighbours: the `label` style (the clock's
+ * small companion, not a second clock) in `ink`, inside a `shapes.full` pill with a
+ * `hairline` of `outlineStrong` (a control's border, as [Chip]'s, never the decorative
+ * `outline`), no fill, padded `sm` across and `xs` down. The pill keeps the clock line's
+ * height; its 48 target ([MoyiDimens.SpeedPill.Target], NFR-101) reaches past it above and
+ * below, so it is drawn over the waveform band's empty bottom edge and the line under it
+ * without moving either.
+ *
+ * Spoken "Playback speed, 1.5 times" ("Playback speed, normal" at 1x), a button.
+ */
+@Composable
+private fun SpeedPill(speed: PlaybackSpeed, onClick: () -> Unit) {
+    val colors = MoyiTheme.colors
+    val pill = MoyiTheme.shapes.full
+    val value = stringResource(
+        when (speed) {
+            PlaybackSpeed.Normal -> Res.string.ds_voice_speed_1
+            PlaybackSpeed.OneAndAHalf -> Res.string.ds_voice_speed_1_5
+            PlaybackSpeed.Twice -> Res.string.ds_voice_speed_2
+        },
+    )
+    val spoken = if (speed == PlaybackSpeed.Normal) {
+        stringResource(Res.string.ds_voice_speed_spoken_normal)
+    } else {
+        stringResource(Res.string.ds_voice_speed_spoken, value)
+    }
+    val targetPx = with(LocalDensity.current) { MoyiDimens.SpeedPill.Target.roundToPx() }
+    Layout(
+        content = {
+            // The visible pill: drawn, never spoken (the target below says it).
+            Text(
+                text = stringResource(Res.string.ds_voice_speed, value),
+                style = MoyiTheme.type.label,
+                color = colors.ink,
+                maxLines = 1,
+                modifier = Modifier
+                    .semantics { hideFromAccessibility() }
+                    .border(MoyiTheme.shapes.hairline, colors.outlineStrong, pill)
+                    .padding(horizontal = MoyiTheme.spacing.sm, vertical = MoyiTheme.spacing.xs),
+            )
+            // The 48 target: nothing drawn, it takes the tap and is what a screen reader finds.
+            Box(
+                Modifier
+                    .clickable(role = Role.Button, onClick = onClick)
+                    .clearAndSetSemantics {
+                        contentDescription = spoken
+                        role = Role.Button
+                        onClick { onClick(); true }
+                    },
+            )
+        },
+    ) { measurables, constraints ->
+        val visible = measurables[0].measure(constraints.copy(minWidth = 0, minHeight = 0))
+        val width = maxOf(visible.width, targetPx)
+        val height = maxOf(visible.height, targetPx)
+        val target = measurables[1].measure(Constraints.fixed(width, height))
+        // As tall as the pill, so the clock line keeps its height; as wide as the target.
+        layout(width, visible.height) {
+            visible.place((width - visible.width) / 2, 0)
+            // Centred on the pill, reaching above and below it: Compose hit-tests a child
+            // outside its parent's bounds, so the whole 48 takes the tap.
+            target.place(0, (visible.height - height) / 2)
+        }
+    }
 }
 
 /**
