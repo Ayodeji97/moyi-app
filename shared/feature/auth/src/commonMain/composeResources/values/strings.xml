@@ -152,12 +152,12 @@
 
     <!-- reset.request.heading. Forgot password (344:41). -->
     <string name="reset_request_heading">Reset your password</string>
-    <!-- reset.request.line. Never confirms whether the address has an account (states.md §1b). -->
-    <string name="reset_request_line">Enter the email on your account. If there is one, a link is on its way.</string>
-    <!-- PROPOSED. Forgot password's action: no key in strings-proposed.md. -->
-    <string name="reset_request_action">Send the link</string>
-    <!-- PROPOSED. The action while the request is in flight (states.md §1c). -->
-    <string name="reset_request_action_sending">Sending the link</string>
+    <!-- PROPOSED (docs/missing-components.md §61), replacing reset.request.line ("If there is one, a link is on its way"): the email now carries a 6-digit code, typed on Choose a new password (§58). Still never confirms whether the address has an account (states.md §1b): it says what happens if there is one. -->
+    <string name="reset_request_line">Enter the email on your account. If there is one, we will send it a 6-digit code to reset your password.</string>
+    <!-- PROPOSED (§61), was "Send the link". Forgot password's action: no key in strings-proposed.md. -->
+    <string name="reset_request_action">Send the code</string>
+    <!-- PROPOSED (§61), was "Sending the link". The action while the request is in flight (states.md §1c). -->
+    <string name="reset_request_action_sending">Sending the code</string>
     <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58), replacing the owner's 2026-11-06 interim line ("copy the link and paste it in Moyi"): the email now carries a 6-digit code. Still names the next step (owner ruling 2026-11-06). No lifetime: it is a backend default that can drift. MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
     <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Type it below with your new password.</string>
     <!-- reset.new.heading. The Reset password heading (345:30), and the link on Reset link sent that opens it. -->
