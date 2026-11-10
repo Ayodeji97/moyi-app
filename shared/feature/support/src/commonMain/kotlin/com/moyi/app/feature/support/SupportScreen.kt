@@ -162,7 +162,7 @@ private fun Acknowledgement(heading: String, line: String, origin: SupportOrigin
                 actionLabel = stringResource(
                     when (origin) {
                         SupportOrigin.Settings -> Res.string.support_back_settings
-                        SupportOrigin.Error -> Res.string.support_back_generic
+                        SupportOrigin.Error, SupportOrigin.Account -> Res.string.support_back_generic
                     },
                 ),
                 onAction = { onAction(SupportAction.OnDoneClick) },

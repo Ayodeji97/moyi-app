@@ -158,8 +158,8 @@ In the same `strings.xml`, marked `PROPOSED`. The rest of the three screens' cop
 
 | Key | String | Why it exists |
 |---|---|---|
-| `reset_request_action` | Send the link | Forgot password's PrimaryAction; `strings-proposed.md` has no key for it |
-| `reset_request_action_sending` | Sending the link | Its Sending label (states.md §1c) |
+| `reset_request_action` | Send the code (was Send the link until §61) | Forgot password's PrimaryAction; `strings-proposed.md` has no key for it |
+| `reset_request_action_sending` | Sending the code (was Sending the link until §61) | Its Sending label (states.md §1c) |
 | `reset_action_sending` | Saving | "Save and sign in" while saving and signing in |
 | `reset_token_error_expired` | That link has expired. Go back and ask for a new one. | `410 PASSWORD_RESET_TOKEN_EXPIRED` under the paste field (§6a) |
 
@@ -1275,7 +1275,7 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
     (`danger`, primary: no friction on leaving) and Cancel. Once asked, the same screen shows
     **Your account will be deleted on {date}** with **Keep my account** as the primary, as
     Keep the box is during the cooling-off.
-  - **Get help** is left out (no support screen yet), with no dead row.
+  - **Get help** was left out (no support screen yet), with no dead row; added since, with Terms and Privacy (§61).
 - **Reachable with no bond (owner ruling 2026-11-09, "it should be moved"):** Account is its
   own navigation graph beside Bond settings, not inside it, so every signed-in person reaches
   it. Bond settings keeps its **Account** row (Figma 575:1782 draws it there).
@@ -1383,4 +1383,94 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   Edit should say in words that a photo or voice note cannot be taken off yet, or whether its
   missing Remove is enough until the backend adds one (row 41); (3) the `Image` glyph for
   Replace, the same as Add a photo, since no swap glyph is drawn; (4) the library or camera
-  question (§41) keeps its title "Add a photo" when it is opened by Replace.
+  question (§41) keeps its title "Add a photo" when it is opened by Replace (answered in §61: it now says "Replace the photo").
+
+## Follow-ups from the integration smoke test (2026-11-09, PR fix/smoke-followups-2026-11-09)
+
+### 61. Four fixes the smoke test found after PRs #56 to #69
+
+- **Account carries Get help and Terms and Privacy.** A person with no bond reaches Account
+  only through the account icon (§57) on the unverified gate, relationship type and the
+  archived bond, and Bond settings, which held both rows (§54, §55), is out of reach. Account
+  now shows **Get help** (the drawn row of `Account 7 · settings`, strings-proposed.md §9
+  `account.help`) and **Terms and Privacy** (Bond settings' `settings_row_legal`) between
+  Export your archive and Sign out, also under the failed load. They reuse Bond settings'
+  strings and open the same screens: Support and `LegalRoute`, pushed over Account. Support
+  opened from Account says **Go back** (`support_back_generic`, PROPOSED in §55) when done,
+  not "Back to settings", since a person with no bond has no settings behind it
+  (`SupportOrigin.Account`). Bond settings keeps both rows, so a person in a bond sees them
+  twice (in Just you, and one tap deeper in Account). **Owner ruling 2026-11-10:** keep them
+  in both.
+- **Forgot password names the code.** Since §58 the reset email carries a 6-digit code and a
+  link, and "Check your email" already says so (`reset_sent_line`, approved 2026-11-09). The
+  screen before it still promised a link. **Approved 2026-11-10** (owner ruling), replacing
+  the 2026-11-05 words:
+
+  | Key | Was | Now |
+  |---|---|---|
+  | `reset_request_line` | Enter the email on your account. If there is one, a link is on its way. | Enter the email on your account. If there is one, we will send it a 6-digit code to reset your password. |
+  | `reset_request_action` | Send the link | Send the code |
+  | `reset_request_action_sending` | Sending the link | Sending the code |
+
+  The line still never says whether the address has an account (states.md §1b): it says
+  what happens if there is one. `reset_token_error_expired` ("That link has expired") and
+  `reset_link_ready` stay: only a link is ever answered 410, and the second is shown only
+  when a link opened the screen.
+- **The library or camera question says Replace when a photo is already there.** Answers §60's
+  open question (4) the conservative way: the title follows what the pick does. **Approved
+  2026-11-10** (owner ruling):
+  `write_photo_source_title_replace` "Replace the photo" (the words of
+  `ds_compose_replace_photo`, the Replace target that opens it), shown when the entry's own
+  photo is in the slot (Edit) or a photo was already picked (`WriteState.replacingPhoto`);
+  "Add a photo" otherwise. The answers (Choose a photo, Take a photo, Cancel) are unchanged.
+- **A verify link opened by someone already verified is dropped.** Signed in and verified
+  (the session says so, or a screen only a verified person reaches is on the back stack:
+  onboarding, Today, the archived bond), a verify link has nothing left to do for this
+  account. It used to open Verify, whose 410 (an old link is spent) showed the expired layout
+  with "Send a new email" and "Use a different address". Now the link is consumed and the
+  app comes to the front where the person is; on a cold start that is their own start
+  (Today). A verify link for **another** account opened on this phone while signed in to a
+  verified one is ignored the same way, so that account is not confirmed from here (it still
+  can be with its code, or its link opened signed out). The client cannot tell the two apart
+  without sending the token, and sending it is what produced the expired layout. **Owner
+  ruling 2026-11-10:** that stays ignored. The same ruling adds a snackbar saying why nothing
+  opened: §62.
+- **Sign up's email helper names the code.** `register_email_helper`, "We will send a
+  verification link.", is now "We will send a 6-digit code to confirm it." (**approved
+  2026-11-10**, owner ruling).
+
+### 62. A snackbar: "Your email is already confirmed." (owner ruling 2026-11-10)
+
+- **Why:** a verify link opened by someone signed in whose address is already confirmed opens
+  nothing (§61). Without a word the tap looks broken. The owner asked for a snackbar; the
+  design system draws none, so this is the smallest one, built from Rosewood tokens only.
+- **Built, PROPOSED component** (`MoyiSnackbar`, designsystem `component/MoyiSnackbar.kt`):
+  - One line of `body` in `ink` on `surfaceRaised`, bordered by the hairline `outline`,
+    radius 12, padding 16 (tokens.md §3: a floating surface is raised, never shadowed). Full
+    width inside the gutter, 16 above where a screen's `PrimaryAction` sits (88 above the
+    bottom of the safe area), so it never covers the main action. (First built at 24 above
+    the safe area; the 2026-11-10 smoke test showed it hiding Today's Write for its 4 s.)
+  - **No action button and no close control.** It goes away by itself after 4 seconds
+    (`SnackbarShowMillis`, PROPOSED: no token sets how long a note stays), or longer when
+    Android's accessibility timeout setting asks for more time
+    (`LocalAccessibilityManager.calculateRecommendedTimeoutMillis`).
+  - **Announced** through a polite live region, so TalkBack and VoiceOver read it without
+    moving focus.
+  - **Motion:** fades in over `motion.crossFade` (200 ms) while rising a quarter of its
+    height on `motion.push`'s 300 ms `FastOutSlowIn`, and the reverse on the way out. With
+    iOS Reduce Motion it only fades (`rememberReduceMotion`); Android's "Remove animations"
+    scales both to nothing on its own.
+  - Drawn by the shell over every screen and only after the launch splash has gone, so a
+    link that opened the app cold is not told about under the splash. It takes no touches.
+- **String:** `verify_already_confirmed` "Your email is already confirmed." (the owner's
+  words; approved 2026-11-10).
+- **When it shows:** only when `accountLinkRouting` answers `LinkRouting.AlreadyVerified`: a
+  verify link, someone signed in, and the address confirmed (the session says so, or a screen
+  only a verified person reaches is on screen or under it). Never for a reset link, never
+  signed out, never at the unverified gate. `LinkRoutingTest` covers each case.
+- **Owner rulings 2026-11-10:** (1) the 4-second stay is kept; (2) `MoyiSnackbar` stays
+  single-use until a Figma frame draws a snackbar, and then becomes the design system's one;
+  (3) `verify_already_confirmed` is **approved 2026-11-10** and goes into `copy.md` (the owner
+  adds it in the parent repo); (4) a native VoiceOver announcement
+  (`UIAccessibility.post(.announcement)`) is added only if the smoke test shows VoiceOver
+  stays silent on the live region.

@@ -29,12 +29,14 @@ import com.moyi.app.designsystem.platform.screenPopExitTransition
 import coil3.compose.setSingletonImageLoaderFactory
 import com.moyi.app.data.network.StorageHttpClient
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.MoyiSnackbar
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.debug.UiPreviewRoute
 import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.LegalRoute
+import com.moyi.app.feature.auth.navigation.alreadyVerifiedNotice
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
 import com.moyi.app.feature.auth.navigation.RegisterRoute
@@ -136,6 +138,8 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         var splashDone by rememberSaveable { mutableStateOf(start != null) }
         // Latched: once the first screen has drawn something, later screens change nothing.
         var firstScreenDrawn by remember { mutableStateOf(false) }
+        // A verify link that opened nothing because the address is already confirmed (§62).
+        var alreadyVerified by remember { mutableStateOf(false) }
 
         val startDestination = start
         Box(Modifier.fillMaxSize()) {
@@ -148,6 +152,7 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     viewModel = viewModel,
                     session = session,
                     onFirstScreenDrawn = { firstScreenDrawn = true },
+                    onAlreadyVerified = { alreadyVerified = true },
                 )
             }
             if (!splashDone) {
@@ -155,6 +160,12 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     ready = firstScreenDrawn,
                     signedIn = session is SessionState.SignedIn,
                     onFinished = { splashDone = true },
+                )
+            } else {
+                // Over every screen, and only once the splash has gone, so its time is all seen.
+                MoyiSnackbar(
+                    message = if (alreadyVerified) alreadyVerifiedNotice() else null,
+                    onDismiss = { alreadyVerified = false },
                 )
             }
         }
@@ -167,6 +178,8 @@ private fun MoyiNavHost(
     viewModel: AppViewModel,
     session: SessionState,
     onFirstScreenDrawn: () -> Unit,
+    /** A verify link opened nothing because the address is already confirmed: say so. */
+    onAlreadyVerified: () -> Unit,
 ) {
     val navController = rememberNavController()
     val pushTaps = koinInject<PushTapInbox>()
@@ -247,7 +260,12 @@ private fun MoyiNavHost(
         // Its Export your archive and account target push over it too.
         bondArchivedDestination(navController, onStartNewBond = { navController.navigate(OnboardingRoute) }, onOpenAccount = openAccount)
         // Account: from Bond settings, and from each screen a person with no open bond lands on.
-        accountGraph(navController)
+        // Its Get help and Terms and Privacy open the same screens Bond settings does, over it.
+        accountGraph(
+            navController = navController,
+            onOpenLegal = { navController.navigate(LegalRoute()) { launchSingleTop = true } },
+            onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Account)) { launchSingleTop = true } },
+        )
         if (UiPreview.onboarding) uiPreviewGraph(navController)
     }
 
@@ -281,11 +299,19 @@ private fun MoyiNavHost(
     LaunchedEffect(pendingAccountLink, currentEntry, session, dayLoaded) {
         val link = pendingAccountLink ?: return@LaunchedEffect
         if (currentEntry == null) return@LaunchedEffect
-        val signedInEmail = (session as? SessionState.SignedIn)?.user?.email
-        val routing = accountLinkRouting(link, navController.linkPlace(session, dayLoaded), navController.currentAccountRoute(), signedInEmail)
+        val user = (session as? SessionState.SignedIn)?.user
+        // The session's emailVerified is as old as the sign-in: true is final, false may be stale
+        // (verified at the gate since), so a verified-only screen under this one counts too.
+        val routing = accountLinkRouting(
+            link,
+            navController.linkPlace(session, dayLoaded),
+            navController.currentAccountRoute(),
+            signedInEmail = user?.email,
+            signedInVerified = user?.emailVerified == true || navController.verifiedOnlyScreenOnBackStack(),
+        )
         if (routing != LinkRouting.Wait) {
             links.consume(link)
-            navController.follow(routing)
+            if (routing == LinkRouting.AlreadyVerified) onAlreadyVerified() else navController.follow(routing)
         }
     }
     LaunchedEffect(pendingInvite, currentEntry, session, dayLoaded) {
@@ -318,6 +344,15 @@ private fun NavHostController.linkPlace(session: SessionState, dayLoaded: Boolea
     }
 }
 
+/**
+ * Whether a screen only a verified person reaches (onboarding, Today, the archived bond) is on
+ * the back stack, e.g. under Account opened from relationship type ([accountLinkRouting]).
+ */
+private fun NavHostController.verifiedOnlyScreenOnBackStack(): Boolean =
+    runCatching { getBackStackEntry<OnboardingRoute>() }.isSuccess ||
+        runCatching { getBackStackEntry<TodayRoute>() }.isSuccess ||
+        runCatching { getBackStackEntry<BondArchivedRoute>() }.isSuccess
+
 /** The route on screen when a verify or reset link continues it ([accountLinkRouting]); else null. */
 private fun NavHostController.currentAccountRoute(): Any? {
     val entry = currentBackStackEntry ?: return null
@@ -339,6 +374,7 @@ private fun NavHostController.follow(routing: LinkRouting) {
                 if (routing.replaceCurrent && current != null) popUpTo(current.id) { inclusive = true }
             }
         }
+        LinkRouting.AlreadyVerified -> Unit
         is LinkRouting.Reset -> resetTo(routing.route)
         is LinkRouting.AboveToday -> {
             popBackStack<TodayRoute>(inclusive = false)

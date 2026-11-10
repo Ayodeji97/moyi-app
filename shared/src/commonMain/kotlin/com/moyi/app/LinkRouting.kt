@@ -89,6 +89,13 @@ internal sealed interface LinkRouting {
 
     /** Back to Today, then [route] over it. */
     data class AboveToday(val route: Any) : LinkRouting
+
+    /**
+     * A verify link for someone whose address is already confirmed: nothing opens, the person
+     * stays where they are, and the shell says "Your email is already confirmed." (owner ruling
+     * 2026-11-10, docs/missing-components.md §62).
+     */
+    data object AlreadyVerified : LinkRouting
 }
 
 /**
@@ -106,14 +113,29 @@ internal sealed interface LinkRouting {
  * - Signed in, a confirmed address returns to the signed-in start ([VerifyRoute.signedIn]),
  *   which reads `GET /me` again and moves on from the gate. If the link is for another
  *   account, that account is confirmed (the token is the proof) and this one is unchanged.
+ * - Signed in with the address already confirmed ([signedInVerified], or a place only a
+ *   verified person reaches: onboarding, Today, the archived bond), a verify link has nothing
+ *   left to do ([LinkRouting.AlreadyVerified]): the person stays where they belong, which on a
+ *   cold start is their own start (Today), and is told their email is already confirmed.
+ *   Opening Verify there would show an old link as expired and offer "Use a different
+ *   address" to someone whose address is done (smoke test 2026-11-09, §61). A link for another
+ *   account opened here is ignored the same way (owner ruling 2026-11-10).
  */
-internal fun accountLinkRouting(link: DeepLink, place: LinkPlace, current: Any?, signedInEmail: String?): LinkRouting {
+internal fun accountLinkRouting(
+    link: DeepLink,
+    place: LinkPlace,
+    current: Any?,
+    signedInEmail: String?,
+    signedInVerified: Boolean = false,
+): LinkRouting {
     if (place == LinkPlace.Settling) return LinkRouting.Wait
     val signedIn = place != LinkPlace.SignedOut
     val email = if (signedIn) signedInEmail.orEmpty() else ""
+    val verified = signedIn && (signedInVerified || place in VERIFIED_PLACES)
     return when (link) {
-        is DeepLink.VerifyEmail -> when (current) {
-            is VerifyRoute -> LinkRouting.Push(current.copy(linkToken = link.token), replaceCurrent = true)
+        is DeepLink.VerifyEmail -> when {
+            verified -> LinkRouting.AlreadyVerified
+            current is VerifyRoute -> LinkRouting.Push(current.copy(linkToken = link.token), replaceCurrent = true)
             else -> LinkRouting.Push(VerifyRoute(email = email, linkToken = link.token, signedIn = signedIn))
         }
         is DeepLink.ResetPassword -> when (current) {
@@ -124,6 +146,12 @@ internal fun accountLinkRouting(link: DeepLink, place: LinkPlace, current: Any?,
         is DeepLink.Invite, DeepLink.Unknown -> LinkRouting.Wait
     }
 }
+
+/**
+ * Places only a verified person reaches: onboarding comes after the gate (FR-002), and a bond,
+ * open (Today) or ended (the archived bond), could only be made or joined once verified.
+ */
+private val VERIFIED_PLACES = setOf(LinkPlace.Onboarding, LinkPlace.SignedInApp, LinkPlace.Archived)
 
 /**
  * An invite link. `GET /invites/{code}` needs a session and a verified address (states.md

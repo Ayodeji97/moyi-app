@@ -38,8 +38,8 @@
     <string name="register_name_error_blank">Add your name to continue.</string>
     <!-- PROPOSED. Name over the API's 80 characters. -->
     <string name="register_name_error_long">Keep it to 80 characters or fewer.</string>
-    <!-- field.email.helper. -->
-    <string name="register_email_helper">We will send a verification link.</string>
+    <!-- Approved 2026-11-10 (owner ruling, docs/missing-components.md §61), replacing "We will send a verification link.": the email carries a 6-digit code (and a link), §58. -->
+    <string name="register_email_helper">We will send a 6-digit code to confirm it.</string>
     <!-- field.password.helper. -->
     <string name="register_password_helper">8 characters or more. Anything you like.</string>
     <!-- PROPOSED. Password shorter than 8 (client), or VALID_PASSWORD from the server for a password under 8. No composition rules, per field.password.helper's note. -->
@@ -107,6 +107,8 @@
     <string name="verify_expired_action_sending">Sending a new email</string>
     <!-- PROPOSED (docs/missing-components.md §52, reworded §58). verify.line when the emailed link opened the app on a phone that does not know the address (a cold start, signed out). The link was checked at once; this is what the screen says if it did not work. A code cannot be used without the address, so the line names the link. -->
     <string name="verify_line_no_address">Open the link in the email we sent on this phone, or paste it below.</string>
+    <!-- Approved 2026-11-10 (owner ruling, docs/missing-components.md §62). The snackbar shown when a verify link opens the app for someone signed in whose address is already confirmed: the link opens nothing. -->
+    <string name="verify_already_confirmed">Your email is already confirmed.</string>
     <!-- PROPOSED (docs/missing-components.md §52). verify.expired.line when the address is not known, so nothing can be resent from here: sign in (login_action), and the unverified gate sends a new link. -->
     <string name="verify_expired_line_no_address">Links last 24 hours and work once. Sign in and we can send you a new one.</string>
 
@@ -152,12 +154,12 @@
 
     <!-- reset.request.heading. Forgot password (344:41). -->
     <string name="reset_request_heading">Reset your password</string>
-    <!-- reset.request.line. Never confirms whether the address has an account (states.md §1b). -->
-    <string name="reset_request_line">Enter the email on your account. If there is one, a link is on its way.</string>
-    <!-- PROPOSED. Forgot password's action: no key in strings-proposed.md. -->
-    <string name="reset_request_action">Send the link</string>
-    <!-- PROPOSED. The action while the request is in flight (states.md §1c). -->
-    <string name="reset_request_action_sending">Sending the link</string>
+    <!-- Approved 2026-11-10 (owner ruling, docs/missing-components.md §61), replacing reset.request.line ("If there is one, a link is on its way"): the email now carries a 6-digit code, typed on Choose a new password (§58). Still never confirms whether the address has an account (states.md §1b): it says what happens if there is one. -->
+    <string name="reset_request_line">Enter the email on your account. If there is one, we will send it a 6-digit code to reset your password.</string>
+    <!-- Approved 2026-11-10 (§61), was "Send the link". Forgot password's action: no key in strings-proposed.md. -->
+    <string name="reset_request_action">Send the code</string>
+    <!-- Approved 2026-11-10 (§61), was "Sending the link". The action while the request is in flight (states.md §1c). -->
+    <string name="reset_request_action_sending">Sending the code</string>
     <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58), replacing the owner's 2026-11-06 interim line ("copy the link and paste it in Moyi"): the email now carries a 6-digit code. Still names the next step (owner ruling 2026-11-06). No lifetime: it is a backend default that can drift. MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
     <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Type it below with your new password.</string>
     <!-- reset.new.heading. The Reset password heading (345:30), and the link on Reset link sent that opens it. -->

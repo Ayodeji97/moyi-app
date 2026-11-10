@@ -82,6 +82,13 @@ data class WriteState(
     /** What went wrong with the voice note itself, said above the action. */
     val voiceNotice: VoiceNotice? = null,
 ) {
+    /**
+     * Whether a photo is already in the slot, the entry's own (Edit) or one picked here, so
+     * the library or camera question is titled "Replace the photo", not "Add a photo"
+     * (docs/missing-components.md §61): whatever is picked next goes in its place.
+     */
+    val replacingPhoto: Boolean get() = photo != null || sentPhoto != null
+
     /** A finished recording, ready to send; null while recording or with none. */
     val recordedVoice: AttachedVoiceState.Recorded? get() = voice as? AttachedVoiceState.Recorded
 

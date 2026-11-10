@@ -50,6 +50,8 @@ import com.moyi.app.feature.bond.resources.settings_cancel
 import com.moyi.app.feature.bond.resources.settings_load_error_action
 import com.moyi.app.feature.bond.resources.settings_load_error_heading
 import com.moyi.app.feature.bond.resources.settings_load_error_line
+import com.moyi.app.feature.bond.resources.settings_row_help
+import com.moyi.app.feature.bond.resources.settings_row_legal
 import com.moyi.app.feature.bond.resources.settings_row_sign_out
 import com.moyi.app.feature.bond.resources.settings_signing_out
 import com.moyi.app.feature.bond.settings.RowKind
@@ -64,13 +66,16 @@ import kotlin.time.Instant
  * Bond settings › Just you › Account, and from the account icon on the screens a person with
  * no open bond lands on (docs/missing-components.md §57). The eyebrow Account, the heading
  * Your account, then its rows: **Export your archive** (PROPOSED here: the drawn screen has
- * Get help and Delete your account), **Sign out** (owner ruling 2026-11-09: Bond settings'
+ * Get help and Delete your account), **Get help** (the drawn row; Support, [onOpenHelp]),
+ * **Terms and Privacy** (Bond settings' row, [onOpenLegal]; PROPOSED placement,
+ * docs/missing-components.md §61), **Sign out** (owner ruling 2026-11-09: Bond settings'
  * row, words and sequence, so a person with no bond can sign out too) and **Delete your
  * account**, underlined in `danger`, with the day it happens while one is pending. Get help
- * is left out, with no dead row: its screen is not built.
+ * and Terms and Privacy are here so a person with no bond, whose only way in is the account
+ * icon, can reach both (smoke test 2026-11-09); they open the same screens Bond settings does.
  *
- * Loading is the bare `surface`; a failed load is the Generic error with Try again, and
- * Export your archive and Sign out stay under it, because neither needs anything `/me` holds.
+ * Loading is the bare `surface`; a failed load is the Generic error with Try again, and every
+ * row but Delete your account stays under it, because none of them needs anything `/me` holds.
  * While signing out every row waits, and Sign out says Signing out.
  */
 @Composable
@@ -78,6 +83,8 @@ fun AccountScreen(
     state: AccountState,
     onAction: (AccountAction) -> Unit,
     onBack: () -> Unit,
+    onOpenHelp: () -> Unit = {},
+    onOpenLegal: () -> Unit = {},
 ) {
     when (state.load) {
         AccountLoad.Loading -> Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
@@ -92,12 +99,14 @@ fun AccountScreen(
             }
             Spacer(Modifier.height(MoyiTheme.spacing.xxl))
             ExportRow(state, onAction)
+            HelpAndLegalRows(state, onOpenHelp, onOpenLegal)
             SignOutRow(state, onAction)
         }
         AccountLoad.Ready -> MoyiScaffold(onBack = onBack) {
             ScreenHeader(eyebrow = stringResource(Res.string.account_eyebrow), heading = stringResource(Res.string.account_heading))
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
             ExportRow(state, onAction)
+            HelpAndLegalRows(state, onOpenHelp, onOpenLegal)
             SignOutRow(state, onAction)
             SettingsRow(
                 label = stringResource(Res.string.account_row_delete),
@@ -124,6 +133,26 @@ private fun ExportRow(state: AccountState, onAction: (AccountAction) -> Unit) {
         kind = RowKind.Navigates,
         enabled = !state.signingOut,
         onClick = { onAction(AccountAction.OnExportClick) },
+    )
+}
+
+/**
+ * Get help and Terms and Privacy, Bond settings' rows and words, opening the same screens.
+ * Pure navigation, so they call the shell directly, as Bond settings' Terms and Privacy does.
+ */
+@Composable
+private fun HelpAndLegalRows(state: AccountState, onOpenHelp: () -> Unit, onOpenLegal: () -> Unit) {
+    SettingsRow(
+        label = stringResource(Res.string.settings_row_help),
+        kind = RowKind.Navigates,
+        enabled = !state.signingOut,
+        onClick = onOpenHelp,
+    )
+    SettingsRow(
+        label = stringResource(Res.string.settings_row_legal),
+        kind = RowKind.Navigates,
+        enabled = !state.signingOut,
+        onClick = onOpenLegal,
     )
 }
 

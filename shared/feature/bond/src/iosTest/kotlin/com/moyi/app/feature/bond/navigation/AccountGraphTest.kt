@@ -19,7 +19,7 @@ class AccountGraphTest {
         graph = createGraph(startDestination = BondArchivedRoute()) {
             bondArchivedDestination(this@apply, onStartNewBond = {}, onOpenAccount = {})
             bondSettingsGraph(this@apply, onBondEnded = {}, onOpenLegal = {}, onOpenSupport = {})
-            accountGraph(this@apply)
+            accountGraph(this@apply, onOpenLegal = {}, onOpenSupport = {})
         }
     }
 
