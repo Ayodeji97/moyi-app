@@ -1,4 +1,5 @@
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+import com.moyi.buildlogic.isProductionHost
 import com.moyi.buildlogic.moyiLocalProperty
 import java.net.URI
 
@@ -55,13 +56,12 @@ val apiBaseUrlOverride: String? = moyiLocalProperty("moyi.apiBaseUrl").orNull
  */
 fun checkedBaseUrl(url: String, source: String): String {
     val uri = runCatching { URI(url) }.getOrNull()
-    // trimEnd('.'): "getmoyi.app." is the same host to DNS, and must not slip past.
-    val host = uri?.host?.lowercase()?.trimEnd('.')
+    val host = uri?.host
     require(uri != null && uri.scheme in setOf("http", "https") && host != null) {
         "moyi.apiBaseUrl from $source is not an http(s) URL with a host: '$url'"
     }
-    val productionIps = setOf("91.98.71.136") // moyi-prod-1
-    if (host == "getmoyi.app" || host.endsWith(".getmoyi.app") || host in productionIps) {
+    // The same list guards the Android debug cleartext allowlist (androidApp, ProductionHosts.kt).
+    if (isProductionHost(host)) {
         throw GradleException(
             "moyi.apiBaseUrl from $source points at production ($host).\n" +
                 "Development builds never talk to getmoyi.app: real people's data lives there " +

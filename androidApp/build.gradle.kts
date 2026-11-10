@@ -1,5 +1,8 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import com.moyi.buildlogic.DebugNetworkSecurityConfigTask
+import com.moyi.buildlogic.moyiLocalProperty
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.net.URI
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -36,6 +39,37 @@ tasks.matching { it.name == "processReleaseGoogleServices" }.configureEach {
         }
     }
 }
+// ---- Debug cleartext allowlist (README, "Which backend the app talks to") ----------------
+//
+// The local backend speaks plain HTTP, and so does the MinIO it signs photo and voice URLs
+// for (http://<the Mac's LAN address>:9000). Debug builds allow cleartext to:
+//  - 10.0.2.2, localhost and 127.0.0.1: the Mac from the emulator, and `adb reverse`;
+//  - the host of moyi.apiBaseUrl, so a phone on the same Wi-Fi reaches the Mac;
+//  - moyi.devMediaHosts (comma-separated), for a media host the base URL does not name,
+//    e.g. the emulator on 10.0.2.2 with MinIO signing for 192.168.1.70.
+// The file is generated (DebugNetworkSecurityConfigTask) because these hosts are each
+// developer's own. A production host fails the build. Release has no such file and keeps
+// Android's default: HTTPS only.
+val debugCleartextHosts: Provider<List<String>> = moyiLocalProperty("moyi.apiBaseUrl")
+    .map { url -> URI(url).host.orEmpty() }
+    .orElse("")
+    .zip(moyiLocalProperty("moyi.devMediaHosts").orElse("")) { apiHost: String, media: String ->
+        listOf("10.0.2.2", "localhost", "127.0.0.1", apiHost) + media.split(',')
+    }
+val generateDebugNetworkSecurityConfig =
+    tasks.register<DebugNetworkSecurityConfigTask>("generateDebugNetworkSecurityConfig") {
+        hosts.set(debugCleartextHosts)
+        outputDir.set(layout.buildDirectory.dir("generated/res/debugNetworkSecurity"))
+    }
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.sources.res?.addGeneratedSourceDirectory(
+            generateDebugNetworkSecurityConfig,
+            DebugNetworkSecurityConfigTask::outputDir,
+        )
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     // PushKind and PushPayload: the channel ids and the keys a tapped push carries.

@@ -140,13 +140,32 @@ Real devices:
 
 - **Android phone over USB:** run `adb reverse tcp:8080 tcp:8080`, then set
   `moyi.apiBaseUrl=http://localhost:8080/api/v1`. The phone's port 8080 is forwarded to
-  the Mac. Debug builds allow cleartext HTTP to `10.0.2.2`, `localhost` and `127.0.0.1`
-  only (`androidApp/src/debug/res/xml/network_security_config.xml`).
+  the Mac.
 - **iPhone on the same Wi-Fi:** set `moyi.apiBaseUrl=http://<mac-name>.local:8080/api/v1`
   (the name is in System Settings, General, Sharing, Local hostname). Allow incoming
   connections for `java` in the macOS firewall, and accept the Local Network prompt on
   the phone. `Info.plist` allows local networking (`NSAllowsLocalNetworking`) and carries
   the prompt's text (`NSLocalNetworkUsageDescription`).
+
+**Cleartext on Android (debug only).** The local backend speaks plain HTTP, and so does the
+MinIO it signs photo and voice URLs for (`http://<the Mac's LAN address>:9000`). Android
+refuses cleartext unless the host is listed, so the debug build generates its
+`network_security_config.xml` (task `:androidApp:generateDebugNetworkSecurityConfig`) and
+allows plain HTTP to these hosts and no others:
+
+- `10.0.2.2`, `localhost` and `127.0.0.1` (the emulator's Mac, and `adb reverse`);
+- the host of `moyi.apiBaseUrl`, so a phone on the same Wi-Fi reaches the Mac;
+- `moyi.devMediaHosts`, comma-separated, for a media host the base URL does not name. On
+  the emulator's default base URL, MinIO still signs for the LAN address:
+
+```properties
+moyi.devMediaHosts=192.168.1.70
+```
+
+A host that is `getmoyi.app`, one of its subdomains or production's address fails the
+build, like the base URL check. Release builds have no such file: Android's default, HTTPS
+only. If photos or voice notes stay empty and logcat says `CleartextNotPermittedException`,
+the host in the message is missing from this list.
 
 **Signing for a real iPhone.** Create `iosApp/Configuration/Local.xcconfig` (git-ignored)
 with one line, your Team ID from developer.apple.com, Account, Membership details (or
