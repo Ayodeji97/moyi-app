@@ -34,8 +34,9 @@ import org.koin.dsl.module
 val repositoryModule = module {
     single<AuthRepository> { AuthRepositoryImpl(get(), get(), get(), pushTokens = get(), deviceInfo = get()) }
     single<NotificationSettingsRepository> { NotificationSettingsRepositoryImpl(get(), get()) }
-    // No push provider until Firebase is set up: the one binding to swap for FCM (NoPushTokenSource).
-    single<PushTokenSource> { NoPushTokenSource }
+    // FCM's token for this device, fed by the platform shells (pushTokenReceived); stays null
+    // where Firebase is not configured, and then nothing is registered.
+    single { PushTokenHolder() } bind PushTokenSource::class
     single {
         PushTokenRegistrar(get(), get(), get(), get<SessionManager>().sessionState, CoroutineScope(SupervisorJob() + Dispatchers.Default))
     } bind PushTokenRegistration::class

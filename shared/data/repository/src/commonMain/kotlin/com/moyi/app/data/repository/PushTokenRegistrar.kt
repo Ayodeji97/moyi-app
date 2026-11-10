@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -132,10 +131,29 @@ class PushTokenRegistrar(
 }
 
 /**
- * Until Firebase is set up there is no push provider, so there is never a token and
- * nothing is registered. **The one place to swap in FCM**: bind an FCM-backed
- * [PushTokenSource] in [repositoryModule] instead of this.
+ * The push token this device has, as the platform's FCM SDK last reported it: the one
+ * [PushTokenSource] the app binds ([repositoryModule]). It knows nothing of Firebase; the
+ * platform shells feed it through [update] (`pushTokenReceived` in `:shared`):
+ * - **Android**: `MoyiMessagingService.onNewToken`, and `FirebaseMessaging.getToken()` once
+ *   per launch (`FirebasePush.start`);
+ * - **iOS**: `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)` in
+ *   `NotificationDelegate.swift`, once the APNs token has been handed to FCM.
+ *
+ * **Where Firebase is not configured** (no `google-services.json` or
+ * `GoogleService-Info.plist`: CI, a fresh clone), nothing feeds it, the token stays null
+ * and nothing is registered: what `NoPushTokenSource` did before Firebase was set up.
+ *
+ * The token is a secret device identifier: never logged, and [toString] hides it.
  */
-object NoPushTokenSource : PushTokenSource {
-    override val token: Flow<String?> = flowOf(null)
+class PushTokenHolder : PushTokenSource {
+    private val current = MutableStateFlow<String?>(null)
+
+    override val token: Flow<String?> = current
+
+    /** A blank token is the provider having none, the same as null. */
+    fun update(token: String?) {
+        current.value = token?.takeIf { it.isNotBlank() }
+    }
+
+    override fun toString(): String = "PushTokenHolder(<redacted>)"
 }

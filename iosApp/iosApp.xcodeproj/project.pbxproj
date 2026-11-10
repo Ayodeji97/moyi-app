@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A1C0DE5A1C0DE5A1C0DE5A01 /* SQLCipher in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0DE5A1C0DE5A1C0DE5A02 /* SQLCipher */; };
+		F1BE0CA5F1BE0CA5F1BE0C01 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F1BE0CA5F1BE0CA5F1BE0C02 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1C0DE5A1C0DE5A1C0DE5A01 /* SQLCipher in Frameworks */,
+				F1BE0CA5F1BE0CA5F1BE0C01 /* FirebaseMessaging in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -80,6 +82,7 @@
 				4AFA15116DEA56C4063E439B /* Sources */,
 				3D34A72B95C8C6CFCA9C0736 /* Frameworks */,
 				5A366E960C7BEA6AAAB74B44 /* Resources */,
+				F1BE0CA5F1BE0CA5F1BE0C04 /* Copy Firebase Config */,
 			);
 			buildRules = (
 			);
@@ -91,6 +94,7 @@
 			name = iosApp;
 			packageProductDependencies = (
 				A1C0DE5A1C0DE5A1C0DE5A02 /* SQLCipher */,
+				F1BE0CA5F1BE0CA5F1BE0C02 /* FirebaseMessaging */,
 			);
 			productName = iosApp;
 			productReference = CB7BFF004E6AD398ABBA224F /* Moyi.app */;
@@ -122,6 +126,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1C0DE5A1C0DE5A1C0DE5A03 /* XCRemoteSwiftPackageReference "SQLCipher.swift" */,
+				F1BE0CA5F1BE0CA5F1BE0C03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FBE9BB698CF44DC93FC3DF65 /* Products */;
@@ -162,6 +167,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+		};
+		F1BE0CA5F1BE0CA5F1BE0C04 /* Copy Firebase Config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Firebase Config";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Firebase's config for this build configuration (README, \"Push notifications\"). Never committed:\n# iosApp/Firebase/Debug/ holds the dev project's (moyi-65b68), iosApp/Firebase/Release/ moyi-prod's.\n# Without one the app is built without it and runs without push (AppDelegate checks).\nSRC=\"${SRCROOT}/Firebase/${CONFIGURATION}/GoogleService-Info.plist\"\nDST=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$SRC\" ]; then\n  # Also removes one a previous build, or a copy dropped into iosApp/iosApp/, put there.\n  rm -f \"$DST\"\n  echo \"warning: No ${SRC#${SRCROOT}/}: this ${CONFIGURATION} build has no push (README, Push notifications).\"\n  exit 0\nfi\n# A Release build never talks to the development Firebase project.\nif [ \"$CONFIGURATION\" = \"Release\" ] && grep -q \"<string>moyi-65b68</string>\" \"$SRC\"; then\n  echo \"error: ${SRC#${SRCROOT}/} is the development project's (moyi-65b68). Release needs moyi-prod's.\"\n  exit 1\nfi\ncp \"$SRC\" \"$DST\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -387,6 +411,14 @@
 				version = 4.20.0;
 			};
 		};
+		F1BE0CA5F1BE0CA5F1BE0C03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = exactVersion;
+				version = 13.1.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -394,6 +426,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1C0DE5A1C0DE5A1C0DE5A03 /* XCRemoteSwiftPackageReference "SQLCipher.swift" */;
 			productName = SQLCipher;
+		};
+		F1BE0CA5F1BE0CA5F1BE0C02 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F1BE0CA5F1BE0CA5F1BE0C03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

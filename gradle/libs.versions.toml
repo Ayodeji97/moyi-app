@@ -25,6 +25,11 @@ coil = "3.6.3"
 # Voice notes: streams and plays the backend's Ogg Opus on Android (rememberVoicePlayer).
 androidx-media3 = "1.5.1"
 composeMultiplatform = "1.12.2"
+# Push (FCM) on Android: the BoM picks every Firebase library's version; the Gradle plugin
+# turns google-services.json into resources. The iOS app gets FirebaseMessaging from the
+# firebase-ios-sdk Swift package (iosApp.xcodeproj), versioned on its own.
+firebase-bom = "35.1.0"
+googleServices = "4.5.0"
 junit = "4.13.2"
 junit5 = "5.14.4"
 kermit = "2.2.0"
@@ -58,6 +63,8 @@ androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", vers
 androidx-testRunner = { module = "androidx.test:runner", version.ref = "androidx-testRunner" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "androidx-browser" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "androidx-work" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 compose-uiTooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "composeMultiplatform" }
@@ -129,4 +136,5 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 buildkonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildkonfig" }
 openapiGenerator = { id = "org.openapi.generator", version.ref = "openapi-generator" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 
