@@ -107,7 +107,7 @@
     <string name="verify_expired_action_sending">Sending a new email</string>
     <!-- PROPOSED (docs/missing-components.md §52, reworded §58). verify.line when the emailed link opened the app on a phone that does not know the address (a cold start, signed out). The link was checked at once; this is what the screen says if it did not work. A code cannot be used without the address, so the line names the link. -->
     <string name="verify_line_no_address">Open the link in the email we sent on this phone, or paste it below.</string>
-    <!-- PROPOSED (docs/missing-components.md §62; words from the owner's ruling 2026-11-10). The snackbar shown when a verify link opens the app for someone signed in whose address is already confirmed: the link opens nothing. -->
+    <!-- Approved 2026-11-10 (owner ruling, docs/missing-components.md §62). The snackbar shown when a verify link opens the app for someone signed in whose address is already confirmed: the link opens nothing. -->
     <string name="verify_already_confirmed">Your email is already confirmed.</string>
     <!-- PROPOSED (docs/missing-components.md §52). verify.expired.line when the address is not known, so nothing can be resent from here: sign in (login_action), and the unverified gate sends a new link. -->
     <string name="verify_expired_line_no_address">Links last 24 hours and work once. Sign in and we can send you a new one.</string>

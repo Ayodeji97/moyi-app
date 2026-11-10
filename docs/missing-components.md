@@ -1460,12 +1460,15 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
     scales both to nothing on its own.
   - Drawn by the shell over every screen and only after the launch splash has gone, so a
     link that opened the app cold is not told about under the splash. It takes no touches.
-- **PROPOSED string:** `verify_already_confirmed` "Your email is already confirmed." (the
-  owner's words, 2026-11-10; kept PROPOSED until it is in `copy.md`).
+- **String:** `verify_already_confirmed` "Your email is already confirmed." (the owner's
+  words; approved 2026-11-10).
 - **When it shows:** only when `accountLinkRouting` answers `LinkRouting.AlreadyVerified`: a
   verify link, someone signed in, and the address confirmed (the session says so, or a screen
   only a verified person reaches is on screen or under it). Never for a reset link, never
   signed out, never at the unverified gate. `LinkRoutingTest` covers each case.
-- **Open questions for the owner:** (1) the 4-second stay; (2) whether this component should
-  become the design system's one snackbar for other one-line notes, or stay single-use until a
-  frame is drawn.
+- **Owner rulings 2026-11-10:** (1) the 4-second stay is kept; (2) `MoyiSnackbar` stays
+  single-use until a Figma frame draws a snackbar, and then becomes the design system's one;
+  (3) `verify_already_confirmed` is **approved 2026-11-10** and goes into `copy.md` (the owner
+  adds it in the parent repo); (4) a native VoiceOver announcement
+  (`UIAccessibility.post(.announcement)`) is added only if the smoke test shows VoiceOver
+  stays silent on the live region.

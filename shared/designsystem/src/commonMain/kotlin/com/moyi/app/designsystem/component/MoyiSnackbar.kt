@@ -38,7 +38,8 @@ import kotlinx.coroutines.delay
 
 /**
  * A short note at the foot of the screen that goes away by itself (PROPOSED,
- * docs/missing-components.md §62: the design system draws no snackbar). One line of `body` in
+ * docs/missing-components.md §62: the design system draws no snackbar). Single-use (the
+ * already-confirmed note) until a Figma frame draws one (owner ruling 2026-11-10). One line of `body` in
  * `ink` on `surfaceRaised`, the hairline `outline` and radius 12 (tokens.md §3: a surface that
  * floats is raised, not shadowed), inset by the gutter and 24 from the bottom of the safe area.
  *
@@ -109,7 +110,7 @@ private fun SnackbarNote(text: String) {
     )
 }
 
-/** How long the note stays (PROPOSED, §62): long enough to read one short sentence twice. */
+/** How long the note stays (§62, kept by owner ruling 2026-11-10): one short sentence, read twice. */
 const val SnackbarShowMillis = 4_000L
 
 @Preview
