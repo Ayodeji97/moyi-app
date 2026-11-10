@@ -185,7 +185,7 @@ fun AttachedPhoto(
 @Composable
 fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = Modifier, compact: Boolean = false) {
     if (photo.url == null) {
-        AttachmentFrame(modifier) {
+        AttachmentFrame(framed = compact, modifier = modifier) {
             Row(modifier = Modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.CenterVertically) {
                 MoyiText(text = stringResource(Res.string.ds_entry_photo_on_its_way), tone = TextTone.Muted, modifier = Modifier.weight(1f))
                 if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
@@ -206,7 +206,7 @@ fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = 
 
 /**
  * The small preview and, beside it, the [trailing] 48 target: shared by [AttachedPhoto] and [SentPhoto].
- * [compact]: a square thumbnail centred in one 48 line, starting where the words start.
+ * [compact]: a square thumbnail centred in one 48 line, `xs` inside its frame.
  */
 @Composable
 private fun PhotoRow(
@@ -217,8 +217,8 @@ private fun PhotoRow(
     compact: Boolean,
     trailing: @Composable () -> Unit,
 ) {
-    // In its own frame, so the control beside it is plainly the photo's (§66).
-    AttachmentFrame(modifier) {
+    // With the keyboard up, in its own frame, so the control beside it is plainly the photo's (§66).
+    AttachmentFrame(framed = compact, modifier = modifier) {
         PhotoRowContent(model, ratio, description, compact, trailing)
     }
 }
@@ -235,7 +235,8 @@ private fun PhotoRowContent(
         Row(
             modifier = Modifier
                 .heightIn(min = MoyiDimens.ComposeField.IconTarget)
-                .padding(start = MoyiDimens.ComposeField.Wrap),
+                // Inside its frame: `xs` before the 40 thumbnail, as above and below it in its 48 line.
+                .padding(start = MoyiTheme.spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(

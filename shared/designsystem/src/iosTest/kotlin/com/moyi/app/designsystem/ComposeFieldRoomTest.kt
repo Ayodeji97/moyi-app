@@ -40,6 +40,16 @@ class ComposeFieldRoomTest {
         assertTrue(abs(photo.center.y - voice.center.y) < 1f, "the photo and the voice note on one row")
         assertTrue(photo.right <= voice.left, "the photo first")
         assertTrue(with(density) { photo.height.toDp() } >= 48.dp && with(density) { voice.width.toDp() } >= 48.dp, "48 targets")
+        // The row starts where the words start: the thumbnail `xs` inside its frame, the frame at the text's edge.
+        val text = onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
+        val thumbnail = onNodeWithContentDescription("The photo you are adding").fetchSemanticsNode().boundsInRoot
+        // The text field's node is the text itself, inside its wrap: its left edge is where the words start.
+        val textStart = text.left
+        val inset = with(density) { (thumbnail.left - textStart).toDp() }
+        assertTrue(abs(inset.value - 4f) < 1f, "the row aligned with the words: thumbnail ${inset} inside the text start")
+        // Remove is well apart from play: one slip must not delete the recording.
+        val play = onNodeWithContentDescription("Play the voice note").fetchSemanticsNode().boundsInRoot
+        assertTrue(with(density) { (voice.left - play.right).toDp() } >= 16.dp, "Remove at least 16 past play, not beside it")
         // What a screen reader hears of the voice note does not change; only the bars go.
         onNodeWithContentDescription("Your voice note, 0:06").assertExists()
         onNodeWithContentDescription("Play the voice note").assertExists()

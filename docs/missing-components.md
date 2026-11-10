@@ -1597,21 +1597,27 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Built, PROPOSED (`AttachmentsLayout`, `AttachmentFrame`, the `compact` look of
   `AttachedPhoto`, `SentPhoto`, `AttachedVoice` and `SentVoice`):**
   - **While the keyboard is up and something is attached,** the attachments step back to
-    **one row**, side by side, `spacing.sm` apart:
+    **one row**, side by side, `spacing.sm` apart. The row starts where the words start (the
+    text's 12 wrap) and keeps `spacing.xs` above and below, and when the caret is kept in view the
+    whole row comes with it if both fit, so the frames are never cut by the box's edge:
     - the photo as a **40 x 40 thumbnail** (`MoyiDimens.ComposeField.CompactThumbnail`,
       Interpreted: the 4 pt half-step above and below inside its 48 line), `shapes.radius`,
-      cropped, with its remove (or, in Edit, Replace) 48 target beside it;
-    - the voice note as a **chip**: play/pause (48), the clock ("0:00 of 0:06", `inkMuted`) and
-      Remove (48). No waveform and no speed pill; Record again returns with the full row.
+      cropped, `spacing.xs` inside its frame, with its remove (or, in Edit, Replace) 48 target beside it;
+    - the voice note as a **chip**: play/pause (48), the clock ("0:00 of 0:06", `inkMuted`), a
+      `spacing.md` gap, then Remove (48). Remove is never beside play, so one slip does not throw
+      a recording away (review). No waveform, no speed pill and **no Record again** (owner ruling
+      2026-11-10); Record again returns with the full row.
       While recording: trash, the dot with its clock and the tick, without the live waveform.
     - If the two do not fit across (a very narrow screen, a large font), they stack rather
       than being cut.
   - **When the keyboard goes,** they return to full size. The change of size eases on
     `motion.control` (150 ms); with Reduce Motion (iOS) or Remove animations (Android) it is a cut.
-  - **Each attachment sits in its own frame** (design review of the same screenshot): a
-    `hairline` of the decorative `outline` on `shapes.radius`, in both layouts. The prompt's
+  - **While the keyboard is up, each attachment sits in its own frame** (design review of the
+    same screenshot): a `hairline` of the decorative `outline` on `shapes.radius`. The prompt's
     dismiss and the voice note's Remove are the same close glyph a few rows apart; inside its
     frame, each remove control plainly belongs to what it removes. No new icon, no new colour.
+    **With the keyboard down there are no frames** and the full-size layout is main's (owner
+    ruling 2026-11-10).
   - **Screen readers hear the same names:** "Remove the photo", "Remove the voice note", "The
     photo you are adding", "Play the voice note", "Your voice note, 0:06" with its position as
     the state. In the chip the clock carries the waveform's name and position (it cannot seek).
@@ -1622,5 +1628,12 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   note step back the same way, with Replace and Record again as their one control.
 - **Test:** `ComposeFieldRoomTest` (iOS Compose UI) puts both attachments in a 358 x 316 box
   (the screenshot's) and checks the words keep three lines, compact and full.
-- **For the owner:** the 40 thumbnail, the chip's contents and the frame are proposals; see
-  the PR's owner questions.
+- **Owner rulings (2026-11-10, PR #77):**
+  - The compact row stays where it is, between the words and the toolbar (not in the toolbar's line).
+  - No Record again in the compact voice chip.
+  - Frames only while the keyboard is up; with it down, main's full-size layout, unframed.
+  - A drag inside the composer scrolls it and leaves the keyboard up (it does not dismiss, unlike
+    the rest of the screen, D6).
+- **Checked, not a bug:** a recording's waveform drawn as flat dots on the iOS simulator is a quiet
+  Mac microphone. The levels are sampled by the recorder whatever the layout shows, and a
+  recording made while compact keeps its bars when the full row comes back (Android emulator).

@@ -211,6 +211,9 @@ private fun PlayerControls(
                         progressBarRangeInfo = ProgressBarRangeInfo(WaveformMath.fractionOf(playback.positionMs, duration), 0f..1f)
                     },
                 )
+                // Remove sits a clear `md` past the clock, never beside play: one slip must not
+                // throw a recording away (review of §66). Both stay 48 targets, apart.
+                Spacer(Modifier.width(MoyiTheme.spacing.md))
                 trailing()
             }
             PlaybackLine(playback.phase)
@@ -313,8 +316,8 @@ fun AttachedVoice(
     removeRestoresSent: Boolean = false,
     compact: Boolean = false,
 ) {
-    // In its own frame, so Remove reads as the voice note's, not as the prompt's dismiss (§66).
-    AttachmentFrame(modifier) { AttachedVoiceContent(state, onStop, onDiscard, onRecordAgain, onRemove, recordingLevels, removeRestoresSent, compact) }
+    // With the keyboard up, in its own frame, so Remove reads as the voice note's, not the prompt's dismiss (§66).
+    AttachmentFrame(framed = compact, modifier = modifier) { AttachedVoiceContent(state, onStop, onDiscard, onRecordAgain, onRemove, recordingLevels, removeRestoresSent, compact) }
 }
 
 @Composable
@@ -410,7 +413,7 @@ private fun AttachedVoiceContent(
  */
 @Composable
 fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier = Modifier, compact: Boolean = false) {
-    AttachmentFrame(modifier) { SentVoiceContent(voice, onRecordAgain, compact) }
+    AttachmentFrame(framed = compact, modifier = modifier) { SentVoiceContent(voice, onRecordAgain, compact) }
 }
 
 @Composable
