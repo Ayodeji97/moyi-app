@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.openapiGenerator) apply false
     alias(libs.plugins.buildkonfig) apply false
     alias(libs.plugins.sqldelight) apply false
+    alias(libs.plugins.googleServices) apply false
 
     // syncContract and checkContractInSync (part of `check`).
     id("moyi.contract")

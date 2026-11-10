@@ -27,6 +27,11 @@ node_modules/
 *.jks
 *.keystore
 
-# Firebase app configs stay on each Mac (issue #49); the repository is public.
+# Firebase client config (push, FCM). Per-developer and never committed: the repository
+# is public. Each checkout that builds with push needs its own copies, per build type:
+# androidApp/src/{debug,release}/google-services.json and
+# iosApp/Firebase/{Debug,Release}/GoogleService-Info.plist (README, "Push notifications").
+# Without them the app builds and runs without push. Ignored at any depth, so a copy left
+# in the wrong place is not committed either.
 google-services.json
 GoogleService-Info.plist

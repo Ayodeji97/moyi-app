@@ -33,6 +33,11 @@
 	<!-- PROPOSED copy (photos). Asked by iOS the first time "Take a photo" opens the camera
 	     (UIImagePickerController). The photo library needs no usage string: PHPicker runs
 	     out of process and hands over only the photo chosen. -->
+	<!-- Push (FCM): no method swizzling. AppDelegate hands FCM the APNs token itself
+	     (NotificationDelegate.swift), and taps already go through its own
+	     UNUserNotificationCenterDelegate, so nothing is done behind the app's back. -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Moyi uses the camera only when you take a photo to add to your entry.</string>
 	<key>NSMicrophoneUsageDescription</key>
