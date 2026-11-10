@@ -187,6 +187,24 @@ class WriteEditMediaTest : MainDispatcherTest() {
     }
 
     @Test
+    fun theLibraryOrCameraQuestionIsTitledReplaceWhenAPhotoIsAlreadyThere() = runTest {
+        // §61: Replace on the entry's own photo opens the question as "Replace the photo".
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnAddPhotoClick(canTakePhoto = true))
+        assertTrue(vm.state.value.choosingPhotoSource)
+        assertTrue(vm.state.value.replacingPhoto)
+
+        // An entry with none: the same question is "Add a photo" until one is picked.
+        loop.show(dayView(TodayStatus.Waiting))
+        val bare = viewModel()
+        assertFalse(bare.state.value.replacingPhoto)
+        bare.onAction(WriteAction.OnPhotoPicked(PhotoPick.Picked(newPhoto)))
+        assertTrue(bare.state.value.replacingPhoto, "a picked photo is replaced by the next pick")
+        bare.onAction(WriteAction.OnRemovePhoto)
+        assertFalse(bare.state.value.replacingPhoto)
+    }
+
+    @Test
     fun removingTheNewPhotoKeepsTheEntrysOwn() = runTest {
         val vm = viewModel()
         vm.onAction(WriteAction.OnPhotoPicked(PhotoPick.Picked(newPhoto)))

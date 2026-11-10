@@ -49,6 +49,7 @@ import com.moyi.app.feature.today.resources.write_photo_source_camera
 import com.moyi.app.feature.today.resources.write_photo_source_cancel
 import com.moyi.app.feature.today.resources.write_photo_source_library
 import com.moyi.app.feature.today.resources.write_photo_source_title
+import com.moyi.app.feature.today.resources.write_photo_source_title_replace
 import com.moyi.app.feature.today.resources.write_photo_unreadable
 import com.moyi.app.feature.today.resources.write_queued
 import com.moyi.app.feature.today.resources.write_save
@@ -198,8 +199,11 @@ fun WriteScreen(
     }
     if (state.choosingPhotoSource) {
         // Interim (docs/missing-components.md §41): no frame draws the choice, so the platform dialog asks.
+        // Titled for what the pick does: adds a photo, or replaces the one already there (§61).
         ConfirmDialog(
-            title = stringResource(Res.string.write_photo_source_title),
+            title = stringResource(
+                if (state.replacingPhoto) Res.string.write_photo_source_title_replace else Res.string.write_photo_source_title,
+            ),
             confirmLabel = stringResource(Res.string.write_photo_source_library),
             dismissLabel = stringResource(Res.string.write_photo_source_cancel),
             onConfirm = { onAction(WriteAction.OnChooseFromLibrary) },
