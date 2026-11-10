@@ -28,6 +28,7 @@ import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.PartnerReaction
 import com.moyi.app.feature.today.common.ReactionControl
+import com.moyi.app.feature.today.common.myReactionPill
 import com.moyi.app.feature.today.common.dayHeader
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.archive_day_report
@@ -126,6 +127,7 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
                     variant = EntryCardVariant.Partner,
                     photo = day.partnerPhoto,
                     voice = day.partnerVoice,
+                    reaction = myReactionPill(day.myReaction.takeIf { day.canReact }),
                 )
             }
             // Interim (docs/missing-components.md §45): no frame draws a reaction yet.

@@ -2,15 +2,22 @@ package com.moyi.app.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.em
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.platform.ProtectFromCapture
 import com.moyi.app.designsystem.theme.MoyiDimens
@@ -39,6 +46,13 @@ enum class EntryCardVariant {
 }
 
 /**
+ * The reaction I left on the partner's entry, drawn as a pill on the card's label row
+ * (docs/missing-components.md §67). The words are the caller's string resources: [text] is
+ * what is drawn ("You: 🥺 Moved"), [spoken] is what a screen reader says instead ("You reacted: Moved").
+ */
+data class EntryCardReaction(val text: String, val spoken: String)
+
+/**
  * An entry: an author label over the words (`tokens.md` §4, component 1).
  *
  * - The words are the `entry` style, Newsreader 34 / 1.40, at **one size at every
@@ -63,6 +77,9 @@ enum class EntryCardVariant {
  *   A partner's photo is drawn inside the same card, so the same protection covers it.
  * @param photo the entry's photo, under the words; drawn only on Own and Partner. Not a
  *   drawn slot yet (docs/missing-components.md §40).
+ * @param reaction my reaction to this entry, a display-only pill at the right of the label row
+ *   (§67): drawn on a [EntryCardVariant.Partner] card only, spoken as [EntryCardReaction.spoken]
+ *   at the end of the card's one stop, with no target of its own.
  * @param voice the entry's voice note, under the words and the photo; drawn only on Own and
  *   Partner. Not a drawn slot yet (§43). A partner's is protected with the card.
  */
@@ -75,6 +92,7 @@ fun EntryCard(
     protectFromCapture: Boolean = variant == EntryCardVariant.Partner,
     photo: EntryPhoto? = null,
     voice: VoiceNote? = null,
+    reaction: EntryCardReaction? = null,
 ) {
     val colors = MoyiTheme.colors
     val shapes = MoyiTheme.shapes
@@ -91,7 +109,14 @@ fun EntryCard(
             // One stop for a screen reader: "From Tunde. You stayed up…".
             .semantics(mergeDescendants = true) {},
     ) {
-        MoyiText(text = authorLabel, role = TextRole.Label)
+        if (reaction != null && variant == EntryCardVariant.Partner) {
+            Row(horizontalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.sm), verticalAlignment = Alignment.Top) {
+                MoyiText(text = authorLabel, role = TextRole.Label, modifier = Modifier.weight(1f))
+                ReactionPill(reaction)
+            }
+        } else {
+            MoyiText(text = authorLabel, role = TextRole.Label)
+        }
         when (variant) {
             EntryCardVariant.Own, EntryCardVariant.Partner -> {
                 Spacer(Modifier.height(MoyiDimens.EntryCard.LabelGap))
@@ -118,6 +143,26 @@ fun EntryCard(
     }
 }
 
+/**
+ * **PROPOSED** (§67): the same pill as the speed pill (`label` without its tracking, in `ink`, a `hairline` of
+ * `outlineStrong`, `shapes.full`, padded `sm` across and `xs` down), but display-only: no
+ * target, nothing to tap. Drawn text is cleared and [EntryCardReaction.spoken] stands in for it.
+ */
+@Composable
+private fun ReactionPill(reaction: EntryCardReaction) {
+    Text(
+        text = reaction.text,
+        // Sentence case, so the label style's uppercase tracking would space the letters apart.
+        style = MoyiTheme.type.label.copy(letterSpacing = 0.em),
+        color = MoyiTheme.colors.ink,
+        maxLines = 1,
+        modifier = Modifier
+            .clearAndSetSemantics { contentDescription = reaction.spoken }
+            .border(MoyiTheme.shapes.hairline, MoyiTheme.colors.outlineStrong, MoyiTheme.shapes.full)
+            .padding(horizontal = MoyiTheme.spacing.sm, vertical = MoyiTheme.spacing.xs),
+    )
+}
+
 @Preview
 @Composable
 private fun EntryCardDarkPreview() = PreviewSurface(darkTheme = true) { EntryCardSamples() }
@@ -129,7 +174,12 @@ private fun EntryCardLightPreview() = PreviewSurface(darkTheme = false) { EntryC
 @Composable
 private fun EntryCardSamples() {
     Column {
-        EntryCard("From Tunde", "You stayed up to help me finish it, and never once made me feel slow.", variant = EntryCardVariant.Partner)
+        EntryCard(
+            "From Tunde",
+            "You stayed up to help me finish it, and never once made me feel slow.",
+            variant = EntryCardVariant.Partner,
+            reaction = EntryCardReaction("You: \uD83E\uDD79 Moved", "You reacted: Moved"),
+        )
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         EntryCard("From you", "The way you laughed at the bus stop.")
         Spacer(Modifier.height(MoyiTheme.spacing.md))

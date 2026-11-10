@@ -9,12 +9,13 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.dp
+import com.moyi.app.designsystem.component.SPEED_PILL_VISIBLE_TAG
 import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.designsystem.component.VoiceNoteLook
 import com.moyi.app.designsystem.component.VoiceNoteView
@@ -44,20 +45,18 @@ class SpeedPillTest {
                 }
             }
         }
-        // Before play: the pill shows 1x beside "0:00 of 0:42".
-        onNodeWithText("1×", useUnmergedTree = true).assertExists()
+        // Before play: the pill (drawn, its text not in the tree) sits beside "0:00 of 0:42".
+        onNodeWithTag(SPEED_PILL_VISIBLE_TAG, useUnmergedTree = true).assertExists()
         val pill = onNodeWithContentDescription("Playback speed, normal")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         val target = pill.fetchSemanticsNode().boundsInRoot
         assertTrue(with(density) { target.width.toDp() } >= 48.dp && with(density) { target.height.toDp() } >= 48.dp, "a 48 target")
-        val visible = onNodeWithText("1×", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val visible = onNodeWithTag(SPEED_PILL_VISIBLE_TAG, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue(visible.height < target.height, "the visible pill stays small inside it")
 
         pill.performClick()
         onNodeWithContentDescription("Playback speed, 1.5 times").assertExists()
-        onNodeWithText("1.5×", useUnmergedTree = true).assertExists()
         onNodeWithContentDescription("Playback speed, 1.5 times").performClick()
-        onNodeWithText("2×", useUnmergedTree = true).assertExists()
         onNodeWithContentDescription("Playback speed, 2 times").performClick()
         onNodeWithContentDescription("Playback speed, normal").assertExists()
     }

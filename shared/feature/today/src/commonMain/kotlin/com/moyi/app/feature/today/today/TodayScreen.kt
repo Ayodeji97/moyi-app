@@ -39,6 +39,7 @@ import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.NoteAction
 import com.moyi.app.feature.today.common.PartnerReaction
 import com.moyi.app.feature.today.common.ReactionControl
+import com.moyi.app.feature.today.common.myReactionPill
 import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.TodayNavRow
 import com.moyi.app.feature.today.common.TodayStatus
@@ -497,6 +498,8 @@ internal fun PartnerCard(state: TodayState) {
         variant = EntryCardVariant.Partner,
         photo = state.partnerPhoto,
         voice = state.partnerVoice,
+        // Only while reactions are open (not on an ended bond): my choice, as a pill (§67).
+        reaction = myReactionPill(state.myReaction.takeIf { state.canReact }),
     )
 }
 
