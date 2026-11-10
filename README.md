@@ -8,8 +8,8 @@ Compose Multiplatform UI. Package `com.moyi.app`. The rules for working here are
 
 | Gradle path | Namespace | What it holds |
 |---|---|---|
-| `:androidApp` | `com.moyi.app` | Android shell: Activity, manifest |
-| `iosApp/` (Xcode) | | iOS shell; links the `Shared` framework and SQLCipher (the `SQLCipher.swift` package) |
+| `:androidApp` | `com.moyi.app` | Android shell: Activity, manifest, FCM service |
+| `iosApp/` (Xcode) | | iOS shell; links the `Shared` framework, SQLCipher (the `SQLCipher.swift` package) and FirebaseMessaging (`firebase-ios-sdk`) |
 | `:shared` | `com.moyi.app.shared` | Umbrella: `App()`, and the one iOS framework (`Shared`, static) |
 | `:shared:core` | `com.moyi.app.core` | `Result`, `DataError`, shared utilities |
 | `:shared:domain` | `com.moyi.app.domain` | Models and repository interfaces. **No framework dependencies** |
@@ -64,7 +64,9 @@ The local database is encrypted with SQLCipher on both platforms. Android gets i
 `net.zetetic:sqlcipher-android`; the Xcode app from the `SQLCipher.swift` Swift package
 (Xcode resolves it on the first build, so that build needs the network); the iOS test
 executables from the same xcframework, which `./gradlew` downloads and checks by SHA-256
-(`:sqlcipherXcframework`). Nothing links the system SQLite (`-lsqlite3`). The Android
+(`:sqlcipherXcframework`). Nothing links the system SQLite (`-lsqlite3`). FirebaseMessaging calls
+the `sqlite3_*` API too and links no SQLite of its own, so in the app those calls also bind
+to SQLCipher (`nm -m` on `Moyi.debug.dylib` shows every `_sqlite3_*` "from SQLCipher"). The Android
 encryption tests need a device or emulator:
 `./gradlew :shared:data:database:connectedAndroidDeviceTest`.
 
@@ -190,6 +192,54 @@ MOYI_UPLOAD_STORE_PASSWORD=...
 MOYI_UPLOAD_KEY_ALIAS=moyi-upload
 MOYI_UPLOAD_KEY_PASSWORD=...
 ```
+
+## Push notifications
+
+Push goes through Firebase Cloud Messaging (FCM) on both platforms; on iOS, FCM delivers
+through APNs. The app registers its FCM token with the server
+(`PUT /me/devices/current/push-token`, `PushTokenRegistrar`) whenever someone is signed in.
+
+**Firebase's config files are never committed**: the repository is public, and
+`.gitignore` ignores both names everywhere. Each checkout that should receive push needs its
+own copies, **one per build type**, so a release build can never talk to the development
+Firebase project:
+
+| File | Debug (Firebase project `moyi-65b68`) | Release (Firebase project `moyi-prod`) |
+|---|---|---|
+| Android `google-services.json` | `androidApp/src/debug/google-services.json` | `androidApp/src/release/google-services.json` |
+| iOS `GoogleService-Info.plist` | `iosApp/Firebase/Debug/GoogleService-Info.plist` | `iosApp/Firebase/Release/GoogleService-Info.plist` |
+
+Where to get them: the Firebase console, the project, Project settings, General, Your apps.
+The Android app is `app.getmoyi.moyi` (download `google-services.json`); the iOS app is the
+bundle ID `app.getmoyi.moyi` (download `GoogleService-Info.plist`). The `moyi-prod` project
+does not exist yet, so release builds have no push for now.
+
+**Without the files the app still builds and runs, without push.** That is how CI builds.
+
+- Android: the google-services Gradle plugin is applied always, with
+  `missingGoogleServicesStrategy = WARN` (`androidApp/build.gradle.kts`): a variant with no file
+  gets a warning and no Firebase resources, Firebase never starts (`FirebasePush`), and
+  `MoyiMessagingService` is never called. The plugin looks in `src/<buildType>/` and then in
+  `androidApp/` itself; a file left in `androidApp/` would be used by release too, so a
+  release build fails if the file it would use is `moyi-65b68`'s.
+- iOS: the "Copy Firebase Config" build phase copies the configuration's plist into the app,
+  or removes it when there is none. `AppDelegate` (`NotificationDelegate.swift`) starts
+  Firebase only when the plist is in the bundle. A Release build fails if its plist is
+  `moyi-65b68`'s. Firebase itself is the `firebase-ios-sdk` Swift package (product
+  `FirebaseMessaging`), resolved by Xcode on the first build like `SQLCipher.swift`.
+
+The iOS app carries the `aps-environment` entitlement (Push Notifications), so the App ID
+needs that capability: automatic signing turns it on for an ID on your own paid team. On a
+free Personal Team, set `CODE_SIGN_ENTITLEMENTS=` in `Local.xcconfig` as above.
+
+**Sending a real push from the local backend.** The local backend's push provider is `log`:
+it writes `Push NOT sent (provider=log): category=… bond=…` instead of sending. To send for
+real, run it with a service account of `moyi-65b68` (Firebase console, Project settings,
+Service accounts; never commit the key):
+`MOYI_NOTIFICATION_PUSH_PROVIDER=fcm`, `MOYI_NOTIFICATION_PUSH_FCM_PROJECT_ID=moyi-65b68`,
+`MOYI_NOTIFICATION_PUSH_FCM_CLIENT_EMAIL` and `MOYI_NOTIFICATION_PUSH_FCM_PRIVATE_KEY_PEM`.
+A real iPhone and an Android emulator with a Google Play image can receive it; an iOS
+simulator receives APNs pushes too (Apple silicon), but only through APNs' sandbox.
 
 ## Legal page URLs
 

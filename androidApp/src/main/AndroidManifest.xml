@@ -34,10 +34,27 @@
         <!-- The channel FCM shows a push in when the push names none: every push until the
              server sends android.notification.channel_id (backend issue #134). The reveal's
              channel (NotificationChannels.DEFAULT_CHANNEL_ID; NotificationChannelsTest
-             checks the two agree). Read by the Firebase SDK, which a later PR adds. -->
+             checks the two agree). Read by the Firebase SDK (firebase-messaging). -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="reveal" />
+        <!-- The status-bar icon of a push the tray shows by itself (the app in the background).
+             The status bar draws only the icon's shape, so the full-colour launcher icon would
+             be a plain square; this is the mark alone, the adaptive icon's monochrome layer.
+             MoyiMessagingService uses the same one for a push that arrives in the foreground. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_launcher_foreground" />
+        <!-- FCM: a new token (onNewToken) and a push that arrives while the app is open
+             (onMessageReceived). Not exported: only FCM, through Google Play services,
+             starts it. Inert in a build without google-services.json (FirebasePush). -->
+        <service
+            android:name=".MoyiMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <!-- adjustResize: the window keeps its size and Compose reads the keyboard as an
              inset (MoyiScaffold's safeDrawing), so the action rides on the keyboard.
              Without it Android may pan the whole window up when a field takes focus,

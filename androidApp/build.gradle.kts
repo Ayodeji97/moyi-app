@@ -1,13 +1,39 @@
+import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    // Push (FCM): turns google-services.json into the resources Firebase starts from.
+    alias(libs.plugins.googleServices)
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.JVM_11
+// Firebase's config is per build type and never committed (README, "Push notifications"):
+// src/debug/google-services.json (the dev project, moyi-65b68) and
+// src/release/google-services.json (moyi-prod). The plugin looks in src/<buildType>/ first,
+// then this directory. Where a variant has no file (CI, a fresh clone, release until the
+// prod project exists) the plugin warns instead of failing: no Firebase resources are
+// generated, Firebase never starts (FirebasePush), and the app runs without push.
+googleServices {
+    missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN
+}
+
+// A release build never talks to the development Firebase project, the same way a
+// development build never talks to production (CLAUDE.md). A dev file left in this
+// directory (instead of src/debug/) would otherwise be picked up by release too.
+tasks.matching { it.name == "processReleaseGoogleServices" }.configureEach {
+    // Locals only: the action is stored in the configuration cache, which cannot hold the
+    // build script itself.
+    val devProject = "moyi-65b68"
+    val releaseConfigs = listOf(file("src/release/google-services.json"), file("google-services.json"))
+    doFirst {
+        val config = releaseConfigs.firstOrNull { it.isFile } ?: return@doFirst
+        if (Regex(""""project_id"\s*:\s*"$devProject"""").containsMatchIn(config.readText())) {
+            throw GradleException(
+                "The release build would use the development Firebase project ($devProject), from " +
+                    "${config.path}. Move that file to src/debug/ and put the moyi-prod one in src/release/.",
+            )
+        }
     }
 }
 dependencies {
@@ -16,6 +42,11 @@ dependencies {
     implementation(project(":shared:domain"))
 
     implementation(libs.androidx.activity.compose)
+    // NotificationCompat, for a push that arrives while the app is open (MoyiMessagingService).
+    implementation(libs.androidx.core.ktx)
+    // FCM: the token (MoyiMessagingService.onNewToken) and foreground pushes.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     // androidContext() for initKoin in MoyiApplication.
     implementation(libs.koin.android)
 
