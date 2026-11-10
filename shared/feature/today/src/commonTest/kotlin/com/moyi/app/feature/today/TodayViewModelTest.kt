@@ -80,13 +80,13 @@ class TodayViewModelTest : MainDispatcherTest() {
     @Test
     fun aQueuedEntryIsTodaysQueuedLayoutWithTheDayItCountsFor() = runTest {
         loop.onRefresh = DailyLoopState.Ready(
-            dayView(TodayStatus.Queued).copy(queuedDay = QueuedDay.EarlierDayClosed(LocalDate(2026, 9, 13))),
+            dayView(TodayStatus.Queued).copy(queuedDay = QueuedDay.EarlierDay(LocalDate(2026, 9, 13))),
         )
         collectState()
         viewModel.onAction(TodayAction.OnForeground)
         assertEquals(TodayStatus.Queued, viewModel.state.value.status)
         assertEquals(MINE, viewModel.state.value.myEntry)
-        assertEquals(QueuedDay.EarlierDayClosed(LocalDate(2026, 9, 13)), viewModel.state.value.queuedDay)
+        assertEquals(QueuedDay.EarlierDay(LocalDate(2026, 9, 13)), viewModel.state.value.queuedDay)
         assertNull(viewModel.state.value.partnerEntry)
     }
 
