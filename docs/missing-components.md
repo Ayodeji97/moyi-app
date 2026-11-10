@@ -1574,3 +1574,66 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
     as it was before this edit." (only if the day carried no partner name)
   - `write_see_today`: "See today".
 - Other 409s on an edit (`BOND_ARCHIVED`) keep the generic Save failed, as before.
+
+## The composer keeps room for the words (PR fix/composer-keyboard-room)
+
+### 66. With the keyboard up, the words keep three lines and the attachments step back (owner's iPhone, 2026-11-10)
+
+- **Why:** on the owner's iPhone (screenshot IMG_7706, 2026-11-10), in Write with the
+  keyboard up and both a photo and a voice note attached, the text field was squeezed to a
+  sliver: the typed line "God is" was cut to half its height. The photo (about 100 x 130) and
+  the voice row (play, waveform, Record again, Remove, clock, speed pill) kept their full height,
+  so the words got whatever was left above the keyboard. On the iPhone 17 Pro simulator, with a
+  two-line prompt, they got nothing at all. Nothing in Rosewood or Figma draws a composer with
+  attachments and the keyboard up, so the answer below is **PROPOSED, not drawn**.
+- **Built, a layout rule (not PROPOSED, a fix):**
+  - The words never get fewer than **three lines** of `entry`
+    (`MoyiDimens.ComposeField.MinTextLines`), however much is attached.
+  - Everything inside the box (prompt, words, attachments, toolbar) **scrolls as one column**
+    when it does not fit. The box, its border and the Send button outside it do not move: Send
+    stays pinned under the box, above the keyboard, and never covers the words.
+  - The line with the cursor is **kept in view** as you type, move the cursor, or the room
+    changes (the keyboard rising, the attachments stepping back).
+- **Built, PROPOSED (`AttachmentsLayout`, `AttachmentFrame`, the `compact` look of
+  `AttachedPhoto`, `SentPhoto`, `AttachedVoice` and `SentVoice`):**
+  - **While the keyboard is up and something is attached,** the attachments step back to
+    **one row**, side by side, `spacing.sm` apart. The row starts where the words start (the
+    text's 12 wrap) and keeps `spacing.xs` above and below, and when the caret is kept in view the
+    whole row comes with it if both fit, so the frames are never cut by the box's edge:
+    - the photo as a **40 x 40 thumbnail** (`MoyiDimens.ComposeField.CompactThumbnail`,
+      Interpreted: the 4 pt half-step above and below inside its 48 line), `shapes.radius`,
+      cropped, `spacing.xs` inside its frame, with its remove (or, in Edit, Replace) 48 target beside it;
+    - the voice note as a **chip**: play/pause (48), the clock ("0:00 of 0:06", `inkMuted`), a
+      `spacing.md` gap, then Remove (48). Remove is never beside play, so one slip does not throw
+      a recording away (review). No waveform, no speed pill and **no Record again** (owner ruling
+      2026-11-10); Record again returns with the full row.
+      While recording: trash, the dot with its clock and the tick, without the live waveform.
+    - If the two do not fit across (a very narrow screen, a large font), they stack rather
+      than being cut.
+  - **When the keyboard goes,** they return to full size. The change of size eases on
+    `motion.control` (150 ms); with Reduce Motion (iOS) or Remove animations (Android) it is a cut.
+  - **While the keyboard is up, each attachment sits in its own frame** (design review of the
+    same screenshot): a `hairline` of the decorative `outline` on `shapes.radius`. The prompt's
+    dismiss and the voice note's Remove are the same close glyph a few rows apart; inside its
+    frame, each remove control plainly belongs to what it removes. No new icon, no new colour.
+    **With the keyboard down there are no frames** and the full-size layout is main's (owner
+    ruling 2026-11-10).
+  - **Screen readers hear the same names:** "Remove the photo", "Remove the voice note", "The
+    photo you are adding", "Play the voice note", "Your voice note, 0:06" with its position as
+    the state. In the chip the clock carries the waveform's name and position (it cannot seek).
+  - **Targets stay 48** (NFR-101).
+  - One layout for both looks, so a voice note being listened to keeps playing when the
+    keyboard comes or goes.
+- **Edit mode** (§60), photo only or voice only: the same rules. The entry's own photo and voice
+  note step back the same way, with Replace and Record again as their one control.
+- **Test:** `ComposeFieldRoomTest` (iOS Compose UI) puts both attachments in a 358 x 316 box
+  (the screenshot's) and checks the words keep three lines, compact and full.
+- **Owner rulings (2026-11-10, PR #77):**
+  - The compact row stays where it is, between the words and the toolbar (not in the toolbar's line).
+  - No Record again in the compact voice chip.
+  - Frames only while the keyboard is up; with it down, main's full-size layout, unframed.
+  - A drag inside the composer scrolls it and leaves the keyboard up (it does not dismiss, unlike
+    the rest of the screen, D6).
+- **Checked, not a bug:** a recording's waveform drawn as flat dots on the iOS simulator is a quiet
+  Mac microphone. The levels are sampled by the recorder whatever the layout shows, and a
+  recording made while compact keeps its bars when the full row comes back (Android emulator).

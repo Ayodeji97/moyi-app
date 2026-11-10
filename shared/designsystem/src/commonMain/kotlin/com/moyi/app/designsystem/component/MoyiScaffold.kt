@@ -330,7 +330,7 @@ internal fun shouldStackActions(available: Int, action: Int, gap: Int, minConten
  * keyboard's slide.
  */
 @Composable
-private fun rememberImeVisible(): Boolean {
+internal fun rememberImeVisible(): Boolean {
     val ime = WindowInsets.ime
     val density = LocalDensity.current
     val visible by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }

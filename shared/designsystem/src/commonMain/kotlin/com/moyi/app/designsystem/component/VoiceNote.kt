@@ -43,6 +43,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -169,6 +172,11 @@ private fun rememberStoppingPlayer(): VoicePlayer {
  * Play or pause, the waveform with its clock ("0:12 of 0:42") under it and the [SpeedPill]
  * at the clock's end; then, at the end of the row, [trailing] (the composer's Record again
  * and Remove). The lines for loading and failure go under it.
+ *
+ * [compact] (PROPOSED, docs/missing-components.md §66: the composer with the keyboard up): one
+ * 48 line, as wide as it needs, of play/pause, the clock and [trailing]; no waveform and no
+ * speed pill. The clock then carries what the waveform says to a screen reader ([label], and
+ * the position as its state), so nothing it hears changes.
  */
 @Composable
 private fun PlayerControls(
@@ -180,10 +188,38 @@ private fun PlayerControls(
     speed: PlaybackSpeed,
     onCycleSpeed: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val duration = playback.durationMs
     val clock = voiceClock(playback)
+    if (compact) {
+        Column(modifier) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                VoiceIconTarget(
+                    icon = if (playback.active) MoyiIcons.Pause else MoyiIcons.Play,
+                    description = stringResource(if (playback.active) Res.string.ds_voice_pause else Res.string.ds_voice_play),
+                    onClick = onToggle,
+                )
+                MoyiText(
+                    text = clock,
+                    tone = TextTone.Muted,
+                    maxLines = 1,
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = label
+                        stateDescription = clock
+                        progressBarRangeInfo = ProgressBarRangeInfo(WaveformMath.fractionOf(playback.positionMs, duration), 0f..1f)
+                    },
+                )
+                // Remove sits a clear `md` past the clock, never beside play: one slip must not
+                // throw a recording away (review of §66). Both stay 48 targets, apart.
+                Spacer(Modifier.width(MoyiTheme.spacing.md))
+                trailing()
+            }
+            PlaybackLine(playback.phase)
+        }
+        return
+    }
     Column(modifier) {
         // Top-aligned: the play target, the waveform's band and the trailing targets are all
         // 48 and share a centre line; the clock sits under the bars, as messaging apps put it.
@@ -210,11 +246,17 @@ private fun PlayerControls(
             }
             trailing()
         }
-        when (playback.phase) {
-            PlaybackPhase.Loading -> MoyiText(text = stringResource(Res.string.ds_voice_loading), tone = TextTone.Muted)
-            PlaybackPhase.Failed -> MoyiText(text = stringResource(Res.string.ds_voice_unplayable), tone = TextTone.Muted)
-            else -> Unit
-        }
+        PlaybackLine(playback.phase)
+    }
+}
+
+/** The line under a player while it fetches, or when it cannot play. */
+@Composable
+private fun PlaybackLine(phase: PlaybackPhase) {
+    when (phase) {
+        PlaybackPhase.Loading -> MoyiText(text = stringResource(Res.string.ds_voice_loading), tone = TextTone.Muted)
+        PlaybackPhase.Failed -> MoyiText(text = stringResource(Res.string.ds_voice_unplayable), tone = TextTone.Muted)
+        else -> Unit
     }
 }
 
@@ -256,6 +298,10 @@ sealed interface AttachedVoiceState {
  * - Recorded: a 48 play/pause target to listen back (from memory, nothing leaves the
  *   phone), the [VoiceWaveform] of what was actually recorded (seekable), the clock, then
  *   Record again and Remove. [onRecordAgain] and [onRemove] are null while it is being sent.
+ * - [compact] (PROPOSED, §66: the keyboard is up): recording keeps trash, the dot with its clock
+ *   and the tick, without the live waveform; recorded is a chip of play/pause, the clock and
+ *   Remove (Record again comes back with the full row). The player is the same one either way,
+ *   so listening back carries on through the change.
  */
 @Composable
 fun AttachedVoice(
@@ -268,19 +314,37 @@ fun AttachedVoice(
     recordingLevels: () -> List<Float> = { emptyList() },
     /** In Edit, where removing this new one puts the entry's own back: [onRemove] is named "Keep the voice note you had" (§60). */
     removeRestoresSent: Boolean = false,
+    compact: Boolean = false,
+) {
+    // With the keyboard up, in its own frame, so Remove reads as the voice note's, not the prompt's dismiss (§66).
+    AttachmentFrame(framed = compact, modifier = modifier) { AttachedVoiceContent(state, onStop, onDiscard, onRecordAgain, onRemove, recordingLevels, removeRestoresSent, compact) }
+}
+
+@Composable
+private fun AttachedVoiceContent(
+    state: AttachedVoiceState,
+    onStop: () -> Unit,
+    onDiscard: () -> Unit,
+    onRecordAgain: (() -> Unit)?,
+    onRemove: (() -> Unit)?,
+    recordingLevels: () -> List<Float>,
+    removeRestoresSent: Boolean,
+    compact: Boolean,
 ) {
     when (state) {
-        is AttachedVoiceState.Recording -> Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        is AttachedVoiceState.Recording -> Row(verticalAlignment = Alignment.CenterVertically) {
             val reduceMotion = rememberReduceMotion()
             // Start: throw it away, at once (an unsent recording, states.md §4: no confirmation).
             VoiceIconTarget(MoyiIcons.Trash, stringResource(Res.string.ds_compose_discard_recording), onDiscard)
-            LiveWaveform(
-                levels = recordingLevels,
-                scrolling = !reduceMotion,
-                capacity = (VoiceRecording.MAX_DURATION_MS / RecordingLevels.TICK_MS).toInt(),
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(MoyiDimens.Waveform.Gap))
+            if (!compact) {
+                LiveWaveform(
+                    levels = recordingLevels,
+                    scrolling = !reduceMotion,
+                    capacity = (VoiceRecording.MAX_DURATION_MS / RecordingLevels.TICK_MS).toInt(),
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(MoyiDimens.Waveform.Gap))
+            }
             val spoken = stringResource(
                 Res.string.ds_compose_recording,
                 formatClock(state.elapsedMs),
@@ -321,9 +385,9 @@ fun AttachedVoice(
                 onSeek = player::seekTo,
                 speed = speed,
                 onCycleSpeed = player::cycleSpeed,
-                modifier = modifier,
+                compact = compact,
             ) {
-                if (onRecordAgain != null) {
+                if (onRecordAgain != null && !compact) {
                     VoiceIconTarget(MoyiIcons.RecordAgain, stringResource(Res.string.ds_compose_record_again), onRecordAgain)
                 }
                 if (onRemove != null) {
@@ -345,9 +409,15 @@ fun AttachedVoice(
  * records a new one to go in its place. It has **no remove**: the contract cannot take a
  * voice note off an entry (docs/backend-contract-gaps.md row 41). One the server has not
  * finished with (no [VoiceNote.url]) is the card's muted line, with Record again beside it.
+ * [compact] (§66): the chip of play/pause and the clock, with Record again, its one control.
  */
 @Composable
-fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier = Modifier, compact: Boolean = false) {
+    AttachmentFrame(framed = compact, modifier = modifier) { SentVoiceContent(voice, onRecordAgain, compact) }
+}
+
+@Composable
+private fun SentVoiceContent(voice: VoiceNote, onRecordAgain: (() -> Unit)?, compact: Boolean) {
     val again: @Composable RowScope.() -> Unit = {
         if (onRecordAgain != null) {
             VoiceIconTarget(MoyiIcons.RecordAgain, stringResource(Res.string.ds_compose_record_again), onRecordAgain)
@@ -355,7 +425,7 @@ fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier
     }
     val url = voice.url
     if (url == null) {
-        Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             MoyiText(
                 text = stringResource(Res.string.ds_entry_voice_on_its_way),
                 tone = TextTone.Muted,
@@ -377,7 +447,7 @@ fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier
         onSeek = player::seekTo,
         speed = speed,
         onCycleSpeed = player::cycleSpeed,
-        modifier = modifier,
+        compact = compact,
         trailing = again,
     )
 }
