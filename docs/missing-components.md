@@ -1676,7 +1676,7 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   player (§43), so this is **PROPOSED, not drawn**. It replaces §46's "the row" bullet.
 - **Built, PROPOSED (`VoiceRow`, inside `PlayerControls`; the EntryCard player, Edit's
   `SentVoice` and Write's listen-back `AttachedVoice` all use it):**
-  - **One 48 line:** play (48), the waveform taking what is left, then the clock in `inkMuted`
+  - **One 48 line:** play (48), `spacing.xs`, the waveform taking what is left, then `8` and the clock in `inkMuted`
     ("0:04 of 0:11", `body`, tabular figures so the bars never shift as the seconds change),
     `spacing.sm`, the speed pill (§64, unchanged), then any trailing controls. 48 tall, down
     from 72: the touch target is the floor (NFR-101), so it is two thirds of the old height,

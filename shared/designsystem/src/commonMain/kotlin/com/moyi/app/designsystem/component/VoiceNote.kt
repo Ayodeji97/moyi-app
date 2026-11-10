@@ -282,6 +282,8 @@ private fun VoiceRow(
     val gapPx = with(LocalDensity.current) { MoyiDimens.Waveform.Gap.roundToPx() }
     val minBarsPx = with(LocalDensity.current) { MoyiDimens.Waveform.MinWidth.roundToPx() }
     val clockToPillPx = with(LocalDensity.current) { MoyiTheme.spacing.sm.roundToPx() }
+    // The circle sits 4 inside its 48 target: `xs` more puts the bars a clear 8 past it.
+    val playToBarsPx = with(LocalDensity.current) { MoyiTheme.spacing.xs.roundToPx() }
     Layout(
         contents = listOf(play, waveform, clock, pill, trailing),
         modifier = Modifier.semantics { testTag = VOICE_ROW_TAG },
@@ -291,12 +293,13 @@ private fun VoiceRow(
         val playP = playM.first().measure(loose)
         val trailP = trailM.first().measure(Constraints(maxWidth = (width - playP.width).coerceAtLeast(0)))
         // Under the bars, a line runs from where the bars start to the row's end.
-        val underWidth = (width - playP.width).coerceAtLeast(0)
+        val barsStart = playP.width + playToBarsPx
+        val underWidth = (width - barsStart).coerceAtLeast(0)
         val clockP = clockM.first().measure(Constraints(maxWidth = underWidth))
         val pillP = pillM.first().measure(Constraints(maxWidth = underWidth))
-        val besideBars = width - playP.width - trailP.width - gapPx - clockP.width - clockToPillPx - pillP.width
+        val besideBars = width - barsStart - trailP.width - gapPx - clockP.width - clockToPillPx - pillP.width
         val oneLine = besideBars >= minBarsPx
-        val barsWidth = if (oneLine) besideBars else (width - playP.width - trailP.width - gapPx).coerceAtLeast(0)
+        val barsWidth = if (oneLine) besideBars else (width - barsStart - trailP.width - gapPx).coerceAtLeast(0)
         val waveP = waveM.first().measure(Constraints.fixedWidth(barsWidth))
         val lineHeight = maxOf(playP.height, waveP.height, trailP.height, if (oneLine) maxOf(clockP.height, pillP.height) else 0)
         // Under the bars: the clock and the pill side by side if they fit, the pill under the clock if not.
@@ -309,20 +312,20 @@ private fun VoiceRow(
         layout(width, lineHeight + underHeight) {
             fun centred(h: Int) = (lineHeight - h) / 2
             playP.placeRelative(0, centred(playP.height))
-            waveP.placeRelative(playP.width, centred(waveP.height))
+            waveP.placeRelative(barsStart, centred(waveP.height))
             trailP.placeRelative(width - trailP.width, centred(trailP.height))
             if (oneLine) {
-                val clockX = playP.width + waveP.width + gapPx
+                val clockX = barsStart + waveP.width + gapPx
                 clockP.placeRelative(clockX, centred(clockP.height))
                 pillP.placeRelative(clockX + clockP.width + clockToPillPx, centred(pillP.height))
             } else if (pillBesideClock) {
-                clockP.placeRelative(playP.width, lineHeight + (underHeight - clockP.height) / 2)
+                clockP.placeRelative(barsStart, lineHeight + (underHeight - clockP.height) / 2)
                 // Under the bars' end, as the pill sat before; never over the clock.
-                val pillX = maxOf(playP.width + clockP.width + clockToPillPx, width - trailP.width - pillP.width)
+                val pillX = maxOf(barsStart + clockP.width + clockToPillPx, width - trailP.width - pillP.width)
                 pillP.placeRelative(pillX, lineHeight + (underHeight - pillP.height) / 2)
             } else {
-                clockP.placeRelative(playP.width, lineHeight)
-                pillP.placeRelative(playP.width, lineHeight + clockP.height)
+                clockP.placeRelative(barsStart, lineHeight)
+                pillP.placeRelative(barsStart, lineHeight + clockP.height)
             }
         }
     }
