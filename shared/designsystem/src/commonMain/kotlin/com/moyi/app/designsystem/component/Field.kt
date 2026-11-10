@@ -212,7 +212,7 @@ fun Field(
         // release, per SKILL.md §8.
         decorationBox = { innerTextField ->
             Column {
-                MoyiText(text = label, role = TextRole.Label)
+                MoyiText(text = label, role = TextRole.Tag)
                 Spacer(Modifier.height(MoyiDimens.Field.LabelGap))
                 Row(
                     modifier = Modifier
@@ -271,7 +271,7 @@ private fun SelectField(
     val stroke = colors.fieldStroke(state)
     Column(modifier.fillMaxWidth()) {
         // The box below speaks the label with its value; spoken here too, it was read twice.
-        MoyiText(text = label, role = TextRole.Label, modifier = Modifier.clearAndSetSemantics {})
+        MoyiText(text = label, role = TextRole.Tag, modifier = Modifier.clearAndSetSemantics {})
         Spacer(Modifier.height(MoyiDimens.Field.LabelGap))
         Row(
             modifier = Modifier

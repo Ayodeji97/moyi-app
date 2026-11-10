@@ -157,7 +157,7 @@ private fun Counts(current: Int, longest: Int) {
 @Composable
 private fun Count(label: String, value: Int) {
     Column(Modifier.semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.xs)) {
-        MoyiText(text = label, role = TextRole.Label)
+        MoyiText(text = label, role = TextRole.Tag)
         MoyiText(text = value.toString(), role = TextRole.Entry)
     }
 }
@@ -215,7 +215,7 @@ private fun Key(showRestDay: Boolean) {
             if (showRestDay) KeyEntry(DayCellState.Frozen, stringResource(Res.string.streak_key_rest))
             KeyEntry(DayCellState.Today, stringResource(Res.string.streak_key_today))
         }
-        MoyiText(text = stringResource(Res.string.streak_key_none), role = TextRole.Label)
+        MoyiText(text = stringResource(Res.string.streak_key_none), role = TextRole.Tag)
     }
 }
 
@@ -224,7 +224,7 @@ private fun KeyEntry(state: DayCellState, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         DayCell(state = state, numeral = null, size = MoyiDimens.DayCell.KeySize)
         Spacer(Modifier.width(MoyiTheme.spacing.sm))
-        MoyiText(text = label, role = TextRole.Label)
+        MoyiText(text = label, role = TextRole.Tag)
     }
 }
 
