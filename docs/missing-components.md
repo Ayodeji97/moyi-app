@@ -842,7 +842,7 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
   - **Accessibility:** one node, spoken "Position in the voice note" (PROPOSED
     `ds_voice_position`; in the composer, "Your voice note, 0:42") with the value "0:12 of 0:42",
     adjusted as a slider (`setProgress`). The clock is not read a second time.
-  - **The row:** play/pause (48), the waveform filling the row, and under the bars the clock in
+  - **The row (replaced by §68, one line):** play/pause (48), the waveform filling the row, and under the bars the clock in
     `inkMuted`, "0:12 of 0:42" (how far of the length; "0:00 of 0:42" before the first play).
     Under the bars, not beside them, because "0:12 of 0:42" beside the bars left the composer's
     listen-back (play, bars, clock, Record again, Remove) about 30 for the bars on a 320 phone.
@@ -1664,3 +1664,47 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Strings (PROPOSED):**
   - `reaction_mine_pill`: "You: {emoji} {word}" (emoji and word are the chips' own resources).
   - `reaction_mine_spoken`: "You reacted: {word}".
+
+## The voice note on one line (PR feat/voice-note-one-row)
+
+### 68. Play, the bars, the clock and the speed pill on one line (owner request 2026-11-10)
+
+- **Why:** the player was two lines (the 48 band of the bars, the clock and the speed pill
+  under it: 72 tall) under words that are the point of the card. The owner asked for one row,
+  with a reviewer's conditions: the play control visibly a button but lighter than an ink disc,
+  progress visible at a glance, and nothing clipped at large text sizes. Rosewood draws no
+  player (§43), so this is **PROPOSED, not drawn**. It replaces §46's "the row" bullet.
+- **Built, PROPOSED (`VoiceRow`, inside `PlayerControls`; the EntryCard player, Edit's
+  `SentVoice` and Write's listen-back `AttachedVoice` all use it):**
+  - **One 48 line:** play (48), the waveform taking what is left, then the clock in `inkMuted`
+    ("0:04 of 0:11", `body`, tabular figures so the bars never shift as the seconds change),
+    `spacing.sm`, the speed pill (§64, unchanged), then any trailing controls. 48 tall, down
+    from 72: the touch target is the floor (NFR-101), so it is two thirds of the old height,
+    not half.
+  - **Wrapping:** when the clock and the pill would leave the bars narrower than 80
+    (`MoyiDimens.Waveform.MinWidth`, **Interpreted**: 16 bars, still a comfortable band to tap
+    and drag), they go on a second line under the bars, starting where the bars start, the pill
+    at the bars' end; if that line cannot hold both, the pill goes under the clock. Text is
+    never squeezed or clipped. On an EntryCard this happens at large text sizes (tested at 2×),
+    and always in Write's listen-back, where Record again and Remove take 96 of the row.
+  - **The play button:** a 40 circle (`MoyiDimens.VoicePlay.Circle`, **Interpreted** from
+    `Chip`'s 40 pill in its 48 target) with a `hairline` of `outlineStrong` and no fill, the
+    24 play or pause glyph in `ink` inside it. An outline rather than a filled disc: a solid
+    `ink` disc is the heaviest mark Rosewood can draw and would outweigh the words; a tinted
+    fill would need a colour Rosewood does not have (no accent, tokens.md §1). The outline is
+    the border Rosewood gives a control (`outlineStrong`, never the decorative `outline`), the
+    same as the speed pill beside it, so the row's two controls read as one family.
+  - **Progress:** unchanged from §46: played bars `ink`, the rest `outlineStrong`. At rest
+    every bar is `outlineStrong`, which is why the row read as all grey; while it plays the
+    split is clear on both themes. `outlineStrong` rather than `inkMuted` for the unplayed
+    bars: in dark, `inkMuted` (#CDBBB5) sits too close to `ink` (#F8EFE9) to show the split.
+  - **Compact (§66) is unchanged:** with the keyboard up the chip keeps its bare play glyph,
+    the clock and Remove, inside its frame (a circle inside the frame's border was one ring
+    too many).
+- **Accessibility:** unchanged. Play is "Play the voice note" or "Pause the voice note", a
+  button; the waveform is one slider node, "Position in the voice note", "0:04 of 0:11"; the
+  clock is not read twice; the pill is "Playback speed, normal".
+- **Open for the owner:** (1) whether 48 (two thirds) is short enough, or the visible row
+  should be shorter with its targets reaching past it, as the speed pill's does; (2) whether
+  Write's listen-back should also be one line, which would need Record again and Remove to
+  move (for example under the bars, or behind one "More" target).
