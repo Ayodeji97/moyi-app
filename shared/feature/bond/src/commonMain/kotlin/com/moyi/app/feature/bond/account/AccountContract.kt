@@ -30,7 +30,7 @@ data class AccountState(
     val inFlight: DeletionCall? = null,
     /** Sign out (owner ruling 2026-11-09) is running: its row says Signing out and every row waits. */
     val signingOut: Boolean = false,
-    /** The plain "Sign out?" question is up (PROPOSED, docs/missing-components.md section 77). */
+    /** The plain "Sign out?" question is up (PROPOSED, docs section 77); only when nothing is unsent. */
     val confirmingSignOut: Boolean = false,
     /** Sign out would delete entries still waiting to send: the question is up. */
     val confirmingUnsentSignOut: Boolean = false,
@@ -55,7 +55,7 @@ sealed interface AccountAction {
     /** The delete screen closed (back, Cancel): the password and its error go with it. */
     data object OnDeleteClosed : AccountAction
 
-    /** The Sign out row: asks "Sign out?" first; nothing ends yet. */
+    /** The Sign out row: tries once more to send what waits, then asks ONE question; nothing ends yet. */
     data object OnSignOutClick : AccountAction
 
     /** "Sign out" in the question: the sequence Bond settings ran (owner ruling 2026-11-09). The shell routes on the session ending. */

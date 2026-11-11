@@ -225,71 +225,56 @@ class AccountViewModelTest : MainDispatcherTest() {
         assertNull(viewModel.state.value.pending)
     }
 
-    // ----- sign out (owner ruling 2026-11-09: as Bond settings signs out) -----
+    // ----- sign out: ONE question, chosen by whether words would be lost -----
 
     @Test
-    fun theSignOutRowOnlyAsksAndCancelKeepsYouSignedIn() {
+    fun nothingUnsentAsksOnlySignOutAndCancelKeepsYouSignedIn() {
         viewModel.onAction(AccountAction.OnSignOutClick)
+
         assertTrue(viewModel.state.value.confirmingSignOut)
+        assertFalse(viewModel.state.value.confirmingUnsentSignOut, "never both questions")
         assertFalse(viewModel.state.value.signingOut)
         assertEquals(0, auth.logouts, "the row alone signs nobody out")
+        assertEquals(0, outbox.passes, "nothing waiting: no send")
 
         viewModel.onAction(AccountAction.OnSignOutDismiss)
         assertFalse(viewModel.state.value.confirmingSignOut)
         assertEquals(0, auth.logouts)
-        assertEquals(0, outbox.passes, "cancel does not even try to send")
     }
 
     @Test
-    fun confirmingTheQuestionSignsOut() {
+    fun nothingUnsentConfirmSignsOutOnce() {
         viewModel.onAction(AccountAction.OnSignOutClick)
+        viewModel.onAction(AccountAction.OnSignOutConfirm)
         viewModel.onAction(AccountAction.OnSignOutConfirm)
 
         assertFalse(viewModel.state.value.confirmingSignOut)
-        assertEquals(1, auth.logouts)
-    }
-
-    @Test
-    fun offlineTheQuestionStillEndsTheLocalSession() {
-        deletion.pendingReads += Result.Failure(DataError.Network.NoInternet)
-        outbox.online = false
-
-        viewModel.onAction(AccountAction.OnSignOutClick)
-        assertEquals(0, auth.logouts)
-        viewModel.onAction(AccountAction.OnSignOutConfirm)
-
-        assertEquals(1, auth.logouts, "offline sign-out (#41) still ends the session once confirmed")
-    }
-
-    @Test
-    fun signOutWithNothingWaitingSignsOutOnceWithoutAsking() {
-        signOutConfirmed()
-        signOutConfirmed()
-
         assertTrue(viewModel.state.value.signingOut)
-        assertFalse(viewModel.state.value.confirmingUnsentSignOut)
-        assertEquals(0, outbox.passes, "nothing waiting: no send, no question")
         assertEquals(1, auth.logouts)
     }
 
     @Test
-    fun signOutSendsWhatIsWaitingFirstAndSignsOutWhenItAllWent() {
+    fun signOutSendsWhatIsWaitingFirstAndStillAsksOnlySignOutWhenItAllWent() {
         outbox.queue += waiting
         outbox.online = true
 
-        signOutConfirmed()
+        viewModel.onAction(AccountAction.OnSignOutClick)
 
         assertEquals(1, outbox.passes)
-        assertEquals(1, auth.logouts)
+        assertTrue(viewModel.state.value.confirmingSignOut)
+        assertFalse(viewModel.state.value.confirmingUnsentSignOut)
+        assertEquals(0, auth.logouts)
     }
 
     @Test
-    fun signOutThatWouldDeleteUnsentWordsAsksFirstAndStayingKeepsThem() {
+    fun unsentWordsAskOnlyTheUnsentQuestionAndStayingKeepsThem() {
         outbox.queue += waiting
 
-        signOutConfirmed()
+        viewModel.onAction(AccountAction.OnSignOutClick)
         assertTrue(viewModel.state.value.confirmingUnsentSignOut)
+        assertFalse(viewModel.state.value.confirmingSignOut, "never both questions")
         assertFalse(viewModel.state.value.signingOut)
+        assertEquals(1, outbox.passes, "one more try before asking")
         assertEquals(0, auth.logouts, "not one word deleted without asking")
 
         viewModel.onAction(AccountAction.OnSignOutUnsentDismiss)
@@ -297,18 +282,36 @@ class AccountViewModelTest : MainDispatcherTest() {
         assertEquals(0, auth.logouts)
         assertEquals(1, outbox.queue.size)
 
-        signOutConfirmed()
+        viewModel.onAction(AccountAction.OnSignOutClick)
         viewModel.onAction(AccountAction.OnSignOutUnsentConfirm)
         assertEquals(1, auth.logouts, "the person chose: the session (and its wipe) ends")
     }
 
     @Test
-    fun withAccountUnreadSignOutStillWorks() {
+    fun offlineWithUnsentWordsAsksOnlyTheUnsentQuestionAndConfirmSignsOut() {
         deletion.pendingReads += Result.Failure(DataError.Network.NoInternet)
+        outbox.online = false
+        outbox.queue += waiting
         assertEquals(AccountLoad.Failed, viewModel.state.value.load)
 
-        signOutConfirmed()
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        assertTrue(viewModel.state.value.confirmingUnsentSignOut)
+        assertFalse(viewModel.state.value.confirmingSignOut)
 
+        viewModel.onAction(AccountAction.OnSignOutUnsentConfirm)
+        assertEquals(1, auth.logouts, "offline sign-out (#41) still ends the local session")
+    }
+
+    @Test
+    fun offlineWithNothingUnsentAsksSignOutAndConfirmSignsOut() {
+        deletion.pendingReads += Result.Failure(DataError.Network.NoInternet)
+        outbox.online = false
+
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        assertTrue(viewModel.state.value.confirmingSignOut)
+        assertEquals(0, auth.logouts)
+
+        viewModel.onAction(AccountAction.OnSignOutConfirm)
         assertEquals(1, auth.logouts)
     }
 
