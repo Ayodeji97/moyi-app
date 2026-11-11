@@ -29,6 +29,8 @@ import com.moyi.app.feature.bond.signout.SignOut
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -82,6 +84,8 @@ class BondSettingsViewModel(
     sender: OutboxSender,
     /** Every zone id the platform knows; kotlinx-datetime's list unless a test gives one. */
     private val zoneIds: () -> Set<String> = { TimeZone.availableZoneIds },
+    /** Today's date in the bond's zone is read from it; a test gives a fixed one. */
+    private val clock: Clock = Clock.System,
 ) : ViewModel() {
     private val _state = MutableStateFlow(BondSettingsState())
     val state: StateFlow<BondSettingsState> = _state.asStateFlow()
@@ -173,7 +177,9 @@ class BondSettingsViewModel(
             BondSettingsAction.OnEditorClosed -> _state.update { it.copy(error = null, nameError = null) }
             BondSettingsAction.OnTimeZoneClick -> {
                 val settings = _state.value.settings ?: return
-                _state.update { it.copy(zoneDraft = settings.anchorTimezone, zoneQuery = "", error = null) }
+                _state.update {
+                    it.copy(zoneDraft = settings.anchorTimezone, zoneQuery = "", error = null, zoneChangeFrom = blockedUntil(settings))
+                }
                 send(BondSettingsEvent.OpenTimeZone)
             }
             BondSettingsAction.OnZoneFieldClick -> openZonePicker()
@@ -203,6 +209,7 @@ class BondSettingsViewModel(
 
     /** Loads the zones on first open; a platform that gives none shows the field's error, and reopening retries. */
     private fun openZonePicker() {
+        if (_state.value.zoneChangeFrom != null) return
         if (_state.value.zones.isEmpty()) {
             val zones = zoneIds().filter(CreateBondViewModel::isRegionZone).sortedWith(compareBy({ cityOf(it) }, { it }))
             _state.update { it.copy(zones = zones, zonesFailed = zones.isEmpty()) }
@@ -216,6 +223,10 @@ class BondSettingsViewModel(
         if (!canChangeSettings()) return
         val current = _state.value.settings ?: return
         val zone = _state.value.zoneDraft ?: return
+        // Inside the 30 days and the screen already said so: no request that is sure to be refused.
+        _state.value.zoneChangeFrom?.let { from ->
+            return zoneFailed(UiText.Resource(Res.string.settings_tz_error_too_soon_from, listOf(dayAndMonth(from))))
+        }
         // The zone it already is: nothing to ask the other member.
         if (zone == current.anchorTimezone) return send(BondSettingsEvent.Saved)
         _state.update { it.copy(saving = SettingsField.TimeZone, zoneSecondaryInFlight = false, error = null) }
@@ -291,6 +302,19 @@ class BondSettingsViewModel(
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?: return UiText.Resource(Res.string.settings_tz_error_too_soon)
         return UiText.Resource(Res.string.settings_tz_error_too_soon_from, listOf(dayAndMonth(allowedFrom)))
+    }
+
+    /**
+     * The day the zone can change again, when it is still ahead of today in the bond's own
+     * zone (the date is the bond's, never the device's); null when a change is allowed now,
+     * when the server sent none, or when the date has passed since (a stale read). Unreadable
+     * input is also null: the `409` stays the safety net.
+     */
+    private fun blockedUntil(settings: BondSettings): LocalDate? {
+        val from = settings.timezoneChangeAllowedFrom?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
+        val zone = runCatching { TimeZone.of(settings.anchorTimezone) }.getOrDefault(TimeZone.UTC)
+        val today = clock.now().toLocalDateTime(zone).date
+        return from.takeIf { it > today }
     }
 
     private fun zoneFailed(message: UiText) =
