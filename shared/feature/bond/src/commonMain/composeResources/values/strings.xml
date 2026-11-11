@@ -396,7 +396,7 @@
     <string name="delete_account_confirm">Delete my account</string>
     <!-- PROPOSED. PrimaryAction Sending: nothing is deleted yet, the request is being asked for (close_box_confirming's word). -->
     <string name="delete_account_confirming">Asking</string>
-    <!-- PROPOSED. 401 INVALID_CREDENTIALS on POST /me/deletion-request: the password is wrong, the session is fine. -->
+    <!-- PROPOSED. 403 INVALID_CREDENTIALS on POST /me/deletion-request: the password is wrong, the session is fine. -->
     <string name="delete_account_error_password">That is not the password for this account. Try again.</string>
     <!-- PROPOSED. Blank, checked here, or 422 from the server. -->
     <string name="delete_account_error_blank">Type your password to delete your account.</string>
