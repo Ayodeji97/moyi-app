@@ -10,6 +10,7 @@ import com.moyi.app.api.models.LoginRequest
 import com.moyi.app.api.models.LogoutRequest
 import com.moyi.app.api.models.RegisterRequest
 import com.moyi.app.api.models.ResendVerificationRequest
+import com.moyi.app.api.models.ResetCodeCheckRequest
 import com.moyi.app.api.models.ResetPasswordRequest
 import com.moyi.app.api.models.VerifyEmailRequest
 import com.moyi.app.core.DataError
@@ -86,6 +87,10 @@ class AuthRepositoryImpl(
 
     override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { passwordReset.forgot(ForgotPasswordRequest(email = email)) }
+
+    // 204 with no body: only the status counts. Code and email by name, as in toResetRequest.
+    override suspend fun checkResetCode(email: String, code: String): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { passwordReset.checkResetCode(ResetCodeCheckRequest(code = code, email = email)) }
 
     // 200 with no body and no session: the person signs in afterwards (doc 06 §3.1).
     override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> =

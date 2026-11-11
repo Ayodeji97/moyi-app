@@ -52,7 +52,12 @@ class ResetScreensTest {
 
     @Test
     fun choosingANewPasswordStatesTheConsequenceAboveTheAction() = runComposeUiTest {
-        inPhone { ResetPasswordScreen(state = ResetPasswordState(email = "amara@example.com"), onAction = {}) }
+        inPhone {
+            ResetPasswordScreen(
+                state = ResetPasswordState(email = "amara@example.com", step = ResetStep.Password),
+                onAction = {},
+            )
+        }
 
         val consequence = onNodeWithText(CONSEQUENCE).assertIsDisplayed().fetchSemanticsNode()
         val action = onNodeWithText("Save and sign in").assertIsDisplayed().fetchSemanticsNode()
@@ -65,13 +70,23 @@ class ResetScreensTest {
         assertTrue(spoken.indexOf(CONSEQUENCE) in 0 until spoken.indexOf("Save and sign in"), spoken.toString())
     }
 
+    @Test
+    fun theCodeStepAsksForOnlyTheCodeAndTheNewPasswordWaitsForTheNextStep() = runComposeUiTest {
+        inPhone { ResetPasswordScreen(state = ResetPasswordState(email = "amara@example.com"), onAction = {}) }
+
+        onNodeWithText("Type your code").assertIsDisplayed()
+        onNodeWithText("Check the code").assertIsDisplayed()
+        val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        assertTrue(CONSEQUENCE !in spoken && "Save and sign in" !in spoken && "Password" !in spoken, spoken.toString())
+    }
+
     private fun texts(node: SemanticsNode): List<String> {
         val own = node.config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }
         return listOfNotNull(own) + node.children.flatMap { texts(it) }
     }
 
     private companion object {
-        const val NON_DISCLOSURE = "If that address has an account, we sent it a 6-digit code. Type it below with your new password."
+        const val NON_DISCLOSURE = "If that address has an account, we sent it a 6-digit code. Type it on the next screen, then choose your new password."
         const val CONSEQUENCE = "This signs you out everywhere else. You will need to sign in again on your other devices."
     }
 }

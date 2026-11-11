@@ -56,6 +56,16 @@ interface AuthRepository {
     suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network>
 
     /**
+     * Says whether a typed reset code is right, before the new password is chosen
+     * (`POST /auth/reset-password/check`, backend-contract-gaps.md row 39). A check, not a
+     * grant: success (`204`) changes nothing, and the reset still sends the same code. Every
+     * refused code (wrong, expired, burned after five wrong tries, spent, or no such account)
+     * is one answer, `422 PASSWORD_RESET_TOKEN_INVALID`, and a wrong try spends one of the
+     * code's five. Also `429` (ten typed codes a day per address) and `503 CODE_CHECK_UNAVAILABLE`.
+     */
+    suspend fun checkResetCode(email: String, code: String): EmptyResult<DataError.Network>
+
+    /**
      * Sets a new password from the reset email's link or typed code ([EmailProof]).
      * Signs nobody in: every session on every device is revoked, and the caller
      * signs in afterwards. Refusals: `422 PASSWORD_RESET_TOKEN_INVALID` (a link

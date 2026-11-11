@@ -15,8 +15,8 @@
     <string name="auth_email_error">That does not look like an email address yet.</string>
     <!-- field.password.label (strings-proposed.md §5). -->
     <string name="auth_password_label">Password</string>
-    <!-- Figma sign-up no-connection frame 394:240; states.md §1c. Above the action when the request never reached the server. -->
-    <string name="auth_error_offline">That didn't go through. Your details are still here.</string>
+    <!-- Owner ruling 2026-11-11 (docs/missing-components.md §72), replacing the Figma 394:240 line "That didn't go through. Your details are still here." Above the action when the request never reached the server (no network, or a timeout). -->
+    <string name="auth_error_offline">Moyi couldn't be reached. Check your connection, then try again.</string>
     <!-- states.md §10 "Generic error", its two lines as one. Anything the client cannot explain more precisely. -->
     <string name="auth_error_generic">That didn't work. Nothing was lost. Try again in a moment.</string>
     <!-- PROPOSED. A 429 on register, verify or resend (ADR-0023). States when, never why (strings-proposed.md ratelimit note). -->
@@ -161,9 +161,13 @@
     <!-- Approved 2026-11-10 (§61), was "Sending the link". The action while the request is in flight (states.md §1c). -->
     <string name="reset_request_action_sending">Sending the code</string>
     <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58), replacing the owner's 2026-11-06 interim line ("copy the link and paste it in Moyi"): the email now carries a 6-digit code. Still names the next step (owner ruling 2026-11-06). No lifetime: it is a backend default that can drift. MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
-    <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Type it below with your new password.</string>
+    <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Type it on the next screen, then choose your new password.</string>
     <!-- reset.new.heading. The Reset password heading (345:30), and the link on Reset link sent that opens it. -->
     <string name="reset_new_heading">Choose a new password</string>
+    <!-- PROPOSED (docs/missing-components.md §72). The first step of Choose a new password: only the code, checked before any password is asked for. -->
+    <string name="reset_code_heading">Type your code</string>
+    <!-- PROPOSED (§72). The action on that first step. While it waits the label is verify_action_sending, "Checking". -->
+    <string name="reset_code_action">Check the code</string>
     <!-- reset.consequence. Placed before the action (states.md §1b: announce the consequence before the action). -->
     <string name="reset_consequence">This signs you out everywhere else. You will need to sign in again on your other devices.</string>
     <!-- reset.action. -->

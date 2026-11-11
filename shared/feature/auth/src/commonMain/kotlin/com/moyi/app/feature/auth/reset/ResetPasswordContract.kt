@@ -4,6 +4,9 @@ import androidx.compose.runtime.Immutable
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
 
+/** The two steps of the reset: the code is checked first, then the new password is chosen. */
+enum class ResetStep { Code, Password }
+
 /**
  * Choose a new password (Account 4, Figma 345:30), plus the code field (not in Figma,
  * docs/missing-components.md §58): six digits typed from the email, or the link pasted.
@@ -24,8 +27,18 @@ data class ResetPasswordState(
      * field. It is the proof while it is held; typing a digit drops it for the code.
      */
     val linkToken: String? = null,
+    /**
+     * [ResetStep.Code] until the code is right (checked by the server) or a link is held;
+     * then [ResetStep.Password]. A refused code at the end sends the screen back to the code.
+     */
+    /** False when the emailed link opened the app on the password: there is no code step behind it. */
+    val canReturnToCode: Boolean = linkToken == null,
+    val step: ResetStep = if (linkToken != null) ResetStep.Password else ResetStep.Code,
     val password: FieldInput = FieldInput(),
-    /** Sending covers both the reset and the sign-in after it: one action, "Save and sign in". */
+    /**
+     * Sending covers the code check on the first step, and on the second both the reset and
+     * the sign-in after it: one action, "Save and sign in".
+     */
     val submit: SubmitStatus = SubmitStatus.Idle,
 )
 
@@ -36,7 +49,10 @@ sealed interface ResetPasswordAction {
 
     /** Left the password field. The code field has no blur check: like verify, empty is only an error on submit. */
     data object OnPasswordBlur : ResetPasswordAction
+    /** "Check the code" on the first step, "Save and sign in" on the second. */
     data object OnSubmit : ResetPasswordAction
+
+    /** Back from the password returns to the code; from the code it leaves the screen. */
     data object OnBackClick : ResetPasswordAction
 }
 
@@ -51,6 +67,6 @@ sealed interface ResetPasswordEvent {
      */
     data class NavigateToLogin(val email: String) : ResetPasswordEvent
 
-    /** Back to Reset link sent. */
+    /** Leave the screen: back to Reset link sent. */
     data object NavigateBack : ResetPasswordEvent
 }

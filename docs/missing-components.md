@@ -1820,3 +1820,54 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Owner rulings (2026-11-11):** (1) Remove in Edit stays as built: free, with no confirmation
   dialog, because Save is the commitment and Cancel undoes it (`states.md` §4 says the same of
   Edit); (2) a removed slot shows no Undo until Save. Nothing is open here.
+
+
+## Two-step reset and the "could not be reached" line (PR feat/reset-check-register-error)
+
+### 72. Choose a new password in two steps, and one line for "the server could not be reached" (owner ruling 2026-11-11)
+
+- **Today:** §58 put the code and the new password on one screen because the server could only
+  check a reset code together with the password (backend-contract-gaps row 39). A wrong code
+  was learned only after the password was typed. The contract (backend ca77fe45, #175) now has
+  `POST /auth/reset-password/check`: `204` right, `422 PASSWORD_RESET_TOKEN_INVALID` for every
+  refused code, `429` (ten typed codes a day), `503 CODE_CHECK_UNAVAILABLE`.
+- **Built, interim, not drawn** (same route, two steps; no new component):
+  - **Step 1, the code.** Eyebrow, heading "Type your code", the §58 code field (label, helper,
+    errors unchanged), and `PrimaryAction` "Check the code" ("Checking" while it waits, as on
+    verify). The sixth digit checks the code too; the button is for a code that could not be
+    checked (offline) and for the keyboard's Done. A refused code shows `code_error_invalid` on
+    the field and is not sent again until a digit changes (each wrong try spends one of five).
+    `429` and `503` show above the action as on verify. A pasted link skips the check (it has
+    none) and opens step 2.
+  - **Step 2, the password.** Exactly Figma 345:30 as before (heading "Choose a new password",
+    password field with helper, the consequence line, "Save and sign in"), minus the code field.
+    When a link is the proof, "The link from the email is ready. Choose your new password." sits
+    above the field. The reset can still refuse the code (it expired, or a newer email replaced
+    it, since the check): the screen returns to step 1 with the error on the code field.
+  - **Back:** from step 2 the arrow and system Back return to step 1 (the code as typed, the
+    password cleared); from step 1 they leave, as before. When the emailed link opened the app
+    on step 2 there is no step 1, so Back leaves.
+  - **Focus:** each step opens with the keyboard on its own field.
+- **Strings proposed:** `reset_code_heading` "Type your code"; `reset_code_action` "Check the
+  code". Reused: `verify_action_sending` ("Checking"), `code_*` errors, `reset_*` on step 2.
+  Changed: `reset_sent_line` (Reset link sent) from "...Type it below with your new password."
+  to "If that address has an account, we sent it a 6-digit code. Type it on the next screen,
+  then choose your new password." The non-disclosure rule is unchanged (nothing about the
+  address). `copy.md` and `strings-proposed.md` live in the parent repository and need the
+  same edits.
+- **Copy change, owner ruling 2026-11-11:** `auth_error_offline`, shown above the action when
+  the request never reached the server (no network, or a timeout), was "That didn't go through.
+  Your details are still here." (Figma 394:240). It is now **"Moyi couldn't be reached. Check
+  your connection, then try again."** It is one string on every auth screen that uses the shared
+  mapper (`AuthErrorMapper.formFailure`): **register, sign in, verify (and its resend), forgot
+  password, and both reset steps**. No screen had its own wording, so all of them change.
+  - Audit of register's other failures (nothing else fell back to the old line): a field
+    violation (name, email, password) shows on its field; `429` shows "This is paused for a short
+    while..."; anything the server answered that the screen cannot explain (5xx, 400, an
+    unreadable answer) shows "That didn't work. Nothing was lost. Try again in a moment." The
+    contract declares no 409 for register (only 201, 400, 401, 415, 422, 429, 500, 503), so
+    there is no "email taken" answer to give copy to; `503 HASHING_CAPACITY_EXCEEDED` (retry the
+    same request) reads as the generic line with Try again. Tests pin each of these to its string.
+- **Open for the owner:** (1) the Reset link sent button still reads "Choose a new password"
+  while the screen it opens is headed "Type your code"; "Enter the code" would match;
+  (2) whether "Type your code" should repeat the address ("Sent to ...") as verify's line does.
