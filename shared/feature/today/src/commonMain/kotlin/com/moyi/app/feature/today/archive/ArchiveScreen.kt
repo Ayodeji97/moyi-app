@@ -525,7 +525,9 @@ private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) 
     val photoAndVoice = stringResource(Res.string.archive_row_photo_and_voice)
     val deleted = stringResource(Res.string.today_tombstone_line)
     val lines = row.lines.map { line ->
-        val author = if (line.author == RowAuthor.You) you else partner
+        // The label names the person briefly: a partner's first word (a long display name would
+        // push the words off the row). The spoken description below keeps the full name.
+        val author = if (line.author == RowAuthor.You) you else partner.substringBefore(' ')
         when (val body = line.body) {
             is RowBody.Words -> ArchiveRowLine(author, body.line)
             is RowBody.MediaOnly -> ArchiveRowLine(
@@ -550,7 +552,9 @@ private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) 
         if (row.voiceChip) add(stringResource(Res.string.archive_row_spoken_voice))
         if (row.favourite) add(stringResource(Res.string.archive_day_favourited))
     }
-    val spoken = lines.map { stringResource(Res.string.archive_row_spoken_entry, it.author, it.text) }
+    val spoken = row.lines.zip(lines).map { (line, drawn) ->
+        stringResource(Res.string.archive_row_spoken_entry, if (line.author == RowAuthor.You) you else partner, drawn.text)
+    }
     val description = rowDescription(dayInSentence(day.date), spoken, extras)
     ArchiveDayRow(
         dayNumber = dayNumber,
