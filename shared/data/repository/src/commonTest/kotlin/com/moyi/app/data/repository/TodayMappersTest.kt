@@ -124,7 +124,7 @@ class TodayMappersTest {
 
     @Test
     fun aVoiceNoteIsMappedAsTheServerPlaysItToTheReader() {
-        val ready = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL)
+        val ready = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL, urlAac = null, waveform = null)
         assertEquals(EntryVoice("v1", EntryMediaStatus.Ready, URL, 42_000, false), ready.toEntryVoice())
         assertTrue(ready.copy(sensitive = true).toEntryVoice().sensitive)
         // Processing: never a URL or a length, whatever was sent, and never sensitive.
@@ -142,7 +142,7 @@ class TodayMappersTest {
 
     @Test
     fun anEntrysVoiceNoteTravelsWithItAndATombstoneHasNone() {
-        val voice = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL)
+        val voice = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL, urlAac = null, waveform = null)
         assertEquals("v1", entry(EntryResponse.Status.SUBMITTED, "w").copy(voice = voice).toMyEntry()?.voice?.id)
         assertNull(entry(EntryResponse.Status.DELETED, null).copy(voice = voice).toMyEntry()?.voice)
         val theirs = revealed("w").copy(voice = voice).toPartnerEntry()
