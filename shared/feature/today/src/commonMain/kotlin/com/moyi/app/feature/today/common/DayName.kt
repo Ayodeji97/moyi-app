@@ -14,6 +14,9 @@ internal expect fun weekdayName(date: LocalDate): String
 /** Day first, then the month, in the device's language, no year ("2 September"). */
 internal expect fun dayAndMonth(date: LocalDate): String
 
+/** The weekday in three letters or so, in the device's language ("Wed"): an Archive row's date column. */
+internal expect fun weekdayShort(date: LocalDate): String
+
 /** The weekday and the day of the month, in the device's language: "Tuesday 2" (an Archive day card, Figma 223:10). */
 internal expect fun weekdayAndDay(date: LocalDate): String
 

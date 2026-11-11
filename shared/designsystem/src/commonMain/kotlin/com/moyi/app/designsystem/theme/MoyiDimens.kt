@@ -251,6 +251,19 @@ object MoyiDimens {
         val Gap = 8.dp
     }
 
+    /**
+     * `ArchiveDayRow` (PROPOSED, docs/missing-components.md §76): a day in the Archive list,
+     * one compact row. The date column is 36 wide (owner ruling 2026-11-11) and only grows
+     * with the font scale; the meta pills are 24 tall, hugging their `label` line.
+     */
+    object ArchiveRow {
+        val DateColumn = 36.dp
+        val AuthorMaxWidth = 96.dp
+        val ChipHeight = 24.dp
+        val ChipStroke = 1.dp
+        val Hairline = 1.dp
+    }
+
     /** tokens.md §4 row 10, `FavouriteToggle`: a 48 pt row, a 24 px glyph, then the label. */
     object FavouriteToggle {
         val Target = TouchTarget

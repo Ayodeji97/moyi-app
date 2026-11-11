@@ -129,6 +129,27 @@
     <!-- PROPOSED. Spoken for the day card's small filled bookmark (states.md §6: the caller's own mark only). -->
     <string name="archive_day_favourited">In your favourites</string>
 
+    <!-- ===== Archive, compact rows (owner ruling 2026-11-11; docs/missing-components.md section 76). ===== -->
+
+    <!-- PROPOSED. The author label on an Archive row's line for your own entry (label style, uppercased on screen). -->
+    <string name="archive_row_author_you">You</string>
+    <!-- PROPOSED. The author label when the partner's name is not known yet (never expected on a day that holds their words). -->
+    <string name="archive_row_author_partner_unknown">Your partner</string>
+    <!-- PROPOSED. An entry with a photo and no words: its line on the row, and the photo chip. -->
+    <string name="archive_row_photo">Photo</string>
+    <!-- PROPOSED. An entry with a voice note and no words: its line on the row, and the voice chip. -->
+    <string name="archive_row_voice">Voice note</string>
+    <!-- PROPOSED. An entry with a photo and a voice note and no words. -->
+    <string name="archive_row_photo_and_voice">Photo and voice note</string>
+    <!-- PROPOSED. The chip on a day holding an entry you favourited (sentence case). -->
+    <string name="archive_row_favourite">Favourite</string>
+    <!-- PROPOSED. One entry as a screen reader says it. %1$s = the author ("You" or the partner's name), %2$s = the first line. -->
+    <string name="archive_row_spoken_entry">%1$s: %2$s</string>
+    <!-- PROPOSED. The spoken form of the photo chip, when the words carry a photo. -->
+    <string name="archive_row_spoken_photo">With a photo</string>
+    <!-- PROPOSED. The spoken form of the voice chip, when the words carry a voice note. -->
+    <string name="archive_row_spoken_voice">With a voice note</string>
+
     <!-- ===== Archive, month jump (states.md §6, route 1: "Tapping opens a month picker"). ===== -->
 
     <!-- FIGMA NODE NAME on 257:17 / 281:760 (the month row's trailing link), sentence case per D14. -->
