@@ -1981,3 +1981,23 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **Order of questions:** Sign out row, then "Sign out?" (new), then Sign out runs the existing sequence: one more try to send what is waiting, and only if something is still waiting does the existing "Your entry hasn't sent yet" question (strings-proposed.md section 12) appear. So a person with an unsent entry sees two questions, the second naming exactly what is lost. Offline, the first question appears and confirming still ends the local session (#41); the unsent question follows only if entries are waiting.
 - **Strings proposed:** `account_sign_out_title` "Sign out?", `account_sign_out_line` "Your days stay safe on Moyi. Sign in again to see them on this phone. Any draft kept on this phone is removed.", `account_sign_out_confirm` "Sign out". Cancel reuses `settings_cancel`.
 - **Owner question:** two dialogs in a row when an entry is unsent is correct but a little heavy. An alternative is to check the outbox first and show only the unsent question in that case.
+
+### 78. Reset link sent: the button says "Enter the code" (owner-approved 2026-11-11)
+
+- **Why:** the button on "Reset link sent" read "Choose a new password" but opened "Type your code" (#87's two-step reset). The label named the step after the one it opened.
+- **Change:** new `reset_sent_action` "Enter the code". `reset_new_heading` ("Choose a new password") stays as the heading of the second step.
+- **Copy rule check:** no dash, no exclamation mark, names the next action (memory: copy names the next action).
+
+### 79. Notification small icon (Android)
+
+- **What was wrong:** the push icon (manifest `default_notification_icon` and `MoyiMessagingService.setSmallIcon`) was `ic_launcher_foreground`, which is already a flat, transparent mark (not a full-colour launcher PNG, so no white square). But it is drawn in a 108 dp canvas at 44 percent of its height (the adaptive-icon safe zone), so in the 24 dp status-bar slot the mark came out about 10 dp, tiny.
+- **Change:** new `ic_stat_moyi.xml`, the same two paths in a 24 dp vector, scaled 0.39 and centred so the mark fills about 20 dp. Flat white on transparent, as the status bar needs (it keeps only the alpha).
+- **Colour:** no `default_notification_color` is set. Rosewood has no accent token (tokens.md section 1); `ink` (#2A2020) would be unreadable on a dark notification shade and `inkMuted`/`outlineStrong` are low contrast on one of the two. Owner question in the PR.
+- **Not traced:** the mark is already vector (`tools/icon/make_icon.py`), so nothing was traced; the glyph is the real logo, not a placeholder.
+
+### 80. Insets, the Archive row's author column and the More menu's anchor (polish)
+
+- **Scaffold bottom inset:** a scrolling screen with no pinned action now runs its scroll viewport to the physical bottom and pads the END of the content (24 plus the safe-area bottom) instead of padding the viewport. Before, the content was clipped 24 plus the home-indicator inset above the edge, with empty surface below. Pinned-action screens and the keyboard-up case are unchanged.
+- **`ArchiveDayRow`:** the author labels of one row now share one column, as wide as the widest label (measured, so it grows with the font), capped at 40 percent of the line and ellipsised beyond that; the words of every line start at the same x. `MoyiDimens.ArchiveRow.AuthorMaxWidth` (96 dp) is replaced by `AuthorMaxShare` (0.4).
+- **`MoreMenu`:** the panel is 176 dp wide with its right edge on the dots' target and 4 dp below it (`MoyiDimens.MoreMenu.Width`, `GapBelow`), instead of starting at the dots and sliding left over the entry text.
+- **Dead code removed:** Bond settings' `OnGetHelpClick`, `OpenSupport` and the graph's `onOpenSupport` (no row sends them since #89). `SupportOrigin.Settings` stays in the Support feature, now with no caller.
