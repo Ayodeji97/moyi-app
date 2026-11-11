@@ -145,7 +145,9 @@ data class EntryImage(
  * and on [EntryMediaStatus.NotShared] unless it was blocked outright. [sensitive] as a photo's.
  *
  * The [url] is a signed GET of an Ogg Opus file (mono, 24 kbit/s), valid for at least 24
- * hours: a credential for the voice note. It is never logged ([toString]), never written to
+ * hours: a credential for the voice note. [urlAac] is the same note as AAC-LC in MP4 (.m4a),
+ * which iOS plays natively; it is null whenever [url] is, and for a note processed before it
+ * existed (play [url] then). Both are credentials: never logged ([toString]), never written to
  * the device's cache, and fetched only when the person taps play (metered data: voice notes
  * on demand).
  */
@@ -155,9 +157,10 @@ data class EntryVoice(
     val url: String?,
     val durationMs: Int?,
     val sensitive: Boolean,
+    val urlAac: String? = null,
 ) {
     override fun toString(): String =
-        "EntryVoice(id=$id, status=$status, url=${url?.let { "(redacted)" }}, durationMs=$durationMs, sensitive=$sensitive)"
+        "EntryVoice(id=$id, status=$status, url=${url?.let { "(redacted)" }}, urlAac=${urlAac?.let { "(redacted)" }}, durationMs=$durationMs, sensitive=$sensitive)"
 }
 
 /** How an entry's photo or voice note stands for the person asking (`EntryImageResponse` and `EntryVoiceResponse` share it). */

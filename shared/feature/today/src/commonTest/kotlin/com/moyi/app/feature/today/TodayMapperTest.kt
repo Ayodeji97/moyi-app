@@ -144,6 +144,8 @@ class TodayMapperTest {
         assertEquals(VoiceNote("v2", "http://storage.test/v.ogg", 42_000, VoiceNoteLook.Playable), open.partnerVoice)
         assertEquals("v1", open.myVoice?.key)
 
+        assertEquals("http://storage.test/v.m4a", voice.copy(urlAac = "http://storage.test/v.m4a").toVoiceNote().urlAac)
+        assertNull(voice.toVoiceNote().urlAac)
         assertEquals(VoiceNoteLook.Sensitive, voice.copy(sensitive = true).toVoiceNote().look)
         assertEquals(VoiceNoteLook.OnItsWay, voice.copy(status = EntryMediaStatus.Processing, url = null).toVoiceNote().look)
         assertEquals(VoiceNoteLook.NotShared, voice.copy(status = EntryMediaStatus.NotShared).toVoiceNote().look)

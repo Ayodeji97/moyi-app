@@ -94,6 +94,8 @@ internal fun EntryVoiceResponse.toEntryVoice(): EntryVoice {
         url = url.takeIf { shown != EntryMediaStatus.Processing },
         durationMs = durationMs?.takeIf { it > 0 && shown != EntryMediaStatus.Processing },
         sensitive = sensitive && shown == EntryMediaStatus.Ready,
+        // The AAC copy of the same note: held back with the Ogg one, and null for an old note.
+        urlAac = urlAac?.takeIf { shown != EntryMediaStatus.Processing },
     )
 }
 

@@ -49,10 +49,11 @@ actual fun rememberVoicePlayer(): VoicePlayer {
 }
 
 /**
- * `AVAudioPlayer` from memory. A remote voice note (Ogg Opus) is fetched whole at the tap
- * through an ephemeral `URLSession` (no disk cache, no cookies), moved into CAF
- * ([OggOpus.toCaf], since AVFoundation does not open Ogg) and played from the bytes; a
- * local recording (AAC in MPEG-4) plays as it is. Nothing is written to disk.
+ * `AVAudioPlayer` from memory. A remote voice note is fetched whole at the tap through an
+ * ephemeral `URLSession` (no disk cache, no cookies) and played from the bytes: its AAC copy
+ * (MP4, `urlAac`) as it is, as AVFoundation opens it natively; an old note without one as Ogg
+ * Opus, moved into CAF first ([OggOpus.toCaf], since AVFoundation does not open Ogg). A local
+ * recording (AAC in MPEG-4) plays as it is. Nothing is written to disk.
  */
 private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlayer(scope) {
     private var player: AVAudioPlayer? = null
@@ -71,11 +72,10 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
     override fun open(source: VoiceSource) {
         fetching?.cancel()
         fetching = scope.launch {
-            val playable = when (source) {
-                is VoiceSource.Local -> source.voice.bytes
-                is VoiceSource.Remote -> fetch(source.url)?.let { ogg -> withContext(Dispatchers.Default) { OggOpus.toCaf(ogg) } }
+            val made = when (source) {
+                is VoiceSource.Local -> player(source.voice.bytes)
+                is VoiceSource.Remote -> remotePlayer(source)
             }
-            val made = playable?.let { failable { AVAudioPlayer(data = it.toNSData(), error = null) } }
             if (made == null || !startSession()) {
                 onFailed()
                 return@launch
@@ -90,6 +90,23 @@ private class IosVoicePlayer(private val scope: CoroutineScope) : BaseVoicePlaye
             if (made.play()) onReady((made.duration * MS_PER_SECOND).toLong()) else onFailed()
         }
     }
+
+    /**
+     * The first of [preferredUrls] that fetches and opens: the AAC copy plays as it is, the Ogg
+     * Opus one is moved into CAF first. A note without an AAC copy, or one whose copy fails,
+     * falls back to Ogg.
+     */
+    private suspend fun remotePlayer(source: VoiceSource.Remote): AVAudioPlayer? {
+        for (url in preferredUrls(source, nativeAac = true)) {
+            val bytes = fetch(url) ?: continue
+            val playable = if (url == source.urlAac) bytes else withContext(Dispatchers.Default) { OggOpus.toCaf(bytes) }
+            player(playable)?.let { return it }
+        }
+        return null
+    }
+
+    private fun player(bytes: ByteArray?): AVAudioPlayer? =
+        bytes?.let { failable { AVAudioPlayer(data = it.toNSData(), error = null) } }
 
     override fun resume() {
         val made = player ?: return

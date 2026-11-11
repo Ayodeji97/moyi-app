@@ -19,11 +19,13 @@ sealed interface VoiceSource {
     val key: String
 
     /**
-     * An entry's voice note: a signed GET of an Ogg Opus file. The URL is a credential, never
-     * printed, and fetched only when play is tapped (no preload, no disk cache).
+     * An entry's voice note: a signed GET of an Ogg Opus file ([url]) and, for a note that has
+     * one, the same note as AAC in MP4 ([urlAac]). Each URL is a credential, never printed, and
+     * fetched only when play is tapped (no preload, no disk cache). A platform plays the one it
+     * prefers: see [preferredUrls].
      */
-    class Remote(override val key: String, val url: String) : VoiceSource {
-        override fun toString(): String = "Remote(key=$key, url=(redacted))"
+    class Remote(override val key: String, val url: String, val urlAac: String? = null) : VoiceSource {
+        override fun toString(): String = "Remote(key=$key, url=(redacted), urlAac=${urlAac?.let { "(redacted)" }})"
     }
 
     /** A recording not sent yet, listened back to in the composer: AAC in MPEG-4, in memory. */
@@ -31,6 +33,15 @@ sealed interface VoiceSource {
         override fun toString(): String = "Local(key=$key, $voice)"
     }
 }
+
+/**
+ * The URLs to try for [source], best first. A platform that plays AAC natively ([nativeAac], iOS)
+ * tries the AAC copy first and the Ogg Opus one after it (an old note has no AAC copy, and a
+ * failed AAC fetch is not the end of the note); one that plays Ogg Opus natively (Android)
+ * uses only [VoiceSource.Remote.url].
+ */
+fun preferredUrls(source: VoiceSource.Remote, nativeAac: Boolean): List<String> =
+    if (nativeAac) listOfNotNull(source.urlAac, source.url) else listOf(source.url)
 
 enum class PlaybackPhase {
     /** Not started, or played to the end (back at the start). */

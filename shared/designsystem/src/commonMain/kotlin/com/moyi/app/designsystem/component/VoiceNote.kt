@@ -100,8 +100,9 @@ enum class VoiceNoteLook {
 }
 
 /**
- * A voice note on an [EntryCard]. [url] is a signed GET and so a credential: never printed,
- * and fetched only when play is tapped. [key] is the media id.
+ * A voice note on an [EntryCard]. [url] (Ogg Opus) and [urlAac] (the same note as AAC in MP4,
+ * null for an old one) are signed GETs and so credentials: never printed, and fetched only
+ * when play is tapped; the platform player picks one. [key] is the media id.
  */
 @Immutable
 data class VoiceNote(
@@ -109,8 +110,10 @@ data class VoiceNote(
     val url: String?,
     val durationMs: Long?,
     val look: VoiceNoteLook,
+    val urlAac: String? = null,
 ) {
-    override fun toString(): String = "VoiceNote(key=$key, url=${url?.let { "(redacted)" }}, durationMs=$durationMs, look=$look)"
+    override fun toString(): String =
+        "VoiceNote(key=$key, url=${url?.let { "(redacted)" }}, urlAac=${urlAac?.let { "(redacted)" }}, durationMs=$durationMs, look=$look)"
 }
 
 /**
@@ -154,7 +157,7 @@ private fun VoicePlayerRow(voice: VoiceNote) {
         playback = playback.withKnownDuration(voice.durationMs),
         levels = levels,
         label = stringResource(Res.string.ds_voice_position),
-        onToggle = { player.toggle(VoiceSource.Remote(voice.key, url)) },
+        onToggle = { player.toggle(VoiceSource.Remote(voice.key, url, voice.urlAac)) },
         onSeek = player::seekTo,
         speed = speed,
         onCycleSpeed = player::cycleSpeed,
@@ -593,7 +596,7 @@ private fun SentVoiceContent(voice: VoiceNote, onRecordAgain: (() -> Unit)?, onR
         playback = playback.withKnownDuration(voice.durationMs),
         levels = levels,
         label = stringResource(Res.string.ds_compose_sent_voice),
-        onToggle = { player.toggle(VoiceSource.Remote(voice.key, url)) },
+        onToggle = { player.toggle(VoiceSource.Remote(voice.key, url, voice.urlAac)) },
         onSeek = player::seekTo,
         speed = speed,
         onCycleSpeed = player::cycleSpeed,
