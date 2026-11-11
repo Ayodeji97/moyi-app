@@ -57,7 +57,7 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
     var gate: CompletableDeferred<Unit>? = null
 
     data class Submit(val text: String, val promptId: String?, val key: String, val intendedAt: Instant, val imageMediaId: String? = null, val voiceMediaId: String? = null)
-    data class Edit(val text: String, val key: String, val imageMediaId: String? = null, val voiceMediaId: String? = null)
+    data class Edit(val text: String, val key: String, val imageMediaId: String? = null, val voiceMediaId: String? = null, val removeImage: Boolean = false, val removeVoice: Boolean = false)
 
     var refreshes = 0
     var clears = 0
@@ -94,8 +94,8 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
         return submitResult
     }
 
-    override suspend fun edit(text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?): WriteResult {
-        edits += Edit(text, idempotencyKey, imageMediaId, voiceMediaId)
+    override suspend fun edit(text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?, removeImage: Boolean, removeVoice: Boolean): WriteResult {
+        edits += Edit(text, idempotencyKey, imageMediaId, voiceMediaId, removeImage, removeVoice)
         gate?.await()
         return editResult
     }

@@ -7,6 +7,9 @@ import com.moyi.app.core.FieldError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.today.BondDayStatus
+import com.moyi.app.domain.today.EntryImage
+import com.moyi.app.domain.today.EntryMediaStatus
+import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.QueuedEntry
@@ -289,6 +292,32 @@ class RepositoryDailyLoopTest {
             entries.edited.map { it.imageMediaId to it.voiceMediaId },
             "absent keeps the entry's own",
         )
+    }
+
+    @Test
+    fun anEditThatRemovesMediaPassesTheFlagsAndTodayAndItsCacheLoseTheMedia() = runTest {
+        val photo = EntryImage("m1", EntryMediaStatus.Ready, "https://local.test/p", 1080, 1920, sensitive = false)
+        val voice = EntryVoice("v1", EntryMediaStatus.Ready, "https://local.test/v", 12_000, sensitive = false)
+        entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY.copy(image = photo, voice = voice)))
+        loop.refresh()
+        assertEquals(photo, cache.stored?.today?.myEntry?.image, "cached with the photo's shape")
+        assertEquals(12_000, cache.stored?.today?.myEntry?.voice?.durationMs)
+
+        // The server's answer, and the day it then reports: neither carries the media.
+        entries.editResult = Result.Success(MY_ENTRY)
+        entries.todayResult = Result.Success(today(BondDayStatus.PARTIAL, my = MY_ENTRY))
+        assertEquals(WriteResult.Saved, loop.edit("changed", "key-1", removeImage = true, removeVoice = true))
+
+        val edited = entries.edited.single()
+        assertTrue(edited.removeImage && edited.removeVoice)
+        assertNull(edited.imageMediaId)
+        assertNull(edited.voiceMediaId)
+        val shown = (loop.state.value as DailyLoopState.Ready).day
+        assertNull(shown.myPhoto)
+        assertNull(shown.myVoice)
+        val cached = cache.stored?.today?.myEntry
+        assertNull(cached?.image, "the cached photo size is gone with the photo")
+        assertNull(cached?.voice, "the cached voice length is gone with the voice note")
     }
 
     @Test
