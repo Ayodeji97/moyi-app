@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
  * - **Delete** asks for the password again (the backend's rule: a session is not proof
  *   enough). Blank is refused here, before any request. Then `POST /me/deletion-request`;
  *   the answer is the pending deletion, and the screen turns to it. A wrong password is a
- *   `401 INVALID_CREDENTIALS`, shown on the field; the session is fine and the authed client
+ *   `403 INVALID_CREDENTIALS`, shown on the field; the session is fine and the authed client
  *   neither refreshes nor signs out on it (docs/backend-contract-gaps.md, row 33).
  * - **Keep my account** is `DELETE /me/deletion-request`. A `404` means nothing can be called
  *   off any more: reload, and say it is too late if a deletion is still there.
@@ -166,7 +166,7 @@ class AccountViewModel(
 
     private fun DataError.Network.status(): Int? = (this as? DataError.Network.Api)?.problem?.status
 
-    /** A `401` here is the password's: the authed client never lets a refused token reach this far as one. */
+    /** Matched by code: a wrong password is `403 INVALID_CREDENTIALS`; a refused token (`401`) never reaches here. */
     private fun DataError.Network.isWrongPassword(): Boolean = code() == ApiErrorCode.INVALID_CREDENTIALS
 
     private val wrongPassword = UiText.Resource(Res.string.delete_account_error_password)

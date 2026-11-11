@@ -115,7 +115,7 @@ class AccountViewModelTest : MainDispatcherTest() {
 
     @Test
     fun aWrongPasswordIsTheFieldsErrorAndTheInputIsKept() {
-        deletion.requestAnswers += api(401, ApiErrorCode.INVALID_CREDENTIALS)
+        deletion.requestAnswers += api(403, ApiErrorCode.INVALID_CREDENTIALS)
         viewModel.onAction(AccountAction.OnPasswordChange("wrong"))
         viewModel.onAction(AccountAction.OnConfirmDeletion)
 

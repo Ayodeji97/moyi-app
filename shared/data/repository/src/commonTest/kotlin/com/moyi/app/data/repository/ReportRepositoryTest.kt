@@ -35,8 +35,7 @@ import kotlin.test.assertIs
 
 /**
  * [ReportRepositoryImpl] against a MockEngine through the real authed client: each target's
- * path, the `Idempotency-Key` on both (the member route's added by hand, contract gap row
- * 35), the reason by its exact name, a blank detail left out, the `201` mapped, and each
+ * path, the `Idempotency-Key` on both (both generated, contract gap row 35), the reason by its exact name, a blank detail left out, the `201` mapped, and each
  * refusal reaching the caller by its code.
  */
 class ReportRepositoryTest {

@@ -19,9 +19,9 @@ import com.moyi.app.domain.account.DeletionRequest
  * [AccountDeletionRepository] over `GET /me` and `/me/deletion-request`, on the authed client.
  *
  * The password goes in the request body and nowhere else: the Http logger never logs bodies.
- * A wrong one answers `401 INVALID_CREDENTIALS` without a `WWW-Authenticate` challenge, which
- * the authed client does not take for a refused token (`isPasswordRefusal`, network), so it
- * reaches the caller once, with no refresh and no sign-out (docs/backend-contract-gaps.md, row 33).
+ * A wrong one answers `403 INVALID_CREDENTIALS` (backend #179), which the authed client never
+ * refreshes on (only a `401` is the token's), so it reaches the caller once, with no refresh
+ * and no sign-out (docs/backend-contract-gaps.md, row 33).
  */
 class AccountDeletionRepositoryImpl(
     authedClient: AuthedHttpClient,

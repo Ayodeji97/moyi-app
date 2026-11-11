@@ -70,7 +70,8 @@ coalesces concurrent refreshes itself; the `Mutex` is what covers cold start, wh
 not go through Ktor, and makes the guarantee ours and tested.
 
 Login, register, verify, resend, refresh and logout use the public client, which has no
-Auth plugin: a wrong password's `401` must never spend the refresh token.
+Auth plugin: a wrong password's `401` must never spend the refresh token. On a signed-in route a wrong
+password is a `403 INVALID_CREDENTIALS` (backend #179), which the Auth plugin never refreshes on.
 
 ## The lost response (accepted for now, measured)
 

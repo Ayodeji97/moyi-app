@@ -22,8 +22,8 @@ data class DeletionRequest(
  * carries (so a reinstall still shows it).
  *
  * Every failure is a [DataError.Network]. On [request], a wrong password is
- * [DataError.Network.Api] `401 INVALID_CREDENTIALS`: the session is fine, and the client
- * never treats this one as a refused token. On [cancel], `404` means there is nothing left
+ * [DataError.Network.Api] `403 INVALID_CREDENTIALS`: the session is fine; only a `401`
+ * is a refused token. On [cancel], `404` means there is nothing left
  * that can be called off.
  */
 interface AccountDeletionRepository {
