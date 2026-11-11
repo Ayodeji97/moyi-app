@@ -141,6 +141,21 @@ class TodayMappersTest {
     }
 
     @Test
+    fun theAacCopyOfAVoiceNoteIsMappedAndHeldBackWithTheOggOne() {
+        val aac = "https://storage.test/v1.m4a?sig"
+        val ready = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL, urlAac = aac, waveform = null)
+        assertEquals(aac, ready.toEntryVoice().urlAac)
+        assertEquals(URL, ready.toEntryVoice().url, "the Ogg url stays beside it")
+        // An old note has no AAC copy: only the Ogg one.
+        assertNull(ready.copy(urlAac = null).toEntryVoice().urlAac)
+        // Processing for this reader: neither url reaches the app.
+        assertNull(ready.copy(status = EntryVoiceResponse.Status.PROCESSING, url = null, urlAac = null).toEntryVoice().urlAac)
+        assertNull(ready.copy(status = EntryVoiceResponse.Status.PROCESSING).toEntryVoice().urlAac)
+        assertEquals(aac, ready.copy(status = EntryVoiceResponse.Status.NOT_SHARED).toEntryVoice().urlAac)
+        assertTrue("storage.test" !in ready.toEntryVoice().toString(), "neither signed URL reaches a log")
+    }
+
+    @Test
     fun anEntrysVoiceNoteTravelsWithItAndATombstoneHasNone() {
         val voice = EntryVoiceResponse(durationMs = 42_000, id = "v1", sensitive = false, status = EntryVoiceResponse.Status.READY, url = URL, urlAac = null, waveform = null)
         assertEquals("v1", entry(EntryResponse.Status.SUBMITTED, "w").copy(voice = voice).toMyEntry()?.voice?.id)

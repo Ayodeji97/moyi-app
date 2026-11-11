@@ -39,6 +39,7 @@ internal fun EntryVoice.toVoiceNote(): VoiceNote = VoiceNote(
         EntryMediaStatus.Processing -> VoiceNoteLook.OnItsWay
         EntryMediaStatus.NotShared -> VoiceNoteLook.NotShared
     },
+    urlAac = urlAac,
 )
 
 /** The partner's voice note, by [image]'s rule: only from the shapes that carry words (BR-8). */

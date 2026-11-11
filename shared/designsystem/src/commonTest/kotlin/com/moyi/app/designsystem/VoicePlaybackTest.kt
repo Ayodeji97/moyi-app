@@ -8,6 +8,7 @@ import com.moyi.app.designsystem.platform.SessionPlaybackSpeed
 import com.moyi.app.designsystem.platform.RecordedVoice
 import com.moyi.app.designsystem.platform.VoicePlayback
 import com.moyi.app.designsystem.platform.VoiceSource
+import com.moyi.app.designsystem.platform.preferredUrls
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -23,6 +24,17 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoicePlaybackTest {
     private val remote = VoiceSource.Remote("v1", "https://storage.test/v1.ogg?sig")
+
+    @Test
+    fun aPlatformThatPlaysAacPrefersItAndFallsBackToOggForAnOldNote() {
+        val both = VoiceSource.Remote("v1", "https://storage.test/v1.ogg?sig", "https://storage.test/v1.m4a?sig")
+        assertEquals(listOf("https://storage.test/v1.m4a?sig", "https://storage.test/v1.ogg?sig"), preferredUrls(both, nativeAac = true))
+        val old = VoiceSource.Remote("v0", "https://storage.test/v0.ogg?sig", urlAac = null)
+        assertEquals(listOf("https://storage.test/v0.ogg?sig"), preferredUrls(old, nativeAac = true))
+        // Android plays Ogg Opus: it never reaches for the AAC copy.
+        assertEquals(listOf("https://storage.test/v1.ogg?sig"), preferredUrls(both, nativeAac = false))
+        assertTrue("storage.test" !in both.toString(), "neither signed URL reaches a log")
+    }
 
     @Test
     fun playFetchesOnlyAtTheTapThenPlaysAndTheClockFollowsThePlayer() = runTest {
