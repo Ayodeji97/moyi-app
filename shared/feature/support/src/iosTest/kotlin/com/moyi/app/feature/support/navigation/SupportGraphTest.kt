@@ -18,7 +18,7 @@ class SupportGraphTest {
     fun eachOriginSurvivesNavigation() {
         val nav = NavHostController().apply {
             navigatorProvider.addNavigator(ComposeNavigator())
-            graph = createGraph(startDestination = SupportRoute(SupportOrigin.Settings)) { supportDestination(onClose = {}) }
+            graph = createGraph(startDestination = SupportRoute(SupportOrigin.Account)) { supportDestination(onClose = {}) }
         }
         for (origin in SupportOrigin.entries) {
             nav.navigate(SupportRoute(origin))

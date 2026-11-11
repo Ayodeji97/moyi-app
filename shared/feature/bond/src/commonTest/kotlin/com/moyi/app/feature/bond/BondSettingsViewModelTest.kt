@@ -32,11 +32,9 @@ import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
 
 class BondSettingsViewModelTest : MainDispatcherTest() {
     private val repo = FakeBondSettingsRepository()
-    private val auth = FakeAuthRepository()
     private val bonds = FakeBondRepository(repo)
     private var zones: Set<String> = setOf("Europe/London", "Africa/Lagos", "UTC", "Etc/GMT+1", "America/Argentina/Buenos_Aires")
-    private val outbox = FakeOutbox()
-    private val viewModel by lazy { BondSettingsViewModel("b1", repo, auth, bonds, outbox, outbox, zoneIds = { zones }) }
+    private val viewModel by lazy { BondSettingsViewModel("b1", repo, bonds, zoneIds = { zones }) }
 
     private val generic = UiText.Resource(Res.string.settings_error_generic)
     private val conflictLine = UiText.Resource(Res.string.settings_error_conflict)
@@ -314,69 +312,4 @@ class BondSettingsViewModelTest : MainDispatcherTest() {
         assertEquals(SettingsError(SettingsField.Leave, UiText.Resource(Res.string.settings_leave_error_ended)), viewModel.state.value.error)
     }
 
-    // ----- sign out -----
-
-    @Test
-    fun signOutEndsTheSessionOnce() {
-        viewModel.onAction(BondSettingsAction.OnSignOutClick)
-        viewModel.onAction(BondSettingsAction.OnSignOutClick)
-
-        assertTrue(viewModel.state.value.signingOut)
-        assertEquals(1, auth.logouts)
-    }
-
-    @Test
-    fun signOutWithNothingWaitingSignsOutAtOnceWithoutAsking() {
-        viewModel.onAction(BondSettingsAction.OnSignOutClick)
-        assertEquals(0, outbox.passes, "nothing waiting: no send, no question")
-        assertFalse(viewModel.state.value.confirmingUnsentSignOut)
-        assertEquals(1, auth.logouts)
-    }
-
-    @Test
-    fun signOutSendsWhatIsWaitingFirstAndSignsOutWhenItAllWent() {
-        outbox.queue += waiting
-        outbox.online = true
-        viewModel.onAction(BondSettingsAction.OnSignOutClick)
-        assertEquals(1, outbox.passes)
-        assertFalse(viewModel.state.value.confirmingUnsentSignOut)
-        assertEquals(1, auth.logouts)
-    }
-
-    @Test
-    fun signOutThatWouldDeleteUnsentWordsAsksFirstAndStayingKeepsThem() {
-        outbox.queue += waiting
-        viewModel.onAction(BondSettingsAction.OnSignOutClick)
-        assertEquals(1, outbox.passes, "one more try before asking")
-        assertTrue(viewModel.state.value.confirmingUnsentSignOut)
-        assertFalse(viewModel.state.value.signingOut)
-        assertEquals(0, auth.logouts, "not one word deleted without asking")
-
-        viewModel.onAction(BondSettingsAction.OnSignOutUnsentDismiss)
-        assertFalse(viewModel.state.value.confirmingUnsentSignOut)
-        assertEquals(0, auth.logouts)
-        assertEquals(1, outbox.queue.size)
-
-        viewModel.onAction(BondSettingsAction.OnSignOutClick)
-        viewModel.onAction(BondSettingsAction.OnSignOutUnsentConfirm)
-        assertEquals(1, auth.logouts, "the person chose: the session (and its wipe) ends")
-    }
-
-    @Test
-    fun offlineWithTheSettingsUnreadSignOutStillAsksAboutUnsentWordsAndSignsOut() {
-        // Offline: the bond's settings do not load and the outbox cannot send.
-        repo.reads += Result.Failure(DataError.Network.NoInternet)
-        outbox.queue += waiting
-        assertEquals(SettingsLoad.Failed, viewModel.state.value.load)
-
-        viewModel.onAction(BondSettingsAction.OnSignOutClick)
-        assertEquals(1, outbox.passes, "one more try, even with the settings unread")
-        assertTrue(viewModel.state.value.confirmingUnsentSignOut)
-        assertEquals(0, auth.logouts)
-
-        viewModel.onAction(BondSettingsAction.OnSignOutUnsentConfirm)
-        assertEquals(1, auth.logouts)
-    }
-
-    private val waiting = QueuedEntry("b1", "You fixed the gate.", null, "key-1", Instant.parse("2026-09-14T11:00:00Z"), "2026-09-14")
 }

@@ -5,9 +5,6 @@ import com.moyi.app.designsystem.presentation.UiText
 
 /** Where Get help was opened from: it decides only the words of the way back. */
 enum class SupportOrigin {
-    /** Bond settings, Just you. "Back to settings" (support.back). */
-    Settings,
-
     /** A Generic error. "Go back" (PROPOSED): the screen behind is not settings. */
     Error,
 

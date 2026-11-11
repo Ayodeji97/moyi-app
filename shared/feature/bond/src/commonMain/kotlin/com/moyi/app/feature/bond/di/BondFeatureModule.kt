@@ -14,7 +14,7 @@ import org.koin.dsl.module
  * (bound by the data layer, assembled in :shared). The bond's id comes from the route.
  */
 val bondFeatureModule = module {
-    viewModel { (bondId: String) -> BondSettingsViewModel(bondId, repository = get(), auth = get(), bonds = get(), outbox = get(), sender = get()) }
+    viewModel { (bondId: String) -> BondSettingsViewModel(bondId, repository = get(), bonds = get()) }
     viewModel { (bondId: String) -> NotificationSettingsViewModel(bondId, notifications = get(), settings = get()) }
     // A report (FR-100), from the Archive day view or Bond settings, over ReportRepository.
     viewModel { (args: ReportArgs) -> ReportViewModel(args, reports = get()) }

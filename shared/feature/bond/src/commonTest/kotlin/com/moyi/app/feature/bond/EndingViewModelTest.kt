@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
  */
 class EndingViewModelTest : MainDispatcherTest() {
     private val repo = FakeBondSettingsRepository(settingsV1.copy(partnerName = "Tunde"))
-    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeAuthRepository(), FakeBondRepository(repo), FakeOutbox(), FakeOutbox(), zoneIds = { emptySet() }) }
+    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeBondRepository(repo), zoneIds = { emptySet() }) }
 
     private val generic = UiText.Resource(Res.string.settings_error_generic)
 

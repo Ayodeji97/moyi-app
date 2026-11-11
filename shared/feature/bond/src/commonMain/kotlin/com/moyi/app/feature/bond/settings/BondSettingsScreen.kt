@@ -91,7 +91,6 @@ import com.moyi.app.feature.bond.resources.settings_type_hint
 import com.moyi.app.feature.bond.resources.settings_type_line
 import com.moyi.app.feature.bond.resources.settings_value_off
 import com.moyi.app.feature.bond.resources.settings_value_on
-import com.moyi.app.feature.bond.signout.UnsentSignOutQuestion
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.relationship.RelationshipCard
 import com.moyi.app.feature.onboarding.resources.bond_name_helper
@@ -142,9 +141,8 @@ fun BondSettingsScreen(
                     )
                 }
                 Spacer(Modifier.height(MoyiTheme.spacing.xxl))
-                JustYouGroup(partnerName = null, busy = state.signingOut, notifications = false, onAction = onAction)
+                JustYouGroup(partnerName = null, busy = false, notifications = false, onAction = onAction)
             }
-            SignOutQuestion(state, onAction)
         }
         settings != null -> SettingsRoot(state, settings, onAction, onBack)
     }
@@ -226,16 +224,6 @@ private fun BondHeaderBlock(settings: BondSettings) {
     }
 }
 
-/** The sign-out question ([UnsentSignOutQuestion]), shared with Account. */
-@Composable
-private fun SignOutQuestion(state: BondSettingsState, onAction: (BondSettingsAction) -> Unit) {
-    if (!state.confirmingUnsentSignOut) return
-    UnsentSignOutQuestion(
-        onConfirm = { onAction(BondSettingsAction.OnSignOutUnsentConfirm) },
-        onDismiss = { onAction(BondSettingsAction.OnSignOutUnsentDismiss) },
-    )
-}
-
 @Composable
 private fun SettingsRoot(
     state: BondSettingsState,
@@ -245,7 +233,7 @@ private fun SettingsRoot(
 ) {
     val spacing = MoyiTheme.spacing
     val saving = stringResource(Res.string.settings_saving)
-    val busy = state.saving != null || state.signingOut
+    val busy = state.saving != null
     // The cooling-off takes no other write (states.md §9): its rows stay, and stay still.
     val frozen = busy || settings.coolingOff
     val error = state.error
@@ -373,7 +361,6 @@ private fun SettingsRoot(
         }
     }
 
-    SignOutQuestion(state, onAction)
 
     if (state.pickingRevealTime) {
         val initial = settings.revealTime ?: DEFAULT_REVEAL_TIME
