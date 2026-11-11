@@ -1346,20 +1346,21 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 
 ## Editing an entry's photo and voice note (PR feat/edit-replace-media)
 
-### 60. Edit before the reveal can replace the photo or voice note, never remove it
+### 60. Edit before the reveal can replace the photo or voice note (and, since §71, remove it)
 
 - **Today:** Write in Edit offered no media (`WriteState.photosOffered` and `voiceOffered` were
   false while editing) and the PATCH carried the words only. `states.md` §4 says "Edit before
   reveal: free, no warning, no friction", and nothing drawn says the media are fixed once sent.
 - **The backend** (`EntryChangesController`, `ChangeEntry.MediaChange`) takes `imageMediaId` and
   `voiceMediaId` on `PATCH /entries/{id}`: given, it attaches that upload in place of the
-  entry's (or adds one to an entry with none); absent, it keeps the entry's. It cannot take one
-  off (docs/backend-contract-gaps.md row 41).
+  entry's (or adds one to an entry with none); absent, it keeps the entry's. It could not take
+  one off (docs/backend-contract-gaps.md row 41) until `removeImage` / `removeVoice` (backend
+  #174): Remove is §71.
 - **Built, interim, not drawn:**
   - Edit shows the entry's own photo (`SentPhoto`, the §41 preview at 96 tall, from the
     server's signed URL) and voice note (`SentVoice`, the §44 recorded row playing from the
     server, its waveform the §46 placeholder) inside the composer's box, where a new one would
-    sit. Neither has a Remove. The photo carries a 48 **Replace** target (the `Image` glyph,
+    sit. (Neither had a Remove when this was built; §71 adds it.) The photo carries a 48 **Replace** target (the `Image` glyph,
     spoken "Replace the photo") that opens the same picker as Add a photo; the voice note
     carries **Record again** (the `RecordAgain` glyph, the same name as §44) that records with
     the §49 recording row. While the entry's own photo is shown, the toolbar does not also
@@ -1383,7 +1384,7 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   `ds_compose_keep_sent_voice` "Keep the voice note you had".
 - **Open questions for the owner:** (1) the five spoken names above, for `copy.md`; (2) whether
   Edit should say in words that a photo or voice note cannot be taken off yet, or whether its
-  missing Remove is enough until the backend adds one (row 41); (3) the `Image` glyph for
+  missing Remove is enough until the backend adds one (row 41; moot since §71); (3) the `Image` glyph for
   Replace, the same as Add a photo, since no swap glyph is drawn; (4) the library or camera
   question (§41) keeps its title "Add a photo" when it is opened by Replace (answered in §61: it now says "Replace the photo").
 
@@ -1783,3 +1784,39 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   note should show its row (visible, with play disabled until the URL arrives) rather than an
   empty space of the same height, which is what it is offline; (3) the 3:4 cap.
 
+
+## Remove in Edit (PR feat/edit-remove-media)
+
+### 71. Edit can remove the entry's own photo or voice note
+
+- **Today:** §60 let Edit replace the entry's photo or voice note but not take one off, because
+  `PATCH /entries/{id}` had no way to say so (backend-contract-gaps row 41, moyi-backend #164).
+  The contract (backend ca77fe45, #174) now has `removeImage` and `removeVoice` booleans: `true`
+  takes the media off (it is attached to nothing and deleted a day later, as a replaced one is);
+  removing what the entry lacks changes nothing (`200`); `true` together with the matching media
+  id is `422 VALIDATION_FAILED`.
+- **Built, interim, not drawn** (no new component and no new string; the controls and spoken
+  names are the composer's own):
+  - The entry's photo (`SentPhoto`) gains a 48 `Close` target after Replace, spoken "Remove the
+    photo" (`ds_compose_remove_photo`, the name the photo about to be sent already has). The
+    entry's voice note (`SentVoice`) gains the same `Close` target after Record again, spoken
+    "Remove the voice note" (`ds_compose_remove_voice`).
+  - **Compact (§66, keyboard up):** the photo's thumbnail keeps both targets (Replace and
+    Remove); the voice note's chip shows Remove in place of Record again, exactly as a recorded
+    voice note's chip does ([AttachedVoice]); Record again returns with the full row.
+  - **Nothing is removed until Save.** Remove only marks the media (`WriteState.removePhoto`,
+    `removeVoice`); the slot empties and the toolbar offers Add a photo / Record a voice note
+    again, so a new one can still go in its place. Closing the composer asks the discard
+    question as it does for typed words (`wouldLoseWords` now counts a removal), and Cancel or
+    Discard leaves the entry exactly as it was: the next Edit shows the photo and voice note
+    again. There is no Undo inside the composer; Cancel is it.
+  - **Save** sends `removeImage` / `removeVoice` `true`, only when set. If a new photo (or
+    recording) was picked after removing the old, the new id goes alone: the flag together with
+    an id is a 422, and the new one replaces anyway. Removing that new one again leaves the old
+    removed.
+  - **Today and its cache:** the PATCH's answer is the entry without the media; Today is
+    published and cached from it, then refreshed. The cache keeps no photo size and no voice
+    length for media that is gone (§70): the row is replaced whole.
+- **Owner rulings (2026-11-11):** (1) Remove in Edit stays as built: free, with no confirmation
+  dialog, because Save is the commitment and Cancel undoes it (`states.md` §4 says the same of
+  Edit); (2) a removed slot shows no Undo until Save. Nothing is open here.

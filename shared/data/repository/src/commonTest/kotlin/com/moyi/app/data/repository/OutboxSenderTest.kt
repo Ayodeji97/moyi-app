@@ -283,7 +283,7 @@ class OutboxSenderTest {
         }
 
         override suspend fun today(bondId: String): Result<Today, DataError.Network> = error("not used")
-        override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?) = error("not used")
+        override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?, removeImage: Boolean, removeVoice: Boolean) = error("not used")
         override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> = error("not used")
         override suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network> = error("not used")
     }

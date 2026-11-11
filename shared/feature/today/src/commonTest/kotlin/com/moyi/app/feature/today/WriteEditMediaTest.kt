@@ -34,8 +34,8 @@ import kotlin.test.assertTrue
 /**
  * Editing before the reveal can put a new photo or voice note in place of the entry's, or add
  * one to an entry with none (docs/missing-components.md §60). The new one uploads at Save as
- * at Send and goes in the PATCH by name; nothing ever takes one off (backend-contract-gaps
- * row 41), so the entry's own stays unless a new one replaces it.
+ * at Send and goes in the PATCH by name. Remove on the entry's own marks it and sends the flag
+ * at Save only (backend-contract-gaps row 41): until then, and on Cancel, the entry keeps it.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WriteEditMediaTest : MainDispatcherTest() {
@@ -271,5 +271,94 @@ class WriteEditMediaTest : MainDispatcherTest() {
         vm.onAction(WriteAction.OnSubmit)
         assertEquals(VoiceNotice.Refused, vm.state.value.voiceNotice)
         assertTrue(loop.edits.isEmpty())
+    }
+
+    @Test
+    fun removingThePhotoSendsRemoveImageAtSaveAndTouchesNothingBefore() = runTest {
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnRemoveSentPhoto)
+        assertTrue(vm.state.value.removePhoto)
+        assertNull(vm.state.value.shownSentPhoto, "the photo leaves the composer")
+        assertEquals(sentVoice, vm.state.value.shownSentVoice, "the voice note is untouched")
+        assertTrue(loop.edits.isEmpty(), "nothing is sent before Save")
+        assertTrue(media.calls.isEmpty())
+        assertTrue(vm.state.value.wouldLoseWords, "closing now would lose the removal, so it asks")
+
+        vm.onAction(WriteAction.OnSubmit)
+
+        assertEquals(FakeDailyLoop.Edit(MINE, "key-1", removeImage = true), loop.edits.single())
+    }
+
+    @Test
+    fun removingTheVoiceNoteSendsRemoveVoiceAtSave() = runTest {
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnRemoveSentVoice)
+        assertNull(vm.state.value.shownSentVoice)
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(FakeDailyLoop.Edit(MINE, "key-1", removeVoice = true), loop.edits.single())
+    }
+
+    @Test
+    fun removingBothSendsBothFlagsAlongWithChangedWords() = runTest {
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnRemoveSentPhoto)
+        vm.onAction(WriteAction.OnRemoveSentVoice)
+        vm.onAction(WriteAction.OnTextChange("Changed words."))
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(FakeDailyLoop.Edit("Changed words.", "key-1", removeImage = true, removeVoice = true), loop.edits.single())
+    }
+
+    @Test
+    fun cancellingAfterARemovalSendsNothingAndTheEntryKeepsItsMedia() = runTest {
+        val vm = viewModel()
+        val closed = mutableListOf<WriteEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { closed += it } }
+        vm.onAction(WriteAction.OnRemoveSentPhoto)
+        vm.onAction(WriteAction.OnRemoveSentVoice)
+
+        vm.onAction(WriteAction.OnCloseClick)
+        assertTrue(vm.state.value.confirmingDiscard, "asks first")
+        vm.onAction(WriteAction.OnDiscardConfirm)
+
+        assertEquals(listOf<WriteEvent>(WriteEvent.Close), closed)
+        assertTrue(loop.edits.isEmpty(), "Cancel sends nothing")
+        // The entry on the server (and in Today) is untouched, and a reopened composer shows it again.
+        val reopened = viewModel().state.value
+        assertEquals(sentPhoto, reopened.shownSentPhoto)
+        assertEquals(sentVoice, reopened.shownSentVoice)
+        assertFalse(reopened.removePhoto)
+        assertFalse(reopened.removeVoice)
+    }
+
+    @Test
+    fun aNewPhotoPickedAfterRemovingTheOldSendsTheIdAndNeverTheFlag() = runTest {
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnRemoveSentPhoto)
+        vm.onAction(WriteAction.OnPhotoPicked(PhotoPick.Picked(newPhoto)))
+        vm.onAction(WriteAction.OnSubmit)
+
+        val saved = loop.edits.single()
+        assertEquals("m1", saved.imageMediaId)
+        assertFalse(saved.removeImage, "remove together with a new id is a 422")
+    }
+
+    @Test
+    fun removingTheNewPhotoAfterRemovingTheOldStillRemovesTheEntrysPhoto() = runTest {
+        val vm = viewModel()
+        vm.onAction(WriteAction.OnRemoveSentPhoto)
+        vm.onAction(WriteAction.OnPhotoPicked(PhotoPick.Picked(newPhoto)))
+        vm.onAction(WriteAction.OnRemovePhoto)
+        vm.onAction(WriteAction.OnSubmit)
+        assertEquals(FakeDailyLoop.Edit(MINE, "key-1", removeImage = true), loop.edits.single())
+    }
+
+    @Test
+    fun aNewEntryCannotRemoveAnything() = runTest {
+        loop.show(dayView(TodayStatus.NotWritten, myEntry = null))
+        val vm = WriteViewModel(false, loop, FakeDraftStore())
+        vm.onAction(WriteAction.OnRemoveSentPhoto)
+        vm.onAction(WriteAction.OnRemoveSentVoice)
+        assertFalse(vm.state.value.removePhoto)
+        assertFalse(vm.state.value.removeVoice)
     }
 }

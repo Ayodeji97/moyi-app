@@ -128,7 +128,7 @@ class FakeEntries : TodayRepository {
 
     override suspend fun today(bondId: String): Result<Today, DataError.Network> = error("not the Archive's")
     override suspend fun submitEntry(bondId: String, text: String, promptId: String?, idempotencyKey: String, intendedAt: kotlin.time.Instant?, imageMediaId: String?, voiceMediaId: String?) = error("not the Archive's")
-    override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?) = error("not the Archive's")
+    override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?, removeImage: Boolean, removeVoice: Boolean) = error("not the Archive's")
 
     override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> {
         deletes += entryId

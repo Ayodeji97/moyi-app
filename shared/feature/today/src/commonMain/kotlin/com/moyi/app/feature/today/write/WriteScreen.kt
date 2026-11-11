@@ -199,14 +199,14 @@ fun WriteScreen(
             // Never disabled or read-only while sending: either drops focus and the keyboard
             // (419:193 keeps it up). The ViewModel ignores edits in flight instead.
             // In Edit, the entry's own photo carries Replace on its row (§60), so the toolbar does not offer it twice.
-            onAddPhoto = if (state.photosOffered && (state.photo != null || state.sentPhoto == null)) {
+            onAddPhoto = if (state.photosOffered && (state.photo != null || state.shownSentPhoto == null)) {
                 { onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }
             } else {
                 null
             },
             // One voice note per entry (FR-043): once one is recording, recorded or (in Edit) on the
             // entry, its own row offers what is next.
-            onRecordVoice = if (state.voiceOffered && state.voice == null && state.sentVoice == null) ({ onAction(WriteAction.OnRecordVoiceClick) }) else null,
+            onRecordVoice = if (state.voiceOffered && state.voice == null && state.shownSentVoice == null) ({ onAction(WriteAction.OnRecordVoiceClick) }) else null,
             focusRequester = focusRequester,
             // With the keyboard up they step back to one compact row (§66), so the words keep their room.
             attachment = if (state.hasAttachments) ({ compact -> Attachments(state, onAction, canTakePhoto, recordingLevels, compact) }) else null,
@@ -249,13 +249,13 @@ fun WriteScreen(
 }
 
 private val WriteState.hasAttachments: Boolean
-    get() = photo != null || voice != null || sentPhoto != null || sentVoice != null
+    get() = photo != null || voice != null || shownSentPhoto != null || shownSentVoice != null
 
 /**
  * What is attached, inside the box above its toolbar (interim, §41 and §44): the photo, then
  * the voice note. In Edit (§60) the entry's own photo and voice note stand in each slot until a
- * new one is picked or recorded; they offer Replace and Record again, never Remove (the
- * contract cannot take one off, docs/backend-contract-gaps.md row 41). Removing a new one
+ * new one is picked or recorded; they offer Replace and Record again, and Remove, which only
+ * marks them: nothing leaves the server until Save, and Cancel keeps them. Removing a new one
  * puts the entry's own back, and its control says so.
  *
  * Emitted as siblings for the composer's `AttachmentsLayout`, which stacks them, or, when
@@ -272,7 +272,7 @@ private fun Attachments(
     // Not while they are being sent: what is on its way is what is shown.
     val sending = state.submit == WriteSubmit.Sending
     val photo = state.photo
-    val sentPhoto = state.sentPhoto
+    val sentPhoto = state.shownSentPhoto
     when {
         photo != null -> AttachedPhoto(
             photo = photo,
@@ -283,11 +283,12 @@ private fun Attachments(
         sentPhoto != null -> SentPhoto(
             photo = sentPhoto,
             onReplace = if (sending || !state.photosOffered) null else ({ onAction(WriteAction.OnAddPhotoClick(canTakePhoto)) }),
+            onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveSentPhoto) }),
             compact = compact,
         )
     }
     val voice = state.voice
-    val sentVoice = state.sentVoice
+    val sentVoice = state.shownSentVoice
     when {
         voice != null -> AttachedVoice(
             state = voice,
@@ -302,6 +303,7 @@ private fun Attachments(
         sentVoice != null -> SentVoice(
             voice = sentVoice,
             onRecordAgain = if (sending || !state.voiceOffered) null else ({ onAction(WriteAction.OnRecordVoiceClick) }),
+            onRemove = if (sending) null else ({ onAction(WriteAction.OnRemoveSentVoice) }),
             compact = compact,
         )
     }

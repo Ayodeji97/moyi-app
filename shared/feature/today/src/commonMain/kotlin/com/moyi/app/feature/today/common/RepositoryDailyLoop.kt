@@ -195,9 +195,11 @@ class RepositoryDailyLoop(
         idempotencyKey: String,
         imageMediaId: String?,
         voiceMediaId: String?,
+        removeImage: Boolean,
+        removeVoice: Boolean,
     ): WriteResult = mutex.withLock {
         val entryId = today?.myEntry?.takeIf { it.isLive }?.id ?: return@withLock WriteResult.Failed
-        when (val result = entries.editEntry(entryId, text, idempotencyKey, imageMediaId, voiceMediaId)) {
+        when (val result = entries.editEntry(entryId, text, idempotencyKey, imageMediaId, voiceMediaId, removeImage, removeVoice)) {
             is Result.Success -> {
                 withMine(result.data)
                 load()

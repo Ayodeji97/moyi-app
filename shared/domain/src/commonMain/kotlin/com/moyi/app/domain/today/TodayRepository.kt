@@ -46,8 +46,10 @@ interface TodayRepository {
     /**
      * Replaces the words of my entry before the reveal. [idempotencyKey] as for [submitEntry].
      * [imageMediaId] and [voiceMediaId] (uploads already processed) attach a photo or a voice
-     * note in place of any the entry has; null leaves the entry's as it is. Nothing here
-     * removes one: the contract has no way to say so (docs/backend-contract-gaps.md row 41).
+     * note in place of any the entry has; null leaves the entry's as it is. [removeImage] and
+     * [removeVoice] take the entry's photo or voice note off (`removeImage` / `removeVoice` on
+     * `PATCH /entries/{id}`); `true` together with the matching media id is `422 VALIDATION_FAILED`,
+     * so a caller sends one or the other, and removing what the entry lacks changes nothing.
      */
     suspend fun editEntry(
         entryId: String,
@@ -55,6 +57,8 @@ interface TodayRepository {
         idempotencyKey: String,
         imageMediaId: String? = null,
         voiceMediaId: String? = null,
+        removeImage: Boolean = false,
+        removeVoice: Boolean = false,
     ): Result<MyEntry, DataError.Network>
 
     /** Deletes my entry: before the reveal it is gone, after it a tombstone stays (doc 06 §3.4). */
