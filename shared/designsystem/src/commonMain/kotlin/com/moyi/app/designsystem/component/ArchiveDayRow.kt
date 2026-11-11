@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -76,20 +78,7 @@ fun ArchiveDayRow(
             }
             Spacer(Modifier.width(spacing.md))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                lines.forEach { line ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        MoyiText(text = line.author, role = TextRole.Label, maxLines = 1, modifier = Modifier.widthIn(max = MoyiDimens.ArchiveRow.AuthorMaxWidth))
-                        Spacer(Modifier.width(spacing.sm))
-                        MoyiText(
-                            text = line.text,
-                            role = TextRole.Action,
-                            tone = if (line.muted) TextTone.Muted else TextTone.Ink,
-                            maxLines = 1,
-                            ellipsis = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
+                ArchiveLines(lines)
                 if (chips.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                         chips.forEach { MetaChip(it) }
@@ -98,6 +87,52 @@ fun ArchiveDayRow(
             }
         }
         Box(Modifier.fillMaxWidth().height(MoyiDimens.ArchiveRow.Hairline).background(colors.outline))
+    }
+}
+
+/**
+ * The lines of one row, with the words of every line starting at the same x. The author
+ * labels differ in width ("YOU" against "ERMB"), so each line is not a plain Row: a [Layout]
+ * measures every label, takes the widest (never more than [MoyiDimens.ArchiveRow.AuthorMaxShare]
+ * of the width, so a long name ellipsises instead of crowding the words out at a large font
+ * scale), and starts all the words after it. The column grows with the font because it is
+ * measured, not a fixed dp. Each line is as tall as its taller part, the label centred in it.
+ */
+@Composable
+private fun ArchiveLines(lines: List<ArchiveRowLine>) {
+    val gap = MoyiTheme.spacing.sm
+    val rowGap = MoyiTheme.spacing.xs
+    Layout(
+        content = {
+            lines.forEach { line ->
+                MoyiText(text = line.author, role = TextRole.Label, maxLines = 1, ellipsis = true)
+                MoyiText(
+                    text = line.text,
+                    role = TextRole.Action,
+                    tone = if (line.muted) TextTone.Muted else TextTone.Ink,
+                    maxLines = 1,
+                    ellipsis = true,
+                )
+            }
+        },
+    ) { measurables, constraints ->
+        val gapPx = gap.roundToPx()
+        val rowGapPx = rowGap.roundToPx()
+        val cap = (constraints.maxWidth * MoyiDimens.ArchiveRow.AuthorMaxShare).toInt()
+        val labels = measurables.filterIndexed { i, _ -> i % 2 == 0 }.map { it.measure(Constraints(maxWidth = cap)) }
+        val labelWidth = labels.maxOfOrNull { it.width } ?: 0
+        val textRoom = (constraints.maxWidth - labelWidth - gapPx).coerceAtLeast(0)
+        val texts = measurables.filterIndexed { i, _ -> i % 2 == 1 }.map { it.measure(Constraints(maxWidth = textRoom)) }
+        val heights = labels.indices.map { maxOf(labels[it].height, texts[it].height) }
+        val height = heights.sum() + rowGapPx * (heights.size - 1).coerceAtLeast(0)
+        layout(constraints.maxWidth.coerceAtLeast(0), height) {
+            var y = 0
+            labels.indices.forEach { i ->
+                labels[i].placeRelative(0, y + (heights[i] - labels[i].height) / 2)
+                texts[i].placeRelative(labelWidth + gapPx, y + (heights[i] - texts[i].height) / 2)
+                y += heights[i] + rowGapPx
+            }
+        }
     }
 }
 
