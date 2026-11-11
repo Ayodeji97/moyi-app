@@ -1817,6 +1817,6 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
   - **Today and its cache:** the PATCH's answer is the entry without the media; Today is
     published and cached from it, then refreshed. The cache keeps no photo size and no voice
     length for media that is gone (§70): the row is replaced whole.
-- **Open for the owner:** (1) whether Remove in Edit should ask first ("Remove the photo?") or
-  stay free as `states.md` §4 says of Edit; as built it is free, because Save is the commitment
-  and Cancel undoes it; (2) whether a removed slot should show an Undo until Save.
+- **Owner rulings (2026-11-11):** (1) Remove in Edit stays as built: free, with no confirmation
+  dialog, because Save is the commitment and Cancel undoes it (`states.md` §4 says the same of
+  Edit); (2) a removed slot shows no Undo until Save. Nothing is open here.
