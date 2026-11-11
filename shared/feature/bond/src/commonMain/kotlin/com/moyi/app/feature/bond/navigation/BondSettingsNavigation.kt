@@ -108,10 +108,8 @@ data class BondArchivedRoute(val partnerName: String? = null)
  *   to the root.
  * - Bond settings → Report (the member), the report flow ([reportGraph]); leaving it returns
  *   to the root.
- * - Get help is Account's row now (owner ruling 2026-11-10); [onOpenSupport] still serves a
- *   Get help action from here, which no row sends. Formerly: Bond settings → Get help calls
- *   [onOpenSupport]: Support is its own feature, pushed by the shell over settings, and
- *   its way back pops to here.
+ * - Get help is Account's row now (owner ruling 2026-11-10); Bond settings no longer
+ *   reaches Support at all; the Account graph does ([accountGraph]).
  * - Bond settings → Account (push), its own graph because a person with no bond reaches it
  *   too, and from it Delete your account and Export your archive: see [accountGraph].
  * - Leaving, blocking, or finding the bond ended, calls [onBondEnded]: the shell sends the
@@ -121,11 +119,10 @@ data class BondArchivedRoute(val partnerName: String? = null)
 fun NavGraphBuilder.bondSettingsGraph(
     navController: NavController,
     onBondEnded: () -> Unit,
-    onOpenSupport: () -> Unit,
 ) {
     navigation<BondSettingsGraph>(startDestination = BondSettingsRoute) {
         composable<BondSettingsRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondSettingsScreen(
                     state = state,
@@ -135,50 +132,50 @@ fun NavGraphBuilder.bondSettingsGraph(
             }
         }
         composable<BondNameRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondNameScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<TimeZoneRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 TimeZoneScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<ZonePickerRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 ZonePickerScreen(state = state, onAction = viewModel::onAction, onBack = { navController.popBackStack() })
             }
         }
         composable<InviteRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 InviteScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<LeaveRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 LeaveScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<BlockRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BlockScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<CloseBoxRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 CloseBoxScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
         composable<NotificationsRoute> { entry -> NotificationsDestination(entry, navController, onBondEnded) }
         composable<BondTypeRoute> { entry ->
-            SettingsDestination(entry, navController, onBondEnded, onOpenSupport) { viewModel ->
+            SettingsDestination(entry, navController, onBondEnded) { viewModel ->
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 BondTypeScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
@@ -196,7 +193,6 @@ private fun SettingsDestination(
     entry: NavBackStackEntry,
     navController: NavController,
     onBondEnded: () -> Unit,
-    onOpenSupport: () -> Unit,
     content: @Composable (BondSettingsViewModel) -> Unit,
 ) {
     val graphEntry = remember(entry) { navController.getBackStackEntry<BondSettingsGraph>() }
@@ -220,7 +216,6 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
             is BondSettingsEvent.OpenReport -> navController.openReport(event.bondId, entryId = null, event.partnerName, fromSettings = true)
-            BondSettingsEvent.OpenSupport -> onOpenSupport()
             BondSettingsEvent.OpenAccount -> navController.navigate(AccountGraph) { launchSingleTop = true }
             is BondSettingsEvent.CopyInviteCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md); onboarding's words.
