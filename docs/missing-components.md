@@ -1892,3 +1892,45 @@ only after a refusal.
 - **Open for the owner:** the Shared time zone row on the root still opens Propose, so the line
   is read on the screen where the person was about to act. If the redesigned root (grouped
   cards, chevrons) should carry the date under the row's value instead, it is the same string.
+
+## Bond settings, grouped (PR feat/bond-settings-grouped)
+
+### 74. Grouped card, row marks, and the Bond settings root (owner choice 2026-11-10, rulings 2026-11-11)
+
+Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
+
+- **New component, designsystem: `GroupedCard` + `GroupedRow` (+ `GroupedToggleRow`).** A
+  rounded (`shapes.radius`, 12) `surfaceRaised` card with a hairline `outline` border, rows
+  separated by `outline` hairlines the card draws itself. A slot API: `GroupedCard { row(...);
+  item { ... } }`. A row is a label, an optional value, an optional chevron, an optional
+  `onClick`. Used by Bond settings and Account; Notifications and the zone picker still use the
+  feature's `SettingsRow`, which now delegates to `GroupedRow` (so they lose the underline and
+  gain the chevron) but is not yet in a card.
+- **Row marks (owner ruling 2026-11-11):** a **chevron** on a row that opens another screen;
+  **no mark** on a row that only shows a value, opens an OS surface (Reveal time's picker) or
+  acts in place (Sign out, Rest days); an **underline** stays only for a link inside a
+  sentence. This replaces the underline on rows (states.md §8, tokens.md §1). Destructive rows
+  are `danger` with a chevron; the underline that kept colour from being the only cue (NFR-104)
+  is gone for them, so the Ending card's heading and the confirm screens carry that.
+- **Icon:** `MoyiIcons.ChevronRight`, lucide `chevron-right` (24 px, 2 px stroke, ink-muted
+  tint, mirrored under RTL). Same set and path-data rule as `ChevronLeft`/`ChevronDown`.
+- **Bond settings root, top to bottom:** header card (bond name as the heading in `title`,
+  both members' initials, "You and {name} · since {date}", then Relationship type and Bond name
+  rows); **The day · both of you** card (Shared time zone "London · GMT+0", Reveal time, Rest
+  days) with a muted line under it; **Just you · {name} can't see these** (Notifications,
+  Account); Invite (only while waiting for a member); **Ending** (Leave this bond, Block and
+  leave, Report {name}, Close the box).
+- **Removed from Bond settings:** Get help, Terms and Privacy and Sign out. Account has all
+  three (it already did). On a failed load Bond settings now shows an Account row, so Sign out
+  is two taps there instead of one.
+- **Strings proposed:** `settings_group_you_named` "Just you · %1$s can't see these"
+  ("Just you" stays while nobody has joined); `settings_tz_value` "%1$s · GMT%2$s";
+  `settings_day_line` "Your day starts and ends on %1$s time, for both of you, even when either
+  of you travels."; `settings_day_line_alone` "Your day starts and ends on %1$s time, even when
+  you travel."; header: `settings_header_you_and` "You and %1$s", `settings_header_since`
+  "%1$s · since %2$s", `settings_header_description` "%1$s. You and %2$s, since %3$s.".
+  Gone: `settings_heading` ("Bond settings"), `settings_group_bond` ("This bond").
+- **Kept from #88:** the Shared time zone row still opens Propose, which shows "The shared time
+  zone can change again from ..." and blocks the change while `timezoneChangeAllowedFrom` is in
+  the future. The root does not repeat the date.
+

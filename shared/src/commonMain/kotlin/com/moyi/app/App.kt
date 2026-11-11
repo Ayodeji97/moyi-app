@@ -236,7 +236,6 @@ private fun MoyiNavHost(
         )
         bondSettingsGraph(
             navController = navController,
-            onOpenLegal = { navController.navigate(LegalRoute()) { launchSingleTop = true } },
             // Left, blocked, or found ended: the same path as Today finding no open bond.
             onBondEnded = { navController.resetTo(SignedInStartRoute) },
             onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Settings)) { launchSingleTop = true } },

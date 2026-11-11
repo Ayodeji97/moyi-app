@@ -1,39 +1,28 @@
 package com.moyi.app.feature.bond.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import com.moyi.app.designsystem.MoyiTheme
-import com.moyi.app.designsystem.component.InlineError
+import com.moyi.app.designsystem.component.GroupedRow
+import com.moyi.app.designsystem.component.GroupedToggleRow
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.TextRole
 
 /**
- * How a row behaves when tapped, which decides its styling (states.md §8, tokens.md §1:
- * **an underline means it goes somewhere**).
+ * How a row behaves when tapped, which decides its mark (owner ruling 2026-11-11):
  *
- * - [Navigates]: opens a screen or a confirmation. Underlined: the value if there is one,
- *   otherwise the label.
- * - [Opens]: opens an OS surface (the time picker). No underline.
- * - [Acts]: does it in place (sign out). No underline.
+ * - [Navigates]: opens another screen or a confirmation. A chevron.
+ * - [Opens]: opens an OS surface (the time picker). No mark.
+ * - [Acts]: does it in place. No mark.
+ *
+ * No kind underlines: an underline stays only for a link inside a sentence.
  */
 enum class RowKind { Navigates, Opens, Acts }
 
@@ -51,12 +40,9 @@ internal fun SettingsGroup(heading: String, content: @Composable ColumnScope.() 
 }
 
 /**
- * One Bond settings row: the label at the start and its value at the end, both `body`,
- * in a 56 row (Figma 396:13: text 24 tall at y 16). The whole row is the target.
- *
- * Built here, not in the design system: Figma draws these rows as loose frames, not a
- * component (docs/missing-components.md). [destructive] is `danger` with the underline
- * kept, so colour is never the only cue (NFR-104); [error] sits under the row, input kept.
+ * A row outside a card (Notifications, Report, the zone picker): [GroupedRow], the design
+ * system's row, with the chevron its [kind] calls for. Rows inside a card call
+ * `GroupedCardScope.row` directly.
  */
 @Composable
 internal fun SettingsRow(
@@ -70,44 +56,19 @@ internal fun SettingsRow(
     /** What a tap does, spoken by assistive technology when the label alone does not say it. */
     onClickLabel: String? = null,
 ) {
-    val colors = MoyiTheme.colors
-    val underline = kind == RowKind.Navigates
-    val body = MoyiTheme.type.body
-    Column(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled, onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
-                .padding(vertical = MoyiTheme.spacing.md),
-            horizontalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                modifier = Modifier.weight(1f),
-                style = if (underline && value == null) body.copy(textDecoration = TextDecoration.Underline) else body,
-                color = if (destructive) colors.danger else colors.ink,
-            )
-            if (value != null) {
-                Text(
-                    text = value,
-                    style = if (underline) body.copy(textDecoration = TextDecoration.Underline) else body,
-                    color = colors.ink,
-                    textAlign = TextAlign.End,
-                )
-            }
-        }
-        if (error != null) {
-            InlineError(error)
-            Spacer(Modifier.height(MoyiTheme.spacing.sm))
-        }
-    }
+    GroupedRow(
+        label = label,
+        value = value,
+        onClick = onClick,
+        showChevron = kind == RowKind.Navigates,
+        destructive = destructive,
+        enabled = enabled,
+        error = error,
+        onClickLabel = onClickLabel,
+    )
 }
 
-/**
- * A row that toggles in place (Rest days): no underline, a switch to assistive
- * technology, with its state spoken as the value says it.
- */
+/** A row that toggles in place (Notifications): [GroupedToggleRow]. */
 @Composable
 internal fun SettingsToggleRow(
     label: String,
@@ -118,26 +79,5 @@ internal fun SettingsToggleRow(
     enabled: Boolean = true,
     error: String? = null,
 ) {
-    val colors = MoyiTheme.colors
-    Column(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = { onToggle() })
-                .semantics {
-                    stateDescription = value
-                    onClick(label = hint) { onToggle(); true }
-                }
-                .padding(vertical = MoyiTheme.spacing.md),
-            horizontalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(label, modifier = Modifier.weight(1f), style = MoyiTheme.type.body, color = colors.ink)
-            Text(value, style = MoyiTheme.type.body, color = colors.ink, textAlign = TextAlign.End)
-        }
-        if (error != null) {
-            InlineError(error)
-            Spacer(Modifier.height(MoyiTheme.spacing.sm))
-        }
-    }
+    GroupedToggleRow(label = label, value = value, checked = checked, onToggle = onToggle, hint = hint, enabled = enabled, error = error)
 }

@@ -61,11 +61,12 @@ interface GroupedCardScope {
  * Bond settings, Account and Notifications share. `surfaceRaised` with a hairline
  * `outline` border and the 12 radius (`tokens.md` §3: elevation is a border, not a shadow).
  *
- * A slot API: the caller describes the items in [content]; the card lays them out and
- * puts a divider between neighbours. See [GroupedRow] for the row it is made for.
+ * A slot API: the caller describes the items in [content], a composable block (so it can
+ * read string resources and state directly); the card lays them out and puts a divider
+ * between neighbours. See [GroupedRow] for the row it is made for.
  */
 @Composable
-fun GroupedCard(modifier: Modifier = Modifier, content: GroupedCardScope.() -> Unit) {
+fun GroupedCard(modifier: Modifier = Modifier, content: @Composable GroupedCardScope.() -> Unit) {
     val items = mutableListOf<@Composable () -> Unit>()
     object : GroupedCardScope {
         override fun item(content: @Composable () -> Unit) {

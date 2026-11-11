@@ -8,15 +8,19 @@
     onboarding's (feature/onboarding), not repeated here.
     -->
 
-    <!-- PROPOSED. The root's heading; today_nav_settings' words, the spoken name of the target that opens it. -->
-    <string name="settings_heading">Bond settings</string>
-
-    <!-- settings.group.bond (strings-proposed.md §8, in file, not decided). -->
-    <string name="settings_group_bond">This bond</string>
+    <!-- PROPOSED (missing-components §74). The bond's own name is now the root's heading, in the header card, so "Bond settings" and "This bond" are gone. -->
     <!-- settings.group.day (strings-proposed.md §8, in file, not decided). -->
     <string name="settings_group_day">The day · both of you</string>
     <!-- settings.group.you, the weakest of the three wordings strings-proposed.md §8 offers ("Just you"): the privacy claim is the owner's to word. -->
     <string name="settings_group_you">Just you</string>
+    <!-- PROPOSED (§74). %1$s is the other member's name; "Just you" alone while nobody has joined. -->
+    <string name="settings_group_you_named">Just you · %1$s can't see these</string>
+    <!-- PROPOSED (§74). The shared zone as a row value: %1$s the city, %2$s the offset from GMT, signed ("+0", "+5:30", "-3"). -->
+    <string name="settings_tz_value">%1$s · GMT%2$s</string>
+    <!-- PROPOSED (§74). Under The day card: %1$s the shared zone's city. -->
+    <string name="settings_day_line">Your day starts and ends on %1$s time, for both of you, even when either of you travels.</string>
+    <!-- PROPOSED (§74). The same line while nobody has joined. -->
+    <string name="settings_day_line_alone">Your day starts and ends on %1$s time, even when you travel.</string>
     <!-- settings.group.ending (strings-proposed.md §8, in file, not decided). -->
     <string name="settings_group_ending">Ending</string>
 

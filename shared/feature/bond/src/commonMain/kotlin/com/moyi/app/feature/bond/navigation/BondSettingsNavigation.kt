@@ -108,7 +108,8 @@ data class BondArchivedRoute(val partnerName: String? = null)
  *   to the root.
  * - Bond settings → Report (the member), the report flow ([reportGraph]); leaving it returns
  *   to the root.
- * - Bond settings → Get help (Just you, on the loaded root and the failed load) calls
+ * - Get help is Account's row now (owner ruling 2026-11-10); [onOpenSupport] still serves a
+ *   Get help action from here, which no row sends. Formerly: Bond settings → Get help calls
  *   [onOpenSupport]: Support is its own feature, pushed by the shell over settings, and
  *   its way back pops to here.
  * - Bond settings → Account (push), its own graph because a person with no bond reaches it
@@ -120,8 +121,6 @@ data class BondArchivedRoute(val partnerName: String? = null)
 fun NavGraphBuilder.bondSettingsGraph(
     navController: NavController,
     onBondEnded: () -> Unit,
-    /** Just you › Terms and Privacy: the shell opens the read view (feature:auth's screen). */
-    onOpenLegal: () -> Unit,
     onOpenSupport: () -> Unit,
 ) {
     navigation<BondSettingsGraph>(startDestination = BondSettingsRoute) {
@@ -132,7 +131,6 @@ fun NavGraphBuilder.bondSettingsGraph(
                     state = state,
                     onAction = viewModel::onAction,
                     onBack = { navController.popBackStack() },
-                    onOpenLegal = onOpenLegal,
                 )
             }
         }
