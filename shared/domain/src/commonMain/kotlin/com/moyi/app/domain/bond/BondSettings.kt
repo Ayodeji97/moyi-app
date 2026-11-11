@@ -38,6 +38,13 @@ data class BondSettings(
      * 30-day cooling-off ([BondStatus.PENDING_DELETION]). Null otherwise.
      */
     val deletionScheduledFor: Instant? = null,
+    /**
+     * The first day the shared zone can change again (FR-027's 30 days), `YYYY-MM-DD` in
+     * [anchorTimezone], or null when it can change now. A string because the domain carries
+     * no date library; the screen parses it. It may be a day that has since passed (a stale
+     * cache), so only the screen, which knows today, decides whether it still blocks.
+     */
+    val timezoneChangeAllowedFrom: String? = null,
 ) {
     val restDays: Boolean get() = !strictMode
 

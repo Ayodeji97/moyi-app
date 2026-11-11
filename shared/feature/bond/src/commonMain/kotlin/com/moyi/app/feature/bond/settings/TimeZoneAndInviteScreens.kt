@@ -108,6 +108,7 @@ private fun ProposeZone(state: BondSettingsState, settings: BondSettings, onActi
     val zone = state.zoneDraft ?: settings.anchorTimezone
     val alone = settings.waitingForPartner
     val sending = state.saving == SettingsField.TimeZone
+    val lockedFrom = state.zoneChangeFrom
     MoyiScaffold(
         onBack = onBack,
         action = {
@@ -115,10 +116,10 @@ private fun ProposeZone(state: BondSettingsState, settings: BondSettings, onActi
             PrimaryAction(
                 text = stringResource(if (alone) Res.string.settings_name_save else Res.string.settings_tz_propose),
                 onClick = { onAction(BondSettingsAction.OnProposeClick) },
-                state = if (sending) {
-                    PrimaryActionState.Sending(stringResource(if (alone) Res.string.settings_name_saving else Res.string.settings_tz_proposing))
-                } else {
-                    PrimaryActionState.Idle
+                state = when {
+                    sending -> PrimaryActionState.Sending(stringResource(if (alone) Res.string.settings_name_saving else Res.string.settings_tz_proposing))
+                    lockedFrom != null -> PrimaryActionState.Disabled
+                    else -> PrimaryActionState.Idle
                 },
             )
         },
@@ -133,10 +134,15 @@ private fun ProposeZone(state: BondSettingsState, settings: BondSettings, onActi
             type = FieldType.Select,
             helper = stringResource(OnboardingRes.string.field_timezone_helper, cityOf(zone)),
             error = if (state.zonesFailed) stringResource(Res.string.settings_tz_list_error) else null,
-            enabled = !sending,
+            enabled = !sending && lockedFrom == null,
             onClick = { onAction(BondSettingsAction.OnZoneFieldClick) },
         )
         Spacer(Modifier.height(spacing.lg))
+        if (lockedFrom != null) {
+            // states.md §8's sentence, said before the person picks a city, not after a refusal.
+            MoyiText(stringResource(Res.string.settings_tz_error_too_soon_from, dayAndMonth(lockedFrom)))
+            Spacer(Modifier.height(spacing.lg))
+        }
         MoyiText(stringResource(if (alone) Res.string.settings_tz_rules_alone else Res.string.settings_tz_rules), tone = TextTone.Muted)
     }
 }

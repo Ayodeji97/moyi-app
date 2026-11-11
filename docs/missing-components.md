@@ -1871,3 +1871,24 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 - **Open for the owner:** (1) the Reset link sent button still reads "Choose a new password"
   while the screen it opens is headed "Type your code"; "Enter the code" would match;
   (2) whether "Type your code" should repeat the address ("Sent to ...") as verify's line does.
+
+## Time zone date up front (PR feat/timezone-allowed-from-bond)
+
+### 73. Time zone: the date said before the person tries (backend #177)
+
+`BondResponse.timezoneChangeAllowedFrom` (`YYYY-MM-DD` in the bond's zone, null when a change
+is allowed now) lets the Propose screen say what the `409 TIMEZONE_CHANGE_TOO_SOON` used to say
+only after a refusal.
+
+- **No new string, no new component.** The line reuses `settings_tz_error_too_soon_from`
+  ("The shared time zone can change again from %1$s.", states.md §8) in `ink`, between the
+  zone field and the constraints paragraph. The field is `Disabled` (the existing Field state)
+  and Propose change is `PrimaryAction` `Disabled` (the existing state), so no city can be
+  picked and nothing is sent.
+- **When it shows:** only when the date is after today in the bond's zone, checked when
+  Propose opens. A date that is today or past, or none, is the screen as before.
+- **Fallback kept:** a `409` still shows the same line under the action (a race, or a cache
+  that went stale).
+- **Open for the owner:** the Shared time zone row on the root still opens Propose, so the line
+  is read on the screen where the person was about to act. If the redesigned root (grouped
+  cards, chevrons) should carry the date under the row's value instead, it is the same string.

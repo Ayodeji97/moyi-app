@@ -5,6 +5,7 @@ import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
+import kotlinx.datetime.LocalDate
 
 /** Whether the settings are on screen yet. Loading draws the bare `surface`: no spinner. */
 enum class SettingsLoad { Loading, Failed, Ready }
@@ -67,6 +68,12 @@ data class BondSettingsState(
     val inviteCopied: Boolean = false,
     /** Which part of a time-zone screen is in flight: the primary (propose, agree) or the secondary (cancel, decline). */
     val zoneSecondaryInFlight: Boolean = false,
+    /**
+     * The first day the shared zone can change again, when that is still ahead of today in
+     * the bond's zone; set when Propose opens, null when a change is allowed now. While set,
+     * the screen says the day up front and the change cannot start.
+     */
+    val zoneChangeFrom: LocalDate? = null,
     /** The same for a close-the-box screen: true while its `DELETE` is the call in flight. */
     val closeBoxSecondaryInFlight: Boolean = false,
 ) {

@@ -37,7 +37,11 @@ class TimeZoneAndInviteViewModelTest : MainDispatcherTest() {
     private val repo = FakeBondSettingsRepository()
     private val bonds = FakeBondRepository(repo)
     private var zones: Set<String> = setOf("Europe/London", "Africa/Lagos", "UTC", "Etc/GMT+1", "America/Argentina/Buenos_Aires")
-    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeAuthRepository(), bonds, FakeOutbox(), FakeOutbox(), zoneIds = { zones }) }
+    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeAuthRepository(), bonds, FakeOutbox(), FakeOutbox(), zoneIds = { zones }, clock = fixedClock) }
+    private val fixedClock = object : kotlin.time.Clock {
+        // 23:30 UTC on 10 November is 00:30 on 11 November in Lagos (UTC+1).
+        override fun now() = kotlin.time.Instant.parse("2026-11-10T23:30:00Z")
+    }
 
     private val theirProposal = PendingTimezoneChange("p1", "Europe/London", proposedByMe = false)
     private val myProposal = PendingTimezoneChange("p1", "Europe/London", proposedByMe = true)
@@ -156,6 +160,63 @@ class TimeZoneAndInviteViewModelTest : MainDispatcherTest() {
         assertEquals(TimeZoneStep.Propose, state.timeZoneStep)
         assertEquals("Europe/London", state.zoneDraft, "the choice is kept")
         assertNull(state.saving)
+    }
+
+    @Test
+    fun aFutureAllowedFromIsSaidUpFrontAndTheChangeCannotStart() = runTest {
+        repo.server = settingsV1.copy(timezoneChangeAllowedFrom = "2026-12-10")
+        choose("Europe/London")
+
+        assertEquals(LocalDate(2026, 12, 10), state.zoneChangeFrom)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnZoneFieldClick)
+            viewModel.onAction(BondSettingsAction.OnProposeClick)
+            expectNoEvents()
+        }
+        assertTrue(repo.proposals.isEmpty(), "no request that is sure to be refused")
+        assertTrue(state.zones.isEmpty(), "the picker never opened")
+        assertNull(state.saving)
+    }
+
+    @Test
+    fun noAllowedFromMeansTheChangeIsOpen() = runTest {
+        choose("Europe/London")
+
+        assertNull(state.zoneChangeFrom)
+        viewModel.onAction(BondSettingsAction.OnProposeClick)
+        assertEquals(1, repo.proposals.size)
+    }
+
+    @Test
+    fun anAllowedFromThatHasPassedOrIsTodayInTheBondsZoneIsOpen() = runTest {
+        // The clock is 00:30 on 11 November in Lagos (but still 10 November in UTC).
+        repo.server = settingsV1.copy(timezoneChangeAllowedFrom = "2026-11-11")
+        choose("Europe/London")
+        assertNull(state.zoneChangeFrom, "from that day's start it can change")
+        viewModel.onAction(BondSettingsAction.OnProposeClick)
+        assertEquals(1, repo.proposals.size)
+    }
+
+    @Test
+    fun aStaleAllowedFromInThePastBehavesAsToday() = runTest {
+        repo.server = settingsV1.copy(timezoneChangeAllowedFrom = "2026-10-01")
+        choose("Europe/London")
+        assertNull(state.zoneChangeFrom)
+    }
+
+    @Test
+    fun theDayBeforeAllowedFromInTheBondsZoneStillBlocks() = runTest {
+        // 11 Nov in Lagos; allowed from 12 Nov.
+        repo.server = settingsV1.copy(timezoneChangeAllowedFrom = "2026-11-12")
+        choose("Europe/London")
+        assertEquals(LocalDate(2026, 11, 12), state.zoneChangeFrom)
+    }
+
+    @Test
+    fun aMalformedAllowedFromDoesNotBlock() = runTest {
+        repo.server = settingsV1.copy(timezoneChangeAllowedFrom = "soon")
+        choose("Europe/London")
+        assertNull(state.zoneChangeFrom)
     }
 
     @Test

@@ -66,6 +66,15 @@ class BondSettingsRepositoryTest {
     }
 
     @Test
+    fun theDateTheZoneCanChangeAgainIsMappedAsItCame() = runTest {
+        val locked = Fixture { respondBond(bondJson(allowedFrom = "\"2026-12-10\""), etag = "\"1\"") }
+        assertEquals("2026-12-10", assertIs<Result.Success<BondSettings>>(locked.repo.settings("b1")).data.timezoneChangeAllowedFrom)
+
+        val free = Fixture { respondBond(bondJson(), etag = "\"1\"") }
+        assertNull(assertIs<Result.Success<BondSettings>>(free.repo.settings("b1")).data.timezoneChangeAllowedFrom)
+    }
+
+    @Test
     fun readingKeepsTheETagAsTheVersion() = runTest {
         val fixture = Fixture { respondBond(bondJson(revealTime = "\"21:00\""), etag = "\"7\"") }
 
@@ -275,11 +284,13 @@ class BondSettingsRepositoryTest {
         status: String = "ACTIVE",
         deletionScheduledFor: String = "null",
         pendingDeletion: String = "null",
+        allowedFrom: String = "null",
     ): String =
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":$deletionScheduledFor,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false}"""
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false,""" +
+            """"timezoneChangeAllowedFrom":$allowedFrom}"""
 
     private fun pendingJson(proposedBy: String): String =
         """{"id":"p1","proposedTimezone":"Europe/London","proposedByMemberId":"$proposedBy",""" +
