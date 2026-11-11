@@ -258,7 +258,8 @@ object MoyiDimens {
      */
     object ArchiveRow {
         val DateColumn = 36.dp
-        val AuthorMaxWidth = 96.dp
+        /** The author column never takes more than this share of the line, so the words keep room at large font scales. */
+        const val AuthorMaxShare = 0.4f
         val ChipHeight = 24.dp
         val ChipStroke = 1.dp
         val Hairline = 1.dp
@@ -276,6 +277,10 @@ object MoyiDimens {
         val Stroke = 1.dp
         /** No shadow and no tonal tint (tokens.md §3): the hairline separates it from the page. */
         val Elevation = 0.dp
+        /** Wide enough for "Edit" and "Delete" with 16 each side, even at large font scales. */
+        val Width = 176.dp
+        /** The panel hangs this far below the dots, clear of the card's own edge. */
+        val GapBelow = 4.dp
     }
 
     object NavRow {
