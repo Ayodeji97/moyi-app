@@ -50,13 +50,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Chip
 import com.moyi.app.designsystem.component.ChipRow
-import com.moyi.app.designsystem.component.EntryPhoto
-import com.moyi.app.designsystem.component.EntryPhotoView
-import com.moyi.app.designsystem.component.VoiceNote
-import com.moyi.app.designsystem.component.VoiceNoteView
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
+import com.moyi.app.designsystem.component.ArchiveDayRow
+import com.moyi.app.designsystem.component.ArchiveRowLine
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.StateBlock
@@ -70,9 +68,19 @@ import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.ScreenTitle
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.common.monthAndYear
-import com.moyi.app.feature.today.common.weekdayAndDay
+import com.moyi.app.feature.today.common.weekdayShort
+import com.moyi.app.feature.today.common.dayInSentence
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.archive_day_favourited
+import com.moyi.app.feature.today.resources.archive_row_author_partner_unknown
+import com.moyi.app.feature.today.resources.archive_row_author_you
+import com.moyi.app.feature.today.resources.archive_row_favourite
+import com.moyi.app.feature.today.resources.archive_row_photo
+import com.moyi.app.feature.today.resources.archive_row_photo_and_voice
+import com.moyi.app.feature.today.resources.archive_row_spoken_entry
+import com.moyi.app.feature.today.resources.archive_row_spoken_photo
+import com.moyi.app.feature.today.resources.archive_row_spoken_voice
+import com.moyi.app.feature.today.resources.archive_row_voice
 import com.moyi.app.feature.today.resources.archive_empty_heading
 import com.moyi.app.feature.today.resources.archive_empty_line
 import com.moyi.app.feature.today.resources.archive_favourites_empty_heading
@@ -93,8 +101,6 @@ import com.moyi.app.feature.today.resources.archive_streak_link
 import com.moyi.app.feature.today.resources.archive_title
 import com.moyi.app.feature.today.resources.delete_cancel
 import com.moyi.app.feature.today.resources.today_action_failed
-import com.moyi.app.feature.today.resources.today_author_partner
-import com.moyi.app.feature.today.resources.today_author_you
 import com.moyi.app.feature.today.resources.today_error_action
 import com.moyi.app.feature.today.resources.today_error_heading
 import com.moyi.app.feature.today.resources.today_error_line
@@ -455,14 +461,13 @@ private fun ColumnScope.DayList(state: ArchiveState, onAction: (ArchiveAction) -
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxWidth().weight(1f),
-        verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.md),
     ) {
         state.months.forEach { month ->
-            item(key = "month-${month.month.year}-${month.month.month}") {
+            item(key = "month-${month.month.year}-${month.month.month}", contentType = HEADING_TYPE) {
                 MonthHeading(month.month)
             }
-            items(month.days, key = { it.date.toString() }) { day ->
-                DayCard(day, state.partnerName.orEmpty(), onClick = { onAction(ArchiveAction.OnDayClick(day.date)) })
+            items(month.days, key = { it.date.toString() }, contentType = { ROW_TYPE }) { day ->
+                DayRow(day, state.partnerName.orEmpty(), onClick = { onAction(ArchiveAction.OnDayClick(day.date)) })
             }
         }
         if (state.pageFailed) {
@@ -488,88 +493,73 @@ private fun ColumnScope.DayList(state: ArchiveState, onAction: (ArchiveAction) -
 @Composable
 private fun MonthHeading(month: LocalDate) {
     val name = remember(month) { monthAndYear(month) }
-    MoyiText(text = name, role = TextRole.Label, modifier = Modifier.semantics { heading() })
+    MoyiText(
+        text = name,
+        role = TextRole.Label,
+        modifier = Modifier.padding(top = MoyiTheme.spacing.md).semantics { heading() },
+    )
 }
 
 /**
- * One day (Figma DayCard 223:9, 358 x 259): `surfaceRaised` with the `outline`
- * hairline and radius 12, padding 16; the day ("Tuesday 2") in `label`, then up to
- * two blocks 16 apart, each an author label over the words in `title` (tokens.md §2:
- * "also the preview-entry size in Archive"), **cut to two lines with an ellipsis**.
- * No chevron (states.md §6). The whole card opens the day view. A small filled
- * bookmark on the trailing edge of the date row when the day holds **my** favourite
- * (440:1510, 24 x 24).
+ * One day as a compact row (owner ruling 2026-11-11, replacing Figma's DayCard 223:9): the
+ * date on the left, the first line of each entry, small chips for media and my favourite.
+ * [ArchiveDayRow] draws it; this builds what it shows from the day, once per day
+ * (`remember(day)`), so scrolling does no work beyond drawing.
  *
  * The partner's block is drawn only when the day holds their words; a locked entry is
- * not even named. My deleted entry is its tombstone, "From you", as on Today.
+ * not even named. My deleted entry is its tombstone, as on Today. Photos and voice notes
+ * are no longer drawn in the list; they are chips here and play in the day view.
  *
  * TODO(#17): R3. The partner's words here are not protected from screen capture on this
- *  branch; when #17 merges, give this card the protection EntryCard Partner gets there.
- *  The partner's **photo** is protected (EntryPhotoView's protectFromCapture).
- *
- * A photo is drawn under its excerpt, as on the EntryCard (interim, not drawn:
- * docs/missing-components.md §40).
+ *  branch; give this row the protection EntryCard Partner gets when #17 merges.
  */
 @Composable
-private fun DayCard(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) {
-    val colors = MoyiTheme.colors
-    val shapes = MoyiTheme.shapes
-    val dayName = remember(day.date) { weekdayAndDay(day.date) }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(colors.surfaceRaised, shapes.radius)
-            .border(MoyiDimens.EntryCard.Stroke, colors.outline, shapes.radius)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(MoyiTheme.spacing.md)
-            // One stop for a screen reader: the day, then each entry.
-            .semantics(mergeDescendants = true) {},
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            MoyiText(text = dayName, role = TextRole.Label, modifier = Modifier.weight(1f))
-            // states.md §6: the only thing ever on a card's trailing edge, and only for
-            // a day holding an entry *I* favourited. The partner's marks are never drawn.
-            if (day.holdsMyFavourite) {
-                Icon(
-                    imageVector = MoyiIcons.BookmarkFilled,
-                    contentDescription = stringResource(Res.string.archive_day_favourited),
-                    tint = colors.ink,
-                    modifier = Modifier.size(MoyiDimens.IconGlyph),
-                )
-            }
-        }
-        day.partnerEntry?.let { words ->
-            Spacer(Modifier.height(MoyiTheme.spacing.md))
-            CardEntry(stringResource(Res.string.today_author_partner, partnerName), words, day.partnerPhoto, day.partnerVoice, partner = true)
-        }
-        when {
-            day.myEntry != null -> {
-                Spacer(Modifier.height(MoyiTheme.spacing.md))
-                CardEntry(stringResource(Res.string.today_author_you), day.myEntry, day.myPhoto, day.myVoice)
-            }
-            day.myTombstone -> {
-                Spacer(Modifier.height(MoyiTheme.spacing.md))
-                MoyiText(text = stringResource(Res.string.today_author_you), role = TextRole.Label)
-                Spacer(Modifier.height(MoyiTheme.spacing.xs))
-                MoyiText(text = stringResource(Res.string.today_tombstone_line), tone = TextTone.Muted)
-            }
+private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) {
+    val row = remember(day) { day.toRowModel() }
+    val dayNumber = remember(day.date) { day.date.day.toString() }
+    val weekday = remember(day.date) { weekdayShort(day.date) }
+    val you = stringResource(Res.string.archive_row_author_you)
+    val partner = partnerName.ifBlank { stringResource(Res.string.archive_row_author_partner_unknown) }
+    val photo = stringResource(Res.string.archive_row_photo)
+    val voice = stringResource(Res.string.archive_row_voice)
+    val photoAndVoice = stringResource(Res.string.archive_row_photo_and_voice)
+    val deleted = stringResource(Res.string.today_tombstone_line)
+    val lines = row.lines.map { line ->
+        val author = if (line.author == RowAuthor.You) you else partner
+        when (val body = line.body) {
+            is RowBody.Words -> ArchiveRowLine(author, body.line)
+            is RowBody.MediaOnly -> ArchiveRowLine(
+                author,
+                when {
+                    body.photo && body.voice -> photoAndVoice
+                    body.voice -> voice
+                    else -> photo
+                },
+                muted = true,
+            )
+            RowBody.Deleted -> ArchiveRowLine(author, deleted, muted = true)
         }
     }
-}
-
-@Composable
-private fun CardEntry(author: String, words: String, photo: EntryPhoto?, voice: VoiceNote?, partner: Boolean = false) {
-    MoyiText(text = author, role = TextRole.Label)
-    Spacer(Modifier.height(MoyiTheme.spacing.xs))
-    MoyiText(text = words, role = TextRole.Title, maxLines = 2, ellipsis = true)
-    if (photo != null) {
-        Spacer(Modifier.height(MoyiTheme.spacing.sm))
-        EntryPhotoView(photo, protectFromCapture = partner)
+    val chips = buildList {
+        if (row.photoChip) add(photo)
+        if (row.voiceChip) add(voice)
+        if (row.favourite) add(stringResource(Res.string.archive_row_favourite))
     }
-    if (voice != null) {
-        Spacer(Modifier.height(MoyiTheme.spacing.sm))
-        VoiceNoteView(voice, protectFromCapture = partner)
+    val extras = buildList {
+        if (row.photoChip) add(stringResource(Res.string.archive_row_spoken_photo))
+        if (row.voiceChip) add(stringResource(Res.string.archive_row_spoken_voice))
+        if (row.favourite) add(stringResource(Res.string.archive_day_favourited))
     }
+    val spoken = lines.map { stringResource(Res.string.archive_row_spoken_entry, it.author, it.text) }
+    val description = rowDescription(dayInSentence(day.date), spoken, extras)
+    ArchiveDayRow(
+        dayNumber = dayNumber,
+        weekday = weekday,
+        lines = lines,
+        chips = chips,
+        description = description,
+        onClick = onClick,
+    )
 }
 
 /** states.md §6: "the 56 pt month-jump row" (Figma's frame 257:9 is 80; see archive-check.md). */
@@ -577,6 +567,10 @@ private val MonthRowHeight = 56.dp
 
 /** Ask for the next page this many items before the end. Not a design value. */
 private const val LOAD_AHEAD = 3
+
+/** Lazy-list content types: rows and month headings reuse their own compositions. */
+private const val ROW_TYPE = "day"
+private const val HEADING_TYPE = "month"
 
 // ---- Previews ----
 
