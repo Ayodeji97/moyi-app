@@ -32,6 +32,7 @@ class FakeAuthRepository : AuthRepository {
     var verifyResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var resendResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var requestResetResult: EmptyResult<DataError.Network> = Result.Success(Unit)
+    var checkResetResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var resetResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var loginResult: Result<User, DataError> = Result.Success(USER)
 
@@ -54,6 +55,9 @@ class FakeAuthRepository : AuthRepository {
     val verifyCalls = mutableListOf<EmailProof>()
     val resendCalls = mutableListOf<String>()
     val requestResetCalls = mutableListOf<String>()
+
+    /** (email, code) pairs sent to checkResetCode. */
+    val checkResetCalls = mutableListOf<Pair<String, String>>()
 
     /** (proof, password) pairs sent to resetPassword. */
     val resetCalls = mutableListOf<Pair<EmailProof, String>>()
@@ -89,6 +93,12 @@ class FakeAuthRepository : AuthRepository {
         requestResetCalls += email
         gate?.await()
         return requestResetResult
+    }
+
+    override suspend fun checkResetCode(email: String, code: String): EmptyResult<DataError.Network> {
+        checkResetCalls += email to code
+        gate?.await()
+        return checkResetResult
     }
 
     override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> {

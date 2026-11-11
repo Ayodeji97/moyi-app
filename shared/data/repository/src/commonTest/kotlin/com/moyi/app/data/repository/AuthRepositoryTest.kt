@@ -251,6 +251,48 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun checkingAResetCodeSendsOnlyTheEmailAndTheCodeAndAnswers204() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        assertEquals(Result.Success(Unit), fixture.repository.checkResetCode("ada@example.test", "042917"))
+
+        val request = fixture.requests.single()
+        assertEquals("/api/v1/auth/reset-password/check", request.url.encodedPath)
+        // Leading zero kept: the code is six characters, never a number. No password, no token.
+        assertEquals("""{"code":"042917","email":"ada@example.test"}""", assertIs<TextContent>(request.body).text)
+        assertNull(fixture.store.current)
+    }
+
+    @Test
+    fun aRefusedResetCodeIsItsCode() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.UnprocessableEntity, "PASSWORD_RESET_TOKEN_INVALID") }
+
+        val result = fixture.repository.checkResetCode("ada@example.test", "000000")
+
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(422, ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID))), result)
+    }
+
+    @Test
+    fun theResetCodeCheckKeepsTheRateLimitAndUnavailableCodes() = runTest {
+        val limited = Fixture { respondProblem(HttpStatusCode.TooManyRequests, "RATE_LIMITED") }
+        assertEquals(
+            Result.Failure(DataError.Network.Api(ApiProblem(429, ApiErrorCode.RATE_LIMITED))),
+            limited.repository.checkResetCode("ada@example.test", "123456"),
+        )
+        val unavailable = Fixture { respondProblem(HttpStatusCode.ServiceUnavailable, "CODE_CHECK_UNAVAILABLE") }
+        assertEquals(
+            Result.Failure(DataError.Network.Api(ApiProblem(503, ApiErrorCode.CODE_CHECK_UNAVAILABLE))),
+            unavailable.repository.checkResetCode("ada@example.test", "123456"),
+        )
+    }
+
+    @Test
+    fun aResetCodeCheckThatCannotReachTheServerIsNoInternet() = runTest {
+        val fixture = Fixture { throw IOException("offline") }
+        assertEquals(Result.Failure(DataError.Network.NoInternet), fixture.repository.checkResetCode("ada@example.test", "123456"))
+    }
+
+    @Test
     fun aResetSendsTokenAndPasswordAndStartsNoSession() = runTest {
         val fixture = Fixture { respond("", HttpStatusCode.OK) }
 

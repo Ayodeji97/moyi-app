@@ -13,6 +13,8 @@ import com.moyi.app.feature.auth.common.LegalDocument
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.auth_email_error
+import com.moyi.app.feature.auth.resources.auth_email_error
+import com.moyi.app.feature.auth.resources.auth_error_generic
 import com.moyi.app.feature.auth.resources.auth_error_offline
 import com.moyi.app.feature.auth.resources.auth_error_rate_limited
 import com.moyi.app.feature.auth.resources.register_legal_unavailable
@@ -228,5 +230,43 @@ class RegisterViewModelTest : MainDispatcherTest() {
             SubmitStatus.Failed(UiText.Resource(Res.string.auth_error_rate_limited), offerRetry = false),
             viewModel.state.value.submit,
         )
+    }
+
+    @Test
+    fun aTimeoutIsTheSameCouldNotBeReachedLineAsNoNetwork() = runTest {
+        repo.registerResult = Result.Failure(DataError.Network.Timeout)
+        fillValidForm()
+        viewModel.onAction(RegisterAction.OnSubmit)
+        assertEquals(SubmitStatus.Failed(UiText.Resource(Res.string.auth_error_offline), offerRetry = true), viewModel.state.value.submit)
+    }
+
+    @Test
+    fun anAnswerFromTheServerIsNeverTheCouldNotBeReachedLine() = runTest {
+        // The server was reached: a 5xx, a refusal without a field, and an unreadable answer
+        // all read as the generic line, never as a connection problem.
+        for (error in listOf(
+            DataError.Network.Server(503),
+            apiError(500, ApiErrorCode.INTERNAL_ERROR),
+            apiError(400, ApiErrorCode.Unknown),
+            DataError.Network.Serialization,
+        )) {
+            repo.registerResult = Result.Failure(error)
+            fillValidForm()
+            viewModel.onAction(RegisterAction.OnSubmit)
+            assertEquals(
+                SubmitStatus.Failed(UiText.Resource(Res.string.auth_error_generic), offerRetry = true),
+                viewModel.state.value.submit,
+                "for $error",
+            )
+        }
+    }
+
+    @Test
+    fun aRefusedEmailStaysOnTheEmailFieldNotAboveTheAction() = runTest {
+        repo.registerResult = Result.Failure(apiError(422, ApiErrorCode.VALIDATION_FAILED, violation("email", "VALID_EMAIL")))
+        fillValidForm()
+        viewModel.onAction(RegisterAction.OnSubmit)
+        assertEquals(UiText.Resource(Res.string.auth_email_error), viewModel.state.value.email.error)
+        assertEquals(SubmitStatus.Idle, viewModel.state.value.submit)
     }
 }

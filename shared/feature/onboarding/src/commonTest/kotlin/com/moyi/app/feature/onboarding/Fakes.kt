@@ -125,6 +125,7 @@ class FakeAuthRepository(signedIn: User? = user(verified = false)) : AuthReposit
 
     override suspend fun verifyEmail(proof: EmailProof): EmptyResult<DataError.Network> = error("not used")
     override suspend fun requestPasswordReset(email: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun checkResetCode(email: String, code: String): EmptyResult<DataError.Network> = error("not used")
     override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> = error("not used")
     override suspend fun login(email: String, password: String): Result<User, DataError> = error("not used")
     override suspend fun logout() = error("not used")
