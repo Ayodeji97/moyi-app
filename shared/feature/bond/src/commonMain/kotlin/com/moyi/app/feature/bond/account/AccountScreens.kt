@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.FieldType
 import com.moyi.app.designsystem.component.InlineError
@@ -56,6 +57,9 @@ import com.moyi.app.feature.bond.resources.settings_load_error_line
 import com.moyi.app.feature.bond.resources.settings_row_help
 import com.moyi.app.feature.bond.resources.settings_row_legal
 import com.moyi.app.feature.bond.resources.settings_row_sign_out
+import com.moyi.app.feature.bond.resources.account_sign_out_confirm
+import com.moyi.app.feature.bond.resources.account_sign_out_line
+import com.moyi.app.feature.bond.resources.account_sign_out_title
 import com.moyi.app.feature.bond.resources.settings_signing_out
 import com.moyi.app.feature.bond.settings.localDayAndMonth
 import com.moyi.app.feature.bond.signout.UnsentSignOutQuestion
@@ -125,6 +129,16 @@ fun AccountScreen(
                 }
             }
         }
+    }
+    if (state.confirmingSignOut) {
+        ConfirmDialog(
+            title = stringResource(Res.string.account_sign_out_title),
+            message = stringResource(Res.string.account_sign_out_line),
+            confirmLabel = stringResource(Res.string.account_sign_out_confirm),
+            dismissLabel = stringResource(Res.string.settings_cancel),
+            onConfirm = { onAction(AccountAction.OnSignOutConfirm) },
+            onDismiss = { onAction(AccountAction.OnSignOutDismiss) },
+        )
     }
     if (state.confirmingUnsentSignOut) {
         UnsentSignOutQuestion(

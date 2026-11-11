@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status-bar icon of a push (notification small icon). The status bar keeps only this
+     drawable's alpha channel and paints it white, so it must be one flat colour on a
+     transparent background and fill its 24 dp slot. The launcher foreground has the same
+     mark but sits in a 108 dp canvas at 44 percent of its height, which would draw it tiny;
+     here the same two paths are scaled by 0.39 and centred so the mark fills about 20 of
+     the 24 dp. Derived from ic_launcher_foreground (tools/icon/make_icon.py); keep in step. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group
+        android:scaleX="0.39"
+        android:scaleY="0.39"
+        android:translateX="-9.06"
+        android:translateY="-9.6">
+        <path
+            android:pathData="M40.0645,46.4516a13.9355,13.9355 0 1,0 27.8710,0a13.9355,13.9355 0 1,0 -27.8710,0"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="5.0323" />
+        <path
+            android:pathData="M48.1935,72.1935a5.8065,5.8065 0 1,0 11.6129,0a5.8065,5.8065 0 1,0 -11.6129,0"
+            android:fillColor="#FFFFFF" />
+    </group>
+</vector>

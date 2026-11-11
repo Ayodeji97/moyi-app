@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -81,6 +83,14 @@ fun MoreMenu(
             tonalElevation = MoyiDimens.MoreMenu.Elevation,
             shadowElevation = MoyiDimens.MoreMenu.Elevation,
             border = BorderStroke(MoyiDimens.MoreMenu.Stroke, colors.outline),
+            // Anchored to the glyph: the panel's right edge lines up with the 48 target's, and it
+            // opens a little below it, so it reads as hanging from the dots instead of
+            // starting over the entry text (the default aligns the panel's START with the target).
+            offset = DpOffset(
+                x = MoyiDimens.TouchTarget - MoyiDimens.MoreMenu.Width,
+                y = MoyiDimens.MoreMenu.GapBelow,
+            ),
+            modifier = Modifier.width(MoyiDimens.MoreMenu.Width),
         ) {
             items.forEach { item ->
                 DropdownMenuItem(

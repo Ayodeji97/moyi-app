@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,6 +50,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.icon.MoyiIcons
 import com.moyi.app.designsystem.platform.DismissKeyboardOnTapAndDrag
@@ -135,13 +138,24 @@ fun MoyiScaffold(
     val itemSpacing = MoyiDimens.Scaffold.ItemSpacing
     val imeVisible = rememberImeVisible()
     val focusManager = LocalFocusManager.current
+    // A scrolling screen with no pinned action lets its content run to the physical bottom
+    // edge, under the home indicator / navigation bar, and pads the END of the content instead
+    // (see the trailing spacers below). Padding the viewport would clip the content 24 plus
+    // the inset above the edge and leave an empty band under it. With the keyboard up the
+    // viewport must stop at the keyboard, so the old padding stays.
+    val scrollsToEdge = scrollContent && action == null && !imeVisible
+    val ground = if (scrollsToEdge) {
+        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+    } else {
+        WindowInsets.safeDrawing
+    }
     CompositionLocalProvider(LocalScaffoldHasBack provides (onBack != null || onClose != null)) {
         Column(
             modifier = modifier
                 .fillMaxSize()
                 .background(MoyiTheme.colors.surface)
                 .then(if (DismissKeyboardOnTapAndDrag) Modifier.clearFocusOnTap(focusManager) else Modifier)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(ground)
                 .padding(
                     start = MoyiDimens.Scaffold.Gutter,
                     end = MoyiDimens.Scaffold.Gutter,
@@ -152,7 +166,11 @@ fun MoyiScaffold(
                     // at 528, so 16 stays between the button and the keyboard
                     // (measured on the composer, PR #8). safeDrawing already
                     // includes the IME inset.
-                    bottom = if (imeVisible) MoyiDimens.Scaffold.KeyboardGap else MoyiDimens.Scaffold.PaddingVertical,
+                    bottom = when {
+                        scrollsToEdge -> 0.dp
+                        imeVisible -> MoyiDimens.Scaffold.KeyboardGap
+                        else -> MoyiDimens.Scaffold.PaddingVertical
+                    },
                 ),
         ) {
             if (onBack != null) {
@@ -199,8 +217,10 @@ fun MoyiScaffold(
                         .fillMaxWidth()
                         .weight(1f)
                         .verticalScroll(rememberKeyboardDismissingScrollState()),
-                    content = content,
-                )
+                ) {
+                    content()
+                    if (scrollsToEdge) EdgePadding()
+                }
             } else if (action == null) {
                 // The content is at least as tall as the space it scrolls in, so the
                 // arrangement has room to centre a block that fits (Join · cannot be
@@ -213,8 +233,10 @@ fun MoyiScaffold(
                             .verticalScroll(rememberKeyboardDismissingScrollState())
                             .heightIn(min = viewport),
                         verticalArrangement = contentArrangement ?: Arrangement.Top,
-                        content = content,
-                    )
+                    ) {
+                        content()
+                        if (scrollsToEdge) EdgePadding()
+                    }
                 }
             } else {
                 ContentAndAction(
@@ -311,6 +333,13 @@ private fun ContentAndAction(
             }
         }
     }
+}
+
+/** The end of a scrolling screen: the usual 24 and the safe-area bottom, inside the scroll. */
+@Composable
+private fun ColumnScope.EdgePadding() {
+    Spacer(Modifier.height(MoyiDimens.Scaffold.PaddingVertical))
+    Spacer(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)))
 }
 
 private enum class ScaffoldSlot { Content, Action }

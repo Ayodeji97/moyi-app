@@ -21,7 +21,7 @@ import kotlin.time.Duration.Companion.seconds
  * Signing out wipes everything on the device (FR-124), entries still waiting to send
  * included. So it first tries to send them (one pass, at most [UNSENT_FLUSH_LIMIT]); if any
  * are still waiting, the caller asks before deleting someone's words ([UnsentSignOutQuestion]).
- * Nothing waiting, it signs out at once. An involuntary end (a refresh refused, a token
+ * Nothing waiting, the caller asks the plain "Sign out?" instead (never both questions). An involuntary end (a refresh refused, a token
  * reused) never comes through here: privacy wins, and the wipe takes them.
  *
  * Signing out always ends the local session, even offline ([AuthRepository.logout]); the
@@ -32,12 +32,11 @@ internal class SignOut(
     private val outbox: EntryOutbox,
     private val sender: OutboxSender,
 ) {
-    /** Signs out unless words would be lost. True when it signed out; false when the person must be asked. */
-    suspend fun unlessWordsWouldBeLost(): Boolean {
-        if (unsentAfterLastTry()) return false
-        auth.logout()
-        return true
-    }
+    /**
+     * True when signing out would delete entries: some were waiting, and one more try did not
+     * send them all. The caller then asks the unsent question INSTEAD of the plain one.
+     */
+    suspend fun wouldLoseWords(): Boolean = unsentAfterLastTry()
 
     /** The person chose to sign out anyway: the session, and its wipe, end. */
     suspend fun anyway() {

@@ -18,7 +18,7 @@ class AccountGraphTest {
         navigatorProvider.addNavigator(ComposeNavigator())
         graph = createGraph(startDestination = BondArchivedRoute()) {
             bondArchivedDestination(this@apply, onStartNewBond = {}, onOpenAccount = {})
-            bondSettingsGraph(this@apply, onBondEnded = {}, onOpenSupport = {})
+            bondSettingsGraph(this@apply, onBondEnded = {})
             accountGraph(this@apply, onOpenLegal = {}, onOpenSupport = {})
         }
     }

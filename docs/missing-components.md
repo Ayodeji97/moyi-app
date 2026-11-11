@@ -1970,3 +1970,34 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **Strings proposed:** `archive_row_author_you` "You", `archive_row_author_partner_unknown` "Your partner", `archive_row_photo` "Photo", `archive_row_voice` "Voice note", `archive_row_photo_and_voice` "Photo and voice note", `archive_row_favourite` "Favourite", `archive_row_spoken_entry` "%1$s: %2$s", `archive_row_spoken_photo` "With a photo", `archive_row_spoken_voice` "With a voice note".
 - **states.md section 6 needs amending (parent repo, not edited here):** a day in the list is a compact row, not a card with excerpts cut to two lines.
 - **Still open (R3, #17):** the partner's words in the list are not protected from capture, as before this change.
+
+## Sign out asks first, and the final polish (PR feat/sign-out-confirm-and-polish)
+
+### 77. "Sign out?" confirmation on Account (owner request 2026-11-11)
+
+- **Why:** the Sign out row ended the session at once. A stray tap on a row sitting under Get help and Terms and Privacy signed the person out of a private journal and wiped the phone's cache.
+- **No new component:** the existing `ConfirmDialog` (Material `AlertDialog` on Android, `UIAlertController` on iOS), not destructive: signing out is reversible (sign in again), and SKILL.md section 3 says to confirm the irreversible only. It is justified here because the sign-out wipes the local database (cache, outbox, drafts), so the dialog says what stays and what goes. states.md and copy.md have no sign-out row (grep for "sign out" only finds the reset-password and unsent-entry rows), so nothing there is overridden.
+- **What signing out really does (read in code):** `AuthRepository.logout()` tells the server (best effort), then `SessionManager` ends the session and runs `PersonalData.wipe()`, which wipes the whole local database: the Today and Archive caches, the draft table and the entry outbox. Entries already sent live on the server and come back on the next sign-in. Only an unsent queued entry or an unsaved draft is lost.
+- **One question, never two (owner ruling 2026-11-11):** the Sign out row first tries once more to send what is waiting (the row says Signing out while it runs, at most 10 seconds), then asks exactly one question. If an entry is still unsent, only the existing "Your entry hasn't sent yet" dialog (strings-proposed.md section 12) appears; it already says what is lost. Otherwise only the new "Sign out?" dialog appears. Confirming either one ends the session. Offline, the same check runs against the device's outbox, and confirming still ends the local session (#41).
+- **Strings proposed:** `account_sign_out_title` "Sign out?", `account_sign_out_line` "Your days stay safe on Moyi. Sign in again to see them on this phone. Any draft kept on this phone is removed.", `account_sign_out_confirm` "Sign out". Cancel reuses `settings_cancel`.
+- **Resolved:** an earlier version chained both dialogs when an entry was unsent; the owner asked for the check to come first.
+
+### 78. Reset link sent: the button says "Enter the code" (owner-approved 2026-11-11)
+
+- **Why:** the button on "Reset link sent" read "Choose a new password" but opened "Type your code" (#87's two-step reset). The label named the step after the one it opened.
+- **Change:** new `reset_sent_action` "Enter the code". `reset_new_heading` ("Choose a new password") stays as the heading of the second step.
+- **Copy rule check:** no dash, no exclamation mark, names the next action (memory: copy names the next action).
+
+### 79. Notification small icon (Android)
+
+- **What was wrong:** the push icon (manifest `default_notification_icon` and `MoyiMessagingService.setSmallIcon`) was `ic_launcher_foreground`, which is already a flat, transparent mark (not a full-colour launcher PNG, so no white square). But it is drawn in a 108 dp canvas at 44 percent of its height (the adaptive-icon safe zone), so in the 24 dp status-bar slot the mark came out about 10 dp, tiny.
+- **Change:** new `ic_stat_moyi.xml`, the same two paths in a 24 dp vector, scaled 0.39 and centred so the mark fills about 20 dp. Flat white on transparent, as the status bar needs (it keeps only the alpha).
+- **Colour:** no `default_notification_color` is set. Rosewood has no accent token (tokens.md section 1); `ink` (#2A2020) would be unreadable on a dark notification shade and `inkMuted`/`outlineStrong` are low contrast on one of the two. Owner question in the PR.
+- **Not traced:** the mark is already vector (`tools/icon/make_icon.py`), so nothing was traced; the glyph is the real logo, not a placeholder.
+
+### 80. Insets, the Archive row's author column and the More menu's anchor (polish)
+
+- **Scaffold bottom inset:** a scrolling screen with no pinned action now runs its scroll viewport to the physical bottom and pads the END of the content (24 plus the safe-area bottom) instead of padding the viewport. Before, the content was clipped 24 plus the home-indicator inset above the edge, with empty surface below. Pinned-action screens and the keyboard-up case are unchanged.
+- **`ArchiveDayRow`:** the author labels of one row now share one column, as wide as the widest label (measured, so it grows with the font), capped at 40 percent of the line and ellipsised beyond that; the words of every line start at the same x. `MoyiDimens.ArchiveRow.AuthorMaxWidth` (96 dp) is replaced by `AuthorMaxShare` (0.4).
+- **`MoreMenu`:** the panel is 176 dp wide with its right edge on the dots' target and 4 dp below it (`MoyiDimens.MoreMenu.Width`, `GapBelow`), instead of starting at the dots and sliding left over the entry text.
+- **Dead code removed:** Bond settings' `OnGetHelpClick`, `OpenSupport` and the graph's `onOpenSupport` (no row sends them since #89), and with them Bond settings' unreachable sign-out (`OnSignOutClick`, its unsent question, `signingOut`, and the ViewModel's auth, outbox and sender parameters), plus `SupportOrigin.Settings` and its `support_back_settings` string. Account is the only place that signs out.

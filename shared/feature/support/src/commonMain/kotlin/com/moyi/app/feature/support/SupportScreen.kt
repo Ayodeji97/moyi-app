@@ -34,7 +34,6 @@ import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.support.resources.Res
 import com.moyi.app.feature.support.resources.support_back_generic
-import com.moyi.app.feature.support.resources.support_back_settings
 import com.moyi.app.feature.support.resources.support_eyebrow
 import com.moyi.app.feature.support.resources.support_failed_error
 import com.moyi.app.feature.support.resources.support_heading
@@ -161,7 +160,6 @@ private fun Acknowledgement(heading: String, line: String, origin: SupportOrigin
                 line = line,
                 actionLabel = stringResource(
                     when (origin) {
-                        SupportOrigin.Settings -> Res.string.support_back_settings
                         SupportOrigin.Error, SupportOrigin.Account -> Res.string.support_back_generic
                     },
                 ),
@@ -175,7 +173,7 @@ private fun Acknowledgement(heading: String, line: String, origin: SupportOrigin
 @Composable
 private fun SupportFormPreview() {
     MoyiTheme(darkTheme = true) {
-        SupportScreen(SupportState(subject = "Reveal time", body = "The day opened an hour late."), SupportOrigin.Settings, onAction = {}, onBack = {})
+        SupportScreen(SupportState(subject = "Reveal time", body = "The day opened an hour late."), SupportOrigin.Account, onAction = {}, onBack = {})
     }
 }
 
@@ -185,7 +183,7 @@ private fun SupportFailedLightPreview() {
     MoyiTheme(darkTheme = false) {
         SupportScreen(
             SupportState(subject = "Reveal time", body = "The day opened an hour late.", sendError = UiText.Resource(Res.string.support_failed_error)),
-            SupportOrigin.Settings,
+            SupportOrigin.Account,
             onAction = {},
             onBack = {},
         )
@@ -195,7 +193,7 @@ private fun SupportFailedLightPreview() {
 @Preview
 @Composable
 private fun SupportSentPreview() {
-    MoyiTheme(darkTheme = true) { SupportScreen(SupportState(step = SupportStep.Sent), SupportOrigin.Settings, onAction = {}, onBack = {}) }
+    MoyiTheme(darkTheme = true) { SupportScreen(SupportState(step = SupportStep.Sent), SupportOrigin.Account, onAction = {}, onBack = {}) }
 }
 
 @Preview

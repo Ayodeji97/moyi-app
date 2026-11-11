@@ -14,7 +14,7 @@ import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.login_eyebrow
-import com.moyi.app.feature.auth.resources.reset_new_heading
+import com.moyi.app.feature.auth.resources.reset_sent_action
 import com.moyi.app.feature.auth.resources.reset_sent_line
 import com.moyi.app.feature.auth.resources.verify_heading
 import org.jetbrains.compose.resources.stringResource
@@ -40,7 +40,7 @@ fun ResetLinkSentScreen(
         onBack = onBack,
         action = {
             TextLink(
-                stringResource(Res.string.reset_new_heading),
+                stringResource(Res.string.reset_sent_action),
                 onClick = onChooseNewPassword,
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),

@@ -37,7 +37,7 @@ class TimeZoneAndInviteViewModelTest : MainDispatcherTest() {
     private val repo = FakeBondSettingsRepository()
     private val bonds = FakeBondRepository(repo)
     private var zones: Set<String> = setOf("Europe/London", "Africa/Lagos", "UTC", "Etc/GMT+1", "America/Argentina/Buenos_Aires")
-    private val viewModel by lazy { BondSettingsViewModel("b1", repo, FakeAuthRepository(), bonds, FakeOutbox(), FakeOutbox(), zoneIds = { zones }, clock = fixedClock) }
+    private val viewModel by lazy { BondSettingsViewModel("b1", repo, bonds, zoneIds = { zones }, clock = fixedClock) }
     private val fixedClock = object : kotlin.time.Clock {
         // 23:30 UTC on 10 November is 00:30 on 11 November in Lagos (UTC+1).
         override fun now() = kotlin.time.Instant.parse("2026-11-10T23:30:00Z")

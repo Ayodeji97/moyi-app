@@ -49,8 +49,6 @@
     <string name="support_paused_line">You can send more tomorrow. The ones you've already sent are with us.</string>
 
     <!-- ===== Leaving ===== -->
-    <!-- support.back. From Bond settings. -->
-    <string name="support_back_settings">Back to settings</string>
     <!-- PROPOSED. From a Generic error, where "settings" would be untrue: back to the screen that failed. -->
     <string name="support_back_generic">Go back</string>
 </resources>

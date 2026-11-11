@@ -6,10 +6,7 @@ import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
-import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
-import com.moyi.app.domain.today.EntryOutbox
-import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondSettingsChange
 import com.moyi.app.domain.bond.BondSettingsRepository
@@ -25,7 +22,6 @@ import com.moyi.app.feature.bond.resources.settings_leave_error_ended
 import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon
 import com.moyi.app.feature.bond.resources.settings_tz_error_too_soon_from
 import com.moyi.app.feature.bond.resources.settings_tz_error_unsupported
-import com.moyi.app.feature.bond.signout.SignOut
 import com.moyi.app.feature.onboarding.createbond.CreateBondViewModel
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -77,11 +73,7 @@ import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
 class BondSettingsViewModel(
     private val bondId: String,
     private val repository: BondSettingsRepository,
-    auth: AuthRepository,
     private val bonds: BondRepository,
-    /** Entries sent while offline: a sign-out tries them once more before the session wipe takes them. */
-    outbox: EntryOutbox,
-    sender: OutboxSender,
     /** Every zone id the platform knows; kotlinx-datetime's list unless a test gives one. */
     private val zoneIds: () -> Set<String> = { TimeZone.availableZoneIds },
     /** Today's date in the bond's zone is read from it; a test gives a fixed one. */
@@ -92,9 +84,6 @@ class BondSettingsViewModel(
 
     private val _events = Channel<BondSettingsEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
-
-    /** The same sign-out as Account's (owner ruling 2026-11-09). */
-    private val signOutSequence = SignOut(auth, outbox, sender)
 
     init {
         load()
@@ -133,18 +122,11 @@ class BondSettingsViewModel(
                 // Rest days on is strict mode off (states.md §8), so toggling one flips the other.
                 save(SettingsField.RestDays, BondSettingsChange(strictMode = !settings.strictMode))
             }
-            BondSettingsAction.OnSignOutClick -> signOut()
             BondSettingsAction.OnNotificationsClick -> if (canEdit()) {
                 _state.update { it.copy(error = null) }
                 send(BondSettingsEvent.OpenNotifications)
             }
-            BondSettingsAction.OnGetHelpClick -> if (!_state.value.signingOut) send(BondSettingsEvent.OpenSupport)
-            BondSettingsAction.OnAccountClick -> if (!_state.value.signingOut) send(BondSettingsEvent.OpenAccount)
-            BondSettingsAction.OnSignOutUnsentConfirm -> {
-                _state.update { it.copy(confirmingUnsentSignOut = false, signingOut = true) }
-                viewModelScope.launch { signOutSequence.anyway() }
-            }
-            BondSettingsAction.OnSignOutUnsentDismiss -> _state.update { it.copy(confirmingUnsentSignOut = false) }
+            BondSettingsAction.OnAccountClick -> send(BondSettingsEvent.OpenAccount)
             BondSettingsAction.OnLeaveClick -> if (canEdit()) {
                 // Every visit starts from the default: entries kept (FR-029a, off on leave).
                 _state.update { it.copy(withdrawOnLeave = false, error = null) }
@@ -164,7 +146,7 @@ class BondSettingsViewModel(
             BondSettingsAction.OnReportClick -> {
                 val settings = _state.value.settings
                 val partner = settings?.partnerName
-                if (settings != null && partner != null && _state.value.saving == null && !_state.value.signingOut) {
+                if (settings != null && partner != null && _state.value.saving == null) {
                     send(BondSettingsEvent.OpenReport(settings.bondId, partner))
                 }
             }
@@ -397,7 +379,7 @@ class BondSettingsViewModel(
         save(SettingsField.Name, BondSettingsChange(name = draft), closeEditor = true)
     }
 
-    private fun canEdit(): Boolean = _state.value.let { it.settings != null && it.saving == null && !it.signingOut }
+    private fun canEdit(): Boolean = _state.value.let { it.settings != null && it.saving == null }
 
     /**
      * During the cooling-off the bond takes no other write (`409 BOND_ARCHIVED`, states.md §9):
@@ -519,17 +501,6 @@ class BondSettingsViewModel(
             send(BondSettingsEvent.Ended)
         } else {
             _state.update { it.copy(saving = null, closeBoxSecondaryInFlight = false, error = SettingsError(SettingsField.CloseBox, error.message())) }
-        }
-    }
-
-    /** Sign out as [SignOut] runs it: one more try to send what is waiting, then ask or sign out. */
-    private fun signOut() {
-        if (_state.value.signingOut) return
-        _state.update { it.copy(signingOut = true) }
-        viewModelScope.launch {
-            if (!signOutSequence.unlessWordsWouldBeLost()) {
-                _state.update { it.copy(signingOut = false, confirmingUnsentSignOut = true) }
-            }
         }
     }
 

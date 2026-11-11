@@ -46,7 +46,7 @@ class ResetScreensTest {
         assertTrue("Check your email" in spoken, spoken.toString())
         assertEquals(1, spoken.count { it == NON_DISCLOSURE }, spoken.toString())
 
-        onNodeWithText("Choose a new password").performClick()
+        onNodeWithText("Enter the code").performClick()
         assertEquals(1, chosen)
     }
 
