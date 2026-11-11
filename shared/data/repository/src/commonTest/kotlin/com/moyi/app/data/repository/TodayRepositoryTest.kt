@@ -203,6 +203,28 @@ class TodayRepositoryTest {
     }
 
     @Test
+    fun anEditThatRemovesMediaSendsTheFlagsAndNoIds() = runTest {
+        val fixture = Fixture { respondJson(entryJson("e1", "SUBMITTED", "Words.")) }
+
+        fixture.today.editEntry("e1", "Words.", idempotencyKey = "k-3", removeImage = true, removeVoice = true)
+
+        val sent = fixture.sentJson()
+        assertEquals(setOf("text", "removeImage", "removeVoice"), sent.keys)
+        assertEquals("true", sent["removeImage"]?.jsonPrimitive?.content)
+        assertEquals("true", sent["removeVoice"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun anEditThatRemovesOneAndReplacesTheOtherSendsEachOnce() = runTest {
+        val fixture = Fixture { respondJson(entryJson("e1", "SUBMITTED", "Words.")) }
+
+        fixture.today.editEntry("e1", "Words.", idempotencyKey = "k-4", voiceMediaId = "v2", removeImage = true)
+
+        val sent = fixture.sentJson()
+        assertEquals(setOf("text", "voiceMediaId", "removeImage"), sent.keys, "the flag only for what has no new id")
+    }
+
+    @Test
     fun anEditAfterTheRevealIsImmutable() = runTest {
         val fixture = Fixture { respondProblem(HttpStatusCode.Conflict, "ENTRY_IMMUTABLE") }
         assertEquals(

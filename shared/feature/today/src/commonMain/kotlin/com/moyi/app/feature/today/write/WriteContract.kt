@@ -65,10 +65,15 @@ data class WriteState(
     val photosOffered: Boolean = false,
     /**
      * Edit only: the photo already on the entry, as the server shows it to me. Shown while no
-     * new [photo] is picked; a new one goes in its place at Save. Never removed from here:
-     * the contract cannot take a photo off an entry (docs/backend-contract-gaps.md row 41).
+     * new [photo] is picked; a new one goes in its place at Save. Taking it off is [removePhoto]:
+     * this field keeps the entry's photo, so Cancel (which saves nothing) leaves it where it was.
      */
     val sentPhoto: EntryPhoto? = null,
+    /**
+     * Edit only: Remove was tapped on the entry's own photo ([sentPhoto]). Nothing leaves the
+     * server until Save, which sends `removeImage`; closing without saving keeps the photo.
+     */
+    val removePhoto: Boolean = false,
     /** While [submit] is Sending: true while the photo uploads, false once the words are on their way. */
     val sendingPhoto: Boolean = false,
     /** What went wrong with the photo itself, said above the action. */
@@ -84,6 +89,8 @@ data class WriteState(
     val voiceOffered: Boolean = false,
     /** Edit only: the voice note already on the entry, shown while no new [voice] is recording or recorded. As [sentPhoto]. */
     val sentVoice: VoiceNote? = null,
+    /** Edit only: Remove was tapped on the entry's own voice note. As [removePhoto]; Save sends `removeVoice`. */
+    val removeVoice: Boolean = false,
     /** While [submit] is Sending: true while the voice note uploads (after the photo, before the words). */
     val sendingVoice: Boolean = false,
     /** What went wrong with the voice note itself, said above the action. */
@@ -96,7 +103,13 @@ data class WriteState(
      * the library or camera question is titled "Replace the photo", not "Add a photo"
      * (docs/missing-components.md §61): whatever is picked next goes in its place.
      */
-    val replacingPhoto: Boolean get() = photo != null || sentPhoto != null
+    val replacingPhoto: Boolean get() = photo != null || shownSentPhoto != null
+
+    /** The entry's own photo as the composer shows it: not once Remove was tapped on it. */
+    val shownSentPhoto: EntryPhoto? get() = sentPhoto.takeUnless { removePhoto }
+
+    /** The entry's own voice note as the composer shows it: not once Remove was tapped on it. */
+    val shownSentVoice: VoiceNote? get() = sentVoice.takeUnless { removeVoice }
 
     /** A finished recording, ready to send; null while recording or with none. */
     val recordedVoice: AttachedVoiceState.Recorded? get() = voice as? AttachedVoiceState.Recorded
@@ -128,7 +141,7 @@ data class WriteState(
      * Keep as a draft, closes and keeps it.
      */
     val wouldLoseWords: Boolean
-        get() = ((text.isNotBlank() && text != originalText) || photo != null || voice != null) &&
+        get() = ((text.isNotBlank() && text != originalText) || photo != null || voice != null || removePhoto || removeVoice) &&
             submit != WriteSubmit.Queued && submit != WriteSubmit.Revealed
 
     /**
@@ -193,6 +206,12 @@ sealed interface WriteAction {
 
     /** The remove control on the attached photo. In Edit, removing a new photo puts the entry's own back. */
     data object OnRemovePhoto : WriteAction
+
+    /** Edit: the remove control on the entry's own photo. Marks it for removal; Save takes it off, Cancel keeps it. */
+    data object OnRemoveSentPhoto : WriteAction
+
+    /** Edit: the remove control on the entry's own voice note. As [OnRemoveSentPhoto]. */
+    data object OnRemoveSentVoice : WriteAction
 
     /** "Record a voice note", or in Edit Record again beside the entry's own: asks for the microphone if it must, then records. */
     data object OnRecordVoiceClick : WriteAction

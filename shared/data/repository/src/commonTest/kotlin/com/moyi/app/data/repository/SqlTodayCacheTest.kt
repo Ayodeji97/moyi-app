@@ -177,6 +177,24 @@ class SqlTodayCacheTest {
     }
 
     @Test
+    fun anEntryWhosePhotoAndVoiceNoteWereRemovedForgetsTheirSizeAndLength() = runTest {
+        val photo = EntryImage("m1", EntryMediaStatus.Ready, null, 1080, 1920, sensitive = false)
+        val voice = EntryVoice("v1", EntryMediaStatus.Ready, null, 12_000, sensitive = false)
+        cache.write(day(partner = null, mine = MyEntry("e1", "You made the tea.", EntryStatus.SUBMITTED, image = photo, voice = voice)))
+        assertEquals(photo, cache.read()?.today?.myEntry?.image)
+
+        // The edit that removed them: the server's day has neither, and it replaces the row.
+        val removed = day(partner = null, mine = MyEntry("e1", "You made the tea.", EntryStatus.SUBMITTED))
+        cache.write(removed)
+
+        assertEquals(removed, cache.read())
+        val row = database.io { cachedDayQueries.forUser(ada.id).executeAsOne() }
+        assertNull(row.my_photo_id)
+        assertNull(row.my_photo_width, "no stale aspect ratio is kept for a photo that is gone")
+        assertNull(row.my_voice_duration_ms, "no stale length is kept for a voice note that is gone")
+    }
+
+    @Test
     fun aMediaStatusThisBuildDoesNotKnowIsNoCacheNotAGuess() = runTest {
         val photo = EntryImage("m1", EntryMediaStatus.Ready, null, 1080, 1920, sensitive = false)
         val row = day(null, mine = MyEntry("e1", "You made the tea.", EntryStatus.REVEALED, image = photo)).toRow(ada.id)

@@ -65,9 +65,18 @@ class TodayRepositoryImpl(
         idempotencyKey: String,
         imageMediaId: String?,
         voiceMediaId: String?,
+        removeImage: Boolean,
+        removeVoice: Boolean,
     ): Result<MyEntry, DataError.Network> {
-        // Null fields are left out of the body: absent keeps the entry's media (row 41).
-        val request = PatchEntryRequest(text = text, imageMediaId = imageMediaId, voiceMediaId = voiceMediaId)
+        // Null ids are left out of the body: absent keeps the entry's media. Taking one off is
+        // the explicit flag, sent only when true (the contract's default is false).
+        val request = PatchEntryRequest(
+            text = text,
+            imageMediaId = imageMediaId,
+            voiceMediaId = voiceMediaId,
+            removeImage = removeImage.takeIf { it },
+            removeVoice = removeVoice.takeIf { it },
+        )
         return safeApiCall { entryChangesApi.patchEntry(entryId, request, idempotencyKey) }.mapOrSerialization { it.toMyEntry() }
     }
 

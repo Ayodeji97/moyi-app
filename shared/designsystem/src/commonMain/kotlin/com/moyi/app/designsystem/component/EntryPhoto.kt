@@ -221,18 +221,25 @@ fun AttachedPhoto(
 /**
  * **PROPOSED, not drawn** (docs/missing-components.md §60): in Edit, the photo already on
  * the entry, drawn as [AttachedPhoto] is, with a 48 target beside it that picks a new one
- * in its place ([onReplace]; null while saving). It has **no remove**: the contract cannot
- * take a photo off an entry (docs/backend-contract-gaps.md row 41). A photo the server has
+ * in its place ([onReplace]; null while saving) and one that removes it ([onRemove]; null while
+ * saving, or where the screen offers none): Remove only marks it, and nothing leaves the
+ * server until Save. It reuses the composer's "Remove the photo" control. A photo the server has
  * not finished with (no [EntryPhoto.url]) is the card's muted line instead of the image.
  * [compact] as [AttachedPhoto]'s (§66).
  */
 @Composable
-fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = Modifier, compact: Boolean = false) {
+fun SentPhoto(
+    photo: EntryPhoto,
+    onReplace: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    onRemove: (() -> Unit)? = null,
+) {
     if (photo.url == null) {
         AttachmentFrame(framed = compact, modifier = modifier) {
             Row(modifier = Modifier.padding(MoyiDimens.ComposeField.Wrap), verticalAlignment = Alignment.CenterVertically) {
                 MoyiText(text = stringResource(Res.string.ds_entry_photo_on_its_way), tone = TextTone.Muted, modifier = Modifier.weight(1f))
-                if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
+                SentPhotoControls(onReplace, onRemove)
             }
         }
         return
@@ -244,7 +251,7 @@ fun SentPhoto(photo: EntryPhoto, onReplace: (() -> Unit)?, modifier: Modifier = 
         modifier = modifier,
         compact = compact,
     ) {
-        if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
+        SentPhotoControls(onReplace, onRemove)
     }
 }
 
@@ -309,6 +316,12 @@ private fun PhotoRowContent(
         )
         trailing()
     }
+}
+
+@Composable
+private fun SentPhotoControls(onReplace: (() -> Unit)?, onRemove: (() -> Unit)?) {
+    if (onReplace != null) PhotoIconTarget(MoyiIcons.Image, stringResource(Res.string.ds_compose_replace_photo), onReplace)
+    if (onRemove != null) PhotoIconTarget(MoyiIcons.Close, stringResource(Res.string.ds_compose_remove_photo), onRemove)
 }
 
 @Composable

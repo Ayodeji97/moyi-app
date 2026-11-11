@@ -60,7 +60,7 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
         return WriteResult.Saved
     }
 
-    override suspend fun edit(text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?): WriteResult {
+    override suspend fun edit(text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?, removeImage: Boolean, removeVoice: Boolean): WriteResult {
         delay(latency)
         myEntry = text
         show(status)

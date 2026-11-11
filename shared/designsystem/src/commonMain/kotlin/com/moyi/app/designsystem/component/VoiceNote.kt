@@ -546,21 +546,31 @@ private fun AttachedVoiceContent(
  * **PROPOSED, not drawn** (docs/missing-components.md §60): in Edit, the voice note already
  * on the entry, laid out as a recorded one ([AttachedVoice]): play it from the server, the
  * waveform and its clock, then Record again ([onRecordAgain]; null while saving), which
- * records a new one to go in its place. It has **no remove**: the contract cannot take a
- * voice note off an entry (docs/backend-contract-gaps.md row 41). One the server has not
- * finished with (no [VoiceNote.url]) is the card's muted line, with Record again beside it.
- * [compact] (§66): the chip of play/pause and the clock, with Record again, its one control.
+ * records a new one to go in its place, and Remove ([onRemove]; null while saving), which only
+ * marks it: nothing leaves the server until Save. One the server has not finished with (no
+ * [VoiceNote.url]) is the card's muted line, with the same controls beside it.
+ * [compact] (§66): the chip of play/pause and the clock, with Remove as [AttachedVoice]'s chip
+ * has it (Record again comes back with the full row); with no [onRemove], Record again, as before.
  */
 @Composable
-fun SentVoice(voice: VoiceNote, onRecordAgain: (() -> Unit)?, modifier: Modifier = Modifier, compact: Boolean = false) {
-    AttachmentFrame(framed = compact, modifier = modifier) { SentVoiceContent(voice, onRecordAgain, compact) }
+fun SentVoice(
+    voice: VoiceNote,
+    onRecordAgain: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    onRemove: (() -> Unit)? = null,
+) {
+    AttachmentFrame(framed = compact, modifier = modifier) { SentVoiceContent(voice, onRecordAgain, onRemove, compact) }
 }
 
 @Composable
-private fun SentVoiceContent(voice: VoiceNote, onRecordAgain: (() -> Unit)?, compact: Boolean) {
+private fun SentVoiceContent(voice: VoiceNote, onRecordAgain: (() -> Unit)?, onRemove: (() -> Unit)?, compact: Boolean) {
     val again: @Composable RowScope.() -> Unit = {
-        if (onRecordAgain != null) {
+        if (onRecordAgain != null && !(compact && onRemove != null)) {
             VoiceIconTarget(MoyiIcons.RecordAgain, stringResource(Res.string.ds_compose_record_again), onRecordAgain)
+        }
+        if (onRemove != null) {
+            VoiceIconTarget(MoyiIcons.Close, stringResource(Res.string.ds_compose_remove_voice), onRemove)
         }
     }
     val url = voice.url

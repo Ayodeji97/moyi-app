@@ -78,7 +78,9 @@ import kotlin.uuid.Uuid
  * **Editing** (§60) shows the photo and voice note already on the entry ([WriteState.sentPhoto],
  * [WriteState.sentVoice]). A new photo or recording uploads at Save exactly as at Send and
  * goes in the PATCH in place of the entry's; removing the new one before Save keeps the
- * entry's. Nothing takes one off: the contract cannot (docs/backend-contract-gaps.md row 41).
+ * entry's. Remove on the entry's own marks it ([WriteState.removePhoto], [WriteState.removeVoice]):
+ * nothing leaves the server until Save, which sends `removeImage` / `removeVoice` (never together with
+ * a new id for the same media: the server answers that with 422, so a new one wins and the flag is not sent).
  * An edit is never queued, with or without media: it needs a connection, and without one it
  * is Save failed with everything kept.
  *
@@ -204,6 +206,14 @@ class WriteViewModel(
                 if (_state.value.submit == WriteSubmit.Sending) return
                 replacePhoto(null)
             }
+            WriteAction.OnRemoveSentPhoto -> {
+                if (_state.value.submit == WriteSubmit.Sending) return
+                _state.update { it.copy(removePhoto = it.sentPhoto != null, submit = it.submit.afterEdit()) }
+            }
+            WriteAction.OnRemoveSentVoice -> {
+                if (_state.value.submit == WriteSubmit.Sending || _state.value.recording) return
+                _state.update { it.copy(removeVoice = it.sentVoice != null, submit = it.submit.afterEdit()) }
+            }
             WriteAction.OnRecordVoiceClick -> startRecording()
             WriteAction.OnStopRecordingClick -> if (_state.value.recording) send(WriteEvent.StopRecording)
             WriteAction.OnDiscardRecordingClick -> discardRecording()
@@ -253,14 +263,17 @@ class WriteViewModel(
             val voiceMediaId = if (voice == null) null else sendVoice(voice) ?: return@launch
             _state.update { it.copy(sendingVoice = false) }
             // An edit (PATCH) sends no prompt id; a new entry sends it unless dismissed.
-            val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null }, imageMediaId, voiceMediaId)
+            // Removing the entry's own is the flag; a new one picked after it replaces instead.
+            val removeImage = current.editing && current.removePhoto && imageMediaId == null
+            val removeVoice = current.editing && current.removeVoice && voiceMediaId == null
+            val payload = Payload(current.text, promptId.takeIf { !current.editing && current.prompt != null }, imageMediaId, voiceMediaId, removeImage, removeVoice)
             val reused = pending?.takeIf { it.payload == payload }
             val key = reused?.key ?: newIdempotencyKey()
             val intendedAt = reused?.intendedAt ?: tap
             pending = Pending(payload, key, intendedAt)
             val result = if (current.editing) {
-                // By name: absent media keep the entry's, so only a new upload is sent.
-                loop.edit(payload.text, key, imageMediaId = imageMediaId, voiceMediaId = voiceMediaId)
+                // By name: absent media keep the entry's, so only a new upload or a removal is sent.
+                loop.edit(payload.text, key, imageMediaId = imageMediaId, voiceMediaId = voiceMediaId, removeImage = removeImage, removeVoice = removeVoice)
             } else {
                 loop.submit(payload.text, payload.promptId, key, intendedAt, imageMediaId, voiceMediaId)
             }
@@ -598,14 +611,18 @@ class WriteViewModel(
         val promptId: String?,
         val imageMediaId: String? = null,
         val voiceMediaId: String? = null,
+        val removeImage: Boolean = false,
+        val removeVoice: Boolean = false,
     ) {
         override fun equals(other: Any?): Boolean =
             other is Payload && other.text == text && other.promptId == promptId &&
-                other.imageMediaId == imageMediaId && other.voiceMediaId == voiceMediaId
+                other.imageMediaId == imageMediaId && other.voiceMediaId == voiceMediaId &&
+                other.removeImage == removeImage && other.removeVoice == removeVoice
 
-        override fun hashCode(): Int = listOf(text, promptId, imageMediaId, voiceMediaId).hashCode()
+        override fun hashCode(): Int = listOf(text, promptId, imageMediaId, voiceMediaId, removeImage, removeVoice).hashCode()
 
-        override fun toString(): String = "Payload(promptId=$promptId, imageMediaId=$imageMediaId, voiceMediaId=$voiceMediaId)"
+        override fun toString(): String =
+            "Payload(promptId=$promptId, imageMediaId=$imageMediaId, voiceMediaId=$voiceMediaId, removeImage=$removeImage, removeVoice=$removeVoice)"
     }
 
     private class Pending(val payload: Payload, val key: String, val intendedAt: Instant)
