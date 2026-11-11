@@ -203,6 +203,16 @@ object MoyiIcons {
         )
     }
 
+    /** lucide `ellipsis` (more-horizontal): three dots, the "More" control's glyph (docs/missing-components.md §75). */
+    val MoreHorizontal: ImageVector by lazy {
+        lucide(
+            "MoreHorizontal",
+            "M13 12a1 1 0 1 1-2 0a1 1 0 1 1 2 0",
+            "M20 12a1 1 0 1 1-2 0a1 1 0 1 1 2 0",
+            "M6 12a1 1 0 1 1-2 0a1 1 0 1 1 2 0",
+        )
+    }
+
     val RecordAgain: ImageVector by lazy {
         lucide("RecordAgain", "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5")
     }

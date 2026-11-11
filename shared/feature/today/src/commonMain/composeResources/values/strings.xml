@@ -29,18 +29,22 @@
     <string name="today_waiting_line">Yours is saved. When %1$s writes theirs, you'll both see each other's.</string>
     <!-- states.md §3 announce for Written, waiting. -->
     <string name="today_announce_waiting">Written. Your partner's entry is not open yet</string>
-    <!-- PROPOSED. Edit before reveal (states.md §4: free, no warning). Parallels "Delete what you wrote". -->
-    <string name="today_edit">Edit what you wrote</string>
     <!-- strings-proposed.md §favourites note and states.md §6: the established delete link. Before reveal it needs no confirmation (states.md §4). -->
     <string name="today_delete">Delete what you wrote</string>
     <!-- report.action (strings-proposed.md §10, in file, not decided): the day view's header action (Figma 617:1835, `26` §3.2). -->
     <string name="archive_day_report">Report</string>
-    <!-- PROPOSED (owner request 2026-11-09, docs/missing-components.md §48). The visible label of Edit on Today's waiting note, beside Delete. "Written." and "Yours is saved" above it say whose entry it is; the spoken name stays today_edit, which contains this word (WCAG 2.5.3). -->
+    <!-- PROPOSED (owner request 2026-11-09, §48; moved 2026-11-11, §75). The label of Edit, a row of the More menu on your own card on Today. -->
     <string name="today_edit_short">Edit</string>
-    <!-- PROPOSED (owner request 2026-11-09, §48). The visible label of Delete on Today's waiting note, beside Edit; spoken as today_delete. Only here: alone (after the reveal, the Archive day) the full "Delete what you wrote" stays. -->
+    <!-- PROPOSED (§48; moved 2026-11-11, §75). The label of Delete, a row of the More menu on your own card on Today. The Archive day keeps the full today_delete. -->
     <string name="today_delete_short">Delete</string>
     <!-- copy.md table "Reveal". The revealed title on Today and on Reveal. -->
     <string name="today_revealed_title">Your day is open.</string>
+    <!-- Owner ruling 2026-11-11 (docs/missing-components.md §75): Today's settled title once the day is open. The animated Reveal screen keeps today_revealed_title, "Your day is open." (the moment of opening); Today after it says what happened. -->
+    <string name="today_both_wrote_title">You both wrote today.</string>
+    <!-- PROPOSED (§75). states.md §3 announce for Revealed on Today, with the new title. -->
+    <string name="today_announce_both_wrote">You both wrote today. Two entries</string>
+    <!-- PROPOSED (§75). The spoken name of the quiet control on your own entry card that opens Edit and Delete. -->
+    <string name="today_more_options">More options for your entry</string>
     <!-- states.md §3 announce for Revealed. -->
     <string name="today_announce_revealed">Your day is open. Two entries</string>
     <!-- copy.md warmth audit (canvas wording). Partner not joined. %1$s = partnerName. -->

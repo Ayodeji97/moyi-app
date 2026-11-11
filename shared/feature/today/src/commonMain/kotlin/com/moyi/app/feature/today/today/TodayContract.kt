@@ -7,7 +7,10 @@ import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.feature.today.common.TodayStatus
+import com.moyi.app.feature.today.resources.Res
+import com.moyi.app.feature.today.resources.today_both_wrote_title
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.StringResource
 
 /** Whether there is a day to draw (states.md §3, §10). */
 enum class TodayLoad {
@@ -78,6 +81,34 @@ data class TodayState(
     /** The last reaction tap did not go through: it is back as it was, and the Generic error line says so. */
     val reactionFailed: Boolean = false,
 )
+
+/** What the "More" menu on your own entry card can hold (owner ruling 2026-11-11). */
+enum class OwnEntryMenuItem { Edit, Delete }
+
+/**
+ * The menu's items in this state, in order, and only what is allowed: Edit before the reveal
+ * (states.md §4), never after (§5: entries are immutable once the day is open); Delete in both,
+ * each behind its own confirmation. Everywhere else (not written, queued, solo, deleted)
+ * there is no own entry to change here, so no menu.
+ */
+fun TodayState.ownEntryMenu(): List<OwnEntryMenuItem> = when (status) {
+    TodayStatus.Waiting -> listOf(OwnEntryMenuItem.Edit, OwnEntryMenuItem.Delete)
+    TodayStatus.Revealed -> listOf(OwnEntryMenuItem.Delete)
+    else -> emptyList()
+}
+
+/** The action a menu item dispatches: the same actions the buttons used, so nothing is bypassed. */
+fun TodayState.actionFor(item: OwnEntryMenuItem): TodayAction = when (item) {
+    OwnEntryMenuItem.Edit -> TodayAction.OnEditClick
+    OwnEntryMenuItem.Delete ->
+        if (status == TodayStatus.Revealed) TodayAction.OnDeleteAfterRevealClick else TodayAction.OnDeleteBeforeRevealClick
+}
+
+/** The title string of the settled Today, by status; null where Today draws no title. */
+fun TodayStatus.titleResource(): StringResource? = when (this) {
+    TodayStatus.Revealed, TodayStatus.Tombstone -> Res.string.today_both_wrote_title
+    else -> null
+}
 
 sealed interface TodayAction {
     /** Today came to the foreground (ON_START): refresh, never trusting a push to have arrived (states.md §10). */

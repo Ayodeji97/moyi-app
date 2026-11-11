@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -27,9 +28,10 @@ import com.moyi.app.designsystem.component.EntryCard
 import com.moyi.app.designsystem.component.EntryCardVariant
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
+import com.moyi.app.designsystem.component.MoreMenu
+import com.moyi.app.designsystem.component.MoreMenuItem
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
-import com.moyi.app.designsystem.component.SecondaryAction
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
@@ -50,7 +52,6 @@ import com.moyi.app.feature.today.resources.today_announce_not_written
 import com.moyi.app.feature.today.resources.today_announce_partner_not_joined
 import com.moyi.app.feature.today.resources.today_announce_queued
 import com.moyi.app.feature.today.resources.today_announce_queued_earlier
-import com.moyi.app.feature.today.resources.today_announce_revealed
 import com.moyi.app.feature.today.resources.today_announce_solo
 import com.moyi.app.feature.today.resources.today_announce_waiting
 import com.moyi.app.feature.today.resources.today_author_partner
@@ -60,9 +61,10 @@ import com.moyi.app.feature.today.resources.delete_confirm
 import com.moyi.app.feature.today.resources.delete_heading
 import com.moyi.app.feature.today.resources.delete_before_reveal_line
 import com.moyi.app.feature.today.resources.delete_line
-import com.moyi.app.feature.today.resources.today_delete
 import com.moyi.app.feature.today.resources.today_delete_short
-import com.moyi.app.feature.today.resources.today_edit
+import com.moyi.app.feature.today.resources.today_both_wrote_title
+import com.moyi.app.feature.today.resources.today_announce_both_wrote
+import com.moyi.app.feature.today.resources.today_more_options
 import com.moyi.app.feature.today.resources.today_edit_short
 import com.moyi.app.feature.today.resources.today_action_failed
 import com.moyi.app.feature.today.resources.today_error_action
@@ -79,7 +81,6 @@ import com.moyi.app.feature.today.resources.today_queued_refused_written
 import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Reaction
-import com.moyi.app.feature.today.resources.today_revealed_title
 import com.moyi.app.feature.today.resources.today_share_invite_again
 import com.moyi.app.feature.today.resources.today_invite_share_text
 import com.moyi.app.designsystem.platform.rememberShareSheet
@@ -255,42 +256,25 @@ private fun ColumnScope.NotWritten(state: TodayState, onAction: (TodayAction) ->
 private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Unit) {
     val announce = stringResource(Res.string.today_announce_waiting)
     CenteredContent(Modifier.semantics { paneTitle = announce }) {
-        OwnCard(state)
+        OwnCard(state, onAction)
         ActionFailed(state)
         Refusal(state, onAction)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
-        WaitingNote(
-            partnerName = state.partnerName.orEmpty(),
-            onEdit = { onAction(TodayAction.OnEditClick) },
-            onDelete = { onAction(TodayAction.OnDeleteBeforeRevealClick) },
-        )
+        WaitingNote(partnerName = state.partnerName.orEmpty())
     }
 }
 
 /**
  * The waiting StateBlock stand-in, shared with Reveal · before (179:7 is the same 224 instance).
- * Reveal passes no handlers: mid-reveal the links would do nothing, so they are not drawn
- * at all rather than drawn as focusable targets that lie about being actions.
+ * It holds no actions: Edit and Delete live in the "More" menu on your own card (owner ruling
+ * 2026-11-11, docs/missing-components.md §75), where they are the same in this state and in
+ * Reveal · before, which draws no menu at all because mid-reveal they would do nothing.
  */
 @Composable
-internal fun WaitingNote(partnerName: String, onEdit: (() -> Unit)?, onDelete: (() -> Unit)?) {
-    val edit = stringResource(Res.string.today_edit_short)
-    val delete = stringResource(Res.string.today_delete_short)
-    val editSpoken = stringResource(Res.string.today_edit)
-    val deleteSpoken = stringResource(Res.string.today_delete)
+internal fun WaitingNote(partnerName: String) {
     DayNote(
         heading = stringResource(Res.string.today_waiting_heading),
         line = stringResource(Res.string.today_waiting_line, partnerName),
-        // Outlined buttons, Edit in `ink` and Delete in `danger` (owner ruling 2026-11-06,
-        // PR 30 smoke test: as underlined links they read as text, not actions). Delete asks
-        // first, in the platform dialog (owner ruling 2026-11-09, amending states.md §4).
-        // Short labels, side by side when they fit (owner request 2026-11-09): "Written." and
-        // "Yours is saved" above already say whose entry it is. Spoken in full, so a screen
-        // reader still hears what each one changes.
-        actions = listOfNotNull(
-            onEdit?.let { NoteAction(edit, it, outlined = true, spokenLabel = editSpoken) },
-            onDelete?.let { NoteAction(delete, it, destructive = true, outlined = true, spokenLabel = deleteSpoken) },
-        ),
     )
 }
 
@@ -301,9 +285,9 @@ internal fun WaitingNote(partnerName: String, onEdit: (() -> Unit)?, onDelete: (
  */
 @Composable
 private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> Unit, deleted: Boolean) {
-    val announce = stringResource(Res.string.today_announce_revealed)
+    val announce = stringResource(Res.string.today_announce_both_wrote)
     Column(Modifier.semantics { paneTitle = announce }) {
-        ScreenTitle(stringResource(Res.string.today_revealed_title))
+        ScreenTitle(stringResource(Res.string.today_both_wrote_title))
     }
     Spacer(Modifier.height(MoyiTheme.spacing.md))
     CenteredContent {
@@ -331,21 +315,13 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
                 variant = EntryCardVariant.Tombstone,
             )
         } else {
-            OwnCard(state)
+            // Entries are immutable after the reveal: no edit (states.md §5). Delete goes
+            // through a confirmation. It lives in the card's "More" menu, not as a button at
+            // the foot of the screen: the reveal has no next action (owner ruling 2026-11-11).
+            OwnCard(state, onAction)
             PartnerReactionLine(state)
             ActionFailed(state)
             Refusal(state, onAction)
-            // Entries are immutable after the reveal: no edit (states.md §5). Delete
-            // goes through a confirmation. Placement interpreted: 159:19 draws no link.
-            // An outlined `danger` button, not a link (owner ruling 2026-11-06).
-            Spacer(Modifier.height(MoyiTheme.spacing.md))
-            SecondaryAction(
-                text = stringResource(Res.string.today_delete),
-                onClick = { onAction(TodayAction.OnDeleteAfterRevealClick) },
-                destructive = true,
-                enabled = !state.deleting,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }
@@ -465,8 +441,31 @@ internal fun offersOpenWrite(refusal: OutboxRefusal, status: TodayStatus): Boole
     refusal == OutboxRefusal.NotAccepted && status != TodayStatus.NotWritten
 
 @Composable
-internal fun OwnCard(state: TodayState) {
-    EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
+internal fun OwnCard(state: TodayState, onAction: ((TodayAction) -> Unit)? = null) {
+    Box {
+        EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
+        // The one quiet control on the card (owner ruling 2026-11-11): at the end of the label row,
+        // outside the card's merged reading so it stays its own stop. Only what the state allows.
+        if (onAction != null) {
+            val edit = stringResource(Res.string.today_edit_short)
+            val delete = stringResource(Res.string.today_delete_short)
+            MoreMenu(
+                items = state.ownEntryMenu().map { item ->
+                    when (item) {
+                        OwnEntryMenuItem.Edit -> MoreMenuItem(edit, { onAction(state.actionFor(item)) })
+                        OwnEntryMenuItem.Delete -> MoreMenuItem(
+                            delete,
+                            { onAction(state.actionFor(item)) },
+                            destructive = true,
+                            enabled = !state.deleting,
+                        )
+                    }
+                },
+                contentDescription = stringResource(Res.string.today_more_options),
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = MoyiTheme.spacing.sm, end = MoyiTheme.spacing.sm),
+            )
+        }
+    }
 }
 
 /** The reaction the partner left on my entry, under my card (interim, §45). */
