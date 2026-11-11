@@ -39,7 +39,8 @@ import kotlinx.coroutines.launch
  * - **Keep my account** is `DELETE /me/deletion-request`. A `404` means nothing can be called
  *   off any more: reload, and say it is too late if a deletion is still there.
  * - One call at a time: a second tap while one is in flight does nothing.
- * - **Sign out** (owner ruling 2026-11-09) runs Bond settings' sequence ([SignOut]): one more
+ * - **Sign out** asks "Sign out?" first (the row only opens the question). Confirming (owner
+ *   ruling 2026-11-09) runs Bond settings' sequence ([SignOut]): one more
  *   try to send what is waiting, then ask, or sign out. Account is the one place a person
  *   with no open bond can sign out. A second tap while it runs does nothing.
  */
@@ -75,7 +76,12 @@ class AccountViewModel(
             AccountAction.OnConfirmDeletion -> requestDeletion()
             AccountAction.OnKeepAccount -> cancelDeletion()
             AccountAction.OnDeleteClosed -> _state.update { it.copy(password = "", passwordError = null, error = null) }
-            AccountAction.OnSignOutClick -> signOut()
+            AccountAction.OnSignOutClick -> if (!_state.value.signingOut) _state.update { it.copy(confirmingSignOut = true) }
+            AccountAction.OnSignOutConfirm -> {
+                _state.update { it.copy(confirmingSignOut = false) }
+                signOut()
+            }
+            AccountAction.OnSignOutDismiss -> _state.update { it.copy(confirmingSignOut = false) }
             AccountAction.OnSignOutUnsentConfirm -> {
                 _state.update { it.copy(confirmingUnsentSignOut = false, signingOut = true) }
                 viewModelScope.launch { signOutSequence.anyway() }

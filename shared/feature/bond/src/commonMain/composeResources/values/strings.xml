@@ -45,6 +45,10 @@
     <string name="settings_row_legal">Terms and Privacy</string>
     <!-- PROPOSED. In place of the Account row (its screen is not built): home_sign_out's words. -->
     <!-- PROPOSED. home_sign_out's words. Bond settings' Just you row, and Account's (owner ruling 2026-11-09). -->
+    <!-- PROPOSED (docs/missing-components.md section 77). The question the Sign out row asks first. -->
+    <string name="account_sign_out_title">Sign out?</string>
+    <string name="account_sign_out_line">Your days stay safe on Moyi. Sign in again to see them on this phone. Any draft kept on this phone is removed.</string>
+    <string name="account_sign_out_confirm">Sign out</string>
     <string name="settings_row_sign_out">Sign out</string>
     <!-- account.help (strings-proposed.md §9). PROPOSED placement: in Just you, in place of the Account screen that holds it. Opens Support. -->
     <string name="settings_row_help">Get help</string>

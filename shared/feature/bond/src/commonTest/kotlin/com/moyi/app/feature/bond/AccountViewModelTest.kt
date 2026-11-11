@@ -228,9 +228,43 @@ class AccountViewModelTest : MainDispatcherTest() {
     // ----- sign out (owner ruling 2026-11-09: as Bond settings signs out) -----
 
     @Test
+    fun theSignOutRowOnlyAsksAndCancelKeepsYouSignedIn() {
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        assertTrue(viewModel.state.value.confirmingSignOut)
+        assertFalse(viewModel.state.value.signingOut)
+        assertEquals(0, auth.logouts, "the row alone signs nobody out")
+
+        viewModel.onAction(AccountAction.OnSignOutDismiss)
+        assertFalse(viewModel.state.value.confirmingSignOut)
+        assertEquals(0, auth.logouts)
+        assertEquals(0, outbox.passes, "cancel does not even try to send")
+    }
+
+    @Test
+    fun confirmingTheQuestionSignsOut() {
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        viewModel.onAction(AccountAction.OnSignOutConfirm)
+
+        assertFalse(viewModel.state.value.confirmingSignOut)
+        assertEquals(1, auth.logouts)
+    }
+
+    @Test
+    fun offlineTheQuestionStillEndsTheLocalSession() {
+        deletion.pendingReads += Result.Failure(DataError.Network.NoInternet)
+        outbox.online = false
+
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        assertEquals(0, auth.logouts)
+        viewModel.onAction(AccountAction.OnSignOutConfirm)
+
+        assertEquals(1, auth.logouts, "offline sign-out (#41) still ends the session once confirmed")
+    }
+
+    @Test
     fun signOutWithNothingWaitingSignsOutOnceWithoutAsking() {
-        viewModel.onAction(AccountAction.OnSignOutClick)
-        viewModel.onAction(AccountAction.OnSignOutClick)
+        signOutConfirmed()
+        signOutConfirmed()
 
         assertTrue(viewModel.state.value.signingOut)
         assertFalse(viewModel.state.value.confirmingUnsentSignOut)
@@ -243,7 +277,7 @@ class AccountViewModelTest : MainDispatcherTest() {
         outbox.queue += waiting
         outbox.online = true
 
-        viewModel.onAction(AccountAction.OnSignOutClick)
+        signOutConfirmed()
 
         assertEquals(1, outbox.passes)
         assertEquals(1, auth.logouts)
@@ -253,7 +287,7 @@ class AccountViewModelTest : MainDispatcherTest() {
     fun signOutThatWouldDeleteUnsentWordsAsksFirstAndStayingKeepsThem() {
         outbox.queue += waiting
 
-        viewModel.onAction(AccountAction.OnSignOutClick)
+        signOutConfirmed()
         assertTrue(viewModel.state.value.confirmingUnsentSignOut)
         assertFalse(viewModel.state.value.signingOut)
         assertEquals(0, auth.logouts, "not one word deleted without asking")
@@ -263,7 +297,7 @@ class AccountViewModelTest : MainDispatcherTest() {
         assertEquals(0, auth.logouts)
         assertEquals(1, outbox.queue.size)
 
-        viewModel.onAction(AccountAction.OnSignOutClick)
+        signOutConfirmed()
         viewModel.onAction(AccountAction.OnSignOutUnsentConfirm)
         assertEquals(1, auth.logouts, "the person chose: the session (and its wipe) ends")
     }
@@ -273,7 +307,7 @@ class AccountViewModelTest : MainDispatcherTest() {
         deletion.pendingReads += Result.Failure(DataError.Network.NoInternet)
         assertEquals(AccountLoad.Failed, viewModel.state.value.load)
 
-        viewModel.onAction(AccountAction.OnSignOutClick)
+        signOutConfirmed()
 
         assertEquals(1, auth.logouts)
     }
@@ -282,13 +316,18 @@ class AccountViewModelTest : MainDispatcherTest() {
     fun whileSigningOutExportAndDeleteDoNotOpen() = runTest {
         outbox.queue += waiting
         outbox.online = true
-        viewModel.onAction(AccountAction.OnSignOutClick)
+        signOutConfirmed()
 
         viewModel.events.test {
             viewModel.onAction(AccountAction.OnExportClick)
             viewModel.onAction(AccountAction.OnDeleteClick)
             expectNoEvents()
         }
+    }
+
+    private fun signOutConfirmed() {
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        viewModel.onAction(AccountAction.OnSignOutConfirm)
     }
 
     private val waiting = QueuedEntry("b1", "You fixed the gate.", null, "key-1", Instant.parse("2026-09-14T11:00:00Z"), "2026-09-14")
