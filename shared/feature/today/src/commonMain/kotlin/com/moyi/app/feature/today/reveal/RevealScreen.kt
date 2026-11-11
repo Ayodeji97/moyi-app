@@ -124,9 +124,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.Before(state: RevealS
     CenteredContent {
         EntryCard(authorLabel = stringResource(Res.string.today_author_you), text = state.myEntry, photo = state.myPhoto, voice = state.myVoice)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
-        // The same Waiting instance as Today (179:7), without its links: mid-reveal they would
-        // do nothing, so they are not drawn (and so never reach TalkBack or VoiceOver focus).
-        WaitingNote(partnerName = state.partnerName, onEdit = null, onDelete = null)
+        // The same Waiting instance as Today (179:7), (it holds no actions any more; Edit and
+        // Delete are in Today's More menu, which this card does not draw mid-reveal).
+        WaitingNote(partnerName = state.partnerName)
     }
 }
 

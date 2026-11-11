@@ -257,6 +257,14 @@ object MoyiDimens {
         val Gap = 8.dp
     }
 
+    /** **PROPOSED** (docs/missing-components.md §75): the More menu's panel. */
+    object MoreMenu {
+        /** The panel's hairline: the same 1 as the cards (tokens.md §3: hairlines, no shadow). */
+        val Stroke = 1.dp
+        /** No shadow and no tonal tint (tokens.md §3): the hairline separates it from the page. */
+        val Elevation = 0.dp
+    }
+
     object NavRow {
         /** Figma 159:3 / 429:1352: 48 tall, the targets 48 × 48. */
         val Height = TouchTarget
