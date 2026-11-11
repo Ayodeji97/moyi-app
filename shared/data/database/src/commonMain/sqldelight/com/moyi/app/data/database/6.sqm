@@ -1,0 +1,25 @@
+-- Version 6 to 7: the shape of each entry's photo and voice note in Today's cache
+-- (cached_day): the media id, its status, the photo's width and height, the voice note's
+-- length, whether it is sensitive. Never the signed URL. A card drawn from the cache then
+-- reserves the size it will have once the server answers, so Today does not jump on open.
+-- Added at the end, where CachedDay.sq declares them, so a migrated phone and a fresh
+-- install have the same column order. A row cached before this has no media; the next
+-- answer from the server fills it in (the server always wins).
+ALTER TABLE cached_day ADD COLUMN my_photo_id TEXT;
+ALTER TABLE cached_day ADD COLUMN my_photo_status TEXT;
+ALTER TABLE cached_day ADD COLUMN my_photo_width INTEGER;
+ALTER TABLE cached_day ADD COLUMN my_photo_height INTEGER;
+ALTER TABLE cached_day ADD COLUMN my_photo_sensitive INTEGER;
+ALTER TABLE cached_day ADD COLUMN my_voice_id TEXT;
+ALTER TABLE cached_day ADD COLUMN my_voice_status TEXT;
+ALTER TABLE cached_day ADD COLUMN my_voice_duration_ms INTEGER;
+ALTER TABLE cached_day ADD COLUMN my_voice_sensitive INTEGER;
+ALTER TABLE cached_day ADD COLUMN partner_photo_id TEXT;
+ALTER TABLE cached_day ADD COLUMN partner_photo_status TEXT;
+ALTER TABLE cached_day ADD COLUMN partner_photo_width INTEGER;
+ALTER TABLE cached_day ADD COLUMN partner_photo_height INTEGER;
+ALTER TABLE cached_day ADD COLUMN partner_photo_sensitive INTEGER;
+ALTER TABLE cached_day ADD COLUMN partner_voice_id TEXT;
+ALTER TABLE cached_day ADD COLUMN partner_voice_status TEXT;
+ALTER TABLE cached_day ADD COLUMN partner_voice_duration_ms INTEGER;
+ALTER TABLE cached_day ADD COLUMN partner_voice_sensitive INTEGER;

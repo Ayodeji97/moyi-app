@@ -10,7 +10,10 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.CachedDay
+import com.moyi.app.domain.today.EntryImage
+import com.moyi.app.domain.today.EntryMediaStatus
 import com.moyi.app.domain.today.EntryStatus
+import com.moyi.app.domain.today.EntryVoice
 import com.moyi.app.domain.today.MyEntry
 import com.moyi.app.domain.today.PartnerEntry
 import com.moyi.app.domain.today.Reaction
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 /** [SqlTodayCache] over a real (in-memory) SQLite: what goes in comes back, for its own person only. */
@@ -141,6 +145,42 @@ class SqlTodayCacheTest {
         database.io {
             cachedDayQueries.insert(day(PartnerEntry.Revealed("e2", "You listened.")).toRow("ada-id").copy(partner_entry_reaction = "WAVE"))
         }
+        assertNull(cache.read())
+    }
+
+    @Test
+    fun eachEntrysMediaComesBackWithItsShapeAndNeverItsUrl() = runTest {
+        val photo = EntryImage("m1", EntryMediaStatus.Ready, "https://storage.test/m1?sig=secret", 1080, 1920, sensitive = false)
+        val voice = EntryVoice("v1", EntryMediaStatus.Ready, "https://storage.test/v1.ogg?sig=secret", 12_000, sensitive = true)
+        val theirPhoto = EntryImage("m2", EntryMediaStatus.NotShared, "https://storage.test/m2?sig=secret", 1600, 900, sensitive = true)
+        val theirVoice = EntryVoice("v2", EntryMediaStatus.Processing, null, null, sensitive = false)
+        val withMedia = day(
+            partner = PartnerEntry.Revealed("e2", "You listened.", image = theirPhoto, voice = theirVoice),
+            mine = MyEntry("e1", "You made the tea.", EntryStatus.REVEALED, image = photo, voice = voice),
+        )
+
+        cache.write(withMedia)
+
+        // The size, the length, the status and the cover come back; the signed URL does not.
+        val expected = day(
+            partner = PartnerEntry.Revealed("e2", "You listened.", image = theirPhoto.copy(url = null), voice = theirVoice),
+            mine = MyEntry("e1", "You made the tea.", EntryStatus.REVEALED, image = photo.copy(url = null), voice = voice.copy(url = null)),
+        )
+        assertEquals(expected, cache.read())
+        val row = database.io { cachedDayQueries.forUser(ada.id).executeAsOne() }
+        assertFalse(row.toString().contains("sig=secret"), "no URL is written to the device")
+
+        // A solo day's partner entry (SUBMITTED) keeps its media the same way.
+        val solo = day(PartnerEntry.Submitted("e2", "You listened.", image = theirPhoto.copy(url = null)), mine = null)
+        cache.write(solo)
+        assertEquals(solo, cache.read())
+    }
+
+    @Test
+    fun aMediaStatusThisBuildDoesNotKnowIsNoCacheNotAGuess() = runTest {
+        val photo = EntryImage("m1", EntryMediaStatus.Ready, null, 1080, 1920, sensitive = false)
+        val row = day(null, mine = MyEntry("e1", "You made the tea.", EntryStatus.REVEALED, image = photo)).toRow(ada.id)
+        database.io { cachedDayQueries.insert(row.copy(my_photo_status = "QUARANTINED")) }
         assertNull(cache.read())
     }
 }

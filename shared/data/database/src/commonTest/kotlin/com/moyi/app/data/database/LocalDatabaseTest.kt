@@ -31,6 +31,24 @@ class LocalDatabaseTest {
         prompt_text = null,
         my_entry_reaction = "HEART",
         partner_entry_reaction = null,
+        my_photo_id = "m1",
+        my_photo_status = "Ready",
+        my_photo_width = 1080L,
+        my_photo_height = 1440L,
+        my_photo_sensitive = 0L,
+        my_voice_id = "v1",
+        my_voice_status = "Ready",
+        my_voice_duration_ms = 12_000L,
+        my_voice_sensitive = 0L,
+        partner_photo_id = null,
+        partner_photo_status = null,
+        partner_photo_width = null,
+        partner_photo_height = null,
+        partner_photo_sensitive = null,
+        partner_voice_id = null,
+        partner_voice_status = null,
+        partner_voice_duration_ms = null,
+        partner_voice_sensitive = null,
     )
 
     private val draft = Draft(
@@ -76,10 +94,20 @@ class LocalDatabaseTest {
      * the rows already in them keep everything else. [archive] when archive_day exists.
      */
     private fun app.cash.sqldelight.db.SqlDriver.withoutReactions(archive: Boolean) {
+        // Every version before 6 also predates 6.sqm's media columns.
+        withoutMedia()
         val tables = if (archive) listOf("cached_day", "archive_day") else listOf("cached_day")
         tables.forEach { table ->
             execute(null, "ALTER TABLE $table DROP COLUMN my_entry_reaction", 0)
             execute(null, "ALTER TABLE $table DROP COLUMN partner_entry_reaction", 0)
+        }
+    }
+
+    /** cached_day as it was before version 7 (6.sqm), which added the shape of each entry's photo and voice note. */
+    private fun app.cash.sqldelight.db.SqlDriver.withoutMedia() {
+        listOf("my", "partner").forEach { who ->
+            listOf("photo_id", "photo_status", "photo_width", "photo_height", "photo_sensitive", "voice_id", "voice_status", "voice_duration_ms", "voice_sensitive")
+                .forEach { execute(null, "ALTER TABLE cached_day DROP COLUMN ${who}_$it", 0) }
         }
     }
 
@@ -126,7 +154,7 @@ class LocalDatabaseTest {
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = MoyiDatabase.Schema.version)
 
-        assertEquals(6L, MoyiDatabase.Schema.version)
+        assertEquals(7L, MoyiDatabase.Schema.version)
         old.io { draftQueries.upsert(draft) }
         assertEquals(draft, old.io { draftQueries.forKey("ada", "bond-1", "NEW_ENTRY").executeAsOne() })
         assertEquals(1L, old.rowCount("cached_day"), "the migration keeps what was there")
@@ -224,6 +252,36 @@ class LocalDatabaseTest {
         assertEquals("MOVED", old.io { archiveDayQueries.forDate("ada", "bond-1", "2026-09-13").executeAsOne().partner_entry_reaction })
         old.io { cachedDayQueries.deleteAll(); cachedDayQueries.insert(row("ada")) }
         assertEquals("HEART", old.io { cachedDayQueries.forUser("ada").executeAsOne().my_entry_reaction })
+    }
+
+    @Test
+    fun aVersionSixDatabaseIsMigratedToHoldEachEntrysMediaShapeAndKeepsEveryRow() = runTest {
+        // Version 6 (#50) had every table and the reactions, without the media columns: build that, then migrate it.
+        val driver = inMemoryDriver()
+        val old = LocalDatabase(driver)
+        old.io {
+            cachedDayQueries.insert(row("ada"))
+            draftQueries.upsert(draft)
+            outboxQueries.insert(queued)
+            archiveDayQueries.upsert(archived)
+            archiveEmptyQueries.markEmpty("ada", "bond-2")
+        }
+        driver.withoutMedia()
+
+        MoyiDatabase.Schema.migrate(driver, oldVersion = 6, newVersion = MoyiDatabase.Schema.version)
+
+        listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty").forEach {
+            assertEquals(1L, old.rowCount(it), "$it survives")
+        }
+        // The row cached before keeps its words and reaction, and has no media; the next answer fills it in.
+        val migrated = old.io { cachedDayQueries.forUser("ada").executeAsOne() }
+        assertEquals("You made the tea.", migrated.my_entry_text)
+        assertEquals("HEART", migrated.my_entry_reaction)
+        assertNull(migrated.my_photo_id)
+        assertNull(migrated.my_voice_duration_ms)
+        // And the new columns hold what is written next.
+        old.io { cachedDayQueries.deleteAll(); cachedDayQueries.insert(row("ada")) }
+        assertEquals(row("ada"), old.io { cachedDayQueries.forUser("ada").executeAsOne() })
     }
 
     @Test

@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -144,7 +145,7 @@ fun VoiceNoteView(voice: VoiceNote, protectFromCapture: Boolean = false) {
 
 @Composable
 private fun VoicePlayerRow(voice: VoiceNote) {
-    val url = voice.url ?: return
+    val url = voice.url ?: return ReservedVoiceRow(voice)
     val player = rememberStoppingPlayer()
     val playback by player.playback.collectAsStateWithLifecycle()
     val speed by player.speed.collectAsStateWithLifecycle()
@@ -159,6 +160,33 @@ private fun VoicePlayerRow(voice: VoiceNote) {
         onCycleSpeed = player::cycleSpeed,
     )
 }
+
+/**
+ * A voice note drawn from Today's cache has its length and no URL until the server answers.
+ * Its row is laid out as it will be, but not drawn and not read, so the card already has its
+ * final height and does not grow when the URL arrives (§70). Nothing in it can be pressed into
+ * a play that cannot start.
+ */
+@Composable
+private fun ReservedVoiceRow(voice: VoiceNote) {
+    val levels = remember(voice.key) { WaveformMath.placeholder(voice.key) }
+    PlayerControls(
+        playback = VoicePlayback(durationMs = voice.durationMs),
+        levels = levels,
+        label = stringResource(Res.string.ds_voice_position),
+        onToggle = {},
+        onSeek = {},
+        speed = PlaybackSpeed.Normal,
+        onCycleSpeed = {},
+        modifier = Modifier
+            .graphicsLayer { alpha = 0f }
+            // Nothing to read until it can play; the tag only, for tests.
+            .clearAndSetSemantics { testTag = RESERVED_VOICE_ROW_TAG },
+    )
+}
+
+/** The reserved, undrawn row of a cached voice note, for tests. */
+const val RESERVED_VOICE_ROW_TAG = "voice_row_reserved"
 
 /** A player that stops when the screen does: leaving it releases the player, backgrounding pauses it. */
 @Composable

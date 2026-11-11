@@ -123,7 +123,8 @@ fun EntryCard(
                 // Under the words: text is always sufficient (NFR-103), the photo is secondary.
                 if (photo != null) {
                     Spacer(Modifier.height(MoyiDimens.EntryCard.LabelGap))
-                    EntryPhotoView(photo)
+                    // Passed on so the full-screen viewer, a window of its own on Android, is protected too.
+                    EntryPhotoView(photo, protectFromCapture = protectFromCapture)
                 }
                 // Then the voice note, as secondary as the photo (NFR-103).
                 if (voice != null) {

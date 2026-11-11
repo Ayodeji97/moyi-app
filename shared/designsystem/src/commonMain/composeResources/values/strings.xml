@@ -30,6 +30,8 @@
     <string name="ds_compose_attached_photo">The photo you are adding</string>
     <!-- PROPOSED (photos). Spoken for the photo on an EntryCard. The card reads its author first, so this need not name them. -->
     <string name="ds_entry_photo">Photo</string>
+    <!-- PROPOSED (§70). Spoken as the action of the photo on an EntryCard: a tap opens it full screen. -->
+    <string name="ds_entry_photo_open">View the photo full screen</string>
     <!-- PROPOSED (photos). EntryCard: the photo is not shown to this reader yet (EntryImageResponse PROCESSING). Never says why (spec §4 D2). -->
     <string name="ds_entry_photo_on_its_way">A photo is on its way.</string>
     <!-- PROPOSED (photos). EntryCard, its author only: moderation held it back from the other member (NOT_SHARED, owner ruling Q10: "not shared", no reason). -->

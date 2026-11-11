@@ -55,9 +55,9 @@ data class MyEntry(
     val id: String,
     val text: String?,
     val status: EntryStatus,
-    /** The photo on it, as the server shows it to me; null when it has none, or when read from the cache. */
+    /** The photo on it, as the server shows it to me; null when it has none. Read from the cache: its shape, no url. */
     val image: EntryImage? = null,
-    /** The voice note on it, as the server plays it to me; null when it has none, or when read from the cache. */
+    /** The voice note on it, as the server plays it to me; null when it has none. Read from the cache: its length, no url. */
     val voice: EntryVoice? = null,
     /** The reaction the partner left on it ([Reaction]); null when none, and always on a tombstone. */
     val reaction: Reaction? = null,
