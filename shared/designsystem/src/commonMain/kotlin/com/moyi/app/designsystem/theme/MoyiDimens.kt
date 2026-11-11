@@ -289,4 +289,13 @@ object MoyiDimens {
          */
         val SwipeDownToClose = 64.dp
     }
+
+    /** PROPOSED (docs/missing-components.md §74): the two overlapping initials circles of a bond's header. */
+    object InitialsPair {
+        /** Each circle's diameter. */
+        val Size = 56.dp
+        /** How far the second circle sits over the first. */
+        val Overlap = 16.dp
+        val Stroke = 1.dp
+    }
 }

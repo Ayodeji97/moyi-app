@@ -1927,8 +1927,16 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
   ("Just you" stays while nobody has joined); `settings_tz_value` "%1$s · GMT%2$s";
   `settings_day_line` "Your day starts and ends on %1$s time, for both of you, even when either
   of you travels."; `settings_day_line_alone` "Your day starts and ends on %1$s time, even when
-  you travel."; header: `settings_header_you_and` "You and %1$s", `settings_header_since`
-  "%1$s · since %2$s", `settings_header_description` "%1$s. You and %2$s, since %3$s.".
+  you travel."; header: `settings_header_line` "You and %1$s · since %2$s",
+  `settings_header_you_and` "You and %1$s" (no start date), `settings_header_line_alone` "Since
+  %1$s" (nobody joined), and the spoken whole `settings_header_description` "%1$s. You and %2$s,
+  since %3$s." with its two shorter forms.
+- **New component, designsystem: `InitialsPair`** (+ `MoyiDimens.InitialsPair`: 56 circles
+  overlapping by 16, 1 stroke `outlineStrong`, `surface` fill, the initial in `title`). Two
+  members' first letters; no status dot, no "online", ever. The initial is the first letter of
+  the display name (`initialOf`, upper-cased, an emoji kept whole). Data: `BondSettings.myName`
+  (the caller's `members` entry) and `createdAt` (`BondResponse.createdAt`, shown as the day in
+  the bond's shared zone), both already in the contract.
   Gone: `settings_heading` ("Bond settings"), `settings_group_bond` ("This bond").
 - **Kept from #88:** the Shared time zone row still opens Propose, which shows "The shared time
   zone can change again from ..." and blocks the change while `timezoneChangeAllowedFrom` is in

@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import kotlin.time.Clock
@@ -28,6 +29,7 @@ import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.GroupedCard
 import com.moyi.app.designsystem.component.GroupedToggleRow
+import com.moyi.app.designsystem.component.InitialsPair
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
@@ -55,6 +57,12 @@ import com.moyi.app.feature.bond.resources.settings_row_timezone
 import com.moyi.app.feature.bond.resources.settings_day_line
 import com.moyi.app.feature.bond.resources.settings_day_line_alone
 import com.moyi.app.feature.bond.resources.settings_group_you
+import com.moyi.app.feature.bond.resources.settings_header_description
+import com.moyi.app.feature.bond.resources.settings_header_description_alone
+import com.moyi.app.feature.bond.resources.settings_header_description_undated
+import com.moyi.app.feature.bond.resources.settings_header_line
+import com.moyi.app.feature.bond.resources.settings_header_line_alone
+import com.moyi.app.feature.bond.resources.settings_header_you_and
 import com.moyi.app.feature.bond.resources.settings_group_you_named
 import com.moyi.app.feature.bond.resources.settings_tz_value
 import com.moyi.app.feature.bond.resources.settings_load_error_action
@@ -179,6 +187,45 @@ private fun JustYouGroup(
     }
 }
 
+/**
+ * The top of the header card: the members' initials, the bond's name as the screen's heading
+ * (`title`, Newsreader), and "You and {name} · since {date}" under it. One element to
+ * assistive technology and a heading: "Us. You and Pax, since 10 November 2026."
+ * Nothing says whether anyone is online: there is no status, by design.
+ */
+@Composable
+private fun BondHeaderBlock(settings: BondSettings) {
+    val header = settings.toHeader()
+    val partner = header.partnerName
+    val since = header.since?.let { dayMonthYear(it) }
+    val line = when {
+        partner != null && since != null -> stringResource(Res.string.settings_header_line, partner, since)
+        partner != null -> stringResource(Res.string.settings_header_you_and, partner)
+        since != null -> stringResource(Res.string.settings_header_line_alone, since)
+        else -> null
+    }
+    val description = when {
+        partner != null && since != null -> stringResource(Res.string.settings_header_description, settings.name, partner, since)
+        partner != null -> stringResource(Res.string.settings_header_description_undated, settings.name, partner)
+        since != null -> stringResource(Res.string.settings_header_description_alone, settings.name, since)
+        else -> settings.name
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = MoyiTheme.spacing.md)
+            .semantics(mergeDescendants = true) {
+                heading()
+                contentDescription = description
+            },
+        verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.sm),
+    ) {
+        if (header.myInitial.isNotEmpty()) InitialsPair(first = header.myInitial, second = header.partnerInitial)
+        MoyiText(settings.name, role = TextRole.Title)
+        if (line != null) MoyiText(line, tone = TextTone.Muted)
+    }
+}
+
 /** The sign-out question ([UnsentSignOutQuestion]), shared with Account. */
 @Composable
 private fun SignOutQuestion(state: BondSettingsState, onAction: (BondSettingsAction) -> Unit) {
@@ -212,13 +259,7 @@ private fun SettingsRoot(
         Spacer(Modifier.height(spacing.lg - MoyiDimens.Scaffold.ItemSpacing))
         Column(verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
             GroupedCard {
-                item {
-                    MoyiText(
-                        settings.name,
-                        role = TextRole.Title,
-                        modifier = Modifier.padding(vertical = spacing.md).semantics { heading() },
-                    )
-                }
+                item { BondHeaderBlock(settings) }
                 row(
                     label = stringResource(Res.string.settings_row_type),
                     value = stringResource(RelationshipType.of(settings.type).label),

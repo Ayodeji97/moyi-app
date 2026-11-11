@@ -45,6 +45,10 @@ data class BondSettings(
      * cache), so only the screen, which knows today, decides whether it still blocks.
      */
     val timezoneChangeAllowedFrom: String? = null,
+    /** The caller's own display name, from the members list; null when the list does not name them. */
+    val myName: String? = null,
+    /** When the bond began (`BondResponse.createdAt`): the header's "since". Null only for a source that does not know. */
+    val createdAt: Instant? = null,
 ) {
     val restDays: Boolean get() = !strictMode
 

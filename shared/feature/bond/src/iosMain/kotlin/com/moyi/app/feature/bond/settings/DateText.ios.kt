@@ -19,6 +19,8 @@ import platform.Foundation.timeZoneForSecondsFromGMT
 
 internal actual fun dayAndMonth(date: LocalDate): String = format("d MMMM", date)
 
+internal actual fun dayMonthYear(date: LocalDate): String = format("d MMMM yyyy", date)
+
 private val utc: NSTimeZone = NSTimeZone.timeZoneForSecondsFromGMT(0)
 
 private val gregorian: NSCalendar = NSCalendar(calendarIdentifier = NSCalendarIdentifierGregorian).apply { timeZone = utc }
