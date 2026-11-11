@@ -139,6 +139,8 @@ internal fun BondResponse.toSettings(etag: String?): BondSettings? = BondSetting
     },
     deletionScheduledFor = deletionScheduledFor,
     timezoneChangeAllowedFrom = timezoneChangeAllowedFrom?.toString(),
+    myName = members.orEmpty().firstOrNull { it.id == me.memberId }?.displayName,
+    createdAt = createdAt,
 )
 
 private fun MemberSettingsResponse.toDomain(): MemberSettings? = MemberSettings(

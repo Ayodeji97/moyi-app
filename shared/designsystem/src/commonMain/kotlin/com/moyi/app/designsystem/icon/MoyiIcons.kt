@@ -58,6 +58,12 @@ object MoyiIcons {
         )
     }
 
+    /**
+     * The trailing glyph of a row that opens another screen (lucide `chevron-right`).
+     * Directional: mirrored under RTL with `autoMirror`.
+     */
+    val ChevronRight: ImageVector by lazy { lucide("ChevronRight", "m9 18 6-6-6-6", autoMirror = true) }
+
     /** Directional: mirrored under RTL with `autoMirror`. The iOS back glyph ([Back]). */
     val ChevronLeft: ImageVector by lazy { lucide("ChevronLeft", "m15 18-6-6 6-6", autoMirror = true) }
 

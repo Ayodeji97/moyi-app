@@ -14,6 +14,8 @@ import java.util.TimeZone
 
 internal actual fun dayAndMonth(date: LocalDate): String = format("d MMMM", date)
 
+internal actual fun dayMonthYear(date: LocalDate): String = format("d MMMM yyyy", date)
+
 private val utc: TimeZone = TimeZone.getTimeZone("UTC")
 
 private fun format(pattern: String, date: LocalDate): String =

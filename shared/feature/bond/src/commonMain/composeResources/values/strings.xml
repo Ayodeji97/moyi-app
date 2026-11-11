@@ -8,15 +8,29 @@
     onboarding's (feature/onboarding), not repeated here.
     -->
 
-    <!-- PROPOSED. The root's heading; today_nav_settings' words, the spoken name of the target that opens it. -->
-    <string name="settings_heading">Bond settings</string>
-
-    <!-- settings.group.bond (strings-proposed.md §8, in file, not decided). -->
-    <string name="settings_group_bond">This bond</string>
+    <!-- PROPOSED (missing-components §74). The bond's own name is now the root's heading, in the header card, so "Bond settings" and "This bond" are gone. -->
     <!-- settings.group.day (strings-proposed.md §8, in file, not decided). -->
     <string name="settings_group_day">The day · both of you</string>
     <!-- settings.group.you, the weakest of the three wordings strings-proposed.md §8 offers ("Just you"): the privacy claim is the owner's to word. -->
     <string name="settings_group_you">Just you</string>
+    <!-- PROPOSED (§74). %1$s is the other member's name; "Just you" alone while nobody has joined. -->
+    <string name="settings_group_you_named">Just you · %1$s can't see these</string>
+    <!-- PROPOSED (§74). The header card's line under the bond name: %1$s the other member, %2$s the day the bond began. -->
+    <string name="settings_header_line">You and %1$s · since %2$s</string>
+    <!-- PROPOSED (§74). The same, when the bond carries no start date. -->
+    <string name="settings_header_you_and">You and %1$s</string>
+    <!-- PROPOSED (§74). While nobody has joined: %1$s the day the bond began. -->
+    <string name="settings_header_line_alone">Since %1$s</string>
+    <!-- PROPOSED (§74). What a screen reader says for the whole header: %1$s the bond's name, %2$s the other member, %3$s the day. -->
+    <string name="settings_header_description">%1$s. You and %2$s, since %3$s.</string>
+    <string name="settings_header_description_undated">%1$s. You and %2$s.</string>
+    <string name="settings_header_description_alone">%1$s. Since %2$s.</string>
+    <!-- PROPOSED (§74). The shared zone as a row value: %1$s the city, %2$s the offset from GMT, signed ("+0", "+5:30", "-3"). -->
+    <string name="settings_tz_value">%1$s · GMT%2$s</string>
+    <!-- PROPOSED (§74). Under The day card: %1$s the shared zone's city. -->
+    <string name="settings_day_line">Your day starts and ends on %1$s time, for both of you, even when either of you travels.</string>
+    <!-- PROPOSED (§74). The same line while nobody has joined. -->
+    <string name="settings_day_line_alone">Your day starts and ends on %1$s time, even when you travel.</string>
     <!-- settings.group.ending (strings-proposed.md §8, in file, not decided). -->
     <string name="settings_group_ending">Ending</string>
 

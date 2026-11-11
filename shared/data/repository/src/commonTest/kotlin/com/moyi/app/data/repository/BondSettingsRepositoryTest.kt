@@ -91,12 +91,33 @@ class BondSettingsRepositoryTest {
                     revealTime = TimeOfDay(21, 0),
                     strictMode = false,
                     version = "\"7\"",
+                    createdAt = Instant.parse("2026-10-29T10:00:00Z"),
                 ),
             ),
             result,
         )
         assertEquals(HttpMethod.Get, fixture.requests.single().method)
         assertEquals("/api/v1/bonds/b1", fixture.requests.single().url.encodedPath)
+    }
+
+    @Test
+    fun theHeaderNamesBothMembersAndWhenTheBondBegan() = runTest {
+        val members =
+            """[{"id":"m1","displayName":"Amara","role":"OWNER","joinedAt":"2026-10-29T10:00:00Z","leftAt":null},""" +
+                """{"id":"m2","displayName":"Tunde","role":"MEMBER","joinedAt":"2026-10-30T10:00:00Z","leftAt":null}]"""
+        val fixture = Fixture { respondBond(bondJson(members = members), etag = "\"7\"") }
+
+        val settings = assertIs<Result.Success<BondSettings>>(fixture.repo.settings("b1")).data
+
+        assertEquals("Amara", settings.myName)
+        assertEquals("Tunde", settings.partnerName)
+        assertEquals(Instant.parse("2026-10-29T10:00:00Z"), settings.createdAt)
+    }
+
+    @Test
+    fun aMembersListWithoutTheCallerLeavesMyNameEmpty() = runTest {
+        val fixture = Fixture { respondBond(bondJson(), etag = "\"7\"") }
+        assertNull(assertIs<Result.Success<BondSettings>>(fixture.repo.settings("b1")).data.myName)
     }
 
     @Test

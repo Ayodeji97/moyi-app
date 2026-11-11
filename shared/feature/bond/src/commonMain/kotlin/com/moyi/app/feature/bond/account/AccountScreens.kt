@@ -2,6 +2,7 @@ package com.moyi.app.feature.bond.account
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,8 @@ import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.FieldType
 import com.moyi.app.designsystem.component.InlineError
+import com.moyi.app.designsystem.component.GroupedCard
+import com.moyi.app.designsystem.component.GroupedCardScope
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
@@ -54,8 +57,6 @@ import com.moyi.app.feature.bond.resources.settings_row_help
 import com.moyi.app.feature.bond.resources.settings_row_legal
 import com.moyi.app.feature.bond.resources.settings_row_sign_out
 import com.moyi.app.feature.bond.resources.settings_signing_out
-import com.moyi.app.feature.bond.settings.RowKind
-import com.moyi.app.feature.bond.settings.SettingsRow
 import com.moyi.app.feature.bond.settings.localDayAndMonth
 import com.moyi.app.feature.bond.signout.UnsentSignOutQuestion
 import org.jetbrains.compose.resources.stringResource
@@ -98,24 +99,31 @@ fun AccountScreen(
                 )
             }
             Spacer(Modifier.height(MoyiTheme.spacing.xxl))
-            ExportRow(state, onAction)
-            HelpAndLegalRows(state, onOpenHelp, onOpenLegal)
-            SignOutRow(state, onAction)
+            GroupedCard {
+                exportRow(state, onAction)
+                helpAndLegalRows(state, onOpenHelp, onOpenLegal)
+                signOutRow(state, onAction)
+            }
         }
         AccountLoad.Ready -> MoyiScaffold(onBack = onBack) {
             ScreenHeader(eyebrow = stringResource(Res.string.account_eyebrow), heading = stringResource(Res.string.account_heading))
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
-            ExportRow(state, onAction)
-            HelpAndLegalRows(state, onOpenHelp, onOpenLegal)
-            SignOutRow(state, onAction)
-            SettingsRow(
-                label = stringResource(Res.string.account_row_delete),
-                value = state.pending?.let { stringResource(Res.string.account_delete_value_pending, localDayAndMonth(it.cancellableUntil)) },
-                kind = RowKind.Navigates,
-                destructive = true,
-                enabled = !state.signingOut,
-                onClick = { onAction(AccountAction.OnDeleteClick) },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.lg)) {
+                GroupedCard {
+                    exportRow(state, onAction)
+                    helpAndLegalRows(state, onOpenHelp, onOpenLegal)
+                    signOutRow(state, onAction)
+                }
+                GroupedCard {
+                    row(
+                        label = stringResource(Res.string.account_row_delete),
+                        value = state.pending?.let { stringResource(Res.string.account_delete_value_pending, localDayAndMonth(it.cancellableUntil)) },
+                        destructive = true,
+                        enabled = !state.signingOut,
+                        onClick = { onAction(AccountAction.OnDeleteClick) },
+                    )
+                }
+            }
         }
     }
     if (state.confirmingUnsentSignOut) {
@@ -127,45 +135,30 @@ fun AccountScreen(
 }
 
 @Composable
-private fun ExportRow(state: AccountState, onAction: (AccountAction) -> Unit) {
-    SettingsRow(
-        label = stringResource(Res.string.account_row_export),
-        kind = RowKind.Navigates,
-        enabled = !state.signingOut,
-        onClick = { onAction(AccountAction.OnExportClick) },
-    )
-}
+private fun GroupedCardScope.exportRow(state: AccountState, onAction: (AccountAction) -> Unit) = row(
+    label = stringResource(Res.string.account_row_export),
+    enabled = !state.signingOut,
+    onClick = { onAction(AccountAction.OnExportClick) },
+)
 
 /**
- * Get help and Terms and Privacy, Bond settings' rows and words, opening the same screens.
- * Pure navigation, so they call the shell directly, as Bond settings' Terms and Privacy does.
+ * Get help and Terms and Privacy, Bond settings' rows and words (moved here, owner ruling
+ * 2026-11-10), opening the same screens. Pure navigation, so they call the shell directly.
  */
 @Composable
-private fun HelpAndLegalRows(state: AccountState, onOpenHelp: () -> Unit, onOpenLegal: () -> Unit) {
-    SettingsRow(
-        label = stringResource(Res.string.settings_row_help),
-        kind = RowKind.Navigates,
-        enabled = !state.signingOut,
-        onClick = onOpenHelp,
-    )
-    SettingsRow(
-        label = stringResource(Res.string.settings_row_legal),
-        kind = RowKind.Navigates,
-        enabled = !state.signingOut,
-        onClick = onOpenLegal,
-    )
+private fun GroupedCardScope.helpAndLegalRows(state: AccountState, onOpenHelp: () -> Unit, onOpenLegal: () -> Unit) {
+    row(label = stringResource(Res.string.settings_row_help), enabled = !state.signingOut, onClick = onOpenHelp)
+    row(label = stringResource(Res.string.settings_row_legal), enabled = !state.signingOut, onClick = onOpenLegal)
 }
 
-/** Bond settings' Sign out row, its words and its Signing out (owner ruling 2026-11-09). */
+/** Sign out, its words and its Signing out (owner ruling 2026-11-09). Acts in place: no chevron. */
 @Composable
-private fun SignOutRow(state: AccountState, onAction: (AccountAction) -> Unit) {
-    SettingsRow(
-        label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
-        kind = RowKind.Acts,
-        enabled = !state.signingOut,
-        onClick = { onAction(AccountAction.OnSignOutClick) },
-    )
-}
+private fun GroupedCardScope.signOutRow(state: AccountState, onAction: (AccountAction) -> Unit) = row(
+    label = stringResource(if (state.signingOut) Res.string.settings_signing_out else Res.string.settings_row_sign_out),
+    enabled = !state.signingOut,
+    showChevron = false,
+    onClick = { onAction(AccountAction.OnSignOutClick) },
+)
 
 /**
  * Delete your account (FR-008; states.md §9 "Account deletion"; PROPOSED words), one
