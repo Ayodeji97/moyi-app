@@ -63,7 +63,7 @@ class MoyiMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(this, kind?.channelId ?: NotificationChannels.DEFAULT_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_moyi)
             .setContentTitle(getString(texts?.title ?: R.string.app_name))
             .apply { texts?.body?.let { setContentText(getString(it)) } }
             .setContentIntent(pending)

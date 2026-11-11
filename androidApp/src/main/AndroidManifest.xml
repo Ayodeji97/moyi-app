@@ -40,11 +40,11 @@
             android:value="reveal" />
         <!-- The status-bar icon of a push the tray shows by itself (the app in the background).
              The status bar draws only the icon's shape, so the full-colour launcher icon would
-             be a plain square; this is the mark alone, the adaptive icon's monochrome layer.
+             be a plain square; this is the mark alone, scaled to fill the 24 dp slot (ic_stat_moyi).
              MoyiMessagingService uses the same one for a push that arrives in the foreground. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_launcher_foreground" />
+            android:resource="@drawable/ic_stat_moyi" />
         <!-- FCM: a new token (onNewToken) and a push that arrives while the app is open
              (onMessageReceived). Not exported: only FCM, through Google Play services,
              starts it. Inert in a build without google-services.json (FirebasePush). -->
