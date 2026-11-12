@@ -14,6 +14,6 @@ import org.koin.mp.KoinPlatform
  * yet, as [notificationTapped] does: FCM can answer before the view controller is built.
  */
 fun pushTokenReceived(token: String?) {
-    if (KoinPlatform.getKoinOrNull() == null) initKoin()
+    startKoinOnce()
     KoinPlatform.getKoin().get<PushTokenHolder>().update(token)
 }

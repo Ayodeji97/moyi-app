@@ -82,6 +82,7 @@
 				4AFA15116DEA56C4063E439B /* Sources */,
 				3D34A72B95C8C6CFCA9C0736 /* Frameworks */,
 				5A366E960C7BEA6AAAB74B44 /* Resources */,
+				A9BA5E0BA9BA5E0BA9BA5E01 /* API Base URL */,
 				F1BE0CA5F1BE0CA5F1BE0C04 /* Copy Firebase Config */,
 			);
 			buildRules = (
@@ -167,6 +168,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+		};
+		A9BA5E0BA9BA5E0BA9BA5E01 /* API Base URL */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "API Base URL";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# The URL this configuration talks to, written into the built Info.plist (MoyiApiBaseUrl):\n# Debug the local backend (refuses production), Release production. The input path above makes\n# this run after Xcode has processed Info.plist. README, \"Which backend the app talks to\".\n\"$SRCROOT/scripts/api-base-url.sh\"\n";
 		};
 		F1BE0CA5F1BE0CA5F1BE0C04 /* Copy Firebase Config */ = {
 			isa = PBXShellScriptBuildPhase;

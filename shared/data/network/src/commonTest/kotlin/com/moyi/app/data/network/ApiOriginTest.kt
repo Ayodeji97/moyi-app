@@ -45,11 +45,4 @@ class ApiOriginTest {
     fun apiConfigExposesTheOrigin() {
         assertEquals("http://localhost:8080", ApiConfig("http://localhost:8080/api/v1").origin)
     }
-
-    @Test
-    fun buildConfigIsALocalUrlInApiV1Form() {
-        val config = ApiConfig.fromBuild()
-        assertTrue(config.baseUrl.trimEnd('/').endsWith("/api/v1"), config.baseUrl)
-        assertTrue("getmoyi.app" !in config.baseUrl, config.baseUrl)
-    }
 }

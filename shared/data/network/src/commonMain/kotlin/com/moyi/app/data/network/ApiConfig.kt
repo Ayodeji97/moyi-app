@@ -6,14 +6,14 @@ package com.moyi.app.data.network
  * [baseUrl] keeps the form people write and Bruno uses, ending in `/api/v1`.
  * The generated client wants [origin] instead, because every generated path
  * already starts with `/api/v1` (docs/backend-contract-gaps.md, row 7).
+ *
+ * The app decides [baseUrl] per build, not this library (a library has no debug or
+ * release variant): Android's `BuildConfig.API_BASE_URL`, iOS's `MoyiApiBaseUrl` in
+ * Info.plist. Debug builds point at a local backend and fail to build for a production
+ * host; release builds point at production (README, "Which backend the app talks to").
  */
 data class ApiConfig(val baseUrl: String) {
     val origin: String = apiOrigin(baseUrl)
-
-    companion object {
-        /** The base URL this build was configured with (BuildKonfig; local backend by default). */
-        fun fromBuild(): ApiConfig = ApiConfig(BuildKonfig.API_BASE_URL)
-    }
 }
 
 private const val API_PREFIX = "/api/v1"

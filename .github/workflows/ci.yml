@@ -34,6 +34,12 @@ jobs:
 
       - run: ./gradlew check --continue
 
+      # The iOS API base URL is decided by a shell script Xcode runs; Linux can still run
+      # its logic: Release is exactly production, Debug never a production host.
+      - name: iOS API base URL guard
+        if: always()
+        run: sh iosApp/scripts/test-api-base-url.sh
+
       - if: always()
         uses: actions/upload-artifact@v7
         with:
