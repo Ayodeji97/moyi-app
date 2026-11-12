@@ -35,3 +35,14 @@ node_modules/
 # in the wrong place is not committed either.
 google-services.json
 GoogleService-Info.plist
+
+# fastlane (README, "Releasing to TestFlight"). The lane's .ipa and dSYMs go to
+# build/ios-release/, already ignored as build/. Its secrets live in ~/.moyi/release.env,
+# outside the repository.
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+*.ipa
+*.dSYM.zip
+*.p8
