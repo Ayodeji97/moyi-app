@@ -277,6 +277,15 @@ platform :ios do
     UI.success("Uploaded Moyi #{marketing} (#{build}) from #{sha[0, 7]} to TestFlight. " \
                "It shows in App Store Connect, TestFlight once Apple has processed it.")
   end
+
+  desc "Check an .ipa is a production build, as beta does before uploading; uploads nothing. " \
+       "fastlane ios check_ipa ipa:<path> build:<n> [version:<v>, default Config.xcconfig's]"
+  lane :check_ipa do |options|
+    ipa = File.expand_path(options[:ipa].to_s, REPO_ROOT)
+    UI.user_error!("Pass ipa:<path to an .ipa>; #{ipa} is not a file") unless File.file?(ipa)
+    UI.user_error!("Pass build:<the expected build number>") if options[:build].to_s.empty?
+    verify_ipa!(ipa, marketing: (options[:version] || ios_marketing_version).to_s, build: options[:build].to_s)
+  end
 end
 
 # --- Android (later) ---------------------------------------------------------------------
