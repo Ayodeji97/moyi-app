@@ -322,7 +322,8 @@ What the lane checks, in order, and it stops at the first that fails:
 
 The `.ipa` and dSYMs land in `build/ios-release/`. Release notes come from
 `RELEASE_NOTES`, else `Internal test build <sha>`. `fastlane lanes` parses the Fastfile and
-needs no secrets. Android (Play internal track) is not automated yet.
+needs no secrets. `fastlane ios check_ipa ipa:<path> build:<n>` runs check 5 alone on any
+`.ipa`, with no key and no upload. Android (Play internal track) is not automated yet.
 
 ## Legal page URLs
 
