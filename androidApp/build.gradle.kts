@@ -1,3 +1,4 @@
+import com.android.build.api.variant.HostTestBuilder
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 import com.moyi.buildlogic.ANDROID_DEBUG_API_BASE_URL
 import com.moyi.buildlogic.DebugNetworkSecurityConfigTask
@@ -80,6 +81,11 @@ val generateDebugNetworkSecurityConfig =
         outputDir.set(layout.buildDirectory.dir("generated/res/debugNetworkSecurity"))
     }
 androidComponents {
+    // AGP 9 runs unit tests for the debug build type only. ApiBaseUrlTest must also see the
+    // release BuildConfig, so `check` (CI) proves release carries exactly production.
+    beforeVariants(selector().withBuildType("release")) { variant ->
+        variant.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
     onVariants(selector().withBuildType("debug")) { variant ->
         variant.sources.res?.addGeneratedSourceDirectory(
             generateDebugNetworkSecurityConfig,
