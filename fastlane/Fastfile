@@ -230,14 +230,26 @@ platform :ios do
     # is changed by a release. TEAM_ID is set here too, so the lane does not depend on
     # what Local.xcconfig overrides. gym does not hand the API key from
     # app_store_connect_api_key to xcodebuild, so the auth flags are passed through xcargs
-    # (they reach both the archive and the export step) and let Xcode create the
-    # distribution certificate and profile itself.
+    # (they reach both the archive and the export step).
     auth_args = [
       "-allowProvisioningUpdates",
       "-authenticationKeyPath", asc[:key_path],
       "-authenticationKeyID", asc[:key_id],
       "-authenticationKeyIssuerID", asc[:issuer_id]
     ].map { |a| Shellwords.escape(a) }.join(" ")
+    # The App Store profile, made (or reused) through the API key and saved on this Mac, so the
+    # export signs locally with the Apple Distribution certificate in the keychain. Xcode's own
+    # automatic export would instead ask for cloud signing, which an App Manager key may not use
+    # ("Cloud signing permission error", first run 2026-11-12).
+    get_provisioning_profile(
+      app_identifier: BUNDLE_ID,
+      team_id: team_id,
+      readonly: false,
+      force: false
+    )
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+    UI.user_error!("No App Store profile for #{BUNDLE_ID} came back from sigh") if profile_name.to_s.empty?
+
     settings = "TEAM_ID=#{Shellwords.escape(team_id)} " \
                "MARKETING_VERSION=#{Shellwords.escape(marketing)} CURRENT_PROJECT_VERSION=#{build}"
     ipa_name = "Moyi-#{marketing}-#{build}.ipa"
@@ -255,7 +267,12 @@ platform :ios do
       # export_method writes the plist's `method`; setting it in export_options too can
       # leave gym with duplicate keys.
       export_method: "app-store",
-      export_options: { signingStyle: "automatic", teamID: team_id }
+      export_options: {
+        signingStyle: "manual",
+        teamID: team_id,
+        signingCertificate: "Apple Distribution",
+        provisioningProfiles: { BUNDLE_ID => profile_name }
+      }
     )
     ipa = File.join(IOS_BUILD_DIR, ipa_name)
     UI.user_error!("gym finished but #{ipa} is not there") unless File.file?(ipa)
