@@ -243,9 +243,7 @@ platform :ios do
     # ("Cloud signing permission error", first run 2026-11-12).
     get_provisioning_profile(
       app_identifier: BUNDLE_ID,
-      team_id: team_id,
-      readonly: false,
-      force: false
+      team_id: team_id
     )
     profile_name = lane_context[SharedValues::SIGH_NAME]
     UI.user_error!("No App Store profile for #{BUNDLE_ID} came back from sigh") if profile_name.to_s.empty?
