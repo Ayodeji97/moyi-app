@@ -119,22 +119,28 @@ at it with `moyi.backendDir=/path/to/moyi-backend` in `local.properties` or `-P`
 
 ## Which backend the app talks to
 
-Development builds talk to a **local** backend:
+The build type decides, never the code: the app hands the URL to `initKoin`, and the shared
+modules only use it.
 
-| Running on | Default base URL |
-|---|---|
-| Android emulator | `http://10.0.2.2:8080/api/v1` (the emulator's name for the Mac) |
-| iOS simulator | `http://localhost:8080/api/v1` |
+| Build | Base URL | Decided in |
+|---|---|---|
+| Android `debug` | `http://10.0.2.2:8080/api/v1` (the emulator's name for the Mac), or the override | `androidApp/build.gradle.kts`, `BuildConfig.API_BASE_URL` |
+| iOS `Debug` | `http://localhost:8080/api/v1`, or the override | `iosApp/scripts/api-base-url.sh`, Info.plist `MoyiApiBaseUrl` |
+| Android `release`, iOS `Release` | `https://api.getmoyi.app/api/v1` (production), always | the same two places |
 
-Override it for both platforms in `local.properties` (not committed), or once with
-`-Pmoyi.apiBaseUrl=...`:
+Override the debug URL for both platforms in `local.properties` (not committed), or once
+with `-Pmoyi.apiBaseUrl=...` (Android and Gradle only; an Xcode build reads
+`local.properties`):
 
 ```properties
 moyi.apiBaseUrl=http://localhost:8080/api/v1
 ```
 
-The value keeps the `/api/v1` ending, the same as Bruno. **The build fails if the host is
-`getmoyi.app` or one of its subdomains**: real people's data lives there.
+The value keeps the `/api/v1` ending, the same as Bruno. **A debug build fails if the host is
+`getmoyi.app`, one of its subdomains or production's address**: real people's data lives
+there, and only a release build talks to it. Release builds ignore the override. CI checks
+both sides: `ApiBaseUrlTest` (androidApp, run for debug and release by `check`) and
+`iosApp/scripts/test-api-base-url.sh`.
 
 Real devices:
 
@@ -144,8 +150,9 @@ Real devices:
 - **iPhone on the same Wi-Fi:** set `moyi.apiBaseUrl=http://<mac-name>.local:8080/api/v1`
   (the name is in System Settings, General, Sharing, Local hostname). Allow incoming
   connections for `java` in the macOS firewall, and accept the Local Network prompt on
-  the phone. `Info.plist` allows local networking (`NSAllowsLocalNetworking`) and carries
-  the prompt's text (`NSLocalNetworkUsageDescription`).
+  the phone. The Debug build's Info.plist allows local networking (`NSAllowsLocalNetworking`)
+  and carries the prompt's text (`NSLocalNetworkUsageDescription`); the "API Base URL" build
+  phase adds both for Debug only, so Release has no ATS exception.
 
 **Cleartext on Android (debug only).** The local backend speaks plain HTTP, and so does the
 MinIO it signs photo and voice URLs for (`http://<the Mac's LAN address>:9000`). Android
@@ -200,6 +207,13 @@ adb shell am start -a android.intent.action.VIEW -d "https://getmoyi.app/i/7KQ4M
 xcrun simctl launch --terminate-running-process booted app.getmoyi.moyi -moyiOpenLink "https://getmoyi.app/i/7KQ4MZ"
 ```
 
+**Version numbers.** Both platforms ship as version `1.0`, build `1` for the first store
+uploads (Android `versionName`/`versionCode` in `androidApp/build.gradle.kts`, iOS
+`MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in `iosApp/Configuration/Config.xcconfig`).
+Each upload to Google Play or App Store Connect needs a new build number, so the build
+number goes up by one per upload, in its own PR; the version changes only for a release
+people should see as new.
+
 **Android release signing.** The release build is signed with the upload key only where
 these four Gradle properties exist, which is the owner's `~/.gradle/gradle.properties`,
 never the repository (issue #49). Without them, as on CI, `assembleRelease` still builds and
@@ -230,8 +244,8 @@ Firebase project:
 
 Where to get them: the Firebase console, the project, Project settings, General, Your apps.
 The Android app is `app.getmoyi.moyi` (download `google-services.json`); the iOS app is the
-bundle ID `app.getmoyi.moyi` (download `GoogleService-Info.plist`). The `moyi-prod` project
-does not exist yet, so release builds have no push for now.
+bundle ID `app.getmoyi.moyi` (download `GoogleService-Info.plist`). Release builds talk to
+the production API, which sends through `moyi-prod`.
 
 **Without the files the app still builds and runs, without push.** That is how CI builds.
 
