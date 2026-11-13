@@ -1,5 +1,7 @@
 package com.moyi.app.feature.bond
 
+import com.moyi.app.domain.bond.EmptyBondExit
+import kotlinx.coroutines.awaitCancellation
 import com.moyi.app.domain.today.RefusedEntry
 import com.moyi.app.domain.today.QueuedEntry
 import com.moyi.app.domain.today.OutboxSender
@@ -279,5 +281,23 @@ class FakeOutbox : EntryOutbox, OutboxSender {
         passes++
         if (online) queue.clear()
         return if (queue.isEmpty()) OutboxPass.Empty else OutboxPass.Waiting
+    }
+}
+
+/**
+ * The leave a join kept on the device, for sign-out: counts [settle]s. [hang] makes one never
+ * answer (a network that does not reply); [fail] makes one throw.
+ */
+class FakeEmptyBondExit : EmptyBondExit {
+    var settles = 0
+    var hang = false
+    var fail = false
+
+    override suspend fun leaveAfterJoining(emptyBondId: String, joinedBondId: String) = Unit
+
+    override suspend fun settle() {
+        settles++
+        if (fail) error("the device's store could not be read")
+        if (hang) awaitCancellation()
     }
 }

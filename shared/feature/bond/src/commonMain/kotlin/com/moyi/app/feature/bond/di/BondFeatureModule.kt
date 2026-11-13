@@ -18,6 +18,6 @@ val bondFeatureModule = module {
     viewModel { (bondId: String) -> NotificationSettingsViewModel(bondId, notifications = get(), settings = get()) }
     // A report (FR-100), from the Archive day view or Bond settings, over ReportRepository.
     viewModel { (args: ReportArgs) -> ReportViewModel(args, reports = get()) }
-    viewModel { AccountViewModel(deletion = get(), auth = get(), outbox = get(), sender = get()) }
+    viewModel { AccountViewModel(deletion = get(), auth = get(), outbox = get(), sender = get(), emptyBonds = get()) }
     viewModel { ExportViewModel(exports = get()) }
 }

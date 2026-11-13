@@ -8,6 +8,7 @@ import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.account.AccountDeletionRepository
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.feature.bond.resources.Res
@@ -50,6 +51,8 @@ class AccountViewModel(
     /** Entries sent while offline: a sign-out tries them once more before the session wipe takes them. */
     outbox: EntryOutbox,
     sender: OutboxSender,
+    /** A leave a join kept on the device: a sign-out tries it once more too, before the wipe takes it. */
+    emptyBonds: EmptyBondExit,
 ) : ViewModel() {
     private val _state = MutableStateFlow(AccountState())
     val state: StateFlow<AccountState> = _state.asStateFlow()
@@ -58,7 +61,7 @@ class AccountViewModel(
     val events = _events.receiveAsFlow()
 
     /** The same sign-out as Bond settings' (owner ruling 2026-11-09). */
-    private val signOutSequence = SignOut(auth, outbox, sender)
+    private val signOutSequence = SignOut(auth, outbox, sender, emptyBonds)
 
     init {
         load()
