@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.moyi.app.api.models.DeviceRequest
+import com.moyi.app.domain.notification.NotificationAskMemory
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -30,4 +31,6 @@ actual val platformRepositoryModule: Module = module {
     single<DeviceInfoProvider> { AndroidDeviceInfoProvider(androidContext()) }
     single<OutboxScheduler> { WorkManagerOutboxScheduler(androidContext()) }
     single<ConnectivityWatcher> { AndroidConnectivityWatcher(androidContext()) }
+    // "Not now" to Today's notification note: per phone, in plain preferences, kept across sign-out.
+    single<NotificationAskMemory> { PreferencesNotificationAskMemory(androidContext()) }
 }

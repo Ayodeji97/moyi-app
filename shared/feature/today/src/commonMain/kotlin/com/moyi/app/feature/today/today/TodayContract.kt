@@ -3,6 +3,7 @@ package com.moyi.app.feature.today.today
 import androidx.compose.runtime.Immutable
 import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.VoiceNote
+import com.moyi.app.designsystem.platform.NotificationPermission
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.common.QueuedDay
@@ -85,6 +86,13 @@ data class TodayState(
     val partnerReaction: Reaction? = null,
     /** The last reaction tap did not go through: it is back as it was, and the Generic error line says so. */
     val reactionFailed: Boolean = false,
+    /**
+     * The note asking for notifications is drawn (owner ruling 2026-11-13): my entry is saved
+     * today ([TodayStatus.Waiting] or [TodayStatus.Revealed]) in a bond someone has joined, the
+     * phone has not been asked yet, and "Not now" has not been chosen on this phone.
+     * Never a heading, never the PrimaryAction: Write keeps that.
+     */
+    val askForNotifications: Boolean = false,
 )
 
 /** What the "More" menu on your own entry card can hold (owner ruling 2026-11-11). */
@@ -153,6 +161,19 @@ sealed interface TodayAction {
     /** "I have an invite code": the join flow, from this bond nobody has joined. */
     data object OnHaveCodeClick : TodayAction
 
+    /**
+     * The phone's notification permission, read by the screen on every resume and after the
+     * system prompt answers: the controller is the platform's, so the screen reads it and
+     * the ViewModel decides (as Bond settings · Notifications does).
+     */
+    data class OnNotificationPermissionChecked(val permission: NotificationPermission) : TodayAction
+
+    /** "Allow notifications": the phone's own prompt, once. */
+    data object OnAllowNotificationsClick : TodayAction
+
+    /** "Not now": the note is gone for good on this phone. */
+    data object OnNotNowClick : TodayAction
+
     /** DEBUG ONLY (`-PmoyiUiPreview=today`): step to the next drawn layout. */
     data object OnDebugCycle : TodayAction
 }
@@ -172,4 +193,7 @@ sealed interface TodayEvent {
 
     /** No open bond any more: the shell asks the signed-in start where this person belongs. */
     data object NavigateToStart : TodayEvent
+
+    /** Show the phone's notification prompt, and answer with [TodayAction.OnNotificationPermissionChecked]. */
+    data object AskNotificationPermission : TodayEvent
 }

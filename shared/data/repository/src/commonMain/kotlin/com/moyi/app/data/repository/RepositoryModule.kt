@@ -82,8 +82,8 @@ val repositoryModule = module {
 }
 
 /**
- * The platform's [DeviceInfoProvider], [OutboxScheduler] and [ConnectivityWatcher];
- * Android needs `androidContext` for all three.
+ * The platform's [DeviceInfoProvider], [OutboxScheduler], [ConnectivityWatcher] and the
+ * phone's NotificationAskMemory; Android needs `androidContext` for all four.
  */
 expect val platformRepositoryModule: Module
 

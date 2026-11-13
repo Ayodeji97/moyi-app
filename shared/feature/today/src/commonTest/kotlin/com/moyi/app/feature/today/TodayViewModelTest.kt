@@ -46,7 +46,7 @@ class TodayViewModelTest : MainDispatcherTest() {
     private val outbox = FakeOutbox()
     private val ledger = RevealLedger { "me" }
     private val bonds = InviteBonds()
-    private val viewModel by lazy { TodayViewModel(loop, ledger, bonds, outbox) }
+    private val viewModel by lazy { TodayViewModel(loop, ledger, bonds, outbox, FakeNotificationAskMemory()) }
 
     private fun TestScope.collectState() {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
@@ -386,7 +386,7 @@ class TodayViewModelTest : MainDispatcherTest() {
     fun theDayIsForgottenWhenTodayGoes() {
         // Today is the root of the signed-in app: it goes with a sign-out, and the day goes with it.
         val store = ViewModelStore()
-        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds, outbox) } }
+        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds, outbox, FakeNotificationAskMemory()) } }
         ViewModelProvider.create(store, factory)[TodayViewModel::class]
         loop.show(dayView(TodayStatus.Revealed))
         val clearsBefore = loop.clears
@@ -402,7 +402,7 @@ class TodayViewModelTest : MainDispatcherTest() {
         // Joining from Today: a new Today is put in place of the one under the join flow, and
         // Navigation clears the old one's ViewModel only after the new one has started. The
         // smoke test of PR 101 saw the bare surface stay until the next foreground.
-        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds, outbox) } }
+        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds, outbox, FakeNotificationAskMemory()) } }
         val under = ViewModelStore()
         ViewModelProvider.create(under, factory)[TodayViewModel::class]
         val joined = ViewModelStore()

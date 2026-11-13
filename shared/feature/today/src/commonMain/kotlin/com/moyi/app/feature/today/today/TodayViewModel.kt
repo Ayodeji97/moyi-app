@@ -8,10 +8,13 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
+import com.moyi.app.designsystem.platform.NotificationPermission
+import com.moyi.app.domain.notification.NotificationAskMemory
 import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
+import com.moyi.app.feature.today.common.DayView
 import com.moyi.app.feature.today.common.DeleteResult
 import com.moyi.app.feature.today.common.PartnerVisible
 import com.moyi.app.feature.today.common.ReactResult
@@ -48,6 +51,10 @@ import kotlinx.coroutines.launch
  *   Today stops showing ([TodayAction.OnBackground]) and starts again on the next foreground.
  * - **The reveal**: when a day turns up revealed with the partner's words, and the
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
+ * - **Asking for notifications** (owner ruling 2026-11-13): once there is a reason, after
+ *   my entry is saved in a bond someone has joined, Today draws one note offering the phone's
+ *   prompt, while the phone has not been asked and "Not now" has not been chosen on it
+ *   ([NotificationAskMemory], per phone). The screen reads the permission; this decides.
  *
  * Today is the root of the signed-in app, so it owns the loop's lifetime: the day in
  * memory is forgotten when this ViewModel is created ([DailyLoop.open]) and when it is
@@ -63,10 +70,18 @@ class TodayViewModel(
     private val bonds: BondRepository,
     /** The queue of entries sent offline: tried again on every foreground, and Today reloads when it moves. */
     private val outbox: OutboxSender,
+    /** Whether "Not now" was chosen on this phone: the note asking for notifications never shows again. */
+    private val askMemory: NotificationAskMemory,
 ) : ViewModel() {
 
     /** The delete dialog, the delete in flight and a failed delete: Today's own, not the day's (D11). */
     private val ui = MutableStateFlow(TodayUi())
+
+    /**
+     * The note asking for notifications: apart from [ui], which a delete or the debug cycle
+     * resets, because the phone's answer and "Not now" outlive both.
+     */
+    private val ask = MutableStateFlow(NotificationAsk(dismissed = askMemory.isDismissed()))
 
     /** Re-reads the day while it shows media on its way; only while Today is on screen. */
     private var recheck: Job? = null
@@ -75,8 +90,8 @@ class TodayViewModel(
         loop.open(owner = this)
     }
 
-    val state: StateFlow<TodayState> = combine(loop.state, ui, ::toState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(loop.state.value, ui.value))
+    val state: StateFlow<TodayState> = combine(loop.state, ui, ask, ::toState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(loop.state.value, ui.value, ask.value))
 
     private val _events = Channel<TodayEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -123,8 +138,26 @@ class TodayViewModel(
             TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
             TodayAction.OnShareInviteClick -> shareInvite()
             TodayAction.OnHaveCodeClick -> haveCode()
+            is TodayAction.OnNotificationPermissionChecked -> ask.update { it.copy(permission = action.permission, asking = false) }
+            TodayAction.OnAllowNotificationsClick -> allowNotifications()
+            TodayAction.OnNotNowClick -> {
+                askMemory.dismiss()
+                ask.update { it.copy(dismissed = true) }
+            }
             TodayAction.OnDebugCycle -> debugCycle()
         }
+    }
+
+    /**
+     * "Allow notifications": the phone's own prompt, through the screen. Only while the note
+     * is drawn, and once: a second tap while the prompt is up does nothing. Whatever the
+     * person answers, the permission is no longer "not asked", so the note goes for good.
+     */
+    private fun allowNotifications() {
+        val view = (loop.state.value as? DailyLoopState.Ready)?.day ?: return
+        if (!ask.value.offered(view) || ask.value.asking) return
+        ask.update { it.copy(asking = true) }
+        send(TodayEvent.AskNotificationPermission)
     }
 
     /** At most one: a second foreground while it runs keeps the one already counting. */
@@ -269,7 +302,7 @@ class TodayViewModel(
         }
     }
 
-    private fun toState(day: DailyLoopState, ui: TodayUi): TodayState = when (day) {
+    private fun toState(day: DailyLoopState, ui: TodayUi, ask: NotificationAsk): TodayState = when (day) {
         DailyLoopState.Loading, DailyLoopState.NoOpenBond -> TodayState(load = TodayLoad.Loading)
         DailyLoopState.Failed -> TodayState(load = TodayLoad.Failed)
         is DailyLoopState.Ready -> {
@@ -303,6 +336,7 @@ class TodayViewModel(
                 myReaction = view.myReaction.takeIf { view.canReact },
                 partnerReaction = view.partnerReaction,
                 reactionFailed = ui.reactionFailed && view.canReact,
+                askForNotifications = ask.offered(view),
             )
         }
     }
@@ -313,6 +347,28 @@ class TodayViewModel(
 
     override fun onCleared() {
         loop.close(owner = this)
+    }
+
+    /**
+     * The note asking for notifications. [permission] is null until the screen has read it,
+     * so nothing is drawn on a guess; [asking] while the phone's prompt is up.
+     */
+    private data class NotificationAsk(
+        val dismissed: Boolean,
+        val permission: NotificationPermission? = null,
+        val asking: Boolean = false,
+    ) {
+        /**
+         * Drawn once my entry is saved today, in whatever layout Today shows next: Waiting
+         * (also PENDING_REVEAL) for the first to write, Revealed for the second, whose save
+         * opens the day. Never while nobody has joined: that note has its own two actions.
+         * Android below 13 is never [NotificationPermission.NotAsked], so never there.
+         */
+        fun offered(view: DayView): Boolean =
+            permission == NotificationPermission.NotAsked &&
+                !dismissed &&
+                view.status in AskAfter &&
+                view.bondStatus != BondStatus.PENDING_MEMBER
     }
 
     /** Which of my entries the open delete dialog asks about: what deleting means differs. */
@@ -331,3 +387,6 @@ class TodayViewModel(
         val reactionFailed: Boolean = false,
     )
 }
+
+/** The layouts in which my entry for today is saved on the server: where the note may be drawn. */
+private val AskAfter = setOf(TodayStatus.Waiting, TodayStatus.Revealed)

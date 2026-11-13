@@ -35,7 +35,7 @@ class TodayViewModelCacheTest : MainDispatcherTest() {
     private val cache = FakeTodayCache()
     private val ledger = RevealLedger { "me" }
     private val loop = RepositoryDailyLoop(bonds, entries, cache, FakeOutbox(), FakeOutbox(), FixedClock(NOON_ON_THE_DAY), FakeArchiveCache())
-    private val viewModel by lazy { TodayViewModel(loop, ledger, bonds, FakeOutbox()) }
+    private val viewModel by lazy { TodayViewModel(loop, ledger, bonds, FakeOutbox(), FakeNotificationAskMemory()) }
 
     private val waiting = today(BondDayStatus.PARTIAL, my = MY_ENTRY)
     private val revealed = today(

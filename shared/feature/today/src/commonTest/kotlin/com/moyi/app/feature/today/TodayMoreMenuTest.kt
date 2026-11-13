@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class TodayMoreMenuTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
-    private val viewModel by lazy { TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox()) }
+    private val viewModel by lazy { TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), FakeNotificationAskMemory()) }
 
     private fun TestScope.collectState() {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }

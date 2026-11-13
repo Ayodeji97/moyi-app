@@ -156,6 +156,8 @@ internal fun DayNote(
                     if (index > 0) Spacer(Modifier.height(MoyiTheme.spacing.sm))
                     OutlinedNoteAction(action, Modifier.fillMaxWidth())
                 } else {
+                    // A link under an outlined button keeps the same 8 apart, so the targets never touch.
+                    if (index > 0 && actions[index - 1].outlined) Spacer(Modifier.height(MoyiTheme.spacing.sm))
                     TextLink(
                         text = action.label,
                         onClick = action.onClick,
