@@ -38,6 +38,13 @@ internal data class ArchiveRowModel(
     val photoChip: Boolean get() = lines.any { it.photo && it.body is RowBody.Words }
     val voiceChip: Boolean get() = lines.any { it.voice && it.body is RowBody.Words }
 
+    /**
+     * The row draws the partner's words, so the screen must not be captured while it is
+     * shown (R3). A partner line that only names its media ("Photo") holds no words; a
+     * locked or absent partner entry has no line at all.
+     */
+    val showsPartnerWords: Boolean get() = lines.any { it.author == RowAuthor.Partner && it.body is RowBody.Words }
+
     override fun toString(): String = "ArchiveRowModel(date=$date, lines=${lines.size}, favourite=$favourite)"
 }
 

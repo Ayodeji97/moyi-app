@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.platform.ProtectFromCapture
 import com.moyi.app.designsystem.theme.MoyiDimens
 
 /**
@@ -49,6 +50,9 @@ data class ArchiveRowLine(val author: String, val text: String, val muted: Boole
  *
  * The row is **one element for a screen reader**, spoken as [description]; the caller builds
  * it. The row is at least 48 tall (NFR-101).
+ *
+ * [protectFromCapture]: the caller sets it when a line holds the partner's words (R3,
+ * [ProtectFromCapture]). Off by default, because a row of only my own words may be captured.
  */
 @Composable
 fun ArchiveDayRow(
@@ -59,9 +63,12 @@ fun ArchiveDayRow(
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    protectFromCapture: Boolean = false,
 ) {
     val colors = MoyiTheme.colors
     val spacing = MoyiTheme.spacing
+    // R3: shared, ref-counted with every other holder; protection ends when the last leaves.
+    if (protectFromCapture) ProtectFromCapture()
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier
