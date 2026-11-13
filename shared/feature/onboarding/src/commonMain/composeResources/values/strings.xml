@@ -54,6 +54,7 @@
     <!-- bond.type.card.hint. Accessibility only: tapping selects and continues. -->
     <string name="bond_type_card_hint">Selects and continues</string>
     <!-- PROPOSED, and so is its place: Figma draws no way from here to manual code entry (309:42 has a back, so something leads to it). Reader's voice, like "I already have an account". Owner ruling owed. -->
+    <!-- Also on "Your bond is ready", under Continue (owner ruling 2026-11-13): the person created a bond but was sent a code. -->
     <string name="bond_type_have_code">I have an invite code</string>
 
     <!-- ===== Onboarding 5 · create bond (Figma 342:17, 362:1196, 394:1441) ===== -->
@@ -155,6 +156,12 @@
     <string name="join_failed_action">Enter a different code</string>
     <!-- PROPOSED. 409 BOND_LIMIT_REACHED on accept (FR-025). A fact about the caller's own account, so it may be said (doc 06 §3.3). -->
     <string name="join_error_limit">You are already in three bonds. Leave one before joining another.</string>
+    <!-- PROPOSED (owner ruling 2026-11-13, joining from a bond nobody has joined). Confirm, under the type line, when Join will also end the person's own empty bond. %1$s is that bond's name. "Kept": the leave sends withdrawEntries false, so the server keeps the entries (doc 06 §3.3, POST /bonds/{id}/leave); they stay in the export, and no screen shows an ended bond while another is open. -->
+    <string name="join_confirm_line_ends_bond">Joining ends %1$s, which nobody has joined yet. What you wrote there is kept, but you will not see it in the app.</string>
+    <!-- PROPOSED. The same line from "Your bond is ready", the moment after creating it: nothing can have been written there yet, so the second sentence would only raise a question. %1$s is that bond's name. -->
+    <string name="join_confirm_line_ends_new_bond">Joining ends %1$s, which nobody has joined yet.</string>
+    <!-- PROPOSED. 409 ALREADY_MEMBER when joining from a bond nobody has joined: the code is the person's own bond's. Nothing is joined or ended. -->
+    <string name="join_error_own_code">That is your own code. Send it to them instead.</string>
 
     <!-- ===== Shared failures ===== -->
 

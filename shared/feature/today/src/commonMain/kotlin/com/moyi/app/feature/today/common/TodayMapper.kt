@@ -65,6 +65,7 @@ internal fun toDayView(bond: Bond, today: Today): DayView? {
     val reactable = today.partnerEntry.reactable()?.takeIf { status in PartnerVisible }
     return DayView(
         bondId = bond.id,
+        bondName = bond.name,
         bondStatus = bond.status,
         date = date,
         status = status,

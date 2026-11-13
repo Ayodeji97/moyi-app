@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
+import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.today.OutboxSender
@@ -49,8 +50,11 @@ import kotlinx.coroutines.launch
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
  *
  * Today is the root of the signed-in app, so it owns the loop's lifetime: the day in
- * memory is forgotten when this ViewModel is created and when it is cleared. The copy
- * on disk is the session's to wipe, when it ends (SessionManager).
+ * memory is forgotten when this ViewModel is created ([DailyLoop.open]) and when it is
+ * cleared ([DailyLoop.close]), unless a newer Today has opened the loop by then: after a
+ * join from Today or Bond settings, the Today under the join flow is cleared only once the
+ * new Today has started, and it must not blank the joined bond's day. The copy on disk is
+ * the session's to wipe, when it ends (SessionManager).
  */
 class TodayViewModel(
     private val loop: DailyLoop,
@@ -68,7 +72,7 @@ class TodayViewModel(
     private var recheck: Job? = null
 
     init {
-        loop.clear()
+        loop.open(owner = this)
     }
 
     val state: StateFlow<TodayState> = combine(loop.state, ui, ::toState)
@@ -118,6 +122,7 @@ class TodayViewModel(
             // The target is drawn only on a loaded day, so there is always a bond to open.
             TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
             TodayAction.OnShareInviteClick -> shareInvite()
+            TodayAction.OnHaveCodeClick -> haveCode()
             TodayAction.OnDebugCycle -> debugCycle()
         }
     }
@@ -170,6 +175,17 @@ class TodayViewModel(
                 send(TodayEvent.ShareInvite(link = invite.link, code = invite.code))
             }
         }
+    }
+
+    /**
+     * "I have an invite code" (owner ruling 2026-11-13): only while the bond shown is still
+     * waiting for its second member. Opens the join flow from it; nothing changes here, and
+     * nothing is ended unless the join succeeds there.
+     */
+    private fun haveCode() {
+        val view = (loop.state.value as? DailyLoopState.Ready)?.day ?: return
+        if (view.bondStatus != BondStatus.PENDING_MEMBER) return
+        send(TodayEvent.NavigateToJoin(bondId = view.bondId, bondName = view.bondName ?: return))
     }
 
     private suspend fun issueInvite(bondId: String): Invite? = when (val created = bonds.createInvite(bondId)) {
@@ -263,6 +279,9 @@ class TodayViewModel(
                 status = view.status,
                 date = view.date,
                 partnerName = view.partnerName,
+                // Shown from the cached day too: a bond kept as waiting is one nobody had joined then,
+                // and the join flow ends it only if, read again after the join, nobody has joined it still.
+                canJoinWithCode = view.bondStatus == BondStatus.PENDING_MEMBER && view.bondName != null,
                 prompt = view.prompt?.text,
                 myEntry = view.myEntry.orEmpty(),
                 // The loop already holds them only in these layouts; this is the second lock on the door.
@@ -293,7 +312,7 @@ class TodayViewModel(
     }
 
     override fun onCleared() {
-        loop.clear()
+        loop.close(owner = this)
     }
 
     /** Which of my entries the open delete dialog asks about: what deleting means differs. */

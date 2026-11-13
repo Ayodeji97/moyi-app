@@ -24,7 +24,7 @@ import org.koin.dsl.module
  * The `-PmoyiUiPreview=today` build binds its preview loop over this one (KoinInit).
  */
 val todayFeatureModule = module {
-    single<DailyLoop> { RepositoryDailyLoop(get(), get(), get(), get(), get(), archive = get()) }
+    single<DailyLoop> { RepositoryDailyLoop(get(), get(), get(), get(), get(), archive = get(), emptyBonds = get()) }
     // Keyed by the signed-in person too: two members of one bond can share a phone.
     single { RevealLedger { (get<AuthRepository>().session.value as? SessionState.SignedIn)?.user?.id } }
     // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.

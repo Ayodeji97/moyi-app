@@ -1,0 +1,24 @@
+-- A bond to end because the person joined someone else's with a code while it waited,
+-- empty, for its second member (owner ruling 2026-11-13). The join came first and
+-- succeeded; the leave did not answer (offline, the server's own error, the app killed),
+-- so it is kept here and tried again at the next Today load. Before every try the app
+-- reads the bonds again and leaves bond_id only while it is still waiting with the
+-- person alone in it and joined_bond_id is still open (EmptyBondExitImpl).
+--
+-- Ids only, never a name or a word. user_id scopes a row to one person; the session
+-- wipes the table anyway.
+CREATE TABLE pending_leave (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    joined_bond_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, bond_id)
+);
+
+forUser:
+SELECT * FROM pending_leave WHERE user_id = ?;
+
+insert:
+INSERT OR REPLACE INTO pending_leave (user_id, bond_id, joined_bond_id) VALUES (?, ?, ?);
+
+deleteForBond:
+DELETE FROM pending_leave WHERE user_id = ? AND bond_id = ?;

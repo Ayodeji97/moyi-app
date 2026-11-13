@@ -398,6 +398,25 @@ class TimeZoneAndInviteViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun whileNobodyHasJoinedIHaveAnInviteCodeOpensTheJoinFlowFromThisBond() = runTest {
+        repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER, invite = liveInvite)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnHaveCodeClick)
+            assertEquals(BondSettingsEvent.OpenJoin(bondId = "b1", bondName = "Amara and Tunde"), awaitItem())
+        }
+    }
+
+    @Test
+    fun onceSomeoneHasJoinedIHaveAnInviteCodeDoesNothing() = runTest {
+        // An ACTIVE bond is never one the join flow may end.
+        repo.server = settingsV1.copy(status = BondStatus.ACTIVE, invite = liveInvite)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnHaveCodeClick)
+            expectNoEvents()
+        }
+    }
+
+    @Test
     fun copyingTheCodeShowsCopied() = runTest {
         repo.server = settingsV1.copy(status = BondStatus.PENDING_MEMBER, invite = liveInvite)
         viewModel.events.test {

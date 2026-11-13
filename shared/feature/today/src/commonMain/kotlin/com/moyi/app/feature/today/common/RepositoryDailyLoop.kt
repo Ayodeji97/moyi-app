@@ -6,6 +6,8 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondRepository
+import com.moyi.app.domain.bond.EmptyBondExit
+import com.moyi.app.domain.bond.bondForToday
 import com.moyi.app.domain.today.CachedDay
 import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.EntryStatus
@@ -47,10 +49,16 @@ import kotlin.time.Instant
  * the server refused shows Today's refusal line until the person opens Write, where its
  * words wait as the draft.
  *
- * **Which bond**: the person's first open one in `GET /bonds` (newest first), as
- * the signed-in start chose it. There is no screen for more than one (states.md §2).
+ * **Which bond**: [bondForToday], from `GET /bonds` (newest first): the newest open bond
+ * someone has joined, and only with none of those the newest one still waiting for its
+ * second member. There is no screen for more than one (states.md §2). A bond with two people
+ * in it is never hidden behind an empty one, such as the person's own empty bond whose
+ * ending did not go through after they joined someone else's ([EmptyBondExit]).
  * None open any more → [DailyLoopState.NoOpenBond], and the shell asks the signed-in
  * start again rather than guess.
+ *
+ * **An empty bond left behind**: every refresh first asks [emptyBonds] to finish any leave
+ * kept on the device ([EmptyBondExit.settle]); with none kept it asks the server nothing.
  *
  * **The cache**: the first load of a session draws the cached day at once, if there
  * is one for this person and it is still today's Bond-day in the bond's own time
@@ -78,6 +86,8 @@ class RepositoryDailyLoop(
     private val clock: Clock = Clock.System,
     /** The Archive's cached days: a reaction the server took on Today is kept there too, if that day is cached. */
     private val archive: ArchiveCache,
+    /** Ends an empty bond the person joined another from, when that did not go through at the time. */
+    private val emptyBonds: EmptyBondExit? = null,
 ) : DailyLoop {
     private val _state = MutableStateFlow<DailyLoopState>(DailyLoopState.Loading)
     override val state: StateFlow<DailyLoopState> = _state.asStateFlow()
@@ -91,6 +101,9 @@ class RepositoryDailyLoop(
     /** Moved on by [clear], so a load that was in flight then cannot publish into the next person's session. */
     private var generation = 0
 
+    /** The Today screen the day is for ([open]); only it forgets the day when it goes ([close]). */
+    private var owner: Any? = null
+
     override suspend fun refresh() {
         // Retrying after a failed first load: the surface again, never a spinner (as SignedInStart does).
         if (_state.value == DailyLoopState.Failed) _state.value = DailyLoopState.Loading
@@ -98,6 +111,9 @@ class RepositoryDailyLoop(
         val startedIn = generation
         mutex.withLock {
             val cachedBondId = if (bond == null) showCached(startedIn) else null
+            // After the cached day is drawn, so a retry never delays it; before the list is read,
+            // so a bond just ended is not shown.
+            settleEmptyBonds()
             load(startedIn, cachedBondId)
         }
     }
@@ -274,6 +290,17 @@ class RepositoryDailyLoop(
      * Forgets the day in memory. The cached copy stays: it is the person's own, for
      * the next launch, and the session wipes it when the session ends.
      */
+    override fun open(owner: Any) {
+        this.owner = owner
+        clear()
+    }
+
+    override fun close(owner: Any) {
+        if (this.owner !== owner) return
+        this.owner = null
+        clear()
+    }
+
     override fun clear() {
         generation++
         bond = null
@@ -320,7 +347,7 @@ class RepositoryDailyLoop(
         if (startedIn != generation) return
         val open = when (listed) {
             is Result.Failure -> return failed()
-            is Result.Success -> listed.data.firstOrNull { it.isOpen }
+            is Result.Success -> listed.data.bondForToday()
         }
         if (open == null) {
             bond = null
@@ -383,6 +410,17 @@ class RepositoryDailyLoop(
         val zone = bond.anchorTimezone?.let { runCatching { TimeZone.of(it) }.getOrNull() }
         val writtenOn = runCatching { LocalDate.parse(dayDate) }.getOrNull()
         return queuedDay(intendedAt, clock.now(), shown, zone, writtenOn)
+    }
+
+    /** A leave kept from an earlier join, tried again. It never fails Today: the day loads either way. */
+    private suspend fun settleEmptyBonds() {
+        try {
+            emptyBonds?.settle()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            Unit
+        }
     }
 
     /** The outbox is local and should not fail; if it does, Today still draws the server's day. */

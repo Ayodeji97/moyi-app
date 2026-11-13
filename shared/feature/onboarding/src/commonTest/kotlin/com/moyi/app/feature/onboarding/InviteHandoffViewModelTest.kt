@@ -39,4 +39,23 @@ class InviteHandoffViewModelTest : MainDispatcherTest() {
             assertEquals(InviteHandoffEvent.Finish, awaitItem())
         }
     }
+
+    @Test
+    fun withTheNewBondKnownIHaveAnInviteCodeOpensTheJoinFlow() = runTest {
+        val vm = InviteHandoffViewModel(INVITE.code, INVITE.link, canJoinInstead = true)
+        assertTrue(vm.state.value.canJoinInstead)
+        vm.events.test {
+            vm.onAction(InviteHandoffAction.OnHaveCodeClick)
+            assertEquals(InviteHandoffEvent.NavigateToJoin, awaitItem())
+        }
+    }
+
+    @Test
+    fun withoutTheNewBondNoLinkIsDrawnAndATapDoesNothing() = runTest {
+        assertFalse(viewModel.state.value.canJoinInstead)
+        viewModel.events.test {
+            viewModel.onAction(InviteHandoffAction.OnHaveCodeClick)
+            expectNoEvents()
+        }
+    }
 }

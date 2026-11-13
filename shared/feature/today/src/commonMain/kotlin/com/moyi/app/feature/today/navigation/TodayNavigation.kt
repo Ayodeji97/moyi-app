@@ -77,6 +77,8 @@ fun NavGraphBuilder.todayGraph(
     onOpenSettings: (bondId: String) -> Unit,
     onReport: (bondId: String, entryId: String?, partnerName: String?) -> Unit,
     onNoOpenBond: () -> Unit,
+    /** "I have an invite code" on Today: the join flow from the bond nobody has joined (in onboarding). */
+    onJoinWithCode: (bondId: String, bondName: String) -> Unit,
     debugTools: Boolean,
 ) {
     composable<TodayRoute>(
@@ -92,6 +94,7 @@ fun NavGraphBuilder.todayGraph(
             onNavigateToSettings = onOpenSettings,
             onNavigateToArchive = { navController.navigate(ArchiveRoute) { launchSingleTop = true } },
             onNoOpenBond = onNoOpenBond,
+            onNavigateToJoin = onJoinWithCode,
             debugTools = debugTools,
         )
     }

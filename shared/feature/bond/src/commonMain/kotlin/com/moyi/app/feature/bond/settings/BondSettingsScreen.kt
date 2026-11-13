@@ -50,6 +50,7 @@ import com.moyi.app.feature.bond.resources.settings_cancel
 import com.moyi.app.feature.bond.resources.settings_group_day
 import com.moyi.app.feature.bond.resources.settings_group_ending
 import com.moyi.app.feature.bond.resources.settings_group_invite
+import com.moyi.app.feature.onboarding.resources.bond_type_have_code
 import com.moyi.app.feature.bond.resources.settings_invite_heading
 import com.moyi.app.feature.bond.resources.settings_invite_value_active
 import com.moyi.app.feature.bond.resources.settings_invite_value_none
@@ -315,6 +316,15 @@ private fun SettingsRoot(
                             enabled = !frozen,
                             onClick = { onAction(BondSettingsAction.OnInviteClick) },
                         )
+                        // Only while nobody has joined (owner ruling 2026-11-13): the join flow, which
+                        // ends this bond if the person joins someone else's. Onboarding's own words.
+                        if (settings.waitingForPartner) {
+                            row(
+                                label = stringResource(OnboardingRes.string.bond_type_have_code),
+                                enabled = !busy,
+                                onClick = { onAction(BondSettingsAction.OnHaveCodeClick) },
+                            )
+                        }
                     }
                 }
             }

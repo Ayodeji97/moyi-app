@@ -138,7 +138,7 @@ class CreateBondViewModel(
             is Result.Success -> asked.data
             is Result.Failure -> return fail(asked.error)
         }
-        _events.send(CreateBondEvent.NavigateToInvite(invite.code, invite.link))
+        _events.send(CreateBondEvent.NavigateToInvite(invite.code, invite.link, bond.id, bond.name))
     }
 
     /** Set once the bond exists, so Create after a failed invite request does not make a second bond. */

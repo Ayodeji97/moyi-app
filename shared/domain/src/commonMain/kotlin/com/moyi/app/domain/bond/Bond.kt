@@ -27,6 +27,12 @@ data class Bond(
      * Bond-day is the calendar date there. Null when the server did not say.
      */
     val anchorTimezone: String? = null,
+    /**
+     * How many members are still in the bond (`members` whose `leftAt` is null), the caller
+     * included. Null when the server's member list does not name the caller: then the app
+     * cannot tell, and nothing that depends on it (ending an empty bond) may act.
+     */
+    val activeMembers: Int? = null,
 ) {
     /**
      * Open: the person is in it and it has not ended. A bond waiting for the
@@ -35,7 +41,24 @@ data class Bond(
      */
     val isOpen: Boolean
         get() = status == BondStatus.PENDING_MEMBER || status == BondStatus.ACTIVE || status == BondStatus.PENDING_DELETION
+
+    /**
+     * Nobody has joined: still waiting for its second member, and the caller is the only one
+     * in it. The one kind of bond the app may end on the person's behalf when they join
+     * someone else's with a code ([EmptyBondExit]). False when [activeMembers] is unknown.
+     */
+    val nobodyHasJoined: Boolean
+        get() = status == BondStatus.PENDING_MEMBER && activeMembers == 1
 }
+
+/**
+ * The bond Today shows, from `GET /bonds` (newest first): the newest open bond that someone
+ * has joined, and only when there is none, the newest open bond still waiting for its second
+ * member. A bond with two people in it is never hidden behind an empty one created later, nor
+ * behind one left waiting because ending it failed after a join ([EmptyBondExit]).
+ */
+fun List<Bond>.bondForToday(): Bond? =
+    firstOrNull { it.isOpen && it.status != BondStatus.PENDING_MEMBER } ?: firstOrNull { it.isOpen }
 
 /**
  * `Bond.type` (states.md §1a). Three cards map to the first three;

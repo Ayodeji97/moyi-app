@@ -51,6 +51,7 @@ import com.moyi.app.feature.bond.navigation.accountGraph
 import com.moyi.app.feature.bond.navigation.bondArchivedDestination
 import com.moyi.app.feature.bond.navigation.bondSettingsGraph
 import com.moyi.app.feature.onboarding.navigation.InviteHandoffRoute
+import com.moyi.app.feature.onboarding.navigation.JoinCodeRoute
 import com.moyi.app.feature.bond.navigation.openReport
 import com.moyi.app.feature.bond.navigation.reportGraph
 import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
@@ -232,12 +233,16 @@ private fun MoyiNavHost(
             onReport = { bondId, entryId, partnerName -> navController.openReport(bondId, entryId, partnerName) },
             // Left or ended on the other phone: the signed-in start asks the server again.
             onNoOpenBond = { navController.resetTo(SignedInStartRoute) },
+            // "I have an invite code" while nobody has joined: the join flow over Today, from that bond.
+            onJoinWithCode = { bondId, bondName -> navController.navigate(JoinCodeRoute.fromEmptyBond(bondId, bondName)) },
             debugTools = UiPreview.today,
         )
         bondSettingsGraph(
             navController = navController,
             // Left, blocked, or found ended: the same path as Today finding no open bond.
             onBondEnded = { navController.resetTo(SignedInStartRoute) },
+            // The same join flow, over Bond settings, so back returns there.
+            onJoinWithCode = { bondId, bondName -> navController.navigate(JoinCodeRoute.fromEmptyBond(bondId, bondName)) },
         )
         reportGraph(navController)
         onboardingGraph(

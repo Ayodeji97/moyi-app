@@ -7,6 +7,7 @@ import com.moyi.app.feature.onboarding.gate.UnverifiedGateViewModel
 import com.moyi.app.feature.onboarding.invite.InviteHandoffViewModel
 import com.moyi.app.feature.onboarding.join.JoinCodeViewModel
 import com.moyi.app.feature.onboarding.join.JoinConfirmViewModel
+import com.moyi.app.feature.onboarding.join.LeavingBond
 import com.moyi.app.feature.onboarding.relationship.RelationshipTypeViewModel
 import com.moyi.app.feature.onboarding.start.SignedInStartViewModel
 import kotlinx.datetime.TimeZone
@@ -33,7 +34,17 @@ val onboardingFeatureModule = module {
             availableZoneIds = { TimeZone.availableZoneIds },
         )
     }
-    viewModel { (code: String, link: String) -> InviteHandoffViewModel(code, link) }
+    viewModel { (code: String, link: String, canJoinInstead: Boolean) -> InviteHandoffViewModel(code, link, canJoinInstead) }
     viewModel { params -> JoinCodeViewModel(params.getOrNull<String>(), bonds = get()) }
-    viewModel { (code: String, preview: InvitePreview) -> JoinConfirmViewModel(code, preview, bonds = get()) }
+    // By type: the third parameter, the empty bond Join also ends, is null when there is none.
+    viewModel { params ->
+        JoinConfirmViewModel(
+            code = params.get<String>(),
+            preview = params.get<InvitePreview>(),
+            leaving = params.getOrNull<LeavingBond>(),
+            bonds = get(),
+            emptyBonds = get(),
+            cachedDay = get(),
+        )
+    }
 }

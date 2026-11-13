@@ -125,6 +125,20 @@ class FakeDailyLoop(initial: DailyLoopState = DailyLoopState.Loading) : DailyLoo
         clears++
         state.value = DailyLoopState.Loading
     }
+
+    /** As the real loop: only the Today that opened it last forgets the day when it goes. */
+    private var owner: Any? = null
+
+    override fun open(owner: Any) {
+        this.owner = owner
+        clear()
+    }
+
+    override fun close(owner: Any) {
+        if (this.owner !== owner) return
+        this.owner = null
+        clear()
+    }
 }
 
 /** The narrow view the shared state gives a test. */

@@ -87,6 +87,8 @@ internal class PreviewDailyLoop(private val latency: Duration = PreviewLatency) 
 
     /** The preview day is not anyone's: there is nothing to forget. */
     override fun clear() = Unit
+    override fun open(owner: Any) = Unit
+    override fun close(owner: Any) = Unit
 
     override fun debugNextLayout() {
         val all = TodayStatus.entries

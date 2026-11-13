@@ -19,7 +19,7 @@ class TodayGraphTest {
     private fun controller(): NavHostController = NavHostController().apply {
         navigatorProvider.addNavigator(ComposeNavigator())
         graph = createGraph(startDestination = TodayRoute) {
-            todayGraph(this@apply, onOpenSettings = {}, onReport = { _, _, _ -> }, onNoOpenBond = {}, debugTools = false)
+            todayGraph(this@apply, onOpenSettings = {}, onReport = { _, _, _ -> }, onNoOpenBond = {}, onJoinWithCode = { _, _ -> }, debugTools = false)
         }
     }
 
