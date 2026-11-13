@@ -18,11 +18,15 @@ import com.moyi.app.feature.today.common.nextReaction
 import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.common.TodayStatus
+import com.moyi.app.feature.today.common.holdsMediaOnItsWay
+import com.moyi.app.feature.today.common.recheckWhileOnItsWay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -37,6 +41,10 @@ import kotlinx.coroutines.launch
  *   ([TodayAction.OnForeground]), and the loop refreshes after each write and delete.
  * - **The outbox**: every foreground also tries the queued entries again, and whenever the
  *   sender sends or refuses one (here or in the background), Today reloads: the server wins.
+ * - **A photo or voice note on its way** (the partner's, until moderation clears it): while
+ *   Today is on screen and the day shows one, the day is read again on a gentle backoff
+ *   ([recheckWhileOnItsWay]), through the loop's own refresh, until it is ready. It stops when
+ *   Today stops showing ([TodayAction.OnBackground]) and starts again on the next foreground.
  * - **The reveal**: when a day turns up revealed with the partner's words, and the
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
  *
@@ -55,6 +63,9 @@ class TodayViewModel(
 
     /** The delete dialog, the delete in flight and a failed delete: Today's own, not the day's (D11). */
     private val ui = MutableStateFlow(TodayUi())
+
+    /** Re-reads the day while it shows media on its way; only while Today is on screen. */
+    private var recheck: Job? = null
 
     init {
         loop.clear()
@@ -78,6 +89,11 @@ class TodayViewModel(
                 ui.update { it.copy(failed = false) }
                 outbox.retrySoon()
                 viewModelScope.launch { loop.refresh() }
+                if (action == TodayAction.OnForeground) startRecheck()
+            }
+            TodayAction.OnBackground -> {
+                recheck?.cancel()
+                recheck = null
             }
             TodayAction.OnWriteClick -> {
                 // Write opens on the words a refused entry left in the draft: the line has been read.
@@ -103,6 +119,17 @@ class TodayViewModel(
             TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
             TodayAction.OnShareInviteClick -> shareInvite()
             TodayAction.OnDebugCycle -> debugCycle()
+        }
+    }
+
+    /** At most one: a second foreground while it runs keeps the one already counting. */
+    private fun startRecheck() {
+        if (recheck?.isActive == true) return
+        recheck = viewModelScope.launch {
+            recheckWhileOnItsWay(
+                onItsWay = loop.state.map { (it as? DailyLoopState.Ready)?.day?.holdsMediaOnItsWay() == true },
+                reload = { loop.refresh() },
+            )
         }
     }
 

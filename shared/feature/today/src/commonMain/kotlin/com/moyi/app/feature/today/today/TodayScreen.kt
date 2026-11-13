@@ -113,6 +113,8 @@ fun TodayRoot(
     // Every foreground, and every return from Write or the reveal: the day may have moved on
     // the other phone, and a push is never relied on to have arrived (states.md §10).
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onAction(TodayAction.OnForeground) }
+    // And no re-reading of a photo on its way while Today is not on screen.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onAction(TodayAction.OnBackground) }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)

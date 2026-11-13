@@ -114,6 +114,12 @@ sealed interface TodayAction {
     /** Today came to the foreground (ON_START): refresh, never trusting a push to have arrived (states.md §10). */
     data object OnForeground : TodayAction
 
+    /**
+     * Today stopped showing (ON_STOP): the app went to the background, or a screen opened over
+     * it. The re-reading of a photo or voice note on its way stops until the next [OnForeground].
+     */
+    data object OnBackground : TodayAction
+
     /** The Generic error's Try again. */
     data object OnRetryClick : TodayAction
     data object OnWriteClick : TodayAction
