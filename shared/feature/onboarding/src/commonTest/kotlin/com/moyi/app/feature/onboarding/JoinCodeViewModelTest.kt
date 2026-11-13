@@ -12,6 +12,10 @@ import com.moyi.app.feature.onboarding.resources.field_code_error_length
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
+import com.moyi.app.domain.bond.Bond
+import com.moyi.app.domain.bond.BondStatus
+import com.moyi.app.domain.bond.BondType
+import com.moyi.app.feature.onboarding.join.LeavingBond
 import com.moyi.app.feature.onboarding.resources.bond_create_error
 import com.moyi.app.feature.onboarding.resources.onboarding_error_rate_limited
 import kotlinx.coroutines.CompletableDeferred
@@ -138,6 +142,70 @@ class JoinCodeViewModelTest : MainDispatcherTest() {
         assertTrue(prefilled.state.value.prefilled)
         assertEquals("K7Q2PD", prefilled.state.value.code)
         assertFalse(manual.state.value.prefilled)
+    }
+
+    private fun ownBond(status: BondStatus, activeMembers: Int?) = Bond(
+        id = "bond-own",
+        name = "Ada alone",
+        type = BondType.FRIENDS,
+        status = status,
+        invite = null,
+        activeMembers = activeMembers,
+    )
+
+    private fun fromLinkOverToday() = JoinCodeViewModel(prefilledCode = "K7Q2PD", bonds = bonds, findEmptyBond = true)
+
+    @Test
+    fun aLinkOverTodayFindsTheBondNobodyHasJoinedAndCarriesItToConfirm() = runTest {
+        bonds.bondsResult = Result.Success(listOf(ownBond(BondStatus.PENDING_MEMBER, activeMembers = 1)))
+        val viewModel = fromLinkOverToday()
+        viewModel.events.test {
+            viewModel.onAction(JoinCodeAction.OnContinueClick)
+            assertEquals(
+                JoinCodeEvent.NavigateToConfirm("K7Q2PD", PREVIEW, LeavingBond("bond-own", "Ada alone")),
+                awaitItem(),
+            )
+        }
+        assertEquals(1, bonds.bondsCalls)
+    }
+
+    @Test
+    fun aLinkOverTodayCarriesNoBondSomeoneHasJoinedOrOneItCannotBeSureOf() = runTest {
+        val notEmpty = listOf(
+            listOf(ownBond(BondStatus.ACTIVE, activeMembers = 2)),
+            // The member list did not name the caller: unknown is never "nobody has joined".
+            listOf(ownBond(BondStatus.PENDING_MEMBER, activeMembers = null)),
+            emptyList(),
+        )
+        notEmpty.forEach { listed ->
+            bonds.bondsResult = Result.Success(listed)
+            val viewModel = fromLinkOverToday()
+            viewModel.events.test {
+                viewModel.onAction(JoinCodeAction.OnContinueClick)
+                assertEquals(JoinCodeEvent.NavigateToConfirm("K7Q2PD", PREVIEW, null), awaitItem(), listed.toString())
+            }
+        }
+    }
+
+    @Test
+    fun aLinkOverTodayWhoseBondsCannotBeReadStillReachesConfirmEndingNothing() = runTest {
+        bonds.bondsResult = Result.Failure(DataError.Network.Timeout)
+        val viewModel = fromLinkOverToday()
+        viewModel.events.test {
+            viewModel.onAction(JoinCodeAction.OnContinueClick)
+            assertEquals(JoinCodeEvent.NavigateToConfirm("K7Q2PD", PREVIEW, null), awaitItem())
+        }
+    }
+
+    @Test
+    fun outsideALinkOverTodayTheBondsAreNotAskedFor() = runTest {
+        bonds.bondsResult = Result.Success(listOf(ownBond(BondStatus.PENDING_MEMBER, activeMembers = 1)))
+        manual.onAction(JoinCodeAction.OnCodeChange("K7Q2PD"))
+        manual.events.test {
+            manual.onAction(JoinCodeAction.OnContinueClick)
+            assertEquals(JoinCodeEvent.NavigateToConfirm("K7Q2PD", PREVIEW, null), awaitItem())
+        }
+        assertEquals(0, bonds.bondsCalls)
     }
 
     @Test

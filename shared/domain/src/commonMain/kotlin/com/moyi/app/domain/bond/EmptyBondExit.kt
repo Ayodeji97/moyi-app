@@ -28,6 +28,38 @@ interface EmptyBondExit {
     suspend fun settle()
 }
 
+/**
+ * The person's own bond that joining another with a code would end: the bond Today shows
+ * ([bondForToday]), when nobody has joined it ([Bond.nobodyHasJoined]). Null when Today shows a
+ * bond someone has joined, or no bond at all.
+ *
+ * How a join that did not start from that bond (an invite link opened over Today) finds it, by
+ * the same rules as the "I have an invite code" entry points. It only decides what Confirm says
+ * and which leave is asked for; [EmptyBondExitImpl] still reads the bonds again before it leaves.
+ */
+fun List<Bond>.emptyBondToEnd(): Bond? = bondForToday()?.takeIf { it.nobodyHasJoined }
+
+/**
+ * The bond an accept whose answer was lost (a timeout, the connection dropped) joined after
+ * all, read from `GET /bonds` afterwards. [before] is every bond id the person was in before the
+ * accept was sent, and [leavingBondId] the empty bond the join was to end.
+ *
+ * Conservative: only a bond that was not there before, is not the empty one, has someone in it
+ * besides the person (no longer waiting), and is the invite's own (its name, type and the
+ * inviter as the partner, as Confirm showed them). Exactly one, or null: anything less certain
+ * is treated as a join that did not happen, and nothing is left.
+ */
+fun List<Bond>.joinedByLostAccept(preview: InvitePreview, before: Set<String>, leavingBondId: String): Bond? =
+    filter {
+        it.id !in before &&
+            it.id != leavingBondId &&
+            it.isOpen &&
+            it.status != BondStatus.PENDING_MEMBER &&
+            it.name == preview.bondName &&
+            it.type == preview.bondType &&
+            it.partnerName == preview.inviterName
+    }.singleOrNull()
+
 /** A bond to end because the person joined another: kept on the device until it is done. */
 data class PendingLeave(val bondId: String, val joinedBondId: String)
 

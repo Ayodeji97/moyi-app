@@ -71,6 +71,10 @@ data class InviteHandoffRoute(
  * the flow was opened from it ("I have an invite code" on Today, Bond settings or "Your bond is
  * ready"). Joining then ends it (owner ruling 2026-11-13). [leavingBondJustMade]: opened from
  * "Your bond is ready". Strings and a Boolean, for the same reason as [CreateBondRoute].
+ *
+ * [findEmptyBond]: opened by an invite link over Today ([fromLinkOverToday]), so the flow was
+ * not opened from a bond and does not know yet whether the person is in one nobody has joined.
+ * Continue looks for it (`GET /bonds`, by the same rule), and Confirm then says that Join ends it.
  */
 @Serializable
 data class JoinCodeRoute(
@@ -78,6 +82,7 @@ data class JoinCodeRoute(
     val leavingBondId: String? = null,
     val leavingBondName: String? = null,
     val leavingBondJustMade: Boolean = false,
+    val findEmptyBond: Boolean = false,
 ) {
     val leaving: LeavingBond? get() = leavingBond(leavingBondId, leavingBondName, leavingBondJustMade)
 
@@ -85,6 +90,12 @@ data class JoinCodeRoute(
         /** The join flow from [bondId], a bond nobody has joined: Join also ends it. */
         fun fromEmptyBond(bondId: String, bondName: String, justMade: Boolean = false) =
             JoinCodeRoute(leavingBondId = bondId, leavingBondName = bondName, leavingBondJustMade = justMade)
+
+        /**
+         * An invite link opened over Today: the prefilled code, and Continue looks for the
+         * person's own bond nobody has joined, so a join from a link ends it as a typed code does.
+         */
+        fun fromLinkOverToday(code: String) = JoinCodeRoute(prefilledCode = code, findEmptyBond = true)
     }
 }
 
@@ -156,7 +167,9 @@ data object JoinCannotBeUsedRoute
  *
  * An invite link (`https://getmoyi.app/i/{code}`) opens the prefilled code screen, put
  * there by the app shell (App.kt, LinkRouting) once the person is signed in, verified and
- * outside an open bond's Today, or over Today or the archived bond.
+ * outside an open bond's Today, or over Today or the archived bond. Over Today it looks for
+ * the person's own bond nobody has joined ([JoinCodeRoute.fromLinkOverToday]), so joining from
+ * a link ends it exactly as joining from "I have an invite code" does.
  * Account ([onOpenAccount], in `:shared:feature:bond`): the gate and relationship type as a
  * root carry the account target (a person glyph, top right) that pushes it, so back returns. A person on either is
  * in no open bond and cannot reach Bond settings (owner ruling 2026-11-09).
@@ -235,12 +248,16 @@ fun NavGraphBuilder.onboardingGraph(
             val route = entry.toRoute<JoinCodeRoute>()
             JoinCodeRoot(
                 prefilledCode = route.prefilledCode,
-                onNavigateToConfirm = { code, preview -> navController.navigate(JoinConfirmRoute(code, preview, route.leaving)) },
+                // The bond the flow was opened from, or else the one Continue found (a link over Today).
+                onNavigateToConfirm = { code, preview, found ->
+                    navController.navigate(JoinConfirmRoute(code, preview, route.leaving ?: found))
+                },
                 onNavigateToCannotBeUsed = { navController.navigate(JoinCannotBeUsedRoute) },
                 // From a link into onboarding the code screen is the root (states.md §9, "Join · code
                 // from link": no prior screen), so it has no back. Over Today or the archived bond
                 // (App.kt, LinkRouting) back returns there.
                 onNavigateBack = navController.upOrNull(),
+                findEmptyBond = route.findEmptyBond,
             )
         }
         composable<JoinConfirmRoute> { entry ->
@@ -281,11 +298,18 @@ internal fun NavController.replaceWithInvite(code: String, link: String, bondId:
 /**
  * "Enter a different code": a fresh manual entry replaces both the failed
  * screen and the code screen that led to it, so back never returns to the
- * rejected code. The bond the flow was opened from, if any, is kept: Join still ends it.
+ * rejected code. The bond the flow was opened from, if any, is kept: Join still ends it. So is
+ * a link's look for one ([JoinCodeRoute.findEmptyBond]).
  */
 internal fun NavController.replaceWithManualEntry() {
     val opened = runCatching { getBackStackEntry<JoinCodeRoute>().toRoute<JoinCodeRoute>() }.getOrNull()
-    navigate(JoinCodeRoute(leavingBondId = opened?.leavingBondId, leavingBondName = opened?.leavingBondName, leavingBondJustMade = opened?.leavingBondJustMade == true)) {
+    val fresh = JoinCodeRoute(
+        leavingBondId = opened?.leavingBondId,
+        leavingBondName = opened?.leavingBondName,
+        leavingBondJustMade = opened?.leavingBondJustMade == true,
+        findEmptyBond = opened?.findEmptyBond == true,
+    )
+    navigate(fresh) {
         popUpTo<JoinCodeRoute> { inclusive = true }
     }
 }

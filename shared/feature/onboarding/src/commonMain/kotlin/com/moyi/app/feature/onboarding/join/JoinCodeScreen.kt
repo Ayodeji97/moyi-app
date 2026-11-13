@@ -48,15 +48,17 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun JoinCodeRoot(
     prefilledCode: String?,
-    onNavigateToConfirm: (code: String, preview: InvitePreview) -> Unit,
+    onNavigateToConfirm: (code: String, preview: InvitePreview, leaving: LeavingBond?) -> Unit,
     onNavigateToCannotBeUsed: () -> Unit,
     onNavigateBack: (() -> Unit)?,
-    viewModel: JoinCodeViewModel = koinViewModel { parametersOf(prefilledCode) },
+    /** Opened by an invite link over Today: Continue also looks for the person's own empty bond. */
+    findEmptyBond: Boolean = false,
+    viewModel: JoinCodeViewModel = koinViewModel { parametersOf(prefilledCode, findEmptyBond) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is JoinCodeEvent.NavigateToConfirm -> onNavigateToConfirm(event.code, event.preview)
+            is JoinCodeEvent.NavigateToConfirm -> onNavigateToConfirm(event.code, event.preview, event.leaving)
             JoinCodeEvent.NavigateToCannotBeUsed -> onNavigateToCannotBeUsed()
             JoinCodeEvent.NavigateBack -> onNavigateBack?.invoke()
         }

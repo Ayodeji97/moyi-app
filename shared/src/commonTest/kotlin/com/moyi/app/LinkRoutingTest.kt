@@ -114,7 +114,21 @@ class LinkRoutingTest {
         val route = JoinCodeRoute(prefilledCode = "7KQ4MZ")
         assertEquals(LinkRouting.Reset(route), inviteRouting(invite, LinkPlace.Onboarding))
         assertEquals(LinkRouting.Push(route), inviteRouting(invite, LinkPlace.Archived))
-        assertEquals(LinkRouting.AboveToday(route), inviteRouting(invite, LinkPlace.SignedInApp))
+        // Over Today the person may be in a bond nobody has joined: the code screen looks for it.
+        assertEquals(LinkRouting.AboveToday(JoinCodeRoute.fromLinkOverToday("7KQ4MZ")), inviteRouting(invite, LinkPlace.SignedInApp))
+    }
+
+    @Test
+    fun `only an invite over Today looks for the person's own empty bond`() {
+        val overToday = (inviteRouting(invite, LinkPlace.SignedInApp) as LinkRouting.AboveToday).route as JoinCodeRoute
+        assertEquals(true, overToday.findEmptyBond)
+        assertEquals("7KQ4MZ", overToday.prefilledCode)
+        // Nothing is ended on a guess: the route carries no bond, only the look for one.
+        assertEquals(null, overToday.leaving)
+        val inOnboarding = (inviteRouting(invite, LinkPlace.Onboarding) as LinkRouting.Reset).route as JoinCodeRoute
+        val overArchive = (inviteRouting(invite, LinkPlace.Archived) as LinkRouting.Push).route as JoinCodeRoute
+        assertEquals(false, inOnboarding.findEmptyBond)
+        assertEquals(false, overArchive.findEmptyBond)
     }
 
     @Test

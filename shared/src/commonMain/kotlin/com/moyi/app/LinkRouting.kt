@@ -162,7 +162,9 @@ private val VERIFIED_PLACES = setOf(LinkPlace.Onboarding, LinkPlace.SignedInApp,
  * - Onboarding (no bond): the code screen replaces it, a root with no back (states.md §9).
  * - The archived bond: over it, so back returns there.
  * - Today: over Today. Joining while in an open bond is the server's to refuse
- *   (`BOND_LIMIT_REACHED`), and the confirm screen already says so.
+ *   (`BOND_LIMIT_REACHED`), and the confirm screen already says so. When the person's bond is
+ *   one nobody has joined, the join ends it (owner ruling 2026-11-13), as from "I have an
+ *   invite code": the code screen looks for that bond on Continue ([JoinCodeRoute.fromLinkOverToday]).
  *
  * Whoever is signed in is the one who joins: the confirm step names the inviter and the
  * bond first, which is what makes a link opened on the wrong account safe to back out of.
@@ -173,6 +175,7 @@ internal fun inviteRouting(link: DeepLink.Invite, place: LinkPlace): LinkRouting
         LinkPlace.Settling, LinkPlace.SignedOut, LinkPlace.Gate, LinkPlace.Elsewhere -> LinkRouting.Wait
         LinkPlace.Onboarding -> LinkRouting.Reset(route)
         LinkPlace.Archived -> LinkRouting.Push(route)
-        LinkPlace.SignedInApp -> LinkRouting.AboveToday(route)
+        // Only over Today can the person be in an open bond, so only here is one looked for.
+        LinkPlace.SignedInApp -> LinkRouting.AboveToday(JoinCodeRoute.fromLinkOverToday(link.code))
     }
 }
