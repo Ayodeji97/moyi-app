@@ -510,8 +510,8 @@ private fun MonthHeading(month: LocalDate) {
  * not even named. My deleted entry is its tombstone, as on Today. Photos and voice notes
  * are no longer drawn in the list; they are chips here and play in the day view.
  *
- * TODO(#17): R3. The partner's words here are not protected from screen capture on this
- *  branch; give this row the protection EntryCard Partner gets when #17 merges.
+ * R3: a row that draws the partner's words protects the screen from capture while it is
+ * composed, as EntryCard Partner does ([ArchiveRowModel.showsPartnerWords]).
  */
 @Composable
 private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) {
@@ -563,6 +563,7 @@ private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) 
         chips = chips,
         description = description,
         onClick = onClick,
+        protectFromCapture = row.showsPartnerWords,
     )
 }
 

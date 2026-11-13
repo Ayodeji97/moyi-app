@@ -113,8 +113,6 @@ private fun Day(state: ArchiveDayState, onAction: (ArchiveDayAction) -> Unit) {
             null
         },
     ) {
-        // TODO(#17): the partner's words are protected from screen capture there (R3);
-        //  this EntryCard gains it when #17 merges.
         day.partnerEntry?.let { words ->
             EntryWithMark(
                 marked = day.myMarkOnTheirs,

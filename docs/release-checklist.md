@@ -70,9 +70,9 @@ The simulator and emulator cannot cover these. Several have never been run on An
 - [ ] **Screen readers:** VoiceOver and TalkBack through the daily loop. Check the new rows
   (Bond settings cards, Archive rows, More menu) read as one element.
 - [ ] **Large text (200%):** Today, Write, Archive rows, Bond settings.
-- [ ] **Screen capture:** the partner's words are protected on Today and in the Archive day
-  view, but **not** in the Archive list (`TODO(#17)` in `ArchiveScreen.kt`). Decide before
-  release: protect the list, or accept the gap.
+- [ ] **Screen capture:** the partner's words are protected on Today, in the Archive day
+  view and in the Archive list (PR feat/archive-capture-protection). Check each on a real
+  device: Android screenshots come out black; the iPhone app switcher shows no words.
 
 ## 5. Store listing (owner, with Claude drafting)
 

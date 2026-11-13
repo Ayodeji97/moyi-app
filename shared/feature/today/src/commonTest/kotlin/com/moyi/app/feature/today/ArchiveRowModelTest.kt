@@ -91,6 +91,16 @@ class ArchiveRowModelTest {
     }
 
     @Test
+    fun onlyARowThatDrawsThePartnersWordsAsksForCaptureProtection() {
+        assertTrue(day(mine = "Tea", theirs = "Rain").toRowModel().showsPartnerWords)
+        assertTrue(day(theirs = "Rain").toRowModel().showsPartnerWords)
+        assertFalse(day(mine = "Tea").toRowModel().showsPartnerWords, "my words alone may be captured")
+        assertFalse(day(tombstone = true).toRowModel().showsPartnerWords)
+        val photoOnly = day(mine = "Tea", theirs = "  ", theirPhoto = photo).toRowModel()
+        assertFalse(photoOnly.showsPartnerWords, "a Photo label holds no words")
+    }
+
+    @Test
     fun theWordsAreNeverInToString() {
         assertFalse(day(mine = "Secret words").toRowModel().toString().contains("Secret"))
     }
