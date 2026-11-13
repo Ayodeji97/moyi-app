@@ -24,7 +24,7 @@ private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Defau
  * first, the pass is cancelled: a request already sent is answered by its key on the next try.
  */
 fun registerBackgroundTasks() {
-    if (KoinPlatform.getKoinOrNull() == null) initKoin()
+    startKoinOnce()
     BGTaskScheduler.sharedScheduler.registerForTaskWithIdentifier(IosOutboxScheduler.TASK_ID, usingQueue = null) { task ->
         task?.let(::runOutboxTask)
     }

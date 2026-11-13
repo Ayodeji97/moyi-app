@@ -8,6 +8,7 @@ import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.BearerTokenSource
 import com.moyi.app.data.network.PublicHttpClient
 import com.moyi.app.data.network.StorageHttpClient
+import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.networkModule
 import com.moyi.app.data.session.PersonalData
 import com.moyi.app.data.session.SecureTokenStore
@@ -51,7 +52,7 @@ class KoinModulesTest {
 
     @Test
     fun everyDefinitionResolvesAndTheSessionIsShared() {
-        val koin = koinApplication { modules(networkModule, sessionModule, databaseModule, repositoryModule, testPlatform) }.koin
+        val koin = koinApplication { modules(networkModule(ApiConfig("http://localhost:8080/api/v1")), sessionModule, databaseModule, repositoryModule, testPlatform) }.koin
         try {
             koin.get<AuthRepository>()
             koin.get<AccountRepository>()

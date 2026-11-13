@@ -1,7 +1,6 @@
 package com.moyi.app
 
 import androidx.compose.ui.window.ComposeUIViewController
-import org.koin.mp.KoinPlatform
 import platform.UIKit.UIViewController
 
 /**
@@ -9,6 +8,6 @@ import platform.UIKit.UIViewController
  * may build the view controller more than once, and a second startKoin throws.
  */
 fun MainViewController(): UIViewController {
-    if (KoinPlatform.getKoinOrNull() == null) initKoin()
+    startKoinOnce()
     return ComposeUIViewController { App() }
 }

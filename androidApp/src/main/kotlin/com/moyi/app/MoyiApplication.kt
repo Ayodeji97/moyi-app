@@ -10,7 +10,8 @@ import org.koin.android.ext.koin.androidContext
 class MoyiApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        initKoin { androidContext(this@MoyiApplication) }
+        // Local backend in debug, production in release (androidApp/build.gradle.kts).
+        initKoin(apiBaseUrl = BuildConfig.API_BASE_URL) { androidContext(this@MoyiApplication) }
         // Before any push can arrive: FCM shows a push only in a channel that exists.
         NotificationChannels.ensure(this)
         // After Koin: the token goes to PushTokenHolder. Does nothing without google-services.json.

@@ -78,12 +78,14 @@ have judged it.
 
 **Configuration**
 
-- **The API base URL is configuration, never hard-coded, and defaults to the LOCAL
-  backend**: `http://10.0.2.2:8080/api/v1` from the Android emulator,
-  `http://localhost:8080/api/v1` from the iOS simulator. Override it with
+- **The API base URL is decided by the build type, never hard-coded in shared code.**
+  Debug builds use the LOCAL backend: `http://10.0.2.2:8080/api/v1` from the Android
+  emulator, `http://localhost:8080/api/v1` from the iOS simulator, overridden with
   `moyi.apiBaseUrl` in `local.properties`. **Development builds never point at
-  production**: real people's data lives there, and the build fails if the base URL's
-  host is `getmoyi.app`.
+  production**: real people's data lives there, and a debug build fails if the base URL's
+  host is `getmoyi.app` (or a subdomain, or production's address). **Release builds**
+  (Android `release`, iOS `Release`) **use production**, `https://api.getmoyi.app/api/v1`,
+  and only they do. Cleartext is allowed in debug builds only.
 
 **Reporting**
 

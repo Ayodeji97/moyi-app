@@ -13,7 +13,7 @@ import org.koin.mp.KoinPlatform
  * may arrive before the view controller is built.
  */
 fun notificationTapped(userInfo: Map<Any?, *>) {
-    if (KoinPlatform.getKoinOrNull() == null) initKoin()
+    startKoinOnce()
     KoinPlatform.getKoin().get<PushTapInbox>().tapped(
         mapOf(
             PushPayload.KEY_BOND_ID to (userInfo[PushPayload.KEY_BOND_ID] as? String),

@@ -1,5 +1,6 @@
 package com.moyi.app
 
+import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.networkModule
 import com.moyi.app.debug.previewDataModule
 import com.moyi.app.debug.previewTodayModule
@@ -27,16 +28,21 @@ val appModule: Module = module {
     single { LinkInbox() }
 }
 
-/** Every module the app runs with, data layer first. The platform ones need `androidContext` on Android. */
-val appModules: List<Module> = listOf(networkModule) + sessionModules + databaseModules + repositoryModules + authFeatureModule + onboardingFeatureModule + todayFeatureModule + bondFeatureModule + supportFeatureModule + appModule
+/**
+ * Every module the app runs with, data layer first, talking to [apiBaseUrl]. The platform
+ * ones need `androidContext` on Android.
+ */
+fun appModules(apiBaseUrl: String): List<Module> = listOf(networkModule(ApiConfig(apiBaseUrl))) + sessionModules + databaseModules + repositoryModules + authFeatureModule + onboardingFeatureModule + todayFeatureModule + bondFeatureModule + supportFeatureModule + appModule
 
 /**
- * Starts Koin once per process. Android calls it from `MoyiApplication`
- * with `androidContext`; iOS from `MainViewController`.
+ * Starts Koin once per process, talking to [apiBaseUrl]. The app decides the URL per build
+ * (CLAUDE.md, Configuration): Android's `MoyiApplication` passes `BuildConfig.API_BASE_URL`
+ * with `androidContext`; iOS's entry points pass Info.plist's `MoyiApiBaseUrl`
+ * (`startKoinOnce`). Debug builds point at a local backend, release builds at production.
  */
-fun initKoin(config: KoinAppDeclaration = {}): KoinApplication = startKoin {
+fun initKoin(apiBaseUrl: String, config: KoinAppDeclaration = {}): KoinApplication = startKoin {
     config()
-    modules(appModules)
+    modules(appModules(apiBaseUrl))
     // DEBUG ONLY: the onboarding preview runs on fake bonds (UiPreviewIndex), the
     // today preview on a fake day (PreviewDailyLoop). The real app binds neither.
     if (UiPreviewConfig.UI_PREVIEW == "onboarding") modules(previewDataModule)

@@ -1,5 +1,9 @@
+import com.android.build.api.variant.HostTestBuilder
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import com.moyi.buildlogic.ANDROID_DEBUG_API_BASE_URL
 import com.moyi.buildlogic.DebugNetworkSecurityConfigTask
+import com.moyi.buildlogic.PRODUCTION_API_BASE_URL
+import com.moyi.buildlogic.checkedDevelopmentBaseUrl
 import com.moyi.buildlogic.moyiLocalProperty
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.net.URI
@@ -39,6 +43,21 @@ tasks.matching { it.name == "processReleaseGoogleServices" }.configureEach {
         }
     }
 }
+// ---- API base URL (CLAUDE.md, Configuration; README, "Which backend the app talks to") ----
+//
+// Decided here, per build type, and handed to initKoin as BuildConfig.API_BASE_URL:
+//  - debug: the LOCAL backend. The emulator reaches the Mac as 10.0.2.2; `moyi.apiBaseUrl`
+//    (-P or local.properties) overrides it. A production host fails the build, here at
+//    configuration time, before anything is compiled.
+//  - release: production, always. The override does not reach release.
+// CI checks both values (ApiBaseUrlTest, run for both build types by `check`).
+val apiBaseUrlOverride: String? = moyiLocalProperty("moyi.apiBaseUrl").orNull
+val overrideSource = if (providers.gradleProperty("moyi.apiBaseUrl").isPresent) "-Pmoyi.apiBaseUrl" else "local.properties"
+val debugApiBaseUrl: String = checkedDevelopmentBaseUrl(
+    apiBaseUrlOverride ?: ANDROID_DEBUG_API_BASE_URL,
+    if (apiBaseUrlOverride != null) overrideSource else "the Android default",
+)
+
 // ---- Debug cleartext allowlist (README, "Which backend the app talks to") ----------------
 //
 // The local backend speaks plain HTTP, and so does the MinIO it signs photo and voice URLs
@@ -62,6 +81,11 @@ val generateDebugNetworkSecurityConfig =
         outputDir.set(layout.buildDirectory.dir("generated/res/debugNetworkSecurity"))
     }
 androidComponents {
+    // AGP 9 runs unit tests for the debug build type only. ApiBaseUrlTest must also see the
+    // release BuildConfig, so `check` (CI) proves release carries exactly production.
+    beforeVariants(selector().withBuildType("release")) { variant ->
+        variant.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
     onVariants(selector().withBuildType("debug")) { variant ->
         variant.sources.res?.addGeneratedSourceDirectory(
             generateDebugNetworkSecurityConfig,
@@ -122,7 +146,11 @@ android {
         }
     }
     buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
+        }
         release {
+            buildConfigField("String", "API_BASE_URL", "\"$PRODUCTION_API_BASE_URL\"")
             signingConfig = uploadSigning
             isMinifyEnabled = false
             proguardFiles(
@@ -137,5 +165,7 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig.API_BASE_URL, the one value that differs between debug and release.
+        buildConfig = true
     }
 }

@@ -2,8 +2,9 @@ package com.moyi.buildlogic
 
 /**
  * The hosts a development build must never talk to (CLAUDE.md, Configuration): real
- * people's data lives there. One list for every guard that needs it: the API base URL
- * check (shared/data/network) and the debug cleartext allowlist (androidApp).
+ * people's data lives there. One list for every guard that needs it: the debug API base
+ * URL check (ApiBaseUrl.kt, androidApp) and the debug cleartext allowlist (androidApp).
+ * iosApp/scripts/api-base-url.sh repeats it for iOS Debug builds: change both together.
  */
 private val productionIps = setOf("91.98.71.136") // moyi-prod-1
 
