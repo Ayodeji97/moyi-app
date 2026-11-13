@@ -38,6 +38,11 @@ data class TodayState(
     val date: LocalDate? = null,
     /** The other member. Null only while nobody has joined (partner not joined names no one). */
     val partnerName: String? = null,
+    /**
+     * "I have an invite code" is offered: the bond is still waiting for its second member, so
+     * the person can join someone else's instead, which ends this one (owner ruling 2026-11-13).
+     */
+    val canJoinWithCode: Boolean = false,
     /** The server's prompt for today, personalised (ADR-0038). Not a client string. */
     val prompt: String? = null,
     val myEntry: String = "",
@@ -145,6 +150,9 @@ sealed interface TodayAction {
     data object OnSettingsClick : TodayAction
     data object OnShareInviteClick : TodayAction
 
+    /** "I have an invite code": the join flow, from this bond nobody has joined. */
+    data object OnHaveCodeClick : TodayAction
+
     /** DEBUG ONLY (`-PmoyiUiPreview=today`): step to the next drawn layout. */
     data object OnDebugCycle : TodayAction
 }
@@ -158,6 +166,9 @@ sealed interface TodayEvent {
 
     /** The OS share sheet with the invite; fire and forget, it proves nothing was sent. */
     data class ShareInvite(val link: String, val code: String) : TodayEvent
+
+    /** The join flow from [bondId], which nobody has joined: joining someone else's ends it. */
+    data class NavigateToJoin(val bondId: String, val bondName: String) : TodayEvent
 
     /** No open bond any more: the shell asks the signed-in start where this person belongs. */
     data object NavigateToStart : TodayEvent

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
+import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.today.OutboxSender
@@ -118,6 +119,7 @@ class TodayViewModel(
             // The target is drawn only on a loaded day, so there is always a bond to open.
             TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
             TodayAction.OnShareInviteClick -> shareInvite()
+            TodayAction.OnHaveCodeClick -> haveCode()
             TodayAction.OnDebugCycle -> debugCycle()
         }
     }
@@ -170,6 +172,17 @@ class TodayViewModel(
                 send(TodayEvent.ShareInvite(link = invite.link, code = invite.code))
             }
         }
+    }
+
+    /**
+     * "I have an invite code" (owner ruling 2026-11-13): only while the bond shown is still
+     * waiting for its second member. Opens the join flow from it; nothing changes here, and
+     * nothing is ended unless the join succeeds there.
+     */
+    private fun haveCode() {
+        val view = (loop.state.value as? DailyLoopState.Ready)?.day ?: return
+        if (view.bondStatus != BondStatus.PENDING_MEMBER) return
+        send(TodayEvent.NavigateToJoin(bondId = view.bondId, bondName = view.bondName ?: return))
     }
 
     private suspend fun issueInvite(bondId: String): Invite? = when (val created = bonds.createInvite(bondId)) {
@@ -263,6 +276,9 @@ class TodayViewModel(
                 status = view.status,
                 date = view.date,
                 partnerName = view.partnerName,
+                // Shown from the cached day too: a bond kept as waiting is one nobody had joined then,
+                // and the join flow ends it only if, read again after the join, nobody has joined it still.
+                canJoinWithCode = view.bondStatus == BondStatus.PENDING_MEMBER && view.bondName != null,
                 prompt = view.prompt?.text,
                 myEntry = view.myEntry.orEmpty(),
                 // The loop already holds them only in these layouts; this is the second lock on the door.

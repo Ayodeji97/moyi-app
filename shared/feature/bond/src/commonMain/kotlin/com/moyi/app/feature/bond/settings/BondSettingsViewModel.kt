@@ -178,6 +178,10 @@ class BondSettingsViewModel(
                 send(BondSettingsEvent.OpenInvite)
             }
             BondSettingsAction.OnShareInviteClick -> _state.value.settings?.invite?.let { send(BondSettingsEvent.ShareInvite(it.link, it.code)) }
+            // Only while nobody has joined: the join flow ends this bond, and only an empty one may be ended so.
+            BondSettingsAction.OnHaveCodeClick -> _state.value.settings?.takeIf { it.waitingForPartner }?.let {
+                send(BondSettingsEvent.OpenJoin(bondId = it.bondId, bondName = it.name))
+            }
             BondSettingsAction.OnCopyInviteClick -> _state.value.settings?.invite?.let { invite ->
                 _state.update { it.copy(inviteCopied = true) }
                 send(BondSettingsEvent.CopyInviteCode(invite.code))

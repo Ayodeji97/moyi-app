@@ -107,6 +107,8 @@ sealed interface DailyLoopState {
  */
 data class DayView(
     val bondId: String,
+    /** The bond's name: the join flow says it when joining another would end this one. Null only on test and preview days. */
+    val bondName: String? = null,
     /**
      * The bond's status as `GET /bonds` last said, or as the cached day kept it offline. Null
      * only where nothing said (test and preview days). The Archive reads it to hide the

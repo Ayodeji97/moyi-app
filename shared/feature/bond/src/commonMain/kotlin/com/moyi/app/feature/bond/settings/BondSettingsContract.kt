@@ -155,6 +155,9 @@ sealed interface BondSettingsAction {
     data object OnCopyInviteClick : BondSettingsAction
     data object OnCancelInviteClick : BondSettingsAction
     data object OnCreateInviteClick : BondSettingsAction
+
+    /** "I have an invite code", under Invite while nobody has joined (owner ruling 2026-11-13). */
+    data object OnHaveCodeClick : BondSettingsAction
 }
 
 sealed interface BondSettingsEvent {
@@ -183,6 +186,12 @@ sealed interface BondSettingsEvent {
      */
     data class ShareInvite(val link: String, val code: String) : BondSettingsEvent
     data class CopyInviteCode(val code: String) : BondSettingsEvent
+
+    /**
+     * The join flow from [bondId], which nobody has joined: joining someone else's with a code
+     * ends this one (owner ruling 2026-11-13). In onboarding: the shell opens it.
+     */
+    data class OpenJoin(val bondId: String, val bondName: String) : BondSettingsEvent
 
     /** An editor's change saved: back to the root, which shows it. */
     data object Saved : BondSettingsEvent

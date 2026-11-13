@@ -32,6 +32,7 @@ import com.moyi.app.designsystem.component.MoreMenu
 import com.moyi.app.designsystem.component.MoreMenuItem
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
+import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
@@ -82,6 +83,7 @@ import com.moyi.app.feature.today.common.QueuedDay
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.resources.today_share_invite_again
+import com.moyi.app.feature.today.resources.today_have_invite_code
 import com.moyi.app.feature.today.resources.today_invite_share_text
 import com.moyi.app.designsystem.platform.rememberShareSheet
 import androidx.compose.runtime.rememberCoroutineScope
@@ -104,6 +106,8 @@ fun TodayRoot(
     onNavigateToSettings: (bondId: String) -> Unit,
     onNavigateToArchive: () -> Unit,
     onNoOpenBond: () -> Unit,
+    /** "I have an invite code": the join flow from this bond, which nobody has joined. */
+    onNavigateToJoin: (bondId: String, bondName: String) -> Unit,
     debugTools: Boolean,
     viewModel: TodayViewModel = koinViewModel(),
 ) {
@@ -122,6 +126,7 @@ fun TodayRoot(
             is TodayEvent.NavigateToSettings -> onNavigateToSettings(event.bondId)
             TodayEvent.NavigateToArchive -> onNavigateToArchive()
             TodayEvent.NavigateToStart -> onNoOpenBond()
+            is TodayEvent.NavigateToJoin -> onNavigateToJoin(event.bondId, event.bondName)
             // One whole sentence with both placeholders, never concatenated (copy.md).
             is TodayEvent.ShareInvite -> scope.launch { shareSheet.share(getString(Res.string.today_invite_share_text, event.link, event.code)) }
         }
@@ -179,7 +184,20 @@ private fun TodayDay(
         },
         scrollContent = false,
         action = if (state.status == TodayStatus.NotWritten) {
-            { PrimaryAction(text = stringResource(Res.string.today_write_action), onClick = { onAction(TodayAction.OnWriteClick) }) }
+            {
+                PrimaryAction(text = stringResource(Res.string.today_write_action), onClick = { onAction(TodayAction.OnWriteClick) })
+                // Before writing, while nobody has joined: the way to the code they were sent
+                // (owner ruling 2026-11-13). Under Write, as "Not now" sits under Join.
+                if (state.canJoinWithCode) {
+                    Spacer(Modifier.height(MoyiTheme.spacing.lg))
+                    TextLink(
+                        stringResource(Res.string.today_have_invite_code),
+                        onClick = { onAction(TodayAction.OnHaveCodeClick) },
+                        centered = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         } else {
             null
         },
@@ -340,7 +358,12 @@ private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayActi
             // (copy.md) is kept for when a name is known. The unnamed one is PROPOSED.
             line = state.partnerName?.let { stringResource(Res.string.today_partner_pending_line, it) }
                 ?: stringResource(Res.string.today_partner_pending_line_unnamed),
-            actions = listOf(NoteAction(stringResource(Res.string.today_share_invite_again), { onAction(TodayAction.OnShareInviteClick) })),
+            actions = listOfNotNull(
+                NoteAction(stringResource(Res.string.today_share_invite_again), { onAction(TodayAction.OnShareInviteClick) }),
+                // After writing, under the share link: the way to a code they were sent (owner ruling 2026-11-13).
+                NoteAction(stringResource(Res.string.today_have_invite_code), { onAction(TodayAction.OnHaveCodeClick) })
+                    .takeIf { state.canJoinWithCode },
+            ),
         )
         // No invite could be found or issued: the Generic error's words, as for a failed delete.
         ActionFailed(state)
@@ -511,6 +534,7 @@ private fun previewState(status: TodayStatus) = TodayState(
     status = status,
     date = if (status == TodayStatus.SoloYouWrote || status == TodayStatus.SoloTheyWrote) FakeCopy.SOLO_DATE else FakeCopy.DATE,
     partnerName = FakeCopy.PARTNER_NAME,
+    canJoinWithCode = status == TodayStatus.PartnerNotJoined,
     prompt = FakeCopy.PROMPT,
     myEntry = FakeCopy.MY_ENTRY,
     queuedDay = QueuedDay.ThisDay(FakeCopy.DATE),
