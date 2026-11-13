@@ -101,6 +101,9 @@ class RepositoryDailyLoop(
     /** Moved on by [clear], so a load that was in flight then cannot publish into the next person's session. */
     private var generation = 0
 
+    /** The Today screen the day is for ([open]); only it forgets the day when it goes ([close]). */
+    private var owner: Any? = null
+
     override suspend fun refresh() {
         // Retrying after a failed first load: the surface again, never a spinner (as SignedInStart does).
         if (_state.value == DailyLoopState.Failed) _state.value = DailyLoopState.Loading
@@ -287,6 +290,17 @@ class RepositoryDailyLoop(
      * Forgets the day in memory. The cached copy stays: it is the person's own, for
      * the next launch, and the session wipes it when the session ends.
      */
+    override fun open(owner: Any) {
+        this.owner = owner
+        clear()
+    }
+
+    override fun close(owner: Any) {
+        if (this.owner !== owner) return
+        this.owner = null
+        clear()
+    }
+
     override fun clear() {
         generation++
         bond = null

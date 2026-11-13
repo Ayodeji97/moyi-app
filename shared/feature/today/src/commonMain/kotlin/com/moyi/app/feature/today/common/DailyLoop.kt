@@ -82,6 +82,20 @@ interface DailyLoop {
     /** Forgets the day: nothing of one person's day may outlive the screen that showed it (a sign-out). */
     fun clear()
 
+    /**
+     * A Today screen starts: the day is forgotten ([clear]) and [owner] is now the Today the
+     * loop's day is for. Call on the main thread, as [close] is.
+     */
+    fun open(owner: Any)
+
+    /**
+     * [owner] has gone: the day is forgotten ([clear]), unless another Today has [open]ed the
+     * loop since. Joining another bond from Today or Bond settings puts a new Today in place
+     * of the one under the join flow, and Navigation clears the old one's ViewModel only after
+     * the new one has started loading its day; that must not blank the new one.
+     */
+    fun close(owner: Any)
+
     /** DEBUG ONLY: the preview steps to its next drawn layout. The real loop does nothing. */
     fun debugNextLayout() = Unit
 }

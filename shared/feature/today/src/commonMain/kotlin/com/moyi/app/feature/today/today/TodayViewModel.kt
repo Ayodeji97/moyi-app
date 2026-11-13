@@ -50,8 +50,11 @@ import kotlinx.coroutines.launch
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
  *
  * Today is the root of the signed-in app, so it owns the loop's lifetime: the day in
- * memory is forgotten when this ViewModel is created and when it is cleared. The copy
- * on disk is the session's to wipe, when it ends (SessionManager).
+ * memory is forgotten when this ViewModel is created ([DailyLoop.open]) and when it is
+ * cleared ([DailyLoop.close]), unless a newer Today has opened the loop by then: after a
+ * join from Today or Bond settings, the Today under the join flow is cleared only once the
+ * new Today has started, and it must not blank the joined bond's day. The copy on disk is
+ * the session's to wipe, when it ends (SessionManager).
  */
 class TodayViewModel(
     private val loop: DailyLoop,
@@ -69,7 +72,7 @@ class TodayViewModel(
     private var recheck: Job? = null
 
     init {
-        loop.clear()
+        loop.open(owner = this)
     }
 
     val state: StateFlow<TodayState> = combine(loop.state, ui, ::toState)
@@ -309,7 +312,7 @@ class TodayViewModel(
     }
 
     override fun onCleared() {
-        loop.clear()
+        loop.close(owner = this)
     }
 
     /** Which of my entries the open delete dialog asks about: what deleting means differs. */

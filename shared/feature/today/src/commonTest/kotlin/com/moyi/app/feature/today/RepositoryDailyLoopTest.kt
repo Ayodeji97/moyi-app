@@ -184,6 +184,24 @@ class RepositoryDailyLoopTest {
     }
 
     @Test
+    fun onlyTheTodayThatOpenedTheLoopLastForgetsTheDayWhenItGoes() = runTest {
+        val under = Any()
+        val joined = Any()
+        loop.open(under)
+        loop.open(joined)
+        loop.refresh()
+        assertEquals("bond-1", ready.bondId)
+
+        loop.close(under)
+        assertEquals("bond-1", ready.bondId, "an older Today going must not blank the newer one's day")
+
+        loop.close(joined)
+        assertEquals(DailyLoopState.Loading, loop.state.value)
+        loop.close(joined)
+        assertEquals(DailyLoopState.Loading, loop.state.value)
+    }
+
+    @Test
     fun aRefreshAfterTheFirstAsksForTheBondsAndTheDayTogether() = runTest {
         loop.refresh()
         loop.refresh()

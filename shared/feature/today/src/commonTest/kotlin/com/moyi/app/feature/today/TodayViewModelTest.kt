@@ -33,6 +33,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.feature.today.common.QueuedDay
@@ -394,6 +395,25 @@ class TodayViewModelTest : MainDispatcherTest() {
 
         assertEquals(clearsBefore + 1, loop.clears)
         assertEquals(DailyLoopState.Loading, loop.state.value)
+    }
+
+    @Test
+    fun theTodayUnderAJoinGoingDoesNotForgetTheJoinedBondsDay() {
+        // Joining from Today: a new Today is put in place of the one under the join flow, and
+        // Navigation clears the old one's ViewModel only after the new one has started. The
+        // smoke test of PR 101 saw the bare surface stay until the next foreground.
+        val factory = viewModelFactory { initializer { TodayViewModel(loop, ledger, bonds, outbox) } }
+        val under = ViewModelStore()
+        ViewModelProvider.create(under, factory)[TodayViewModel::class]
+        val joined = ViewModelStore()
+        ViewModelProvider.create(joined, factory)[TodayViewModel::class]
+        loop.show(dayView(TodayStatus.NotWritten))
+
+        under.clear()
+
+        assertIs<DailyLoopState.Ready>(loop.state.value, "the joined bond's day must stay drawn")
+        joined.clear()
+        assertEquals(DailyLoopState.Loading, loop.state.value, "the last Today going still forgets the day")
     }
 
     // ---- Share the invite again (states.md §8) ----
