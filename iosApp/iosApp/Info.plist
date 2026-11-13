@@ -36,6 +36,12 @@
 	<!-- Push (FCM): no method swizzling. AppDelegate hands FCM the APNs token itself
 	     (NotificationDelegate.swift), and taps already go through its own
 	     UNUserNotificationCenterDelegate, so nothing is done behind the app's back. -->
+	<!-- Export compliance, answered here so App Store Connect stops asking at every upload.
+	     The app's encryption is HTTPS (the system's own TLS) and SQLCipher on the phone's
+	     own database. Neither is the app's primary function, which is a journal, so it is
+	     exempt (EAR Category 5 Part 2, Note 4). -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>

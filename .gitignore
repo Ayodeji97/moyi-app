@@ -46,3 +46,4 @@ fastlane/test_output/
 *.ipa
 *.dSYM.zip
 *.p8
+*.mobileprovision
