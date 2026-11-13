@@ -5,6 +5,8 @@ import com.moyi.app.core.ApiProblem
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -121,6 +123,51 @@ class EmptyBondExitTest {
     }
 
     @Test
+    fun aNotFoundSaysTheBondHasGoneAndIsForgotten() = runTest {
+        bonds.listed = listOf(joined, empty)
+        leaver.answer = Result.Failure(DataError.Network.Api(ApiProblem(404, ApiErrorCode.Unknown)))
+        exit.leaveAfterJoining("empty", "joined")
+        assertTrue(store.rows.isEmpty())
+    }
+
+    @Test
+    fun anAnswerThatCouldNotBeReadIsKeptAndCheckedAgainBeforeTheNextTry() = runTest {
+        // The leave may have gone through: the next pass reads the bonds first and finds it ended.
+        bonds.listed = listOf(joined, empty)
+        leaver.answer = Result.Failure(DataError.Network.Unknown)
+        exit.leaveAfterJoining("empty", "joined")
+        assertEquals(1, store.rows.size)
+
+        bonds.listed = listOf(joined, empty.copy(status = BondStatus.ARCHIVED, activeMembers = 0))
+        exit.settle()
+
+        assertEquals(1, leaver.calls.size, "an ended bond is not left twice")
+        assertTrue(store.rows.isEmpty())
+    }
+
+    @Test
+    fun aRetryFromTodayAndTheLeaveFromJoinSendItOnce() = runTest {
+        // Today's settle is mid-leave (a row kept for the same bond) when Join's own pass
+        // arrives: the mutex makes Join's pass wait, then find the row already done.
+        bonds.listed = listOf(joined, empty)
+        store.rows += PendingLeave("empty", "joined")
+        val gate = CompletableDeferred<Unit>()
+        leaver.gate = gate
+        val retry = launch { exit.settle() }
+        testScheduler.runCurrent()
+        val join = launch { exit.leaveAfterJoining("empty", "joined") }
+        testScheduler.runCurrent()
+        // The leave answered: from now on the server lists the bond as ended.
+        bonds.listed = listOf(joined, empty.copy(status = BondStatus.ARCHIVED, activeMembers = 0))
+        gate.complete(Unit)
+        retry.join()
+        join.join()
+
+        assertEquals(listOf("empty" to false), leaver.calls, "one leave, not two")
+        assertTrue(store.rows.isEmpty())
+    }
+
+    @Test
     fun aRateLimitIsKept() = runTest {
         bonds.listed = listOf(joined, empty)
         leaver.answer = Result.Failure(DataError.Network.Api(ApiProblem(429, ApiErrorCode.RATE_LIMITED)))
@@ -174,8 +221,12 @@ class EmptyBondExitTest {
         val calls = mutableListOf<Pair<String, Boolean>>()
         var answer: EmptyResult<DataError.Network> = Result.Success(Unit)
 
+        /** When set, each leave waits for it: a leave still on its way to the server. */
+        var gate: CompletableDeferred<Unit>? = null
+
         override suspend fun leave(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> {
             calls += bondId to withdrawEntries
+            gate?.await()
             return answer
         }
 
