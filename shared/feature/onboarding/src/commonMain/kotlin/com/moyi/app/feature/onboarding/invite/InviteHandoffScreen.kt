@@ -85,6 +85,8 @@ fun InviteHandoffScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             if (state.canJoinInstead) {
+                // 16 (md): inside the block of links under Share, which sits 24 (lg) below it
+                // (tokens.md §3). On Today the same link is the only one under Write, so 24.
                 Spacer(Modifier.height(spacing.md))
                 TextLink(
                     stringResource(Res.string.bond_type_have_code),

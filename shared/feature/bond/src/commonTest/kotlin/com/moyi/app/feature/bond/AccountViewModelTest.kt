@@ -21,6 +21,8 @@ import com.moyi.app.feature.bond.resources.delete_account_error_password
 import com.moyi.app.feature.bond.resources.delete_account_error_rate_limited
 import com.moyi.app.feature.bond.resources.delete_account_error_too_late
 import com.moyi.app.feature.bond.resources.settings_error_generic
+import com.moyi.app.feature.bond.signout.LAST_TRY_LIMIT
+import com.moyi.app.feature.bond.signout.SignOut
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -62,7 +64,8 @@ class AccountViewModelTest : MainDispatcherTest() {
     private val deletion = FakeDeletion()
     private val auth = FakeAuthRepository()
     private val outbox = FakeOutbox()
-    private val viewModel by lazy { AccountViewModel(deletion, auth, outbox, outbox) }
+    private val emptyBonds = FakeEmptyBondExit()
+    private val viewModel by lazy { AccountViewModel(deletion, auth, outbox, outbox, emptyBonds) }
 
     private fun api(status: Int, code: ApiErrorCode) = Result.Failure(DataError.Network.Api(ApiProblem(status, code)))
 
@@ -251,6 +254,37 @@ class AccountViewModelTest : MainDispatcherTest() {
         assertFalse(viewModel.state.value.confirmingSignOut)
         assertTrue(viewModel.state.value.signingOut)
         assertEquals(1, auth.logouts)
+    }
+
+    @Test
+    fun signOutTriesALeaveKeptFromAJoinBeforeTheWipeTakesIt() {
+        viewModel.onAction(AccountAction.OnSignOutClick)
+
+        assertEquals(1, emptyBonds.settles, "one more try, before the question")
+        assertTrue(viewModel.state.value.confirmingSignOut)
+        assertEquals(0, auth.logouts)
+    }
+
+    @Test
+    fun aLeaveThatFailsNeverStopsTheSignOut() {
+        emptyBonds.fail = true
+
+        viewModel.onAction(AccountAction.OnSignOutClick)
+        viewModel.onAction(AccountAction.OnSignOutConfirm)
+
+        assertEquals(1, emptyBonds.settles)
+        assertEquals(1, auth.logouts)
+    }
+
+    @Test
+    fun aLeaveWithNoAnswerHoldsTheSignOutNoLongerThanTheLastTryLimit() = runTest {
+        emptyBonds.hang = true
+        val signOut = SignOut(auth, outbox, outbox, emptyBonds)
+
+        assertFalse(signOut.wouldLoseWords())
+
+        assertEquals(LAST_TRY_LIMIT.inWholeMilliseconds, testScheduler.currentTime)
+        assertEquals(1, emptyBonds.settles)
     }
 
     @Test

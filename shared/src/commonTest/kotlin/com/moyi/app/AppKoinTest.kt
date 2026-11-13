@@ -139,6 +139,9 @@ class AppKoinTest {
             koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }
             // As InviteHandoffRoot passes them: the third says whether the new bond is known.
             koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD", true) }
+            // As JoinCodeRoot passes them: the code (null for manual entry), then whether to look for the empty bond.
+            koin.get<JoinCodeViewModel> { parametersOf(null, false) }
+            koin.get<JoinCodeViewModel> { parametersOf("K7Q2PD", true) }
             koin.get<JoinCodeViewModel> { parametersOf(null) }
             koin.get<JoinCodeViewModel> { parametersOf("K7Q2PD") }
             val preview = InvitePreview("Amara", "Amara and Tunde", BondType.COUPLE)

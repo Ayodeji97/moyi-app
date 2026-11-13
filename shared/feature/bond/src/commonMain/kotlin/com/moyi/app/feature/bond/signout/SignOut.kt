@@ -3,6 +3,7 @@ package com.moyi.app.feature.bond.signout
 import androidx.compose.runtime.Composable
 import com.moyi.app.designsystem.component.ConfirmDialog
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.OutboxSender
 import com.moyi.app.feature.bond.resources.Res
@@ -10,6 +11,9 @@ import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_confirm
 import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_dismiss
 import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_line
 import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_title
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.seconds
@@ -19,24 +23,39 @@ import kotlin.time.Duration.Companion.seconds
  * 2026-11-09: Account signs out exactly as Bond settings does).
  *
  * Signing out wipes everything on the device (FR-124), entries still waiting to send
- * included. So it first tries to send them (one pass, at most [UNSENT_FLUSH_LIMIT]); if any
+ * included. So it first tries to send them (one pass, at most [LAST_TRY_LIMIT]); if any
  * are still waiting, the caller asks before deleting someone's words ([UnsentSignOutQuestion]).
  * Nothing waiting, the caller asks the plain "Sign out?" instead (never both questions). An involuntary end (a refresh refused, a token
  * reused) never comes through here: privacy wins, and the wipe takes them.
  *
+ * **A bond left waiting after a join** ([EmptyBondExit]): the wipe also takes the leave kept on
+ * the device, which would then never be tried again. So the same moment tries it once more,
+ * alongside the entries ([EmptyBondExit.settle], which reads the bonds first and leaves only a
+ * bond nobody has joined). Best effort: inside the same [LAST_TRY_LIMIT], never asked about,
+ * and a leave that still fails is let go with the session. The empty bond then stays open on
+ * the server, as it would have without the join; nothing is lost.
+ *
  * Signing out always ends the local session, even offline ([AuthRepository.logout]); the
- * shell routes on the session ending, so the screen needs no event of its own.
+ * shell routes on the session ending, so the screen needs no event of its own. Offline both
+ * tries fail at once, so nothing waits on the network.
  */
 internal class SignOut(
     private val auth: AuthRepository,
     private val outbox: EntryOutbox,
     private val sender: OutboxSender,
+    private val emptyBonds: EmptyBondExit,
 ) {
     /**
      * True when signing out would delete entries: some were waiting, and one more try did not
      * send them all. The caller then asks the unsent question INSTEAD of the plain one.
+     * A leave kept from a join is tried in the same moment ([leaveKeptBond]).
      */
-    suspend fun wouldLoseWords(): Boolean = unsentAfterLastTry()
+    suspend fun wouldLoseWords(): Boolean = coroutineScope {
+        val leave = launch { leaveKeptBond() }
+        val unsent = unsentAfterLastTry()
+        leave.join()
+        unsent
+    }
 
     /** The person chose to sign out anyway: the session, and its wipe, end. */
     suspend fun anyway() {
@@ -47,8 +66,21 @@ internal class SignOut(
     private suspend fun unsentAfterLastTry(): Boolean {
         val waiting = runCatching { outbox.queued().isNotEmpty() }.getOrDefault(false)
         if (!waiting) return false
-        withTimeoutOrNull(UNSENT_FLUSH_LIMIT) { sender.sendQueued() }
+        withTimeoutOrNull(LAST_TRY_LIMIT) { sender.sendQueued() }
         return runCatching { outbox.queued().isNotEmpty() }.getOrDefault(false)
+    }
+
+    /** The leave a join kept on the device, tried once more before the wipe takes it. Never fails sign-out. */
+    private suspend fun leaveKeptBond() {
+        withTimeoutOrNull(LAST_TRY_LIMIT) {
+            try {
+                emptyBonds.settle()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                Unit
+            }
+        }
     }
 }
 
@@ -70,5 +102,8 @@ internal fun UnsentSignOutQuestion(onConfirm: () -> Unit, onDismiss: () -> Unit)
     )
 }
 
-/** How long a sign-out waits for one last send of the waiting entries before it asks. */
-private val UNSENT_FLUSH_LIMIT = 10.seconds
+/**
+ * How long a sign-out waits for its last tries (the waiting entries, and a kept leave, side by
+ * side) before it asks.
+ */
+internal val LAST_TRY_LIMIT = 10.seconds

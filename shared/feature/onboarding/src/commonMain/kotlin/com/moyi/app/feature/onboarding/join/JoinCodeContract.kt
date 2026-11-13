@@ -28,8 +28,12 @@ sealed interface JoinCodeAction {
 }
 
 sealed interface JoinCodeEvent {
-    /** Resolved: who invited the person and to what, so confirm need not ask again. */
-    data class NavigateToConfirm(val code: String, val preview: InvitePreview) : JoinCodeEvent
+    /**
+     * Resolved: who invited the person and to what, so confirm need not ask again. [leaving]: the
+     * person's own bond nobody has joined, found because the flow was opened by an invite link
+     * over Today ([JoinCodeViewModel]); null when none was looked for or found.
+     */
+    data class NavigateToConfirm(val code: String, val preview: InvitePreview, val leaving: LeavingBond? = null) : JoinCodeEvent
 
     /** Expired, revoked, full or never existed: one screen for all four (FR-024). */
     data object NavigateToCannotBeUsed : JoinCodeEvent

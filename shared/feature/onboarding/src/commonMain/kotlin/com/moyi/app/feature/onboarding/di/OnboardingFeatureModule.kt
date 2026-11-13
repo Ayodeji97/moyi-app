@@ -35,7 +35,10 @@ val onboardingFeatureModule = module {
         )
     }
     viewModel { (code: String, link: String, canJoinInstead: Boolean) -> InviteHandoffViewModel(code, link, canJoinInstead) }
-    viewModel { params -> JoinCodeViewModel(params.getOrNull<String>(), bonds = get()) }
+    // By type: the code is null for manual entry; the Boolean is true only for a link over Today.
+    viewModel { params ->
+        JoinCodeViewModel(params.getOrNull<String>(), bonds = get(), findEmptyBond = params.getOrNull<Boolean>() == true)
+    }
     // By type: the third parameter, the empty bond Join also ends, is null when there is none.
     viewModel { params ->
         JoinConfirmViewModel(

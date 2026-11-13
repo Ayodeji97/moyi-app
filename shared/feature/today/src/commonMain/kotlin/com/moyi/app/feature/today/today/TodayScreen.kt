@@ -204,6 +204,9 @@ private fun TodayDay(
                 PrimaryAction(text = stringResource(Res.string.today_write_action), onClick = { onAction(TodayAction.OnWriteClick) })
                 // Before writing, while nobody has joined: the way to the code they were sent
                 // (owner ruling 2026-11-13). Under Write, as "Not now" sits under Join.
+                // 24 (lg) below the button: a link is its own block (tokens.md §3). On "Your
+                // bond is ready" the same link is 16 (md) below Continue, because there it
+                // joins Continue's block of links, which itself sits 24 below Share.
                 if (state.canJoinWithCode) {
                     Spacer(Modifier.height(MoyiTheme.spacing.lg))
                     TextLink(

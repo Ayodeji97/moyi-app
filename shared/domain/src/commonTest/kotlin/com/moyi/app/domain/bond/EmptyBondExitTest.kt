@@ -197,6 +197,29 @@ class EmptyBondExitTest {
         assertEquals(null, listOf(joined.copy(status = BondStatus.ARCHIVED)).bondForToday())
     }
 
+    @Test
+    fun theEmptyBondToEndIsTodaysBondOnlyWhileNobodyHasJoinedIt() {
+        assertEquals(empty, listOf(empty).emptyBondToEnd())
+        // Today shows the bond someone has joined, so a join from a link there ends nothing.
+        assertEquals(null, listOf(empty, joined).emptyBondToEnd())
+        assertEquals(null, listOf(joined).emptyBondToEnd())
+        assertEquals(null, listOf(empty.copy(activeMembers = null)).emptyBondToEnd())
+        assertEquals(null, listOf(empty.copy(status = BondStatus.ARCHIVED)).emptyBondToEnd())
+        assertEquals(null, emptyList<Bond>().emptyBondToEnd())
+    }
+
+    @Test
+    fun aLostAcceptIsFoundOnlyAsTheOneNewBondOfTheInvite() {
+        val preview = InvitePreview(inviterName = "Amara", bondName = "Bond joined", bondType = BondType.COUPLE)
+        val made = joined.copy(partnerName = "Amara")
+        assertEquals(made, listOf(made, empty).joinedByLostAccept(preview, before = setOf("empty"), leavingBondId = "empty"))
+        assertEquals(null, listOf(made, empty).joinedByLostAccept(preview, before = setOf("empty", "joined"), leavingBondId = "empty"))
+        assertEquals(null, listOf(made.copy(type = BondType.FAMILY)).joinedByLostAccept(preview, emptySet(), "empty"))
+        assertEquals(null, listOf(made.copy(partnerName = "Tunde")).joinedByLostAccept(preview, emptySet(), "empty"))
+        assertEquals(null, listOf(made.copy(status = BondStatus.ARCHIVED)).joinedByLostAccept(preview, emptySet(), "empty"))
+        assertEquals(null, listOf(made.copy(id = "empty")).joinedByLostAccept(preview, emptySet(), "empty"))
+    }
+
     private fun bond(id: String, status: BondStatus, members: Int) =
         Bond(id = id, name = "Bond $id", type = BondType.COUPLE, status = status, invite = null, activeMembers = members)
 

@@ -94,4 +94,33 @@ class OnboardingGraphTest {
         assertEquals(null, nav.currentBackStackEntry!!.toRoute<JoinCodeRoute>().prefilledCode)
         assertEquals(RelationshipTypeRoute, nav.previousBackStackEntry!!.toRoute<RelationshipTypeRoute>())
     }
+
+    @Test
+    fun aDifferentCodeAfterALinkOverTodayStillLooksForTheEmptyBond() {
+        val nav = controller()
+        nav.navigate(OnboardingRoute)
+        nav.navigate(JoinCodeRoute.fromLinkOverToday("K7Q2PD"))
+        nav.navigate(JoinCannotBeUsedRoute)
+
+        nav.replaceWithManualEntry()
+
+        val fresh = nav.currentBackStackEntry!!.toRoute<JoinCodeRoute>()
+        assertEquals(null, fresh.prefilledCode)
+        assertEquals(true, fresh.findEmptyBond)
+    }
+
+    @Test
+    fun aDifferentCodeFromAnEmptyBondKeepsTheBond() {
+        val nav = controller()
+        nav.navigate(OnboardingRoute)
+        nav.navigate(JoinCodeRoute.fromEmptyBond("bond-a", "Ada alone"))
+        nav.navigate(JoinCannotBeUsedRoute)
+
+        nav.replaceWithManualEntry()
+
+        val fresh = nav.currentBackStackEntry!!.toRoute<JoinCodeRoute>()
+        assertEquals("bond-a", fresh.leaving?.id)
+        assertEquals("Ada alone", fresh.leaving?.name)
+        assertEquals(false, fresh.findEmptyBond)
+    }
 }
