@@ -18,6 +18,7 @@ import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.feature.onboarding.resources.Res
+import com.moyi.app.feature.onboarding.resources.bond_type_have_code
 import com.moyi.app.feature.onboarding.resources.invite_action
 import com.moyi.app.feature.onboarding.resources.invite_heading
 import com.moyi.app.feature.onboarding.resources.invite_later
@@ -38,7 +39,9 @@ fun InviteHandoffRoot(
     code: String,
     link: String,
     onFinish: () -> Unit,
-    viewModel: InviteHandoffViewModel = koinViewModel { parametersOf(code, link) },
+    /** "I have an invite code", or null when the new bond is not known (no link drawn). */
+    onNavigateToJoin: (() -> Unit)?,
+    viewModel: InviteHandoffViewModel = koinViewModel { parametersOf(code, link, onNavigateToJoin != null) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = rememberTextClipboard()
@@ -48,6 +51,7 @@ fun InviteHandoffRoot(
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             InviteHandoffEvent.Finish -> onFinish()
+            InviteHandoffEvent.NavigateToJoin -> onNavigateToJoin?.invoke()
             is InviteHandoffEvent.CopyCode -> clipboard.copy(event.code)
             // One whole sentence with both placeholders, never concatenated (copy.md).
             is InviteHandoffEvent.Share -> scope.launch { shareSheet.share(getString(shareTemplate, event.link, event.code)) }
@@ -61,7 +65,8 @@ fun InviteHandoffRoot(
  * the bond exists and back would read as un-creating it. Eyebrow at 24,
  * heading at 107, the line 16 below, the InviteCode 24 below that (228).
  * The action block: "Share invite" (opens the OS sheet, goes nowhere) and
- * "Continue", the single exit, 24 apart.
+ * "Continue", the way on, 24 apart. Under them, 16 below, "I have an invite code" (owner
+ * ruling 2026-11-13): the join flow, for a person who was sent a code after all.
  */
 @Composable
 fun InviteHandoffScreen(
@@ -79,6 +84,15 @@ fun InviteHandoffScreen(
                 centered = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (state.canJoinInstead) {
+                Spacer(Modifier.height(spacing.md))
+                TextLink(
+                    stringResource(Res.string.bond_type_have_code),
+                    onClick = { onAction(InviteHandoffAction.OnHaveCodeClick) },
+                    centered = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
     ) {
         ScreenHeader(
@@ -95,7 +109,9 @@ fun InviteHandoffScreen(
 @Preview
 @Composable
 private fun InviteHandoffSentPreview() {
-    MoyiTheme(darkTheme = true) { InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD", link = PREVIEW_LINK), onAction = {}) }
+    MoyiTheme(darkTheme = true) {
+        InviteHandoffScreen(state = InviteHandoffState(code = "K7Q2PD", link = PREVIEW_LINK, canJoinInstead = true), onAction = {})
+    }
 }
 
 @Preview

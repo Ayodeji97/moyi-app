@@ -59,7 +59,7 @@ class CreateBondViewModelTest : MainDispatcherTest() {
         viewModel.onAction(CreateBondAction.OnNameChange("Amara and Tunde"))
         viewModel.events.test {
             viewModel.onAction(CreateBondAction.OnCreateClick)
-            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link, "bond-1", "Amara and Tunde"), awaitItem())
         }
         assertEquals(listOf(FakeBondRepository.CreateCall("Amara and Tunde", BondType.COUPLE, "Africa/Lagos")), bonds.createCalls)
         assertEquals(emptyList(), bonds.inviteCalls, "the 201 carried the invite")
@@ -82,7 +82,7 @@ class CreateBondViewModelTest : MainDispatcherTest() {
         viewModel.onAction(CreateBondAction.OnNameChange("Us"))
         viewModel.events.test {
             viewModel.onAction(CreateBondAction.OnCreateClick)
-            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link, "bond-1", "Amara and Tunde"), awaitItem())
         }
         assertEquals(listOf("bond-1"), bonds.inviteCalls)
     }
@@ -98,7 +98,7 @@ class CreateBondViewModelTest : MainDispatcherTest() {
         bonds.inviteResult = Result.Success(INVITE)
         viewModel.events.test {
             viewModel.onAction(CreateBondAction.OnCreateClick)
-            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link, "bond-1", "Amara and Tunde"), awaitItem())
         }
         assertEquals(1, bonds.createCalls.size)
         assertEquals(2, bonds.inviteCalls.size)
@@ -160,7 +160,7 @@ class CreateBondViewModelTest : MainDispatcherTest() {
         assertNull(viewModel.state.value.nameError)
         viewModel.events.test {
             viewModel.onAction(CreateBondAction.OnCreateClick)
-            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link, "bond-1", "Amara and Tunde"), awaitItem())
         }
     }
 
@@ -282,7 +282,7 @@ class CreateBondViewModelTest : MainDispatcherTest() {
         viewModel.onAction(CreateBondAction.OnTimeZoneSelect("America/Argentina/Buenos_Aires"))
         viewModel.events.test {
             viewModel.onAction(CreateBondAction.OnCreateClick)
-            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link, "bond-1", "Amara and Tunde"), awaitItem())
         }
         assertEquals(
             listOf(FakeBondRepository.CreateCall("Us", BondType.COUPLE, "America/Argentina/Buenos_Aires")),
@@ -309,7 +309,7 @@ class CreateBondViewModelTest : MainDispatcherTest() {
 
         vm.events.test {
             vm.onAction(CreateBondAction.OnCreateClick)
-            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link), awaitItem())
+            assertEquals(CreateBondEvent.NavigateToInvite(INVITE.code, INVITE.link, "bond-1", "Amara and Tunde"), awaitItem())
         }
         assertEquals(listOf(FakeBondRepository.CreateCall("Us", BondType.COUPLE, "Africa/Lagos")), bonds.createCalls)
     }

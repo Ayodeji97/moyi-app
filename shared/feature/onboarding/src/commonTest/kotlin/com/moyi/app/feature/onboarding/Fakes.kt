@@ -17,6 +17,7 @@ import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
+import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 import kotlinx.coroutines.CompletableDeferred
@@ -89,6 +90,19 @@ class FakeBondRepository : BondRepository {
         gate?.await()
         return acceptResult
     }
+}
+
+/** Records each leave asked for after a join; EmptyBondExitTest covers what the real one does. */
+class FakeEmptyBondExit : EmptyBondExit {
+    data class Leave(val emptyBondId: String, val joinedBondId: String)
+
+    val leaves = mutableListOf<Leave>()
+
+    override suspend fun leaveAfterJoining(emptyBondId: String, joinedBondId: String) {
+        leaves += Leave(emptyBondId, joinedBondId)
+    }
+
+    override suspend fun settle() = Unit
 }
 
 class FakeAccountRepository : AccountRepository {

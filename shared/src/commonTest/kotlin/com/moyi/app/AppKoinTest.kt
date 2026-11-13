@@ -19,6 +19,7 @@ import com.moyi.app.debug.PreviewBondSettingsRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
+import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.feature.auth.di.authFeatureModule
@@ -35,6 +36,7 @@ import com.moyi.app.feature.onboarding.gate.UnverifiedGateViewModel
 import com.moyi.app.feature.onboarding.invite.InviteHandoffViewModel
 import com.moyi.app.feature.onboarding.join.JoinCodeViewModel
 import com.moyi.app.feature.onboarding.join.JoinConfirmViewModel
+import com.moyi.app.feature.onboarding.join.LeavingBond
 import com.moyi.app.feature.onboarding.relationship.RelationshipTypeViewModel
 import com.moyi.app.feature.onboarding.start.SignedInStartViewModel
 import com.moyi.app.feature.auth.login.LoginViewModel
@@ -93,6 +95,13 @@ class AppKoinTest {
                     single<AuthRepository> { repo }
                     single<BondRepository> { PreviewBondRepository() }
                     single<BondSettingsRepository> { PreviewBondSettingsRepository() }
+                    single<EmptyBondExit> {
+                        object : EmptyBondExit {
+                            override suspend fun leaveAfterJoining(emptyBondId: String, joinedBondId: String) = Unit
+
+                            override suspend fun settle() = Unit
+                        }
+                    }
                     single<AccountRepository> { StubAccountRepository }
                     single<LegalRepository> { StubLegalRepository() }
                     single<TodayCache> { NoCachedDay }
@@ -128,11 +137,15 @@ class AppKoinTest {
             koin.get<SupportViewModel>()
             koin.get<RelationshipTypeViewModel>()
             koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }
-            koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD") }
+            // As InviteHandoffRoot passes them: the third says whether the new bond is known.
+            koin.get<InviteHandoffViewModel> { parametersOf("K7Q2PD", "https://getmoyi.app/i/K7Q2PD", true) }
             koin.get<JoinCodeViewModel> { parametersOf(null) }
             koin.get<JoinCodeViewModel> { parametersOf("K7Q2PD") }
             val preview = InvitePreview("Amara", "Amara and Tunde", BondType.COUPLE)
-            assertEquals("Amara", koin.get<JoinConfirmViewModel> { parametersOf("K7Q2PD", preview) }.state.value.inviterName)
+            // As JoinConfirmRoot passes them: the third is the empty bond Join also ends, or null.
+            assertEquals("Amara", koin.get<JoinConfirmViewModel> { parametersOf("K7Q2PD", preview, null) }.state.value.inviterName)
+            val leaving = LeavingBond("b1", "Amara and Tunde")
+            assertEquals(leaving, koin.get<JoinConfirmViewModel> { parametersOf("K7Q2PD", preview, leaving) }.state.value.leaving)
             koin.get<AppViewModel>()
             assertEquals(1, restores.size, "the shell restores the session once at launch")
         } finally {

@@ -23,6 +23,8 @@ import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.join_confirm_action
 import com.moyi.app.feature.onboarding.resources.join_confirm_action_sending
 import com.moyi.app.feature.onboarding.resources.join_confirm_heading
+import com.moyi.app.feature.onboarding.resources.join_confirm_line_ends_bond
+import com.moyi.app.feature.onboarding.resources.join_confirm_line_ends_new_bond
 import com.moyi.app.feature.onboarding.resources.join_confirm_line_reciprocity
 import com.moyi.app.feature.onboarding.resources.join_confirm_secondary
 import com.moyi.app.feature.onboarding.resources.join_eyebrow
@@ -34,11 +36,12 @@ import org.koin.core.parameter.parametersOf
 fun JoinConfirmRoot(
     code: String,
     preview: InvitePreview,
+    leaving: LeavingBond?,
     onFinish: () -> Unit,
     onNavigateToCannotBeUsed: () -> Unit,
     onNavigateToGate: () -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: JoinConfirmViewModel = koinViewModel { parametersOf(code, preview) },
+    viewModel: JoinConfirmViewModel = koinViewModel { parametersOf(code, preview, leaving) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
@@ -92,6 +95,12 @@ fun JoinConfirmScreen(
         MoyiText(stringResource(Res.string.join_confirm_line_reciprocity), tone = TextTone.Muted)
         Spacer(Modifier.height(spacing.md))
         MoyiText(stringResource(state.type.confirmLine), tone = TextTone.Muted)
+        // Said before Join is pressed: joining also ends the person's own empty bond.
+        state.leaving?.let { leaving ->
+            Spacer(Modifier.height(spacing.md))
+            val line = if (leaving.justMade) Res.string.join_confirm_line_ends_new_bond else Res.string.join_confirm_line_ends_bond
+            MoyiText(stringResource(line, leaving.name), tone = TextTone.Muted)
+        }
     }
 }
 
@@ -107,6 +116,14 @@ private fun JoinConfirmPreview() {
 @Composable
 private fun JoinConfirmJoiningPreview() {
     MoyiTheme(darkTheme = true) { JoinConfirmScreen(state = previewState.copy(joining = true), onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun JoinConfirmFromEmptyBondPreview() {
+    MoyiTheme(darkTheme = true) {
+        JoinConfirmScreen(state = previewState.copy(leaving = LeavingBond(id = "b1", name = "Esther's space")), onAction = {})
+    }
 }
 
 @Preview

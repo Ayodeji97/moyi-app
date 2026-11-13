@@ -71,8 +71,11 @@ sealed interface CreateBondAction {
 }
 
 sealed interface CreateBondEvent {
-    /** The bond exists; hand off its invite. */
-    data class NavigateToInvite(val code: String, val link: String) : CreateBondEvent
+    /**
+     * The bond exists; hand off its invite. [bondId] and [bondName] are the new bond's, for
+     * "I have an invite code" there, which ends it if the person joins someone else's instead.
+     */
+    data class NavigateToInvite(val code: String, val link: String, val bondId: String, val bondName: String) : CreateBondEvent
 
     /** `403 EMAIL_NOT_VERIFIED`: the account cannot create a bond yet (FR-002). */
     data object NavigateToGate : CreateBondEvent
