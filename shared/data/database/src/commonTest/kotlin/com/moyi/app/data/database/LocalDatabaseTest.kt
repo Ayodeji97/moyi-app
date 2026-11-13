@@ -119,8 +119,9 @@ class LocalDatabaseTest {
             outboxQueries.insert(queued)
             archiveDayQueries.upsert(archived)
             archiveEmptyQueries.markEmpty("ada", "bond-2")
+            pendingLeaveQueries.insert("ada", "bond-1", "bond-2")
         }
-        assertTrue(database.userTables().containsAll(listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty")))
+        assertTrue(database.userTables().containsAll(listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty", "pending_leave")))
 
         database.wipe()
 
@@ -143,6 +144,7 @@ class LocalDatabaseTest {
     fun aVersionOneDatabaseIsMigratedToHoldDrafts() = runTest {
         // Version 1 (#37) had only cached_day: build that, then migrate it as a phone would.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE draft", 0)
         driver.execute(null, "DROP TABLE outbox_entry", 0)
         driver.execute(null, "DROP TABLE archive_day", 0)
@@ -154,7 +156,7 @@ class LocalDatabaseTest {
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = MoyiDatabase.Schema.version)
 
-        assertEquals(7L, MoyiDatabase.Schema.version)
+        assertEquals(8L, MoyiDatabase.Schema.version)
         old.io { draftQueries.upsert(draft) }
         assertEquals(draft, old.io { draftQueries.forKey("ada", "bond-1", "NEW_ENTRY").executeAsOne() })
         assertEquals(1L, old.rowCount("cached_day"), "the migration keeps what was there")
@@ -164,6 +166,7 @@ class LocalDatabaseTest {
     fun aVersionTwoDatabaseIsMigratedToHoldTheOutboxAndKeepsItsDraft() = runTest {
         // Version 2 (#38) had cached_day and draft: build that, then migrate it as a phone would.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE outbox_entry", 0)
         driver.execute(null, "DROP TABLE archive_day", 0)
         driver.execute(null, "DROP TABLE archive_empty", 0)
@@ -187,6 +190,7 @@ class LocalDatabaseTest {
     fun aVersionThreeDatabaseIsMigratedToHoldTheArchiveAndKeepsEverythingElse() = runTest {
         // Version 3 (#39, #40) had cached_day, draft and outbox_entry: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE archive_day", 0)
         driver.execute(null, "DROP TABLE archive_empty", 0)
         val old = LocalDatabase(driver)
@@ -209,6 +213,7 @@ class LocalDatabaseTest {
     fun aVersionFourDatabaseIsMigratedToHoldTheEmptyArchiveMarkerAndKeepsEverythingElse() = runTest {
         // Version 4 (#43) had cached_day, draft, outbox_entry and archive_day: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE archive_empty", 0)
         val old = LocalDatabase(driver)
         old.io {
@@ -231,6 +236,7 @@ class LocalDatabaseTest {
     fun aVersionFiveDatabaseIsMigratedToHoldReactionsAndKeepsEveryRow() = runTest {
         // Version 5 (#45) had every table, without the reaction columns: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE pending_leave", 0)
         val old = LocalDatabase(driver)
         old.io {
             cachedDayQueries.insert(row("ada"))
@@ -258,6 +264,7 @@ class LocalDatabaseTest {
     fun aVersionSixDatabaseIsMigratedToHoldEachEntrysMediaShapeAndKeepsEveryRow() = runTest {
         // Version 6 (#50) had every table and the reactions, without the media columns: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE pending_leave", 0)
         val old = LocalDatabase(driver)
         old.io {
             cachedDayQueries.insert(row("ada"))
@@ -282,6 +289,37 @@ class LocalDatabaseTest {
         // And the new columns hold what is written next.
         old.io { cachedDayQueries.deleteAll(); cachedDayQueries.insert(row("ada")) }
         assertEquals(row("ada"), old.io { cachedDayQueries.forUser("ada").executeAsOne() })
+    }
+
+    @Test
+    fun aVersionSevenDatabaseIsMigratedToHoldPendingLeavesAndKeepsEveryRow() = runTest {
+        // Version 7 had every table and the media columns, without pending_leave: build that, then migrate it.
+        val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE pending_leave", 0)
+        val old = LocalDatabase(driver)
+        old.io {
+            cachedDayQueries.insert(row("ada"))
+            draftQueries.upsert(draft)
+            outboxQueries.insert(queued)
+            archiveDayQueries.upsert(archived)
+            archiveEmptyQueries.markEmpty("ada", "bond-2")
+        }
+
+        MoyiDatabase.Schema.migrate(driver, oldVersion = 7, newVersion = MoyiDatabase.Schema.version)
+
+        listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty").forEach {
+            assertEquals(1L, old.rowCount(it), "$it survives")
+        }
+        old.io { pendingLeaveQueries.insert("ada", "bond-1", "bond-2") }
+        assertEquals(listOf(Pending_leave("ada", "bond-1", "bond-2")), old.io { pendingLeaveQueries.forUser("ada").executeAsList() })
+    }
+
+    @Test
+    fun aPendingLeaveIsReadOnlyForItsOwnPerson() = runTest {
+        database.io { pendingLeaveQueries.insert("ada", "bond-1", "bond-2") }
+        assertTrue(database.io { pendingLeaveQueries.forUser("ben").executeAsList() }.isEmpty())
+        database.io { pendingLeaveQueries.deleteForBond("ada", "bond-1") }
+        assertEquals(0L, database.rowCount("pending_leave"))
     }
 
     @Test

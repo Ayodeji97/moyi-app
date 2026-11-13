@@ -259,6 +259,29 @@ class BondRepositoryTest {
         assertEquals("Tunde", bond.partnerName)
     }
 
+    @Test
+    fun theListCountsTheMembersStillInItCallerIncluded() = runTest {
+        val alone = """[{"id":"m1","displayName":"Amara","role":"OWNER","joinedAt":"2026-10-29T10:00:00Z","leftAt":null}]"""
+        val pair =
+            """[{"id":"m1","displayName":"Amara","role":"OWNER","joinedAt":"2026-10-29T10:00:00Z","leftAt":null},""" +
+                """{"id":"m2","displayName":"Tunde","role":"MEMBER","joinedAt":"2026-10-30T10:00:00Z","leftAt":null}]"""
+        val oneLeft =
+            """[{"id":"m1","displayName":"Amara","role":"OWNER","joinedAt":"2026-10-29T10:00:00Z","leftAt":null},""" +
+                """{"id":"m2","displayName":"Tunde","role":"MEMBER","joinedAt":"2026-10-30T10:00:00Z","leftAt":"2026-10-31T10:00:00Z"}]"""
+        val notMe = """[{"id":"m9","displayName":"Someone","role":"OWNER","joinedAt":"2026-10-29T10:00:00Z","leftAt":null}]"""
+        val fixture = Fixture {
+            respondJson(
+                """{"bonds":[${bondJson(id = "a", members = alone)},${bondJson(id = "b", status = "ACTIVE", invite = null, members = pair)},""" +
+                    """${bondJson(id = "c", status = "ARCHIVED", invite = null, members = oneLeft)},${bondJson(id = "d", members = notMe)}]}""",
+            )
+        }
+        val bonds = assertIs<Result.Success<List<Bond>>>(fixture.bonds.bonds()).data
+
+        assertEquals(listOf(1, 2, 1, null), bonds.map { it.activeMembers })
+        // Only the first is a bond nobody has joined: waiting, with the caller alone in it.
+        assertEquals(listOf(true, false, false, false), bonds.map { it.nobodyHasJoined })
+    }
+
     private fun bondJson(
         id: String = "b1",
         status: String = "PENDING_MEMBER",

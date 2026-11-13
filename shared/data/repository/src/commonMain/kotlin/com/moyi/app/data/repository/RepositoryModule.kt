@@ -11,6 +11,9 @@ import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
+import com.moyi.app.domain.bond.EmptyBondExit
+import com.moyi.app.domain.bond.EmptyBondExitImpl
+import com.moyi.app.domain.bond.PendingLeaveStore
 import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.domain.media.MediaRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
@@ -48,6 +51,10 @@ val repositoryModule = module {
     single<BondRepository> { BondRepositoryImpl(get(), get()) }
     single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get()) }
     single<TodayRepository> { TodayRepositoryImpl(get(), get()) }
+    // Joining with a code from a bond nobody joined ends that bond, after the join; a leave
+    // that did not go through is kept on the device and tried again (owner ruling 2026-11-13).
+    single<PendingLeaveStore> { SqlPendingLeaveStore(get(), get<SessionManager>().sessionState) }
+    single<EmptyBondExit> { EmptyBondExitImpl(get(), get(), get()) }
     // Photos (and voice notes, later): the media endpoints and the direct upload to storage.
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ArchiveRepository> { ArchiveRepositoryImpl(get(), get()) }

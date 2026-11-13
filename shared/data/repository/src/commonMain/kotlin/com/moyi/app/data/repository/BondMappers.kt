@@ -27,7 +27,19 @@ internal fun BondResponse.toBond(): Bond = Bond(
     invite = invite?.toInvite(),
     partnerName = partnerName(members, me.memberId),
     anchorTimezone = anchorTimezone,
+    activeMembers = activeMembers(members, me.memberId),
 )
+
+/**
+ * How many members are still in the bond (no `leftAt`), the caller included. Null when the
+ * list does not show the caller as one of them: the app then cannot say who is in it, and
+ * ending a bond "nobody has joined" must not act on a guess.
+ */
+internal fun activeMembers(members: List<MemberResponse>?, myMemberId: String?): Int? {
+    val active = members.orEmpty().filter { it.leftAt == null }
+    if (myMemberId == null || active.none { it.id == myMemberId }) return null
+    return active.size
+}
 
 /**
  * The other member's name: the first member who is not [myMemberId], one still in

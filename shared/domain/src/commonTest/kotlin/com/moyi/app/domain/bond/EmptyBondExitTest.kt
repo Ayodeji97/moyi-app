@@ -1,0 +1,211 @@
+package com.moyi.app.domain.bond
+
+import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.core.ApiProblem
+import com.moyi.app.core.DataError
+import com.moyi.app.core.EmptyResult
+import com.moyi.app.core.Result
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+/**
+ * [EmptyBondExitImpl]: after a join, the empty bond is left only while it is still empty and the
+ * joined bond is still open; a leave that gets no answer is kept and tried again.
+ */
+class EmptyBondExitTest {
+    private val bonds = ListedBonds()
+    private val leaver = Leaver()
+    private val store = MemoryStore()
+    private val exit = EmptyBondExitImpl(bonds, leaver, store)
+
+    private val empty = bond("empty", BondStatus.PENDING_MEMBER, members = 1)
+    private val joined = bond("joined", BondStatus.ACTIVE, members = 2)
+
+    @Test
+    fun theEmptyBondIsLeftOnceTheJoinSucceededKeepingItsEntries() = runTest {
+        bonds.listed = listOf(joined, empty)
+
+        exit.leaveAfterJoining(emptyBondId = "empty", joinedBondId = "joined")
+
+        assertEquals(listOf("empty" to false), leaver.calls, "left once, withdrawEntries false: the entries are kept")
+        assertTrue(store.rows.isEmpty(), "done, so nothing is left to retry")
+    }
+
+    @Test
+    fun anActiveBondIsNeverLeft() = runTest {
+        // Someone joined the "empty" bond between the confirm screen and now.
+        bonds.listed = listOf(joined, empty.copy(status = BondStatus.ACTIVE, activeMembers = 2))
+
+        exit.leaveAfterJoining("empty", "joined")
+
+        assertTrue(leaver.calls.isEmpty())
+        assertTrue(store.rows.isEmpty(), "forgotten, not retried")
+    }
+
+    @Test
+    fun aWaitingBondWithSomeoneElseInItOrAnUnknownCountIsNotLeft() = runTest {
+        bonds.listed = listOf(joined, empty.copy(activeMembers = 2))
+        exit.leaveAfterJoining("empty", "joined")
+        bonds.listed = listOf(joined, empty.copy(activeMembers = null))
+        exit.leaveAfterJoining("empty", "joined")
+
+        assertTrue(leaver.calls.isEmpty())
+    }
+
+    @Test
+    fun theJoinedBondIsNeverLeftEvenIfAskedTo() = runTest {
+        bonds.listed = listOf(empty)
+        exit.leaveAfterJoining("empty", "empty")
+        assertTrue(leaver.calls.isEmpty())
+    }
+
+    @Test
+    fun nothingIsLeftWhenTheJoinedBondIsNoLongerOpen() = runTest {
+        // Leaving would leave the person with no bond at all: the empty one stays.
+        bonds.listed = listOf(joined.copy(status = BondStatus.ARCHIVED), empty)
+        exit.leaveAfterJoining("empty", "joined")
+        assertTrue(leaver.calls.isEmpty())
+        assertTrue(store.rows.isEmpty())
+    }
+
+    @Test
+    fun aLeaveWithNoAnswerIsKeptAndTriedAgainNextTime() = runTest {
+        bonds.listed = listOf(joined, empty)
+        leaver.answer = Result.Failure(DataError.Network.NoInternet)
+
+        exit.leaveAfterJoining("empty", "joined")
+
+        assertEquals(listOf(PendingLeave("empty", "joined")), store.rows, "kept on the device")
+        leaver.answer = Result.Success(Unit)
+
+        exit.settle()
+
+        assertEquals(2, leaver.calls.size)
+        assertTrue(store.rows.isEmpty())
+    }
+
+    @Test
+    fun aKeptLeaveIsSkippedIfTheBondBecameActiveMeanwhile() = runTest {
+        bonds.listed = listOf(joined, empty)
+        leaver.answer = Result.Failure(DataError.Network.Server(503))
+        exit.leaveAfterJoining("empty", "joined")
+        assertEquals(1, store.rows.size)
+
+        // Next start: the partner joined the "empty" bond after all.
+        bonds.listed = listOf(joined, empty.copy(status = BondStatus.ACTIVE, activeMembers = 2))
+        exit.settle()
+
+        assertEquals(1, leaver.calls.size, "not tried a second time")
+        assertTrue(store.rows.isEmpty(), "and forgotten")
+    }
+
+    @Test
+    fun aKeptLeaveWaitsWhileTheBondsCannotBeRead() = runTest {
+        store.rows += PendingLeave("empty", "joined")
+        bonds.answer = Result.Failure(DataError.Network.Timeout)
+
+        exit.settle()
+
+        assertTrue(leaver.calls.isEmpty(), "never left without reading the bonds first")
+        assertEquals(1, store.rows.size)
+    }
+
+    @Test
+    fun aRefusalThatSaysTheBondHasGoneIsForgotten() = runTest {
+        bonds.listed = listOf(joined, empty)
+        leaver.answer = Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.BOND_ARCHIVED)))
+        exit.leaveAfterJoining("empty", "joined")
+        assertTrue(store.rows.isEmpty())
+    }
+
+    @Test
+    fun aRateLimitIsKept() = runTest {
+        bonds.listed = listOf(joined, empty)
+        leaver.answer = Result.Failure(DataError.Network.Api(ApiProblem(429, ApiErrorCode.RATE_LIMITED)))
+        exit.leaveAfterJoining("empty", "joined")
+        assertEquals(1, store.rows.size)
+    }
+
+    @Test
+    fun aDeviceThatCannotKeepItStillTriesOnce() = runTest {
+        bonds.listed = listOf(joined, empty)
+        store.broken = true
+        exit.leaveAfterJoining("empty", "joined")
+        assertEquals(listOf("empty" to false), leaver.calls)
+    }
+
+    @Test
+    fun withNothingKeptSettleAsksNothing() = runTest {
+        exit.settle()
+        assertEquals(0, bonds.reads, "no round trip on an ordinary Today load")
+    }
+
+    @Test
+    fun todayPrefersABondWithSomeoneInItOverANewerEmptyOne() {
+        // Newest first, as GET /bonds lists them.
+        assertEquals("joined", listOf(empty, joined).bondForToday()?.id)
+        assertEquals("empty", listOf(empty, joined.copy(status = BondStatus.ARCHIVED)).bondForToday()?.id)
+        assertEquals(null, listOf(joined.copy(status = BondStatus.ARCHIVED)).bondForToday())
+    }
+
+    private fun bond(id: String, status: BondStatus, members: Int) =
+        Bond(id = id, name = "Bond $id", type = BondType.COUPLE, status = status, invite = null, activeMembers = members)
+
+    private class ListedBonds : BondRepository {
+        var listed: List<Bond> = emptyList()
+        var answer: Result<List<Bond>, DataError.Network>? = null
+        var reads = 0
+
+        override suspend fun bonds(): Result<List<Bond>, DataError.Network> {
+            reads++
+            return answer ?: Result.Success(listed)
+        }
+
+        override suspend fun createBond(name: String, type: BondType, anchorTimezone: String) = error("not used")
+        override suspend fun createInvite(bondId: String) = error("not used")
+        override suspend fun revokeInvite(bondId: String, inviteId: String) = error("not used")
+        override suspend fun resolveInvite(code: String) = error("not used")
+        override suspend fun acceptInvite(code: String) = error("not used")
+    }
+
+    private class Leaver : BondSettingsRepository {
+        val calls = mutableListOf<Pair<String, Boolean>>()
+        var answer: EmptyResult<DataError.Network> = Result.Success(Unit)
+
+        override suspend fun leave(bondId: String, withdrawEntries: Boolean): EmptyResult<DataError.Network> {
+            calls += bondId to withdrawEntries
+            return answer
+        }
+
+        override suspend fun settings(bondId: String) = error("not used")
+        override suspend fun update(bondId: String, version: String, change: BondSettingsChange) = error("not used")
+        override suspend fun block(bondId: String, withdrawEntries: Boolean) = error("not used")
+        override suspend fun requestDeletion(bondId: String) = error("not used")
+        override suspend fun cancelDeletion(bondId: String) = error("not used")
+        override suspend fun proposeTimezone(bondId: String, timezone: String) = error("not used")
+        override suspend fun confirmTimezone(bondId: String, proposalId: String) = error("not used")
+        override suspend fun cancelTimezoneChange(bondId: String) = error("not used")
+        override suspend fun memberSettings(bondId: String) = error("not used")
+        override suspend fun replaceMemberSettings(bondId: String, settings: MemberSettings) = error("not used")
+    }
+
+    private class MemoryStore : PendingLeaveStore {
+        val rows = mutableListOf<PendingLeave>()
+        var broken = false
+
+        override suspend fun all(): List<PendingLeave> = if (broken) error("disk") else rows.toList()
+
+        override suspend fun add(leave: PendingLeave) {
+            if (broken) error("disk")
+            rows.removeAll { it.bondId == leave.bondId }
+            rows += leave
+        }
+
+        override suspend fun remove(bondId: String) {
+            if (broken) error("disk")
+            rows.removeAll { it.bondId == bondId }
+        }
+    }
+}

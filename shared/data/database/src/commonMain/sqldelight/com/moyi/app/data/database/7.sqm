@@ -1,0 +1,9 @@
+-- Version 7 to 8: pending_leave, the bonds to end because the person joined another with a
+-- code and the leave has not gone through yet (PendingLeave.sq). A new table: nothing that
+-- was there changes.
+CREATE TABLE pending_leave (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    joined_bond_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, bond_id)
+);
