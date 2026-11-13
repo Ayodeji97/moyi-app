@@ -74,7 +74,7 @@ class JoinFromEmptyBondTodayTest : MainDispatcherTest() {
     @Test
     fun beforeWritingInAnEmptyBondTheLinkIsOfferedAndOpensTheJoinFlowFromIt() = runTest {
         bonds.result = Result.Success(listOf(empty))
-        val viewModel = TodayViewModel(loop, RevealLedger { "me" }, bonds, FakeOutbox())
+        val viewModel = TodayViewModel(loop, RevealLedger { "me" }, bonds, FakeOutbox(), FakeNotificationAskMemory())
         viewModel.state.test {
             viewModel.onAction(TodayAction.OnForeground)
             val shown = expectMostRecentItem()
@@ -92,7 +92,7 @@ class JoinFromEmptyBondTodayTest : MainDispatcherTest() {
     fun afterWritingInAnEmptyBondTheLinkIsStillOffered() = runTest {
         bonds.result = Result.Success(listOf(empty))
         entries.todayResult = Result.Success(today(BondDayStatus.OPEN, my = MY_ENTRY))
-        val viewModel = TodayViewModel(loop, RevealLedger { "me" }, bonds, FakeOutbox())
+        val viewModel = TodayViewModel(loop, RevealLedger { "me" }, bonds, FakeOutbox(), FakeNotificationAskMemory())
         viewModel.state.test {
             viewModel.onAction(TodayAction.OnForeground)
             val shown = expectMostRecentItem()
@@ -104,7 +104,7 @@ class JoinFromEmptyBondTodayTest : MainDispatcherTest() {
     @Test
     fun onceSomeoneHasJoinedTheLinkIsGoneAndATapDoesNothing() = runTest {
         bonds.result = Result.Success(listOf(joined))
-        val viewModel = TodayViewModel(loop, RevealLedger { "me" }, bonds, FakeOutbox())
+        val viewModel = TodayViewModel(loop, RevealLedger { "me" }, bonds, FakeOutbox(), FakeNotificationAskMemory())
         viewModel.state.test {
             viewModel.onAction(TodayAction.OnForeground)
             val shown = expectMostRecentItem()

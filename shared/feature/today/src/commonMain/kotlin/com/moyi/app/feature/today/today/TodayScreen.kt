@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.ConfirmDialog
@@ -85,7 +86,11 @@ import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.resources.today_share_invite_again
 import com.moyi.app.feature.today.resources.today_have_invite_code
 import com.moyi.app.feature.today.resources.today_invite_share_text
+import com.moyi.app.designsystem.platform.rememberNotificationPermission
 import com.moyi.app.designsystem.platform.rememberShareSheet
+import com.moyi.app.feature.today.resources.today_notifications_allow
+import com.moyi.app.feature.today.resources.today_notifications_ask_line
+import com.moyi.app.feature.today.resources.today_notifications_not_now
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -119,6 +124,13 @@ fun TodayRoot(
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onAction(TodayAction.OnForeground) }
     // And no re-reading of a photo on its way while Today is not on screen.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onAction(TodayAction.OnBackground) }
+    // The phone's notification permission, read on every resume (Settings may have changed it,
+    // and the system prompt pauses the screen): the ViewModel decides whether the note shows.
+    val permission = rememberNotificationPermission()
+    LifecycleResumeEffect(permission) {
+        val check = scope.launch { viewModel.onAction(TodayAction.OnNotificationPermissionChecked(permission.status())) }
+        onPauseOrDispose { check.cancel() }
+    }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)
@@ -129,6 +141,10 @@ fun TodayRoot(
             is TodayEvent.NavigateToJoin -> onNavigateToJoin(event.bondId, event.bondName)
             // One whole sentence with both placeholders, never concatenated (copy.md).
             is TodayEvent.ShareInvite -> scope.launch { shareSheet.share(getString(Res.string.today_invite_share_text, event.link, event.code)) }
+            // The phone's own prompt, as Bond settings · Notifications shows it; its answer hides the note.
+            TodayEvent.AskNotificationPermission -> scope.launch {
+                viewModel.onAction(TodayAction.OnNotificationPermissionChecked(permission.request()))
+            }
         }
     }
     TodayScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
@@ -281,6 +297,7 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
         Refusal(state, onAction)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         WaitingNote(partnerName = state.partnerName.orEmpty())
+        NotificationAsk(state, onAction)
     }
 }
 
@@ -342,8 +359,31 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
             PartnerReactionLine(state)
             ActionFailed(state)
             Refusal(state, onAction)
+            // The second writer's save opens the day at once, so this is where they see it.
+            NotificationAsk(state, onAction)
         }
     }
+}
+
+/**
+ * Asks for notifications once there is a reason (owner ruling 2026-11-13; mockup
+ * "Ask for notifications" v2): under "Written." for the first to write, below both entries
+ * for the second. Today's own note, with no heading so it never competes with "Written.":
+ * the line names both rewards and the true limit, "Allow notifications" is an outlined
+ * button (the PrimaryAction stays Write's), "Not now" a text link. Both are 48 targets.
+ * Either answer to the phone's prompt, or "Not now", removes it for good; nothing thanks.
+ */
+@Composable
+private fun NotificationAsk(state: TodayState, onAction: (TodayAction) -> Unit) {
+    if (!state.askForNotifications) return
+    Spacer(Modifier.height(MoyiTheme.spacing.lg))
+    DayNote(
+        line = stringResource(Res.string.today_notifications_ask_line),
+        actions = listOf(
+            NoteAction(stringResource(Res.string.today_notifications_allow), { onAction(TodayAction.OnAllowNotificationsClick) }, outlined = true),
+            NoteAction(stringResource(Res.string.today_notifications_not_now), { onAction(TodayAction.OnNotNowClick) }),
+        ),
+    )
 }
 
 /** 188:481. The creator writes normally; the entry simply waits (SKILL.md §4). */
@@ -565,6 +605,24 @@ private fun TodayWaitingDeletePreview() {
 }
 
 @Preview @Composable private fun TodayRevealedPreview() = TodayPreview(TodayStatus.Revealed)
+
+/** The note asking for notifications, under "Written." for the first to write (owner ruling 2026-11-13). */
+@Preview
+@Composable
+private fun TodayWaitingAskNotificationsPreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(state = previewState(TodayStatus.Waiting).copy(askForNotifications = true), onAction = {})
+    }
+}
+
+/** The same note below both entries, for the second to write, whose save opened the day. */
+@Preview
+@Composable
+private fun TodayRevealedAskNotificationsPreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(state = previewState(TodayStatus.Revealed).copy(askForNotifications = true), onAction = {})
+    }
+}
 
 @Preview @Composable private fun TodayTombstonePreview() = TodayPreview(TodayStatus.Tombstone)
 

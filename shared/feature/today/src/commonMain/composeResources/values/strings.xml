@@ -57,6 +57,12 @@
     <string name="today_have_invite_code">I have an invite code</string>
     <!-- onboarding's invite_share_text, word for word: the text the OS share sheet carries. %1$s is the invite link, %2$s the code. Repeated here because feature/today does not see onboarding's resources. -->
     <string name="today_invite_share_text">Join me on Moyi. Open %1$s or enter the code %2$s in the app.</string>
+    <!-- Approved (owner, 2026-11-13; mockup "Ask for notifications" v2), proposed in this PR. The note on Today asking for notifications, once there is a reason: after my entry is saved in a bond someone has joined, under "Written." or below both entries. No heading. Names both rewards (the reminder at the person's time, the word when the day opens) and the true limit (FR-082, at most three a day per bond). -->
+    <string name="today_notifications_ask_line">Moyi can send a reminder at your time, and a word when your day opens. No more than three a day for this bond.</string>
+    <!-- Bond settings' notifications_phone_allow, word for word (owner ruling 2026-11-13): the outlined action that shows the phone's own prompt. Repeated here because feature/today does not see bond's resources. -->
+    <string name="today_notifications_allow">Allow notifications</string>
+    <!-- Approved (owner, 2026-11-13). The text link under it: hides the note for good on this phone. The same words as onboarding's join_confirm_secondary and auth's legal_not_now. -->
+    <string name="today_notifications_not_now">Not now</string>
     <!-- FIGMA NODE NAME on 188:507. A solo day, either way round. -->
     <string name="today_solo_line">This day closed with one entry.</string>
     <!-- states.md §3 announce for Solo day, either way round (you wrote, or they did). -->

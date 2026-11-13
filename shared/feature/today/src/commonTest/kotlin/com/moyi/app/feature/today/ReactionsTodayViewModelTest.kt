@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReactionsTodayViewModelTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
-    private val viewModel by lazy { TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox()) }
+    private val viewModel by lazy { TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), FakeNotificationAskMemory()) }
 
     private fun TestScope.open(myReaction: Reaction? = null, partnerReaction: Reaction? = null, status: TodayStatus = TodayStatus.Revealed) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
