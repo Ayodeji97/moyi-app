@@ -5,6 +5,7 @@ import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
+import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.feature.onboarding.common.RelationshipType
@@ -21,6 +22,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -212,5 +214,131 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
         assertEquals(UiText.Resource(Res.string.join_error_own_code), vm.state.value.failure)
         assertEquals(false, vm.state.value.joining, "they can go back and share it instead")
         assertTrue(exit.leaves.isEmpty())
+    }
+
+    // A join whose answer was lost (code review of #101, finding 2).
+
+    /** Esther's own bond, still waiting, as `GET /bonds` lists it. */
+    private val emptyListed = Bond(
+        id = "empty-1",
+        name = "Esther's space",
+        type = BondType.FRIENDS,
+        status = BondStatus.PENDING_MEMBER,
+        invite = null,
+        activeMembers = 1,
+    )
+
+    /** Amara's bond, as it lists once Esther is in it: the invite's name, type and inviter. */
+    private val joinedListed = Bond(
+        id = "joined-1",
+        name = PREVIEW.bondName,
+        type = PREVIEW.bondType,
+        status = BondStatus.ACTIVE,
+        invite = null,
+        partnerName = PREVIEW.inviterName,
+        activeMembers = 2,
+    )
+
+    @Test
+    fun anAcceptWhoseAnswerWasLostButJoinedFinishesAndEndsTheEmptyBond() = runTest {
+        bonds.bondsResult = Result.Success(listOf(emptyListed))
+        val vm = fromEmptyBond()
+        // The server joined, but the answer never arrived.
+        bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+        bonds.bondsResult = Result.Success(listOf(joinedListed, emptyListed))
+        vm.events.test {
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.Finish, awaitItem())
+        }
+        assertEquals(listOf(FakeEmptyBondExit.Leave(emptyBondId = "empty-1", joinedBondId = "joined-1")), exit.leaves)
+        assertEquals(1, cache.clears)
+    }
+
+    @Test
+    fun spentOnTheNextTapAfterALostAnswerIsTheJoinThatHappened() = runTest {
+        bonds.bondsResult = Result.Success(listOf(emptyListed))
+        val vm = fromEmptyBond()
+        // First tap: no answer, and the bonds cannot be read either, so nothing is assumed.
+        bonds.acceptResult = Result.Failure(DataError.Network.NoInternet)
+        bonds.bondsResult = Result.Failure(DataError.Network.NoInternet)
+        vm.onAction(JoinConfirmAction.OnJoinClick)
+        assertTrue(exit.leaves.isEmpty())
+        assertFalse(vm.state.value.joining, "they can try again")
+        // Second tap: the invite is spent, by that first accept.
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        bonds.bondsResult = Result.Success(listOf(joinedListed, emptyListed))
+        vm.events.test {
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.Finish, awaitItem())
+        }
+        assertEquals(listOf(FakeEmptyBondExit.Leave(emptyBondId = "empty-1", joinedBondId = "joined-1")), exit.leaves)
+    }
+
+    @Test
+    fun spentWithNoLostAnswerBeforeItIsCannotBeUsedAndTheBondsAreNotReadAgain() = runTest {
+        bonds.bondsResult = Result.Success(listOf(emptyListed))
+        val vm = fromEmptyBond()
+        val readsBefore = bonds.bondsCalls
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        bonds.bondsResult = Result.Success(listOf(joinedListed, emptyListed))
+        vm.events.test {
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem())
+        }
+        assertEquals(readsBefore, bonds.bondsCalls)
+        assertTrue(exit.leaves.isEmpty())
+    }
+
+    @Test
+    fun aLostAnswerIsNeverTakenForAJoinOnDoubt() = runTest {
+        val doubtful = listOf(
+            // The bond was there before the accept: not this join.
+            listOf(joinedListed, emptyListed) to listOf(joinedListed, emptyListed),
+            // Not the invite's bond (another name).
+            listOf(emptyListed) to listOf(joinedListed.copy(name = "Someone else"), emptyListed),
+            // Still waiting for its second member: not a bond someone joined.
+            listOf(emptyListed) to listOf(joinedListed.copy(status = BondStatus.PENDING_MEMBER), emptyListed),
+            // Two that would fit: no way to tell which.
+            listOf(emptyListed) to listOf(joinedListed, joinedListed.copy(id = "joined-2"), emptyListed),
+            // The member list did not name the partner.
+            listOf(emptyListed) to listOf(joinedListed.copy(partnerName = null), emptyListed),
+        )
+        doubtful.forEach { (before, after) ->
+            bonds.bondsResult = Result.Success(before)
+            val vm = fromEmptyBond()
+            bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+            bonds.bondsResult = Result.Success(after)
+            vm.events.test {
+                vm.onAction(JoinConfirmAction.OnJoinClick)
+                expectNoEvents()
+            }
+            assertFalse(vm.state.value.joining, after.toString())
+            assertTrue(vm.state.value.failure != null, after.toString())
+        }
+        assertTrue(exit.leaves.isEmpty())
+        assertEquals(0, cache.clears)
+    }
+
+    @Test
+    fun withNoReadingFromBeforeTheAcceptNothingIsAssumed() = runTest {
+        // Read once on opening and once more before the accept; both fail.
+        bonds.bondsResult = Result.Failure(DataError.Network.NoInternet)
+        val vm = fromEmptyBond()
+        bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+        vm.onAction(JoinConfirmAction.OnJoinClick)
+        bonds.bondsResult = Result.Success(listOf(joinedListed, emptyListed))
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        vm.events.test {
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem())
+        }
+        assertTrue(exit.leaves.isEmpty())
+    }
+
+    @Test
+    fun withNoEmptyBondTheBondsAreNeverRead() = runTest {
+        bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+        viewModel.onAction(JoinConfirmAction.OnJoinClick)
+        assertEquals(0, bonds.bondsCalls)
     }
 }

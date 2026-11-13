@@ -3,11 +3,13 @@ package com.moyi.app.feature.onboarding.join
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moyi.app.core.ApiErrorCode
+import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.bond.joinedByLostAccept
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.common.code
@@ -16,6 +18,7 @@ import com.moyi.app.feature.onboarding.common.isUnverified
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.join_error_limit
 import com.moyi.app.feature.onboarding.resources.join_error_own_code
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,13 +48,22 @@ import kotlinx.coroutines.launch
  * fails does not hold the person here: it is kept on the device and tried again, and Today
  * shows the bond they joined meanwhile.
  *
+ * **A join whose answer was lost** (from an empty bond only): a timeout or a dropped
+ * connection can hide an accept the server did make, and pressing Join again then gets `404
+ * INVITE_NOT_USABLE` (the invite is spent), so the empty bond would stay. So the bonds are read
+ * once when the screen opens, before anything is accepted, and when an accept gets no answer
+ * (or a later one is refused as spent) they are read again: a bond that was not there before,
+ * someone else's and the invite's own ([joinedByLostAccept]), is the join that happened. Then
+ * it finishes as a join that was answered, and the leave still checks the bonds itself. With
+ * no first reading, or any doubt, nothing is assumed: the failure is shown, as before.
+ *
  * **The day on this device** ([TodayCache]) is another bond's once a join succeeds, so it is
  * forgotten before Today opens: Today would otherwise draw the empty bond's day first, and
  * ask for it, before the bonds came back with the joined one.
  */
 class JoinConfirmViewModel(
     private val code: String,
-    preview: InvitePreview,
+    private val preview: InvitePreview,
     private val leaving: LeavingBond?,
     private val bonds: BondRepository,
     private val emptyBonds: EmptyBondExit,
@@ -70,6 +82,18 @@ class JoinConfirmViewModel(
     private val _events = Channel<JoinConfirmEvent>()
     val events = _events.receiveAsFlow()
 
+    /** From an empty bond: every bond id the person was in before any accept was sent; null until read. */
+    private var bondsBefore: Set<String>? = null
+
+    /** Once an accept has gone, the bonds are never read as "before" again: the join may be in them. */
+    private var acceptSent = false
+
+    /** An accept on this screen got no answer, so a later "spent" may be this person's own join. */
+    private var answerLost = false
+
+    /** Read while the person reads the screen, so Join waits for no extra round trip. */
+    private val firstLook: Job? = leaving?.let { viewModelScope.launch { lookBefore() } }
+
     fun onAction(action: JoinConfirmAction) {
         when (action) {
             JoinConfirmAction.OnJoinClick -> join()
@@ -82,17 +106,29 @@ class JoinConfirmViewModel(
         if (_state.value.joining) return
         _state.update { it.copy(joining = true, failure = null) }
         viewModelScope.launch {
+            if (leaving != null && !acceptSent) {
+                firstLook?.join()
+                if (bondsBefore == null) lookBefore()
+            }
+            acceptSent = true
             val accepted = bonds.acceptInvite(code)
             // Joined (or already in it): the button stays Joining until the screen goes,
             // so a second tap cannot send a second accept while Finish is on its way.
             if (accepted is Result.Success) {
-                // Joined: only now is the empty bond ended. Awaited, so Today, next, lists the bonds after it.
-                leaving?.let { emptyBonds.leaveAfterJoining(emptyBondId = it.id, joinedBondId = accepted.data.id) }
-                cachedDay.clear()
-                _events.send(JoinConfirmEvent.Finish)
+                joined(accepted.data.id)
                 return@launch
             }
             val error = (accepted as Result.Failure).error
+            // No answer, or "spent" after one that had none: the join may have happened after all.
+            val noAnswer = error !is DataError.Network.Api
+            if (noAnswer) answerLost = true
+            if (leaving != null && (noAnswer || (answerLost && error.code() == ApiErrorCode.INVITE_NOT_USABLE))) {
+                val happened = joinedAfterAll(leaving.id)
+                if (happened != null) {
+                    joined(happened)
+                    return@launch
+                }
+            }
             if (error.code() == ApiErrorCode.ALREADY_MEMBER && leaving == null) {
                 _events.send(JoinConfirmEvent.Finish)
                 return@launch
@@ -110,5 +146,25 @@ class JoinConfirmViewModel(
                 else -> _state.update { it.copy(failure = error.formMessage()) }
             }
         }
+    }
+
+    /** Joined [joinedBondId]: only now is the empty bond ended. Awaited, so Today, next, lists the bonds after it. */
+    private suspend fun joined(joinedBondId: String) {
+        leaving?.let { emptyBonds.leaveAfterJoining(emptyBondId = it.id, joinedBondId = joinedBondId) }
+        cachedDay.clear()
+        _events.send(JoinConfirmEvent.Finish)
+    }
+
+    /** The bonds before any accept. A reading that came back after one was sent is not used. */
+    private suspend fun lookBefore() {
+        val listed = bonds.bonds() as? Result.Success ?: return
+        if (!acceptSent && bondsBefore == null) bondsBefore = listed.data.map { it.id }.toSet()
+    }
+
+    /** The id of the bond a lost accept joined, or null when the bonds do not show one beyond doubt. */
+    private suspend fun joinedAfterAll(leavingBondId: String): String? {
+        val before = bondsBefore ?: return null
+        val listed = bonds.bonds() as? Result.Success ?: return null
+        return listed.data.joinedByLostAccept(preview, before, leavingBondId)?.id
     }
 }
