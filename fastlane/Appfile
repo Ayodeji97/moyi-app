@@ -1,0 +1,19 @@
+# Identifiers the iOS lanes share.
+#
+# The Apple Team ID is not written here, on purpose: the repository is public and keeps it
+# on each Mac (iosApp/Configuration/Config.xcconfig, README "Signing for a real iPhone").
+# It is read from MOYI_APPLE_TEAM_ID if set, else from TEAM_ID in the git-ignored
+# iosApp/Configuration/Local.xcconfig, the same value Xcode signs with. The App Store
+# Connect API key is never here either: the Fastfile reads it from ~/.moyi/release.env
+# (README, "Releasing to TestFlight").
+app_identifier("app.getmoyi.moyi")
+
+local_xcconfig = File.expand_path("../iosApp/Configuration/Local.xcconfig", __dir__)
+moyi_team_id = ENV["MOYI_APPLE_TEAM_ID"].to_s.strip
+if moyi_team_id.empty? && File.exist?(local_xcconfig)
+  line = File.readlines(local_xcconfig).find { |l| l =~ /^\s*TEAM_ID\s*=/ }
+  moyi_team_id = line.split("=", 2).last.strip if line
+end
+team_id(moyi_team_id) unless moyi_team_id.empty?
+
+# Android (Play internal track, later) will name its package in its own platform block.

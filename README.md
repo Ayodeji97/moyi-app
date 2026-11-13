@@ -274,6 +274,57 @@ Service accounts; never commit the key):
 A real iPhone and an Android emulator with a Google Play image can receive it; an iOS
 simulator receives APNs pushes too (Apple silicon), but only through APNs' sandbox.
 
+## Releasing to TestFlight
+
+One command, from the repository root, on a Mac:
+
+```sh
+fastlane ios beta
+```
+
+It archives the iOS **Release** build (production, `https://api.getmoyi.app/api/v1`) and
+uploads it to TestFlight for internal testing only: no external groups, no review.
+
+Before the first run:
+
+- **fastlane**, from Homebrew: `brew install fastlane`.
+- **The App Store Connect app record** for `app.getmoyi.moyi` exists (App Store Connect,
+  Apps, New App). fastlane does not create it.
+- **An App Store Connect API key** with the App Manager role (Users and Access,
+  Integrations, App Store Connect API). Keep the `.p8` outside the repository and describe
+  it in `~/.moyi/release.env` (`chmod 600`; never in the repository):
+
+  ```sh
+  APP_STORE_CONNECT_API_KEY_ID=...
+  APP_STORE_CONNECT_API_ISSUER_ID=...
+  ASC_API_KEY_P8_PATH=~/.moyi/AuthKey_XXXXXXXXXX.p8
+  ```
+
+  A variable already set in the environment wins over the file; `MOYI_RELEASE_ENV` points
+  the lane at another file.
+- **The Team ID** in `iosApp/Configuration/Local.xcconfig` (as for a real iPhone, above), or
+  `MOYI_APPLE_TEAM_ID` in the environment.
+- **`iosApp/Firebase/Release/GoogleService-Info.plist`**, moyi-prod's (Push notifications,
+  above).
+
+What the lane checks, in order, and it stops at the first that fails:
+
+1. The working tree is clean, so the upload is exactly a commit (it prints the SHA).
+2. The Release Firebase config exists and is `moyi-prod` for `app.getmoyi.moyi`.
+3. The Team ID and the three `release.env` values are set (a `PASTE_` placeholder counts as
+   unset) and the `.p8` exists. Messages name variables, never their values.
+4. The build number: the last TestFlight build of `MARKETING_VERSION`
+   (`Config.xcconfig`) plus one, or 1 for the first. Version and build number are passed to
+   Xcode as build settings, so a release changes no file.
+5. After the archive, it opens the `.ipa` and refuses to upload unless `MoyiApiBaseUrl` is
+   production, the bundle ID is `app.getmoyi.moyi`, the version and build number are the
+   ones above, there is no ATS exception and the bundled Firebase project is `moyi-prod`.
+
+The `.ipa` and dSYMs land in `build/ios-release/`. Release notes come from
+`RELEASE_NOTES`, else `Internal test build <sha>`. `fastlane lanes` parses the Fastfile and
+needs no secrets. `fastlane ios check_ipa ipa:<path> build:<n>` runs check 5 alone on any
+`.ipa`, with no key and no upload. Android (Play internal track) is not automated yet.
+
 ## Legal page URLs
 
 Sign up's **Terms** and **Privacy Policy** links, and the Terms and Privacy screen (from Bond
