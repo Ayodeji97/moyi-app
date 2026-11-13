@@ -49,6 +49,9 @@ sealed interface ArchiveDayAction {
 
     /** The day view is showing again, after something above it (a report) may have changed the day. */
     data object OnResumed : ArchiveDayAction
+
+    /** The day view stopped showing (ON_PAUSE, or it left): the re-reading of media on its way stops. */
+    data object OnPaused : ArchiveDayAction
 }
 
 sealed interface ArchiveDayEvent {

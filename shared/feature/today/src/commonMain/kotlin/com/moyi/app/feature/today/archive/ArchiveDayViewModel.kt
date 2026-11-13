@@ -12,11 +12,15 @@ import com.moyi.app.domain.today.reactable
 import com.moyi.app.domain.today.TodayRepository
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.DailyLoopState
+import com.moyi.app.feature.today.common.isOnItsWay
 import com.moyi.app.feature.today.common.nextReaction
+import com.moyi.app.feature.today.common.recheckWhileOnItsWay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -48,6 +52,10 @@ import kotlinx.coroutines.launch
  *   if it does not. A tap while one is on its way is ignored. A refusal that means the day is
  *   not what is shown (`404`, `409`) reads the day again. If the day is the one Today shows,
  *   Today is refreshed once the server has it.
+ * - **A photo or voice note on its way**: as on Today, while the day view is on screen
+ *   ([ArchiveDayAction.OnResumed] to [ArchiveDayAction.OnPaused]) and shows one, the day is
+ *   read again on a gentle backoff ([recheckWhileOnItsWay]) until it is ready; never while
+ *   another read of the day is still on its way.
  */
 class ArchiveDayViewModel(
     private val date: String,
@@ -74,6 +82,12 @@ class ArchiveDayViewModel(
     /** The report flow was opened from here: when the day shows again, it is read again. */
     private var reportOpened = false
 
+    /** Re-reads the day while it shows media on its way; only while the day view is on screen. */
+    private var recheck: Job? = null
+
+    /** Reads of the day not answered yet: a re-read waits for none, it is skipped. */
+    private var loadsInFlight = 0
+
     init {
         val loaded = feed.find(date)
         val shown = loaded != null && show(loaded)
@@ -95,15 +109,37 @@ class ArchiveDayViewModel(
             is ArchiveDayAction.OnFavouriteClick -> toggleFavourite(action.target)
             is ArchiveDayAction.OnReactionClick -> react(action.reaction)
             ArchiveDayAction.OnReportClick -> openReport()
-            ArchiveDayAction.OnResumed -> if (reportOpened) {
-                // A filed entry report holds its photo and voice note back from me at once
-                // (ADR-0053 decision 4): the day, and Today if it is this day, are read again.
-                reportOpened = false
-                viewModelScope.launch {
-                    load()
-                    refreshTodayIfShowing()
-                }
+            ArchiveDayAction.OnPaused -> {
+                recheck?.cancel()
+                recheck = null
             }
+            ArchiveDayAction.OnResumed -> {
+                startRecheck()
+                if (reportOpened) readAgainAfterReport()
+            }
+        }
+    }
+
+    /**
+     * A filed entry report holds its photo and voice note back from me at once
+     * (ADR-0053 decision 4): the day, and Today if it is this day, are read again.
+     */
+    private fun readAgainAfterReport() {
+        reportOpened = false
+        viewModelScope.launch {
+            load()
+            refreshTodayIfShowing()
+        }
+    }
+
+    /** At most one: a second resume while it runs keeps the one already counting. */
+    private fun startRecheck() {
+        if (recheck?.isActive == true) return
+        recheck = viewModelScope.launch {
+            recheckWhileOnItsWay(
+                onItsWay = _state.map { it.day?.holdsMediaOnItsWay() == true },
+                reload = { if (loadsInFlight == 0) load() },
+            )
         }
     }
 
@@ -126,6 +162,15 @@ class ArchiveDayViewModel(
 
     /** Asks for the day; a day already shown stays shown until the answer replaces it. */
     private suspend fun load() {
+        loadsInFlight++
+        try {
+            read()
+        } finally {
+            loadsInFlight--
+        }
+    }
+
+    private suspend fun read() {
         val showing = _state.value.load == ArchiveLoad.Ready
         if (!showing) _state.update { it.copy(load = ArchiveLoad.Loading) }
         val answer = bondId()?.let { archive.day(it, date) }
@@ -298,6 +343,9 @@ class ArchiveDayViewModel(
     }
 
     private fun DataError.Network.isNotFound(): Boolean = this is DataError.Network.Api && problem.status == 404
+
+    private fun ArchiveDayUi.holdsMediaOnItsWay(): Boolean =
+        myPhoto.isOnItsWay() || partnerPhoto.isOnItsWay() || myVoice.isOnItsWay() || partnerVoice.isOnItsWay()
 
     private fun DataError.Network.isConflictOrNotFound(): Boolean =
         this is DataError.Network.Api && (problem.status == 404 || problem.status == 409)

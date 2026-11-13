@@ -64,7 +64,7 @@ fun ArchiveDayRoot(
     }
     LifecycleResumeEffect(viewModel) {
         viewModel.onAction(ArchiveDayAction.OnResumed)
-        onPauseOrDispose {}
+        onPauseOrDispose { viewModel.onAction(ArchiveDayAction.OnPaused) }
     }
     ArchiveDayScreen(state = state, onAction = viewModel::onAction)
 }
