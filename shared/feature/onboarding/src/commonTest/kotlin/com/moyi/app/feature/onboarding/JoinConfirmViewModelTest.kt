@@ -27,11 +27,12 @@ import kotlin.test.assertTrue
 class JoinConfirmViewModelTest : MainDispatcherTest() {
     private val bonds = FakeBondRepository()
     private val exit = FakeEmptyBondExit()
-    private val viewModel = JoinConfirmViewModel("K7Q2PD", PREVIEW, leaving = null, bonds, exit)
+    private val cache = FakeTodayCache()
+    private val viewModel = JoinConfirmViewModel("K7Q2PD", PREVIEW, leaving = null, bonds, exit, cache)
 
     /** Opened from Esther's own bond, which nobody has joined: Join also ends it. */
     private val fromEmpty = LeavingBond(id = "empty-1", name = "Esther's space")
-    private fun fromEmptyBond() = JoinConfirmViewModel("K7Q2PD", PREVIEW, fromEmpty, bonds, exit)
+    private fun fromEmptyBond() = JoinConfirmViewModel("K7Q2PD", PREVIEW, fromEmpty, bonds, exit, cache)
 
     @Test
     fun itShowsThePreviewWithoutResolvingAgain() {
@@ -44,7 +45,7 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
 
     @Test
     fun parentAndChildReadsAsFamilyNeverACrash() {
-        val vm = JoinConfirmViewModel("K7Q2PD", PREVIEW.copy(bondType = BondType.PARENT_CHILD), null, bonds, exit)
+        val vm = JoinConfirmViewModel("K7Q2PD", PREVIEW.copy(bondType = BondType.PARENT_CHILD), null, bonds, exit, cache)
         assertEquals(RelationshipType.Family, vm.state.value.type)
     }
 
@@ -172,6 +173,17 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun aJoinForgetsTheCachedDaySoTodayNeverDrawsTheEmptyBondFirst() = runTest {
+        bonds.acceptResult = Result.Success(bond(BondStatus.ACTIVE, invite = null).copy(id = "joined-1"))
+        val vm = fromEmptyBond()
+        vm.events.test {
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.Finish, awaitItem())
+        }
+        assertEquals(1, cache.clears, "the cached day is the empty bond's, not the joined one's")
+    }
+
+    @Test
     fun aJoinThatFailsEndsNothing() = runTest {
         val vm = fromEmptyBond()
         for (refusal in listOf(
@@ -186,6 +198,7 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
         }
         assertEquals(5, bonds.acceptCalls.size)
         assertTrue(exit.leaves.isEmpty(), "the empty bond is ended only after a join that succeeded")
+        assertEquals(0, cache.clears, "the empty bond is still the open one, so its cached day stays")
     }
 
     @Test

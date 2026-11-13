@@ -20,6 +20,8 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.today.CachedDay
+import com.moyi.app.domain.today.TodayCache
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -144,4 +146,17 @@ class FakeAuthRepository(signedIn: User? = user(verified = false)) : AuthReposit
     override suspend fun login(email: String, password: String): Result<User, DataError> = error("not used")
     override suspend fun logout() = error("not used")
     override suspend fun restoreSession(): SessionState = session.value
+}
+
+/** What the device has cached for Today; null is nothing (a new install, a new person, or no open bond when last seen). */
+class FakeTodayCache(var stored: CachedDay? = null) : TodayCache {
+    var clears = 0
+    override suspend fun read(): CachedDay? = stored
+    override suspend fun write(day: CachedDay) {
+        stored = day
+    }
+    override suspend fun clear() {
+        clears++
+        stored = null
+    }
 }

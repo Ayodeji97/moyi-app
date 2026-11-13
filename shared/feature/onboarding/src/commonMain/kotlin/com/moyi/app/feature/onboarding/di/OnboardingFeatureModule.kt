@@ -44,6 +44,7 @@ val onboardingFeatureModule = module {
             leaving = params.getOrNull<LeavingBond>(),
             bonds = get(),
             emptyBonds = get(),
+            cachedDay = get(),
         )
     }
 }

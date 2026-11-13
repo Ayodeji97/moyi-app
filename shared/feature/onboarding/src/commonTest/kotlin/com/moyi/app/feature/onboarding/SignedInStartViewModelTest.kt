@@ -7,7 +7,6 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.CachedDay
 import com.moyi.app.domain.today.Today
-import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.feature.onboarding.start.SignedInStartAction
 import com.moyi.app.feature.onboarding.start.SignedInStartEvent
 import com.moyi.app.feature.onboarding.start.SignedInStartState
@@ -137,16 +136,5 @@ class SignedInStartViewModelTest : MainDispatcherTest() {
         bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED)))
         assertEquals(SignedInStartEvent.NavigateToArchived(null), firstEvent())
         assertEquals(1, bonds.bondsCalls)
-    }
-}
-
-/** What the device has cached for Today; null is nothing (a new install, a new person, or no open bond when last seen). */
-private class FakeTodayCache(var stored: CachedDay? = null) : TodayCache {
-    override suspend fun read(): CachedDay? = stored
-    override suspend fun write(day: CachedDay) {
-        stored = day
-    }
-    override suspend fun clear() {
-        stored = null
     }
 }

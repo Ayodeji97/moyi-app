@@ -8,6 +8,7 @@ import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.feature.onboarding.common.RelationshipType
 import com.moyi.app.feature.onboarding.common.code
 import com.moyi.app.feature.onboarding.common.formMessage
@@ -43,6 +44,10 @@ import kotlinx.coroutines.launch
  * and ends it only while nobody has joined it). A join that fails ends nothing. A leave that
  * fails does not hold the person here: it is kept on the device and tried again, and Today
  * shows the bond they joined meanwhile.
+ *
+ * **The day on this device** ([TodayCache]) is another bond's once a join succeeds, so it is
+ * forgotten before Today opens: Today would otherwise draw the empty bond's day first, and
+ * ask for it, before the bonds came back with the joined one.
  */
 class JoinConfirmViewModel(
     private val code: String,
@@ -50,6 +55,7 @@ class JoinConfirmViewModel(
     private val leaving: LeavingBond?,
     private val bonds: BondRepository,
     private val emptyBonds: EmptyBondExit,
+    private val cachedDay: TodayCache,
 ) : ViewModel() {
     private val _state = MutableStateFlow(
         JoinConfirmState(
@@ -82,6 +88,7 @@ class JoinConfirmViewModel(
             if (accepted is Result.Success) {
                 // Joined: only now is the empty bond ended. Awaited, so Today, next, lists the bonds after it.
                 leaving?.let { emptyBonds.leaveAfterJoining(emptyBondId = it.id, joinedBondId = accepted.data.id) }
+                cachedDay.clear()
                 _events.send(JoinConfirmEvent.Finish)
                 return@launch
             }
