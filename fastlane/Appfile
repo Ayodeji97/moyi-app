@@ -16,4 +16,4 @@ if moyi_team_id.empty? && File.exist?(local_xcconfig)
 end
 team_id(moyi_team_id) unless moyi_team_id.empty?
 
-# Android (Play internal track, later) will name its package in its own platform block.
+# Android uses the same ID as its package name (Fastfile, platform :android).
