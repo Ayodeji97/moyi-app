@@ -1,5 +1,8 @@
 package com.moyi.app.feature.auth.login
 
+import androidx.compose.ui.platform.LocalAutofillManager
+import com.moyi.app.feature.auth.common.credentialAutofill
+import com.moyi.app.feature.auth.common.settle
 import com.moyi.app.designsystem.component.rememberAutoFocus
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Spacer
@@ -11,9 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -22,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Field
+import com.moyi.app.designsystem.component.FieldAutofill
 import com.moyi.app.designsystem.component.FieldType
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
@@ -67,7 +69,9 @@ fun LoginRoot(
     viewModel: LoginViewModel = koinViewModel { parametersOf(initialEmail, sessionEnded) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val autofillManager = LocalAutofillManager.current
     ObserveAsEvents(viewModel.events) { event ->
+        autofillManager.settle(event.credentialAutofill)
         when (event) {
             LoginEvent.NavigateToHome -> onNavigateToHome()
             LoginEvent.NavigateToRegister -> onNavigateToRegister()
@@ -158,9 +162,8 @@ fun LoginScreen(
                 autoCorrectEnabled = false,
                 imeAction = ImeAction.Next,
             ),
-            modifier = Modifier
-                .semantics { contentType = ContentType.EmailAddress + ContentType.Username }
-                .onBlur { onAction(LoginAction.OnFieldBlur(LoginField.Email)) },
+            autofill = FieldAutofill.AccountEmail,
+            modifier = Modifier.onBlur { onAction(LoginAction.OnFieldBlur(LoginField.Email)) },
         )
         Spacer(Modifier.height(spacing.lg))
         // Arriving with the email already filled (after verifying, or a reset), the next
@@ -180,7 +183,8 @@ fun LoginScreen(
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(onDone = { onAction(LoginAction.OnSubmit) }),
-            modifier = Modifier.focusRequester(autoFocus).semantics { contentType = ContentType.Password },
+            autofill = FieldAutofill.Password,
+            modifier = Modifier.focusRequester(autoFocus),
         )
         Spacer(Modifier.height(spacing.lg))
         TextLink(

@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -122,6 +123,8 @@ fun MoyiColors.fieldStroke(state: FieldState): FieldStroke = when (state) {
  *   says what a tap will do.
  * - Keyboard type, capitalisation and IME action pass through
  *   [keyboardOptions] and [keyboardActions].
+ * - [autofill] says what the field holds, for saved passwords and emailed codes:
+ *   the `ContentType` semantics on Android, the keyboard's `UITextContentType` on iOS.
  *
  * State is hoisted: the caller owns [value]. The only state held here is
  * the focus and whether a secure value is revealed, which are Compose's.
@@ -138,6 +141,7 @@ fun Field(
     enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    autofill: FieldAutofill? = null,
     onClick: () -> Unit = {},
 ) {
     if (type == FieldType.Select) {
@@ -168,6 +172,9 @@ fun Field(
         // A paragraph: sentences capitalised, and Return is a new line, not "done".
         multiline -> KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
         else -> keyboardOptions
+    }.let { options ->
+        val platform = autofill?.platformImeOptions()
+        if (platform == null) options else options.copy(platformImeOptions = platform)
     }
 
     // Held as a TextFieldValue so a prefilled value opens with the cursor after its
@@ -197,7 +204,10 @@ fun Field(
         },
         modifier = modifier
             .fillMaxWidth()
-            .semantics { if (error != null) error(error) },
+            .semantics {
+                if (error != null) error(error)
+                if (autofill != null) contentType = autofill.contentType
+            },
         enabled = enabled,
         singleLine = !multiline,
         textStyle = (if (code) MoyiTheme.type.code else MoyiTheme.type.body).copy(color = textColor),

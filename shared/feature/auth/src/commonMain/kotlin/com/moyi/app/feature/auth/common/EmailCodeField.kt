@@ -4,14 +4,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.moyi.app.designsystem.component.Field
+import com.moyi.app.designsystem.component.FieldAutofill
 import com.moyi.app.designsystem.component.FieldType
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.code_label
@@ -27,9 +26,9 @@ import org.jetbrains.compose.resources.stringResource
  * - The keyboard is the number pad (`NumberPassword`: no suggestions, nothing
  *   learned from it). A whole link pasted with the paste menu still arrives in
  *   full and is read by [parseCodeInput]; the ViewModel decides what is kept.
- * - `ContentType.SmsOtpCode` marks it as a one-time code for autofill. iOS
- *   offers a code it finds in a message or mail above the keyboard
- *   (`.oneTimeCode`); Android's autofill services do likewise.
+ * - [FieldAutofill.OneTimeCode] marks it as a one-time code for autofill
+ *   (`ContentType.SmsOtpCode` on Android, `.oneTimeCode` on iOS, which offers
+ *   a code it finds in a message or mail above the keyboard).
  * - An error is a polite live region while it shows, so a refusal after the
  *   sixth digit (no button pressed, focus still here) is spoken. Typing clears
  *   the error, and the field stops being a live region with it, so digits
@@ -58,8 +57,8 @@ internal fun EmailCodeField(
             imeAction = imeAction,
         ),
         keyboardActions = KeyboardActions(onAny = { onImeAction() }),
+        autofill = FieldAutofill.OneTimeCode,
         modifier = modifier.semantics {
-            contentType = ContentType.SmsOtpCode
             if (error != null) liveRegion = LiveRegionMode.Polite
         },
     )

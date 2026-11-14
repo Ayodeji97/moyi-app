@@ -9,15 +9,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.Field
+import com.moyi.app.designsystem.component.FieldAutofill
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
@@ -103,8 +101,8 @@ fun ForgotPasswordScreen(
                 imeAction = ImeAction.Send,
             ),
             keyboardActions = KeyboardActions(onSend = { onAction(ForgotPasswordAction.OnSubmit) }),
+            autofill = FieldAutofill.AccountEmail,
             modifier = Modifier.focusRequester(autoFocus)
-                .semantics { contentType = ContentType.EmailAddress + ContentType.Username }
                 .onBlur { onAction(ForgotPasswordAction.OnEmailBlur) },
         )
     }
