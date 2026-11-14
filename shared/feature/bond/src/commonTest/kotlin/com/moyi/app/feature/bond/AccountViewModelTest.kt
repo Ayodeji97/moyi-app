@@ -30,6 +30,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /** Account and Delete your account: load, the password, each refusal, one call at a time, and keeping the account. */
@@ -279,12 +280,52 @@ class AccountViewModelTest : MainDispatcherTest() {
     @Test
     fun aLeaveWithNoAnswerHoldsTheSignOutNoLongerThanTheLastTryLimit() = runTest {
         emptyBonds.hang = true
-        val signOut = SignOut(auth, outbox, outbox, emptyBonds)
+        val signOut = SignOut(auth, outbox, outbox, emptyBonds, backgroundScope)
 
         assertFalse(signOut.wouldLoseWords())
 
         assertEquals(LAST_TRY_LIMIT.inWholeMilliseconds, testScheduler.currentTime)
         assertEquals(1, emptyBonds.settles)
+    }
+
+    @Test
+    fun aRefreshInFlightHoldsTheSignOutNoLongerThanTheLastTryLimitAndStillFinishes() = runTest {
+        // Both tries hit a 401, and the refresh that follows runs its full 30 s HTTP timeout.
+        outbox.queue += waiting
+        outbox.refreshFirst = 30.seconds
+        emptyBonds.refreshFirst = 30.seconds
+        val signOut = SignOut(auth, outbox, outbox, emptyBonds, backgroundScope)
+
+        assertTrue(signOut.wouldLoseWords(), "still waiting at the limit: the unsent question")
+
+        assertEquals(LAST_TRY_LIMIT.inWholeMilliseconds, testScheduler.currentTime, "asked at the limit, not at 30 s")
+        assertEquals(0, outbox.refreshesFinished)
+        // backgroundScope's work does not count for advanceUntilIdle, so time is moved by hand.
+        testScheduler.advanceTimeBy(20.seconds)
+        testScheduler.runCurrent()
+        assertEquals(1, outbox.refreshesFinished, "the refresh was not cut off: its rotated token is kept")
+        assertEquals(1, emptyBonds.refreshesFinished)
+    }
+
+    @Test
+    fun aSlowRefreshWithinTheLimitIsWaitedFor() = runTest {
+        outbox.queue += waiting
+        outbox.online = true
+        outbox.refreshFirst = 4.seconds
+        val signOut = SignOut(auth, outbox, outbox, emptyBonds, backgroundScope)
+
+        assertFalse(signOut.wouldLoseWords(), "sent after the refresh: nothing lost")
+        assertEquals(4_000, testScheduler.currentTime)
+    }
+
+    @Test
+    fun aTryThatThrowsNeverFailsTheSignOutOrItsScope() = runTest {
+        emptyBonds.fail = true
+        outbox.queue += waiting
+        val signOut = SignOut(auth, outbox, outbox, emptyBonds, this)
+
+        assertTrue(signOut.wouldLoseWords())
+        assertEquals(0, testScheduler.currentTime)
     }
 
     @Test
