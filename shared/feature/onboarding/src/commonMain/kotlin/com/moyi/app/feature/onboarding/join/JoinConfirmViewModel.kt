@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Join · confirm. Shows the preview the code screen resolved, and joins with
@@ -55,7 +57,9 @@ import kotlinx.coroutines.launch
  * (or a later one is refused as spent) they are read again: a bond that was not there before,
  * someone else's and the invite's own ([joinedByLostAccept]), is the join that happened. Then
  * it finishes as a join that was answered, and the leave still checks the bonds itself. With
- * no first reading, or any doubt, nothing is assumed: the failure is shown, as before.
+ * no first reading, or any doubt, nothing is assumed: the failure is shown, as before. Join
+ * waits for that first reading at most [BEFORE_JOIN_LIMIT]; on a network that hangs it sends
+ * the accept without one.
  *
  * **The day on this device** ([TodayCache]) is another bond's once a join succeeds, so it is
  * forgotten before Today opens: Today would otherwise draw the empty bond's day first, and
@@ -107,8 +111,13 @@ class JoinConfirmViewModel(
         _state.update { it.copy(joining = true, failure = null) }
         viewModelScope.launch {
             if (leaving != null && !acceptSent) {
-                firstLook?.join()
-                if (bondsBefore == null) lookBefore()
+                // At most BEFORE_JOIN_LIMIT: past it the accept goes without a reading, and a lost
+                // answer is then simply not recovered (the safe direction). A reading that comes
+                // back later is thrown away by lookBefore, since the accept will have been sent.
+                withTimeoutOrNull(BEFORE_JOIN_LIMIT) {
+                    firstLook?.join()
+                    if (bondsBefore == null) lookBefore()
+                }
             }
             acceptSent = true
             val accepted = bonds.acceptInvite(code)
@@ -168,3 +177,10 @@ class JoinConfirmViewModel(
         return listed.data.joinedByLostAccept(preview, before, leavingBondId)?.id
     }
 }
+
+/**
+ * How long Join waits for the bonds read taken when Confirm opened (and its one retry) before it
+ * sends the accept anyway (#105). Without the reading a lost answer is not recovered, which only
+ * leaves the empty bond open; waiting longer would hold the person on a network that hangs.
+ */
+internal val BEFORE_JOIN_LIMIT = 3.seconds

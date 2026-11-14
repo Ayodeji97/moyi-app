@@ -9,6 +9,7 @@ import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.feature.onboarding.common.RelationshipType
+import com.moyi.app.feature.onboarding.join.BEFORE_JOIN_LIMIT
 import com.moyi.app.feature.onboarding.join.JoinConfirmAction
 import com.moyi.app.feature.onboarding.join.JoinConfirmEvent
 import com.moyi.app.feature.onboarding.join.JoinConfirmViewModel
@@ -340,5 +341,42 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
         bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
         viewModel.onAction(JoinConfirmAction.OnJoinClick)
         assertEquals(0, bonds.bondsCalls)
+    }
+
+    @Test
+    fun joinWaitsNoLongerThanTheLimitForTheReadingFromBefore() = runTest {
+        // The read taken on opening hangs, and so does the retry before the accept.
+        bonds.bondsGate = CompletableDeferred()
+        val vm = fromEmptyBond()
+        vm.onAction(JoinConfirmAction.OnJoinClick)
+        assertTrue(bonds.acceptCalls.isEmpty(), "still waiting for the reading")
+
+        testScheduler.advanceTimeBy(BEFORE_JOIN_LIMIT.inWholeMilliseconds - 1)
+        assertTrue(bonds.acceptCalls.isEmpty())
+        testScheduler.advanceTimeBy(1)
+        testScheduler.runCurrent()
+        assertEquals(listOf("K7Q2PD"), bonds.acceptCalls, "sent without the reading")
+    }
+
+    @Test
+    fun aReadingThatArrivesAfterTheLimitIsNeverTakenAsBefore() = runTest {
+        bonds.bondsGate = CompletableDeferred()
+        bonds.bondsResult = Result.Success(listOf(emptyListed))
+        val vm = fromEmptyBond()
+        bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+        vm.onAction(JoinConfirmAction.OnJoinClick)
+        testScheduler.advanceTimeBy(BEFORE_JOIN_LIMIT.inWholeMilliseconds)
+        testScheduler.runCurrent()
+        // The hung read now answers, after the accept went: it may already hold the join.
+        bonds.bondsResult = Result.Success(listOf(joinedListed, emptyListed))
+        bonds.bondsGate?.complete(Unit)
+        testScheduler.runCurrent()
+        bonds.bondsGate = null
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        vm.events.test {
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem())
+        }
+        assertTrue(exit.leaves.isEmpty(), "with no reading from before, nothing is assumed")
     }
 }
