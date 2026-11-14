@@ -7,9 +7,13 @@
 	     with the distribution profile, which sets it to "production". -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- applinks: getmoyi.app links open the app. webcredentials: Passwords offers and saves
+	     the Moyi login under getmoyi.app, shared with the website. Both are checked against
+	     the site's apple-app-site-association, which must list the app under each key. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:getmoyi.app</string>
+		<string>webcredentials:getmoyi.app</string>
 	</array>
 </dict>
 </plist>
