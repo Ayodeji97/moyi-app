@@ -1,5 +1,8 @@
 package com.moyi.app.feature.auth.register
 
+import androidx.compose.ui.platform.LocalAutofillManager
+import com.moyi.app.feature.auth.common.credentialAutofill
+import com.moyi.app.feature.auth.common.settle
 import com.moyi.app.designsystem.component.rememberAutoFocus
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Arrangement
@@ -12,9 +15,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.ConsentCheckbox
 import com.moyi.app.designsystem.component.Field
+import com.moyi.app.designsystem.component.FieldAutofill
 import com.moyi.app.designsystem.component.FieldType
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
@@ -67,7 +68,9 @@ fun RegisterRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val browser = rememberInAppBrowser()
+    val autofillManager = LocalAutofillManager.current
     ObserveAsEvents(viewModel.events) { event ->
+        autofillManager.settle(event.credentialAutofill)
         when (event) {
             is RegisterEvent.NavigateToVerify -> onNavigateToVerify(event.email)
             RegisterEvent.NavigateToLogin -> onNavigateToLogin()
@@ -130,8 +133,8 @@ fun RegisterScreen(
             helper = stringResource(Res.string.register_name_helper),
             error = state.name.error?.asString(),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+            autofill = FieldAutofill.FullName,
             modifier = Modifier.focusRequester(autoFocus)
-                .semantics { contentType = ContentType.PersonFullName }
                 .onBlur { onAction(RegisterAction.OnFieldBlur(RegisterField.Name)) },
         )
         Spacer(Modifier.height(spacing.lg))
@@ -146,9 +149,9 @@ fun RegisterScreen(
                 autoCorrectEnabled = false,
                 imeAction = ImeAction.Next,
             ),
-            modifier = Modifier
-                .semantics { contentType = ContentType.EmailAddress }
-                .onBlur { onAction(RegisterAction.OnFieldBlur(RegisterField.Email)) },
+            // The account's username too, so a password manager saves the email with the new password.
+            autofill = FieldAutofill.AccountEmail,
+            modifier = Modifier.onBlur { onAction(RegisterAction.OnFieldBlur(RegisterField.Email)) },
         )
         Spacer(Modifier.height(spacing.lg))
         Field(
@@ -164,9 +167,8 @@ fun RegisterScreen(
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(onDone = { onAction(RegisterAction.OnSubmit) }),
-            modifier = Modifier
-                .semantics { contentType = ContentType.NewPassword }
-                .onBlur { onAction(RegisterAction.OnFieldBlur(RegisterField.Password)) },
+            autofill = FieldAutofill.NewPassword,
+            modifier = Modifier.onBlur { onAction(RegisterAction.OnFieldBlur(RegisterField.Password)) },
         )
         Spacer(Modifier.height(spacing.lg))
         ConsentCheckbox(
