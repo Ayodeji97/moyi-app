@@ -24,6 +24,7 @@ import com.moyi.app.feature.bond.resources.settings_error_generic
 import com.moyi.app.feature.bond.signout.LAST_TRY_LIMIT
 import com.moyi.app.feature.bond.signout.SignOut
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,6 +35,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /** Account and Delete your account: load, the password, each refusal, one call at a time, and keeping the account. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class AccountViewModelTest : MainDispatcherTest() {
     private class FakeDeletion : AccountDeletionRepository {
         var server: DeletionRequest? = null

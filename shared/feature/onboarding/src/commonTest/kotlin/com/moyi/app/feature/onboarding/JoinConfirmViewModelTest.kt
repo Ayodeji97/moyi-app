@@ -20,6 +20,7 @@ import com.moyi.app.feature.onboarding.resources.join_error_limit
 import com.moyi.app.feature.onboarding.resources.join_error_own_code
 import com.moyi.app.feature.onboarding.resources.onboarding_error_generic
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,6 +28,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class JoinConfirmViewModelTest : MainDispatcherTest() {
     private val bonds = FakeBondRepository()
     private val exit = FakeEmptyBondExit()
