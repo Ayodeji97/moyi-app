@@ -19,6 +19,7 @@ import com.moyi.app.designsystem.component.ReactionChoices
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import platform.UIKit.UIDevice
 
 /**
  * Owner rulings 1 and 6 (2026-11-09): each reaction chip, and the partner's reaction under my
@@ -94,6 +95,13 @@ class ReactionEmojiTest {
             val c = pixels[x, y]
             if (c.red > 0.6f && c.green < 0.35f && c.blue < 0.35f) red++
         }
-        assertTrue(red > 20, "no red pixels: the heart did not render in colour ($red)")
+        // The iOS 26.3 simulator runtime draws no colour emoji at all, UIKit included (#102), so
+        // a failure there is the runtime's: the message names the version it ran on.
+        val os = UIDevice.currentDevice.systemVersion
+        assertTrue(
+            red > 20,
+            "no red pixels: the heart did not render in colour ($red) on iOS $os. " +
+                "The iOS 26.3 simulator runtime cannot draw colour emoji; run on 26.4 or later.",
+        )
     }
 }

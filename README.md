@@ -60,6 +60,10 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 CI runs `./gradlew check` on Linux, which cannot link iOS; each PR says whether the iOS
 framework and the Xcode app were built locally.
 
+Smoke iOS on a **26.4 or later simulator runtime**. The iOS 26.3 runtime draws every colour
+emoji as a "?" box, in UIKit as well as in Compose, so the reaction chips look broken there
+when they are not (#102, docs/missing-components.md §45).
+
 The local database is encrypted with SQLCipher on both platforms. Android gets it from
 `net.zetetic:sqlcipher-android`; the Xcode app from the `SQLCipher.swift` Swift package
 (Xcode resolves it on the first build, so that build needs the network); the iOS test

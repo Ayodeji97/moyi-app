@@ -790,6 +790,13 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
      by fallback: Apple Color Emoji on iOS, Noto Color Emoji on Android (Compose's bundled
      EmojiCompat brings newer emoji to older Android versions that have Google
      Play services). The emoji is never in a chip's spoken label.
+     **Checked, not a bug (#102):** on the **iOS 26.3 simulator runtime** every colour emoji is
+     drawn as a "?" box, the heart's U+FE0F as a second small box over the word's first letter.
+     UIKit does the same there (a `UIGraphicsImageRenderer` drawing "❤️ 🙏 😊" with the system
+     font gives three boxes), so the runtime, not Compose and not this code, cannot draw them.
+     The 26.4 and 26.5 runtimes draw them in colour, in UIKit and in Compose alike.
+     `ReactionEmojiTest.theEmojiIsDrawnInColourByTheSystemEmojiFont` fails on 26.3 and passes on
+     26.4 and 26.5, so it reports the runtime it runs on. Smoke iOS on a 26.4 or later simulator.
   2. **The five partner sentences are approved**, as are the five chip words; their `strings.xml`
      comments say so. The emoji, `reaction_prompt`, and `reaction_take_back`
      stay PROPOSED.
