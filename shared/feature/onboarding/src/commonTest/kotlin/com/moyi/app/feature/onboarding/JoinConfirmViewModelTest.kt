@@ -379,4 +379,58 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
         }
         assertTrue(exit.leaves.isEmpty(), "with no reading from before, nothing is assumed")
     }
+
+    // ----- a lost answer with no empty bond (#105) -----
+
+    @Test
+    fun withNoEmptyBondSpentAfterALostAnswerIsTheJoinThatHappened() = runTest {
+        bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+        viewModel.onAction(JoinConfirmAction.OnJoinClick)
+        assertTrue(viewModel.state.value.failure != null, "the first lost answer is shown, as before")
+        assertEquals(0, bonds.bondsCalls)
+
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        bonds.bondsResult = Result.Success(listOf(joinedListed))
+        viewModel.events.test {
+            viewModel.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.Finish, awaitItem())
+        }
+        assertEquals(1, bonds.bondsCalls)
+        assertEquals(1, cache.clears)
+        assertTrue(exit.leaves.isEmpty(), "nothing to end")
+    }
+
+    @Test
+    fun withNoEmptyBondSpentWithNoLostAnswerBeforeItIsCannotBeUsedUnread() = runTest {
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        bonds.bondsResult = Result.Success(listOf(joinedListed))
+        viewModel.events.test {
+            viewModel.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem())
+        }
+        assertEquals(0, bonds.bondsCalls)
+    }
+
+    @Test
+    fun withNoEmptyBondSpentAfterALostAnswerWithoutTheInvitesBondIsCannotBeUsed() = runTest {
+        val notThere = listOf(
+            Result.Success(emptyList<Bond>()),
+            Result.Success(listOf(joinedListed.copy(name = "Someone else"))),
+            Result.Success(listOf(joinedListed.copy(status = BondStatus.PENDING_MEMBER))),
+            Result.Success(listOf(joinedListed, joinedListed.copy(id = "joined-2"))),
+            Result.Failure(DataError.Network.NoInternet),
+        )
+        notThere.forEach { listed ->
+            val vm = JoinConfirmViewModel("K7Q2PD", PREVIEW, leaving = null, bonds, exit, cache)
+            bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+            bonds.bondsResult = listed
+            vm.events.test {
+                vm.onAction(JoinConfirmAction.OnJoinClick)
+                assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem(), listed.toString())
+            }
+        }
+        assertEquals(0, cache.clears)
+    }
 }

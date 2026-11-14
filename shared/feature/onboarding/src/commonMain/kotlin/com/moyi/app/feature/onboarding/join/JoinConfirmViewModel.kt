@@ -9,6 +9,7 @@ import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.bond.joinedByInvite
 import com.moyi.app.domain.bond.joinedByLostAccept
 import com.moyi.app.domain.today.TodayCache
 import com.moyi.app.feature.onboarding.common.RelationshipType
@@ -50,14 +51,17 @@ import kotlin.time.Duration.Companion.seconds
  * fails does not hold the person here: it is kept on the device and tried again, and Today
  * shows the bond they joined meanwhile.
  *
- * **A join whose answer was lost** (from an empty bond only): a timeout or a dropped
+ * **A join whose answer was lost**: a timeout or a dropped
  * connection can hide an accept the server did make, and pressing Join again then gets `404
  * INVITE_NOT_USABLE` (the invite is spent), so the empty bond would stay. So the bonds are read
  * once when the screen opens, before anything is accepted, and when an accept gets no answer
  * (or a later one is refused as spent) they are read again: a bond that was not there before,
  * someone else's and the invite's own ([joinedByLostAccept]), is the join that happened. Then
  * it finishes as a join that was answered, and the leave still checks the bonds itself. With
- * no first reading, or any doubt, nothing is assumed: the failure is shown, as before. Join
+ * no first reading, or any doubt, nothing is assumed: the failure is shown, as before.
+ * With **no** empty bond (#105) there is nothing to end, so no reading from before: once an
+ * accept got no answer, a later tap refused as spent reads the bonds, and the invite's bond
+ * being there ([joinedByInvite]) finishes to Today instead of Cannot be used. Join
  * waits for that first reading at most [BEFORE_JOIN_LIMIT]; on a network that hangs it sends
  * the accept without one.
  *
@@ -131,8 +135,11 @@ class JoinConfirmViewModel(
             // No answer, or "spent" after one that had none: the join may have happened after all.
             val noAnswer = error !is DataError.Network.Api
             if (noAnswer) answerLost = true
-            if (leaving != null && (noAnswer || (answerLost && error.code() == ApiErrorCode.INVITE_NOT_USABLE))) {
-                val happened = joinedAfterAll(leaving.id)
+            val spentAfterLostAnswer = answerLost && error.code() == ApiErrorCode.INVITE_NOT_USABLE
+            // From an empty bond, on any lost answer; with none, only once a later tap finds the
+            // invite spent (nothing is left there, so there is no hurry to know sooner).
+            if (if (leaving != null) noAnswer || spentAfterLostAnswer else spentAfterLostAnswer) {
+                val happened = joinedAfterAll()
                 if (happened != null) {
                     joined(happened)
                     return@launch
@@ -170,11 +177,19 @@ class JoinConfirmViewModel(
         if (!acceptSent && bondsBefore == null) bondsBefore = listed.data.map { it.id }.toSet()
     }
 
-    /** The id of the bond a lost accept joined, or null when the bonds do not show one beyond doubt. */
-    private suspend fun joinedAfterAll(leavingBondId: String): String? {
-        val before = bondsBefore ?: return null
-        val listed = bonds.bonds() as? Result.Success ?: return null
-        return listed.data.joinedByLostAccept(preview, before, leavingBondId)?.id
+    /**
+     * The id of the bond a lost accept joined, or null when the bonds do not show one beyond doubt.
+     * From an empty bond it needs the reading from before ([joinedByLostAccept]); with none, the
+     * invite's bond being there is enough ([joinedByInvite]), since nothing is ended on it.
+     */
+    private suspend fun joinedAfterAll(): String? {
+        val before = bondsBefore
+        if (leaving != null && before == null) return null
+        val listed = (bonds.bonds() as? Result.Success)?.data ?: return null
+        return when {
+            leaving != null && before != null -> listed.joinedByLostAccept(preview, before, leaving.id)
+            else -> listed.joinedByInvite(preview)
+        }?.id
     }
 }
 
