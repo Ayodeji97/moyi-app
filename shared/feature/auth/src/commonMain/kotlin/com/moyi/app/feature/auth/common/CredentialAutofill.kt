@@ -49,7 +49,12 @@ val RegisterEvent.credentialAutofill: CredentialAutofill?
 val ResetPasswordEvent.credentialAutofill: CredentialAutofill
     get() = CredentialAutofill.Discard
 
-/** Null outside Android: iOS has no AutofillManager in Compose Multiplatform 1.12. */
+/**
+ * Null outside Android: iOS has no AutofillManager in Compose Multiplatform 1.12, and its
+ * text input there is one native view shared by every field, so iOS never sees the email and
+ * password together and offers no "Save password?" sheet. Compose Multiplatform 1.13 adds one
+ * native view per field and the save sheet (compose-multiplatform-core#3335, CMP-5802).
+ */
 fun AutofillManager?.settle(decision: CredentialAutofill?) {
     when (decision) {
         CredentialAutofill.Save -> this?.commit()
