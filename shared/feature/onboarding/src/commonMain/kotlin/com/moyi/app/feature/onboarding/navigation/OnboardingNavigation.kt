@@ -258,6 +258,7 @@ fun NavGraphBuilder.onboardingGraph(
                 // (App.kt, LinkRouting) back returns there.
                 onNavigateBack = navController.upOrNull(),
                 findEmptyBond = route.findEmptyBond,
+                leaving = route.leaving,
             )
         }
         composable<JoinConfirmRoute> { entry ->

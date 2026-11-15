@@ -220,6 +220,19 @@ class EmptyBondExitTest {
         assertEquals(null, listOf(made.copy(id = "empty")).joinedByLostAccept(preview, emptySet(), "empty"))
     }
 
+    @Test
+    fun withNoEmptyBondTheInvitesBondIsFoundOnlyWhenThereIsExactlyOne() {
+        val preview = InvitePreview(inviterName = "Amara", bondName = "Bond joined", bondType = BondType.COUPLE)
+        val made = joined.copy(partnerName = "Amara")
+        assertEquals(made, listOf(made, bond("old", BondStatus.ARCHIVED, 1)).joinedByInvite(preview))
+        assertEquals(null, listOf(made, made.copy(id = "joined-2")).joinedByInvite(preview))
+        assertEquals(null, listOf(made.copy(status = BondStatus.PENDING_MEMBER)).joinedByInvite(preview))
+        assertEquals(null, listOf(made.copy(status = BondStatus.ARCHIVED)).joinedByInvite(preview))
+        assertEquals(null, listOf(made.copy(name = "Another")).joinedByInvite(preview))
+        assertEquals(null, listOf(made.copy(partnerName = null)).joinedByInvite(preview))
+        assertEquals(null, emptyList<Bond>().joinedByInvite(preview))
+    }
+
     private fun bond(id: String, status: BondStatus, members: Int) =
         Bond(id = id, name = "Bond $id", type = BondType.COUPLE, status = status, invite = null, activeMembers = members)
 
