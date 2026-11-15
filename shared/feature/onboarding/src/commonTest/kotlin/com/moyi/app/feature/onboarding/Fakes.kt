@@ -54,6 +54,9 @@ class FakeBondRepository : BondRepository {
     var acceptResult: Result<Bond, DataError.Network> = Result.Success(bond(BondStatus.ACTIVE, invite = null))
     var gate: CompletableDeferred<Unit>? = null
 
+    /** Holds only `GET /bonds` in flight (a network that hangs on that one read). */
+    var bondsGate: CompletableDeferred<Unit>? = null
+
     data class CreateCall(val name: String, val type: BondType, val zone: String)
 
     val createCalls = mutableListOf<CreateCall>()
@@ -65,6 +68,7 @@ class FakeBondRepository : BondRepository {
     override suspend fun bonds(): Result<List<Bond>, DataError.Network> {
         bondsCalls++
         gate?.await()
+        bondsGate?.await()
         return bondsResult
     }
 

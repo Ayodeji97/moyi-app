@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
+import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.emptyBondToEnd
 import com.moyi.app.feature.onboarding.common.InviteCodeInput
@@ -13,6 +14,7 @@ import com.moyi.app.feature.onboarding.common.formMessage
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.field_code_error_character
 import com.moyi.app.feature.onboarding.resources.field_code_error_length
+import com.moyi.app.feature.onboarding.resources.join_error_own_code
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -44,11 +46,21 @@ import kotlinx.coroutines.launch
  * `GET /bonds` alongside the code ([emptyBondToEnd], the same rule as the "I have an invite
  * code" entry points) and hands the bond it finds to Confirm, which says that Join ends it. If
  * the bonds cannot be read, Confirm opens without it and Join ends nothing, as before.
+ *
+ * [leaving]: the empty bond the flow was opened from (Today, Bond settings, "Your bond is
+ * ready"), already known, so it is carried to Confirm by the route, not by this screen.
+ *
+ * **Their own code** (#105): from an empty bond, known or found, Continue reads `GET /bonds`
+ * alongside the code (no extra round trip). When the code entered is that bond's own live invite,
+ * it says so under the field ("That is your own code", the same line Confirm shows after Join)
+ * and goes no further, instead of opening Confirm with "Joining ends …". If the bonds cannot be
+ * read, Confirm opens as before and the server's `409 ALREADY_MEMBER` still catches it there.
  */
 class JoinCodeViewModel(
     prefilledCode: String?,
     private val bonds: BondRepository,
     private val findEmptyBond: Boolean = false,
+    private val leaving: LeavingBond? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(
         JoinCodeState(
@@ -83,13 +95,21 @@ class JoinCodeViewModel(
         }
         _state.update { it.copy(checking = true, failure = null) }
         viewModelScope.launch {
-            val (resolved, leaving) = coroutineScope {
-                val empty = if (findEmptyBond) async { ownEmptyBond() } else null
-                bonds.resolveInvite(current.code) to empty?.await()
+            val lookForEmptyBond = findEmptyBond || leaving != null
+            val (resolved, listed) = coroutineScope {
+                val listing = if (lookForEmptyBond) async { (bonds.bonds() as? Result.Success)?.data } else null
+                bonds.resolveInvite(current.code) to listing?.await()
             }
+            val empty = listed?.emptyBond()
+            if (empty?.invite?.code?.let(InviteCodeInput::normalise) == current.code) {
+                _state.update { it.copy(checking = false, error = UiText.Resource(Res.string.join_error_own_code)) }
+                return@launch
+            }
+            // Only a link over Today hands Confirm the bond found here; the others carry their own.
+            val found = if (findEmptyBond) empty?.let { LeavingBond(it.id, it.name) } else null
             _state.update { it.copy(checking = false) }
             when (resolved) {
-                is Result.Success -> _events.send(JoinCodeEvent.NavigateToConfirm(current.code, resolved.data, leaving))
+                is Result.Success -> _events.send(JoinCodeEvent.NavigateToConfirm(current.code, resolved.data, found))
                 is Result.Failure -> when (resolved.error.code()) {
                     ApiErrorCode.INVITE_NOT_USABLE -> _events.send(JoinCodeEvent.NavigateToCannotBeUsed)
                     ApiErrorCode.VALIDATION_FAILED -> _state.update {
@@ -101,9 +121,12 @@ class JoinCodeViewModel(
         }
     }
 
-    /** The person's own bond nobody has joined, or null: none, or the bonds could not be read. */
-    private suspend fun ownEmptyBond(): LeavingBond? =
-        (bonds.bonds() as? Result.Success)?.data?.emptyBondToEnd()?.let { LeavingBond(it.id, it.name) }
+    /**
+     * The person's empty bond in [this] listing: the one the flow was opened from, or else (a link
+     * over Today) the one joining would end ([emptyBondToEnd]). Null when there is none.
+     */
+    private fun List<Bond>.emptyBond(): Bond? =
+        if (leaving != null) firstOrNull { it.id == leaving.id } else emptyBondToEnd()
 
     private fun InviteCodeInput.Problem.toUiText(): UiText = UiText.Resource(
         when (this) {

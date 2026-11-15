@@ -144,6 +144,8 @@ class AppKoinTest {
             koin.get<JoinCodeViewModel> { parametersOf("K7Q2PD", true) }
             koin.get<JoinCodeViewModel> { parametersOf(null) }
             koin.get<JoinCodeViewModel> { parametersOf("K7Q2PD") }
+            koin.get<JoinCodeViewModel> { parametersOf(null, false, LeavingBond("bond-1", "Esther's space")) }
+            koin.get<JoinCodeViewModel> { parametersOf("K7Q2PD", true, null) }
             val preview = InvitePreview("Amara", "Amara and Tunde", BondType.COUPLE)
             // As JoinConfirmRoot passes them: the third is the empty bond Join also ends, or null.
             assertEquals("Amara", koin.get<JoinConfirmViewModel> { parametersOf("K7Q2PD", preview, null) }.state.value.inviterName)

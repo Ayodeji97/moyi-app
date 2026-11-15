@@ -9,6 +9,7 @@ import com.moyi.app.feature.onboarding.join.JoinCodeViewModel
 import com.moyi.app.feature.onboarding.resources.Res
 import com.moyi.app.feature.onboarding.resources.field_code_error_character
 import com.moyi.app.feature.onboarding.resources.field_code_error_length
+import com.moyi.app.feature.onboarding.resources.join_error_own_code
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
@@ -206,6 +207,79 @@ class JoinCodeViewModelTest : MainDispatcherTest() {
             assertEquals(JoinCodeEvent.NavigateToConfirm("K7Q2PD", PREVIEW, null), awaitItem())
         }
         assertEquals(0, bonds.bondsCalls)
+    }
+
+    // ----- their own code, caught before Confirm (#105) -----
+
+    private val ownInvite = INVITE.copy(id = "inv-own", code = "H4XN9R", link = "https://getmoyi.app/i/H4XN9R")
+    private val emptyOwn = ownBond(BondStatus.PENDING_MEMBER, activeMembers = 1).copy(invite = ownInvite)
+    private fun fromEmptyBond() =
+        JoinCodeViewModel(prefilledCode = null, bonds = bonds, leaving = LeavingBond("bond-own", "Ada alone"))
+
+    @Test
+    fun theirOwnEmptyBondsCodeIsSaidUnderTheFieldAndConfirmNeverOpens() = runTest {
+        bonds.bondsResult = Result.Success(listOf(emptyOwn))
+        val viewModel = fromEmptyBond()
+        viewModel.onAction(JoinCodeAction.OnCodeChange("h4xn9r"))
+        viewModel.events.test {
+            viewModel.onAction(JoinCodeAction.OnContinueClick)
+            expectNoEvents()
+        }
+        assertEquals(UiText.Resource(Res.string.join_error_own_code), viewModel.state.value.error)
+        assertFalse(viewModel.state.value.checking)
+        assertEquals("H4XN9R", viewModel.state.value.code, "the code is kept")
+
+        viewModel.onAction(JoinCodeAction.OnCodeChange("K7Q2PD"))
+        assertNull(viewModel.state.value.error, "typing another code clears it")
+    }
+
+    @Test
+    fun theirOwnCodeFromALinkOverTodayIsSaidToo() = runTest {
+        bonds.bondsResult = Result.Success(listOf(emptyOwn))
+        val viewModel = JoinCodeViewModel(prefilledCode = "H4XN9R", bonds = bonds, findEmptyBond = true)
+        viewModel.events.test {
+            viewModel.onAction(JoinCodeAction.OnContinueClick)
+            expectNoEvents()
+        }
+        assertEquals(UiText.Resource(Res.string.join_error_own_code), viewModel.state.value.error)
+    }
+
+    @Test
+    fun fromAnEmptyBondSomeoneElsesCodeStillReachesConfirmAndTheRouteCarriesTheBond() = runTest {
+        bonds.bondsResult = Result.Success(listOf(emptyOwn))
+        val viewModel = fromEmptyBond()
+        viewModel.onAction(JoinCodeAction.OnCodeChange("K7Q2PD"))
+        viewModel.events.test {
+            viewModel.onAction(JoinCodeAction.OnContinueClick)
+            // null: the bond it was opened from goes to Confirm by the route (OnboardingNavigation).
+            assertEquals(JoinCodeEvent.NavigateToConfirm("K7Q2PD", PREVIEW, null), awaitItem())
+        }
+        assertEquals(1, bonds.bondsCalls, "read alongside the code, not before it")
+        assertEquals(listOf("K7Q2PD"), bonds.resolveCalls)
+    }
+
+    @Test
+    fun fromAnEmptyBondWhoseBondsCannotBeReadConfirmOpensAsBefore() = runTest {
+        bonds.bondsResult = Result.Failure(DataError.Network.Timeout)
+        val viewModel = fromEmptyBond()
+        viewModel.onAction(JoinCodeAction.OnCodeChange("H4XN9R"))
+        viewModel.events.test {
+            viewModel.onAction(JoinCodeAction.OnContinueClick)
+            // The server's 409 ALREADY_MEMBER still catches it on Confirm.
+            assertEquals(JoinCodeEvent.NavigateToConfirm("H4XN9R", PREVIEW, null), awaitItem())
+        }
+    }
+
+    @Test
+    fun anotherBondsLiveInviteIsNotTheirOwnEmptyBonds() = runTest {
+        // A different bond of theirs has this code; the one they are leaving does not.
+        bonds.bondsResult = Result.Success(listOf(emptyOwn.copy(invite = null), emptyOwn.copy(id = "bond-other")))
+        val viewModel = fromEmptyBond()
+        viewModel.onAction(JoinCodeAction.OnCodeChange("H4XN9R"))
+        viewModel.events.test {
+            viewModel.onAction(JoinCodeAction.OnContinueClick)
+            assertEquals(JoinCodeEvent.NavigateToConfirm("H4XN9R", PREVIEW, null), awaitItem())
+        }
     }
 
     @Test

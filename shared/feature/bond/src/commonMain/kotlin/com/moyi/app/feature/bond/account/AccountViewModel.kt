@@ -61,7 +61,7 @@ class AccountViewModel(
     val events = _events.receiveAsFlow()
 
     /** The same sign-out as Bond settings' (owner ruling 2026-11-09). */
-    private val signOutSequence = SignOut(auth, outbox, sender, emptyBonds)
+    private val signOutSequence = SignOut(auth, outbox, sender, emptyBonds, viewModelScope)
 
     init {
         load()
