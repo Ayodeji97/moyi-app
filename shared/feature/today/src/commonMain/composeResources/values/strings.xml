@@ -63,6 +63,40 @@
     <string name="today_notifications_allow">Allow notifications</string>
     <!-- Approved (owner, 2026-11-13). The text link under it: hides the note for good on this phone. The same words as onboarding's join_confirm_secondary and auth's legal_not_now. -->
     <string name="today_notifications_not_now">Not now</string>
+    <!-- The reminder screen (owner rulings 2026-11-15; mockup "Reminders" v4, dark and light boards): shown once per phone, the first time a live day reaches Today while the phone has not been asked about notifications. All PROPOSED: the mockup's words, approved in direction by the owner, not yet ruled string by string. -->
+    <!-- PROPOSED. The screen's title (title role). -->
+    <string name="reminder_ask_title">A moment each day</string>
+    <!-- PROPOSED. The line under the title (body, inkMuted). "Once or twice more" describes the neutral nudges of moyi-backend#200, which are not shipped yet: until they are, only the first reminder and the reveal arrive. -->
+    <string name="reminder_ask_line">Moyi can remind you at a time you choose, and once or twice more if you have not written yet. None once you have. You also hear when your day opens.</string>
+    <!-- PROPOSED. The app name in the preview card's header (label role, uppercased on screen), as the phone shows it over a push. The card is decorative: screen readers skip it. -->
+    <string name="reminder_ask_preview_app">Moyi</string>
+    <!-- push_reminder_title, word for word (androidApp push_strings.xml, iosApp Localizable.strings): the preview shows the real reminder. Change all three together. -->
+    <string name="reminder_ask_preview_title">A moment for today?</string>
+    <!-- push_reminder_body, word for word, as above. -->
+    <string name="reminder_ask_preview_body">Write one thing you are grateful for, when it suits you.</string>
+    <!-- PROPOSED. The Field Select's label: the reminder time, which opens the time picker. -->
+    <string name="reminder_ask_time_label">Remind me at</string>
+    <!-- PROPOSED. The Field Select's helper: where the time can be changed later. -->
+    <string name="reminder_ask_time_helper">You can change this in Bond settings, Notifications.</string>
+    <!-- PROPOSED. Stands where the Field is when the reminder time could not be read: no time is guessed. -->
+    <string name="reminder_ask_time_unknown">You can choose your reminder time in Bond settings, Notifications.</string>
+    <!-- Bond settings' settings_picker_confirm and settings_cancel, word for word: the time picker's answers. Repeated here because feature/today does not see bond's resources. -->
+    <string name="reminder_ask_picker_confirm">Save</string>
+    <string name="reminder_ask_picker_cancel">Cancel</string>
+    <!-- PROPOSED. The PrimaryAction: saves a changed time, then shows the phone's own prompt. -->
+    <string name="reminder_ask_turn_on">Turn on reminders</string>
+    <!-- Bond settings' settings_saving, word for word: the PrimaryAction while a changed time saves (no spinner, states.md). -->
+    <string name="reminder_ask_saving">Saving</string>
+    <!-- The same words as today_notifications_not_now: the full-width TextLink under the PrimaryAction. Goes to Today; the small note waits until the next day. -->
+    <string name="reminder_ask_not_now">Not now</string>
+    <!-- PROPOSED. After the phone's prompt was answered no: what is true and what to do (copy-states-next-action). Shaped like Bond settings' notifications_phone_denied. -->
+    <string name="reminder_ask_denied">Notifications are off for Moyi on this phone, so no reminder will arrive. To turn them on, open your phone's Settings, find Moyi and allow notifications.</string>
+    <!-- Bond settings' notifications_phone_open_settings, word for word: the PrimaryAction after a no, which opens the phone's settings for Moyi. -->
+    <string name="reminder_ask_open_settings">Open phone settings</string>
+    <!-- PROPOSED. The way on to Today after the prompt: a TextLink under Open phone settings, or the PrimaryAction when only the save failed. -->
+    <string name="reminder_ask_continue">Continue to Today</string>
+    <!-- PROPOSED. A changed time did not save (copy.md error shape: what happened, what is kept, what to do). %1$s is the time the server still holds, in the phone's 12 or 24 hour form. -->
+    <string name="reminder_ask_save_failed">Your new time did not save. Reminders stay at %1$s. You can change it in Bond settings, Notifications.</string>
     <!-- FIGMA NODE NAME on 188:507. A solo day, either way round. -->
     <string name="today_solo_line">This day closed with one entry.</string>
     <!-- states.md §3 announce for Solo day, either way round (you wrote, or they did). -->

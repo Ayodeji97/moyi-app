@@ -15,13 +15,26 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** "Not now", remembered per phone: a fake of the platform's plain preferences. */
-class FakeNotificationAskMemory(var dismissed: Boolean = false) : NotificationAskMemory {
+/** The phone's local date in these tests. */
+val PHONE_TODAY: LocalDate = LocalDate(2026, 11, 15)
+
+/**
+ * "Not now" and the day the reminder screen was shown, remembered per phone: a fake of the
+ * platform's plain preferences. [screenShownOn] is ISO, as the platforms store it.
+ */
+class FakeNotificationAskMemory(
+    var dismissed: Boolean = false,
+    var screenShownOn: String? = null,
+) : NotificationAskMemory {
     var dismissals = 0
         private set
 
@@ -31,19 +44,27 @@ class FakeNotificationAskMemory(var dismissed: Boolean = false) : NotificationAs
         dismissals++
         dismissed = true
     }
+
+    override fun reminderScreenShownOn(): String? = screenShownOn
+
+    override fun rememberReminderScreenShown(date: String) {
+        screenShownOn = date
+    }
 }
 
 /**
- * Asking for notifications on Today from the first arrival (owner ruling 2026-11-15): on every
- * layout of a live day, joined or not, while the phone has not been asked and "Not now" has not
- * been chosen on it.
+ * The small note asking for notifications on Today (owner rulings 2026-11-15): on every layout of
+ * a live day, joined or not, while the phone has not been asked and "Not now" has not been chosen
+ * on it, from the calendar day after the reminder screen was shown on this phone. These tests
+ * start on such a day: the screen was shown yesterday. The screen itself is ReminderScreenTodayTest.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationAskTodayTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
-    private val memory = FakeNotificationAskMemory()
+    private val memory = FakeNotificationAskMemory(screenShownOn = PHONE_TODAY.minus(DatePeriod(days = 1)).toString())
+    private var phoneToday = PHONE_TODAY
 
-    private fun newViewModel() = TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), memory)
+    private fun newViewModel() = TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), memory, today = { phoneToday })
 
     private val viewModel by lazy { newViewModel() }
 
@@ -131,6 +152,44 @@ class NotificationAskTodayTest : MainDispatcherTest() {
         memory.dismissed = true
         open(TodayStatus.Waiting)
         assertFalse(viewModel.state.value.askForNotifications)
+    }
+
+    // ---- The day of the reminder screen ----
+
+    @Test
+    fun theDayTheReminderScreenWasShownTheNoteWaits() = runTest {
+        memory.screenShownOn = PHONE_TODAY.toString()
+        open(TodayStatus.NotWritten)
+        assertFalse(viewModel.state.value.askForNotifications)
+        open(TodayStatus.Waiting)
+        assertFalse(viewModel.state.value.askForNotifications)
+    }
+
+    @Test
+    fun theNextCalendarDayTheNoteIsBack() = runTest {
+        memory.screenShownOn = PHONE_TODAY.toString()
+        open(TodayStatus.NotWritten)
+        assertFalse(viewModel.state.value.askForNotifications)
+        // Past midnight on the phone, the same Today: any state change reads the date again.
+        phoneToday = PHONE_TODAY.plus(DatePeriod(days = 1))
+        loop.show(joinedDay(TodayStatus.Waiting))
+        assertTrue(viewModel.state.value.askForNotifications)
+    }
+
+    @Test
+    fun beforeTheReminderScreenHasBeenShownTheScreenAsksNotTheNote() = runTest {
+        memory.screenShownOn = null
+        open(TodayStatus.NotWritten)
+        // The screen opened and was remembered: the note waits for tomorrow.
+        assertFalse(viewModel.state.value.askForNotifications)
+        assertEquals(PHONE_TODAY.toString(), memory.screenShownOn)
+    }
+
+    @Test
+    fun anUnreadableDateCountsAsLongAgo() = runTest {
+        memory.screenShownOn = "not a date"
+        open(TodayStatus.NotWritten)
+        assertTrue(viewModel.state.value.askForNotifications)
     }
 
     // ---- Allow notifications ----

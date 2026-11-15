@@ -9,6 +9,7 @@ import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.feature.today.common.RevealLedger
+import com.moyi.app.feature.today.reminder.ReminderAskViewModel
 import com.moyi.app.feature.today.reveal.RevealViewModel
 import com.moyi.app.feature.today.streak.StreakViewModel
 import com.moyi.app.feature.today.today.TodayViewModel
@@ -39,4 +40,6 @@ val todayFeatureModule = module {
     viewModel { (date: String) -> ArchiveDayViewModel(date, get(), get(), get(), get()) }
     // The Streak screen, from the Archive's "Your streak", over the domain's StreakRepository.
     viewModel { StreakViewModel(get(), get()) }
+    // The reminder screen, once per phone at the first arrival, over the domain's BondSettingsRepository.
+    viewModel { (bondId: String) -> ReminderAskViewModel(bondId, get()) }
 }

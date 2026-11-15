@@ -87,9 +87,9 @@ data class TodayState(
     /** The last reaction tap did not go through: it is back as it was, and the Generic error line says so. */
     val reactionFailed: Boolean = false,
     /**
-     * The note asking for notifications is drawn (owner ruling 2026-11-13): my entry is saved
-     * today ([TodayStatus.Waiting] or [TodayStatus.Revealed]) in a bond someone has joined, the
-     * phone has not been asked yet, and "Not now" has not been chosen on this phone.
+     * The note asking for notifications is drawn (owner rulings 2026-11-15): on a live day,
+     * from the calendar day after the reminder screen was shown on this phone, while the phone
+     * has not been asked and "Not now" has not been chosen on the note.
      * Never a heading, never the PrimaryAction: Write keeps that.
      */
     val askForNotifications: Boolean = false,
@@ -196,4 +196,7 @@ sealed interface TodayEvent {
 
     /** Show the phone's notification prompt, and answer with [TodayAction.OnNotificationPermissionChecked]. */
     data object AskNotificationPermission : TodayEvent
+
+    /** The reminder screen, over Today, for [bondId]: once per phone, at the first arrival (owner ruling 2026-11-15). */
+    data class NavigateToReminderAsk(val bondId: String) : TodayEvent
 }

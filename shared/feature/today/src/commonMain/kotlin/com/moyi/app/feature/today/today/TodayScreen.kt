@@ -113,6 +113,8 @@ fun TodayRoot(
     onNoOpenBond: () -> Unit,
     /** "I have an invite code": the join flow from this bond, which nobody has joined. */
     onNavigateToJoin: (bondId: String, bondName: String) -> Unit,
+    /** The reminder screen, once per phone at the first arrival (owner rulings 2026-11-15). */
+    onNavigateToReminderAsk: (bondId: String) -> Unit,
     debugTools: Boolean,
     viewModel: TodayViewModel = koinViewModel(),
 ) {
@@ -145,6 +147,7 @@ fun TodayRoot(
             TodayEvent.AskNotificationPermission -> scope.launch {
                 viewModel.onAction(TodayAction.OnNotificationPermissionChecked(permission.request()))
             }
+            is TodayEvent.NavigateToReminderAsk -> onNavigateToReminderAsk(event.bondId)
         }
     }
     TodayScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
