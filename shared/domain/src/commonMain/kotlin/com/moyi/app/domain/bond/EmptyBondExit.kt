@@ -50,15 +50,26 @@ fun List<Bond>.emptyBondToEnd(): Bond? = bondForToday()?.takeIf { it.nobodyHasJo
  * is treated as a join that did not happen, and nothing is left.
  */
 fun List<Bond>.joinedByLostAccept(preview: InvitePreview, before: Set<String>, leavingBondId: String): Bond? =
-    filter {
-        it.id !in before &&
-            it.id != leavingBondId &&
-            it.isOpen &&
-            it.status != BondStatus.PENDING_MEMBER &&
-            it.name == preview.bondName &&
-            it.type == preview.bondType &&
-            it.partnerName == preview.inviterName
-    }.singleOrNull()
+    filter { it.id !in before && it.id != leavingBondId && it.isTheInvitesJoined(preview) }.singleOrNull()
+
+/**
+ * The bond a lost accept joined when the person was in no empty bond, so nothing is ended and
+ * there is no reading from before (#105): the one open bond, someone else's, that is the
+ * invite's own (its name, type and the inviter as the partner). Exactly one, or null.
+ *
+ * Looser than [joinedByLostAccept] on purpose: a wrong answer here only opens Today, which then
+ * shows the bonds as they are. Nothing is left on the strength of it.
+ */
+fun List<Bond>.joinedByInvite(preview: InvitePreview): Bond? =
+    filter { it.isTheInvitesJoined(preview) }.singleOrNull()
+
+/** Open, someone besides the person in it (no longer waiting), and the invite's bond as Confirm showed it. */
+private fun Bond.isTheInvitesJoined(preview: InvitePreview): Boolean =
+    isOpen &&
+        status != BondStatus.PENDING_MEMBER &&
+        name == preview.bondName &&
+        type == preview.bondType &&
+        partnerName == preview.inviterName
 
 /** A bond to end because the person joined another: kept on the device until it is done. */
 data class PendingLeave(val bondId: String, val joinedBondId: String)

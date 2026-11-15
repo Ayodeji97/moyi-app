@@ -53,7 +53,9 @@ fun JoinCodeRoot(
     onNavigateBack: (() -> Unit)?,
     /** Opened by an invite link over Today: Continue also looks for the person's own empty bond. */
     findEmptyBond: Boolean = false,
-    viewModel: JoinCodeViewModel = koinViewModel { parametersOf(prefilledCode, findEmptyBond) },
+    /** Opened from the person's own empty bond: Continue says so when the code is that bond's own. */
+    leaving: LeavingBond? = null,
+    viewModel: JoinCodeViewModel = koinViewModel { parametersOf(prefilledCode, findEmptyBond, leaving) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->

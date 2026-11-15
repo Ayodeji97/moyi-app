@@ -9,6 +9,7 @@ import com.moyi.app.domain.bond.Bond
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.feature.onboarding.common.RelationshipType
+import com.moyi.app.feature.onboarding.join.BEFORE_JOIN_LIMIT
 import com.moyi.app.feature.onboarding.join.JoinConfirmAction
 import com.moyi.app.feature.onboarding.join.JoinConfirmEvent
 import com.moyi.app.feature.onboarding.join.JoinConfirmViewModel
@@ -19,6 +20,7 @@ import com.moyi.app.feature.onboarding.resources.join_error_limit
 import com.moyi.app.feature.onboarding.resources.join_error_own_code
 import com.moyi.app.feature.onboarding.resources.onboarding_error_generic
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,6 +28,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class JoinConfirmViewModelTest : MainDispatcherTest() {
     private val bonds = FakeBondRepository()
     private val exit = FakeEmptyBondExit()
@@ -340,5 +343,96 @@ class JoinConfirmViewModelTest : MainDispatcherTest() {
         bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
         viewModel.onAction(JoinConfirmAction.OnJoinClick)
         assertEquals(0, bonds.bondsCalls)
+    }
+
+    @Test
+    fun joinWaitsNoLongerThanTheLimitForTheReadingFromBefore() = runTest {
+        // The read taken on opening hangs, and so does the retry before the accept.
+        bonds.bondsGate = CompletableDeferred()
+        val vm = fromEmptyBond()
+        vm.onAction(JoinConfirmAction.OnJoinClick)
+        assertTrue(bonds.acceptCalls.isEmpty(), "still waiting for the reading")
+
+        testScheduler.advanceTimeBy(BEFORE_JOIN_LIMIT.inWholeMilliseconds - 1)
+        assertTrue(bonds.acceptCalls.isEmpty())
+        testScheduler.advanceTimeBy(1)
+        testScheduler.runCurrent()
+        assertEquals(listOf("K7Q2PD"), bonds.acceptCalls, "sent without the reading")
+    }
+
+    @Test
+    fun aReadingThatArrivesAfterTheLimitIsNeverTakenAsBefore() = runTest {
+        bonds.bondsGate = CompletableDeferred()
+        bonds.bondsResult = Result.Success(listOf(emptyListed))
+        val vm = fromEmptyBond()
+        bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+        vm.onAction(JoinConfirmAction.OnJoinClick)
+        testScheduler.advanceTimeBy(BEFORE_JOIN_LIMIT.inWholeMilliseconds)
+        testScheduler.runCurrent()
+        // The hung read now answers, after the accept went: it may already hold the join.
+        bonds.bondsResult = Result.Success(listOf(joinedListed, emptyListed))
+        bonds.bondsGate?.complete(Unit)
+        testScheduler.runCurrent()
+        bonds.bondsGate = null
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        vm.events.test {
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem())
+        }
+        assertTrue(exit.leaves.isEmpty(), "with no reading from before, nothing is assumed")
+    }
+
+    // ----- a lost answer with no empty bond (#105) -----
+
+    @Test
+    fun withNoEmptyBondSpentAfterALostAnswerIsTheJoinThatHappened() = runTest {
+        bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+        viewModel.onAction(JoinConfirmAction.OnJoinClick)
+        assertTrue(viewModel.state.value.failure != null, "the first lost answer is shown, as before")
+        assertEquals(0, bonds.bondsCalls)
+
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        bonds.bondsResult = Result.Success(listOf(joinedListed))
+        viewModel.events.test {
+            viewModel.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.Finish, awaitItem())
+        }
+        assertEquals(1, bonds.bondsCalls)
+        assertEquals(1, cache.clears)
+        assertTrue(exit.leaves.isEmpty(), "nothing to end")
+    }
+
+    @Test
+    fun withNoEmptyBondSpentWithNoLostAnswerBeforeItIsCannotBeUsedUnread() = runTest {
+        bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+        bonds.bondsResult = Result.Success(listOf(joinedListed))
+        viewModel.events.test {
+            viewModel.onAction(JoinConfirmAction.OnJoinClick)
+            assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem())
+        }
+        assertEquals(0, bonds.bondsCalls)
+    }
+
+    @Test
+    fun withNoEmptyBondSpentAfterALostAnswerWithoutTheInvitesBondIsCannotBeUsed() = runTest {
+        val notThere = listOf(
+            Result.Success(emptyList<Bond>()),
+            Result.Success(listOf(joinedListed.copy(name = "Someone else"))),
+            Result.Success(listOf(joinedListed.copy(status = BondStatus.PENDING_MEMBER))),
+            Result.Success(listOf(joinedListed, joinedListed.copy(id = "joined-2"))),
+            Result.Failure(DataError.Network.NoInternet),
+        )
+        notThere.forEach { listed ->
+            val vm = JoinConfirmViewModel("K7Q2PD", PREVIEW, leaving = null, bonds, exit, cache)
+            bonds.acceptResult = Result.Failure(DataError.Network.Timeout)
+            vm.onAction(JoinConfirmAction.OnJoinClick)
+            bonds.acceptResult = Result.Failure(problem(404, ApiErrorCode.INVITE_NOT_USABLE))
+            bonds.bondsResult = listed
+            vm.events.test {
+                vm.onAction(JoinConfirmAction.OnJoinClick)
+                assertEquals(JoinConfirmEvent.NavigateToCannotBeUsed, awaitItem(), listed.toString())
+            }
+        }
+        assertEquals(0, cache.clears)
     }
 }

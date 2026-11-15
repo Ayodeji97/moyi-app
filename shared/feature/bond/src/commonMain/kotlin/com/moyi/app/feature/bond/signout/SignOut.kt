@@ -12,7 +12,7 @@ import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_dismiss
 import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_line
 import com.moyi.app.feature.bond.resources.settings_sign_out_unsent_title
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
@@ -44,17 +44,30 @@ internal class SignOut(
     private val outbox: EntryOutbox,
     private val sender: OutboxSender,
     private val emptyBonds: EmptyBondExit,
+    /** Where the last tries run, outside the caller's wait (the screen's ViewModel scope). */
+    private val scope: CoroutineScope,
 ) {
     /**
      * True when signing out would delete entries: some were waiting, and one more try did not
      * send them all. The caller then asks the unsent question INSTEAD of the plain one.
-     * A leave kept from a join is tried in the same moment ([leaveKeptBond]).
+     * A leave kept from a join is tried in the same moment.
+     *
+     * **At most [LAST_TRY_LIMIT], hard** (#105). Either try may need a token refresh, and a
+     * refresh, once sent, cannot be cancelled: it runs to its end so a rotated refresh token is
+     * stored before anything uses the new access token (SessionManager, ADR-0021). Cancelling the
+     * caller does not stop it; only the 30 s HTTP timeout does. So the tries run in [scope], and
+     * this waits for them, not inside them: at the limit it stops waiting and cancels what can be
+     * cancelled. A refresh in flight finishes on its own, under the session's lock, and the
+     * sign-out that follows (`logout`, which takes the same lock) waits for it before the wipe.
      */
-    suspend fun wouldLoseWords(): Boolean = coroutineScope {
-        val leave = launch { leaveKeptBond() }
-        val unsent = unsentAfterLastTry()
-        leave.join()
-        unsent
+    suspend fun wouldLoseWords(): Boolean {
+        val waiting = stillQueued()
+        val tries = scope.launch {
+            launch { quietly { emptyBonds.settle() } }
+            if (waiting) quietly { sender.sendQueued() }
+        }
+        if (withTimeoutOrNull(LAST_TRY_LIMIT) { tries.join() } == null) tries.cancel()
+        return waiting && stillQueued()
     }
 
     /** The person chose to sign out anyway: the session, and its wipe, end. */
@@ -62,25 +75,15 @@ internal class SignOut(
         auth.logout()
     }
 
-    /** True when entries would be lost: some were waiting, and one more try did not send them all. */
-    private suspend fun unsentAfterLastTry(): Boolean {
-        val waiting = runCatching { outbox.queued().isNotEmpty() }.getOrDefault(false)
-        if (!waiting) return false
-        withTimeoutOrNull(LAST_TRY_LIMIT) { sender.sendQueued() }
-        return runCatching { outbox.queued().isNotEmpty() }.getOrDefault(false)
-    }
+    private suspend fun stillQueued(): Boolean = quietly { outbox.queued().isNotEmpty() } ?: false
 
-    /** The leave a join kept on the device, tried once more before the wipe takes it. Never fails sign-out. */
-    private suspend fun leaveKeptBond() {
-        withTimeoutOrNull(LAST_TRY_LIMIT) {
-            try {
-                emptyBonds.settle()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                Unit
-            }
-        }
+    /** A last try never fails sign-out, and must not crash the scope it runs in. */
+    private suspend fun <T> quietly(block: suspend () -> T): T? = try {
+        block()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
     }
 }
 

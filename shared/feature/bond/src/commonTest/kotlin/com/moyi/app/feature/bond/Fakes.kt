@@ -1,7 +1,11 @@
 package com.moyi.app.feature.bond
 
 import com.moyi.app.domain.bond.EmptyBondExit
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlin.time.Duration
 import com.moyi.app.domain.today.RefusedEntry
 import com.moyi.app.domain.today.QueuedEntry
 import com.moyi.app.domain.today.OutboxSender
@@ -260,6 +264,10 @@ class FakeOutbox : EntryOutbox, OutboxSender {
     var online = false
     var passes = 0
 
+    /** A pass that first waits on a token refresh, which no caller can cancel (SessionManager). */
+    var refreshFirst: Duration? = null
+    var refreshesFinished = 0
+
     override suspend fun enqueue(entry: QueuedEntry) {
         queue += entry
     }
@@ -279,6 +287,10 @@ class FakeOutbox : EntryOutbox, OutboxSender {
     override fun retrySoon() = Unit
     override suspend fun sendQueued(): OutboxPass {
         passes++
+        refreshFirst?.let {
+            withContext(NonCancellable) { delay(it) }
+            refreshesFinished++
+        }
         if (online) queue.clear()
         return if (queue.isEmpty()) OutboxPass.Empty else OutboxPass.Waiting
     }
@@ -293,10 +305,18 @@ class FakeEmptyBondExit : EmptyBondExit {
     var hang = false
     var fail = false
 
+    /** A settle whose bonds read first waits on a token refresh, which no caller can cancel. */
+    var refreshFirst: Duration? = null
+    var refreshesFinished = 0
+
     override suspend fun leaveAfterJoining(emptyBondId: String, joinedBondId: String) = Unit
 
     override suspend fun settle() {
         settles++
+        refreshFirst?.let {
+            withContext(NonCancellable) { delay(it) }
+            refreshesFinished++
+        }
         if (fail) error("the device's store could not be read")
         if (hang) awaitCancellation()
     }
