@@ -58,6 +58,17 @@ val debugApiBaseUrl: String = checkedDevelopmentBaseUrl(
     if (apiBaseUrlOverride != null) overrideSource else "the Android default",
 )
 
+// ---- versionCode (README, "Releasing to Google Play") ----------------------------------
+//
+// -Pmoyi.versionCode=<n> only: deliberately not read from local.properties, where a stale
+// value would outlive the upload it was meant for. Google Play's ceiling is 2100000000.
+val injectedVersionCode: Int = providers.gradleProperty("moyi.versionCode").orNull?.let { raw ->
+    raw.trim().toIntOrNull()?.takeIf { it in 1..2_100_000_000 }
+        ?: throw GradleException(
+            "moyi.versionCode must be a whole number from 1 to 2100000000, got \"$raw\".",
+        )
+} ?: 1
+
 // ---- Debug cleartext allowlist (README, "Which backend the app talks to") ----------------
 //
 // The local backend speaks plain HTTP, and so does the MinIO it signs photo and voice URLs
@@ -125,7 +136,11 @@ android {
         applicationId = "app.getmoyi.moyi"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
+        // Play refuses an upload whose versionCode is not above every one it already holds,
+        // so the release lane (fastlane android beta) decides it per upload and passes
+        // -Pmoyi.versionCode=<n>. Every other build (debug, CI) gets 1. versionName is
+        // decided here, by a commit, like MARKETING_VERSION on iOS.
+        versionCode = injectedVersionCode
         versionName = "1.0"
     }
     packaging {

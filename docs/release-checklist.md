@@ -44,7 +44,14 @@ through a PR as usual.
   - create the APNs key for `moyi-prod`.
 - [ ] **TestFlight:** first archive and upload. Claude can script the archive. The upload
   needs your Apple ID.
-- [ ] **Play internal testing track:** first `bundleRelease` upload.
+- [ ] **Play internal testing track:** first upload, by hand in Play Console (fastlane's
+  docs ask for the first one to be manual): `fastlane android build_aab version_code:1`,
+  then upload `build/android-release/Moyi-1.0-1.aab` to Internal testing.
+- [ ] **Owner: a Play service account** for `fastlane android beta` (README, "Releasing to
+  Google Play"): a JSON key at `~/.moyi/play-service-account.json`, invited in Play
+  Console with Release apps to testing tracks and View app information. After that every
+  Android upload is `fastlane android beta` (`release_status:draft` until Google has
+  reviewed the app once).
 
 ## 3. Links that open the app
 
@@ -101,9 +108,10 @@ The simulator and emulator cannot cover these. Several have never been run on An
 
   Write them into the parent repo's `copy.md`, `tokens.md`, `states.md` and `SKILL.md`, then
   mark the sections done here.
-- [ ] **Version numbers:** `versionCode` / `versionName` (Android) and
-  `CURRENT_PROJECT_VERSION` / `MARKETING_VERSION` (iOS) are 1 / 1.0. Decide on a scheme, and
-  bump them per upload.
+- [x] **Version numbers:** the release lanes decide the build number per upload, from the
+  store (Android `-Pmoyi.versionCode`, chore/play-lane; iOS `CURRENT_PROJECT_VERSION`), so
+  no file changes per upload. `versionName` / `MARKETING_VERSION` stay `1.0`, changed by a
+  PR for a release people should see as new (README, "Version numbers").
 - [ ] **Stale branches:** delete `feat/push-registration` and `spike/first-impression` with
   their worktrees.
 

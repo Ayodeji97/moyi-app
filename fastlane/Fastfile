@@ -1,14 +1,18 @@
-# Moyi release lanes (README, "Releasing to TestFlight").
+# Moyi release lanes (README, "Releasing to TestFlight" and "Releasing to Google Play").
 #
-#   fastlane ios beta     archive the iOS Release build and upload it to TestFlight
+#   fastlane ios beta         archive the iOS Release build and upload it to TestFlight
+#   fastlane android beta     build the signed Android release bundle and upload it to the
+#                             Play internal track
 #
-# Run from the repository root. Android (Play internal track via `supply`) comes later, as
-# its own `platform :android` block below the iOS one; the helpers at the top are shared.
+# Run from the repository root. The helpers at the top are shared by both platforms.
 #
-# Secrets never live in this repository (it is public). The App Store Connect API key is
-# read from ~/.moyi/release.env, which only the owner fills in. No value from it is ever
-# printed: messages name the variable, never what it holds.
+# Secrets never live in this repository (it is public). The App Store Connect API key and
+# the Play service account are read from ~/.moyi/, which only the owner fills in; the
+# Android upload key's properties live in ~/.gradle/gradle.properties. No value from any
+# of them is ever printed: messages name the variable, never what it holds.
 
+require "fileutils"
+require "json"
 require "open3"
 require "shellwords"
 require "tmpdir"
@@ -70,28 +74,37 @@ def require_clean_commit!
   sha
 end
 
+# Warns when a secret file can be read by other users of this Mac.
+def warn_if_shared!(path)
+  mode = File.stat(path).mode & 0o777
+  return if (mode & 0o077).zero?
+  UI.important("#{path} is readable by other users (mode #{format('%o', mode)}). Run: chmod 600 #{path}")
+end
+
 # Reads ~/.moyi/release.env (or $MOYI_RELEASE_ENV) into ENV. KEY=VALUE lines, # comments,
 # optional `export ` and quotes. A variable already set in the environment wins, so a CI
-# runner can provide them without the file. Only the keys this lane needs are read.
-def load_release_env!
+# runner can provide them without the file. Only the keys named are read. Returns the path.
+def read_release_env!(keys)
   path = File.expand_path(ENV.fetch("MOYI_RELEASE_ENV", RELEASE_ENV_DEFAULT))
-  if File.exist?(path)
-    mode = File.stat(path).mode & 0o777
-    if (mode & 0o077) != 0
-      UI.important("#{path} is readable by other users (mode #{format('%o', mode)}). Run: chmod 600 #{path}")
-    end
-    File.foreach(path) do |raw|
-      line = raw.strip
-      next if line.empty? || line.start_with?("#")
-      line = line.sub(/\Aexport\s+/, "")
-      key, value = line.split("=", 2)
-      next if value.nil?
-      key = key.strip
-      next unless RELEASE_ENV_KEYS.include?(key)
-      value = value.strip.sub(/\A(["'])(.*)\1\z/, '\2')
-      ENV[key] = value if ENV[key].to_s.strip.empty?
-    end
+  return path unless File.exist?(path)
+  warn_if_shared!(path)
+  File.foreach(path) do |raw|
+    line = raw.strip
+    next if line.empty? || line.start_with?("#")
+    line = line.sub(/\Aexport\s+/, "")
+    key, value = line.split("=", 2)
+    next if value.nil?
+    key = key.strip
+    next unless keys.include?(key)
+    value = value.strip.sub(/\A(["'])(.*)\1\z/, '\2')
+    ENV[key] = value if ENV[key].to_s.strip.empty?
   end
+  path
+end
+
+# The App Store Connect API key, from release.env. Every key is required.
+def load_release_env!
+  path = read_release_env!(RELEASE_ENV_KEYS)
 
   missing = RELEASE_ENV_KEYS.select do |key|
     value = ENV[key].to_s.strip
@@ -303,9 +316,320 @@ platform :ios do
   end
 end
 
-# --- Android (later) ---------------------------------------------------------------------
-# platform :android do
-#   lane :beta do
-#     # ./gradlew :androidApp:bundleRelease, then upload_to_play_store(track: "internal")
-#   end
-# end
+# --- Android -----------------------------------------------------------------------------
+
+# The service account that may upload to Play. Its JSON holds a private key: it stays in
+# ~/.moyi, never in the repository. PLAY_SERVICE_ACCOUNT_JSON in release.env (or the
+# environment) points elsewhere.
+PLAY_SERVICE_ACCOUNT_DEFAULT = "~/.moyi/play-service-account.json"
+ANDROID_RELEASE_ENV_KEYS = %w[PLAY_SERVICE_ACCOUNT_JSON].freeze
+# Play refuses a versionCode it has seen on any track, so the next one is above all of them.
+PLAY_TRACKS = %w[internal alpha beta production].freeze
+FIREBASE_DEV_PROJECT = "moyi-65b68"
+ANDROID_BUILD_DIR = File.join(REPO_ROOT, "build", "android-release")
+GRADLE_AAB = File.join(REPO_ROOT, "androidApp/build/outputs/bundle/release/androidApp-release.aab")
+UPLOAD_SIGNING_PROPERTIES = %w[
+  MOYI_UPLOAD_STORE_FILE
+  MOYI_UPLOAD_STORE_PASSWORD
+  MOYI_UPLOAD_KEY_ALIAS
+  MOYI_UPLOAD_KEY_PASSWORD
+].freeze
+
+platform :android do
+  # Releases come from main, as pushed: a commit nobody else can see is not released.
+  # any_branch:true lifts this, for a rehearsal on a pull request's branch.
+  def require_main_branch!(options)
+    return UI.important("any_branch:true, so the branch is not checked") if options[:any_branch]
+    branch, = quiet("git", "-C", REPO_ROOT, "rev-parse", "--abbrev-ref", "HEAD")
+    UI.user_error!("Releases come from main; this checkout is on #{branch}. Pass any_branch:true to rehearse.") unless branch == "main"
+    _out, pushed = quiet("git", "-C", REPO_ROOT, "merge-base", "--is-ancestor", "HEAD", "origin/main")
+    UI.user_error!("HEAD is not on origin/main. Pull, or push through a pull request, first.") unless pushed
+  end
+
+  # versionName from androidApp/build.gradle.kts: decided there, by a commit.
+  def android_version_name
+    gradle = File.read(File.join(REPO_ROOT, "androidApp/build.gradle.kts"))
+    m = gradle.match(/^\s*versionName\s*=\s*"([^"]+)"/)
+    UI.user_error!("versionName not found in androidApp/build.gradle.kts") unless m
+    m[1]
+  end
+
+  # The release build bundles this Firebase config. It is git-ignored, so a fresh checkout
+  # lacks it; without it the build still succeeds but Play testers get no push.
+  def check_android_release_firebase_config!
+    path = File.join(REPO_ROOT, "androidApp/src/release/google-services.json")
+    unless File.file?(path)
+      UI.user_error!(
+        "Missing androidApp/src/release/google-services.json (moyi-prod's Android app, " \
+        "README \"Push notifications\"). Download it from the Firebase console."
+      )
+    end
+    config = begin
+      JSON.parse(File.read(path))
+    rescue JSON::ParserError
+      UI.user_error!("androidApp/src/release/google-services.json is not valid JSON")
+    end
+    project = config.dig("project_info", "project_id")
+    packages = Array(config["client"]).map { |c| c.dig("client_info", "android_client_info", "package_name") }
+    unless project == FIREBASE_PROD_PROJECT && packages.include?(BUNDLE_ID)
+      UI.user_error!(
+        "androidApp/src/release/google-services.json is for #{project.inspect} / " \
+        "#{packages.inspect}; release needs #{FIREBASE_PROD_PROJECT} / #{BUNDLE_ID}."
+      )
+    end
+    UI.message("Firebase release config: #{project}, #{BUNDLE_ID}")
+  end
+
+  # The upload key's four Gradle properties (issue #49). Without them Gradle builds an
+  # unsigned bundle, which Play refuses; checking here fails in a second, not after a build.
+  # Only the names are looked at, except the keystore path, which must exist.
+  def check_upload_signing!
+    gradle_home = File.expand_path(ENV.fetch("GRADLE_USER_HOME", "~/.gradle"))
+    props_file = File.join(gradle_home, "gradle.properties")
+    props = {}
+    if File.file?(props_file)
+      File.foreach(props_file) do |raw|
+        key, value = raw.strip.split("=", 2)
+        props[key.strip] = value.to_s.strip if value && UPLOAD_SIGNING_PROPERTIES.include?(key.strip)
+      end
+    end
+    UPLOAD_SIGNING_PROPERTIES.each do |key|
+      from_env = ENV["ORG_GRADLE_PROJECT_#{key}"].to_s.strip
+      props[key] = from_env unless from_env.empty?
+    end
+    missing = UPLOAD_SIGNING_PROPERTIES.select { |key| props[key].to_s.empty? }
+    unless missing.empty?
+      UI.user_error!(
+        "The Android upload key is not configured: #{missing.join(', ')} missing from " \
+        "#{props_file} (issue #49). Without them the bundle is unsigned and Play refuses it."
+      )
+    end
+    store = File.expand_path(props["MOYI_UPLOAD_STORE_FILE"], REPO_ROOT)
+    UI.user_error!("MOYI_UPLOAD_STORE_FILE points at a keystore that does not exist") unless File.file?(store)
+    UI.message("Upload key: the four MOYI_UPLOAD_* properties are set and the keystore exists")
+  end
+
+  # The Play service account's JSON key. Missing is the normal state until the owner makes
+  # one, so the message says exactly how.
+  def play_json_key!
+    read_release_env!(ANDROID_RELEASE_ENV_KEYS)
+    configured = ENV["PLAY_SERVICE_ACCOUNT_JSON"].to_s.strip
+    path = File.expand_path(configured.empty? ? PLAY_SERVICE_ACCOUNT_DEFAULT : configured)
+    unless File.file?(path)
+      UI.user_error!(
+        "No Google Play service account key at #{path}. To make one (README, " \
+        "\"Releasing to Google Play\"):\n" \
+        "1. Google Cloud console, the project linked to the Play developer account: enable the " \
+        "Google Play Android Developer API, then IAM and admin, Service accounts, Create " \
+        "service account (no Cloud roles), Keys, Add key, JSON.\n" \
+        "2. Move the downloaded file to #{PLAY_SERVICE_ACCOUNT_DEFAULT} and chmod 600 it, or set " \
+        "PLAY_SERVICE_ACCOUNT_JSON in ~/.moyi/release.env to where it is.\n" \
+        "3. Play Console, Users and permissions, Invite new users: the service account's email, " \
+        "app #{BUNDLE_ID}, with Release apps to testing tracks and View app information."
+      )
+    end
+    warn_if_shared!(path)
+    key = begin
+      JSON.parse(File.read(path))
+    rescue JSON::ParserError
+      UI.user_error!("#{path} is not valid JSON; download the service account key again (JSON, not P12)")
+    end
+    unless key["type"] == "service_account" && !key["client_email"].to_s.empty? && !key["private_key"].to_s.empty?
+      UI.user_error!("#{path} is not a service account key (type service_account, with client_email and private_key)")
+    end
+    path
+  end
+
+  # Every versionCode Play already holds: on every track, and in the app's bundle library
+  # (a bundle uploaded and then left off every track still claims its code).
+  def play_version_codes(json_key)
+    codes = PLAY_TRACKS.flat_map do |track|
+      google_play_track_version_codes(package_name: BUNDLE_ID, track: track, json_key: json_key)
+    end
+    require "supply"
+    require "supply/options"
+    config = FastlaneCore::Configuration.create(
+      Supply::Options.available_options,
+      { package_name: BUNDLE_ID, json_key: json_key }
+    )
+    client = Supply::Client.make_from_config(params: config)
+    client.begin_edit(package_name: BUNDLE_ID)
+    codes += Array(client.aab_version_codes) + Array(client.apks_version_codes)
+    client.abort_current_edit
+    codes.compact.map(&:to_i)
+  rescue => e
+    UI.user_error!(
+      "Could not ask Google Play for #{BUNDLE_ID}'s version codes: #{e.message}. Check that " \
+      "the app exists in Play Console and the service account was invited to it " \
+      "(README, \"Releasing to Google Play\"). Invitations can take a few minutes to apply."
+    )
+  end
+
+  # aapt2 from the newest build-tools of the Android SDK this checkout builds with.
+  def aapt2!
+    sdk_dir = ENV["ANDROID_HOME"].to_s.strip
+    sdk_dir = ENV["ANDROID_SDK_ROOT"].to_s.strip if sdk_dir.empty?
+    local = File.join(REPO_ROOT, "local.properties")
+    if sdk_dir.empty? && File.file?(local)
+      line = File.readlines(local).find { |l| l =~ /^\s*sdk\.dir\s*=/ }
+      sdk_dir = line.split("=", 2).last.strip if line
+    end
+    sdk_dir = File.expand_path("~/Library/Android/sdk") if sdk_dir.empty?
+    tools = Dir.glob(File.join(sdk_dir, "build-tools", "*", "aapt2"))
+    UI.user_error!("No aapt2 under #{sdk_dir}/build-tools; install build-tools with the SDK Manager") if tools.empty?
+    tools.max_by { |t| Gem::Version.new(File.basename(File.dirname(t))[/\A[\d.]+/] || "0") }
+  end
+
+  # Opens the .aab and checks what it will talk to before anything is uploaded.
+  def verify_aab!(aab, version_name:, version_code:)
+    problems = []
+    Dir.mktmpdir("moyi-aab") do |dir|
+      entries, ok = quiet("unzip", "-Z1", aab)
+      UI.user_error!("Could not open #{aab} as a zip") unless ok
+      entries = entries.lines.map(&:strip)
+
+      # Signed with the upload key: jarsigner leaves a .SF and a .RSA/.EC/.DSA in META-INF/.
+      signed = entries.any? { |e| e =~ %r{\AMETA-INF/[^/]+\.SF\z} } &&
+               entries.any? { |e| e =~ %r{\AMETA-INF/[^/]+\.(RSA|EC|DSA)\z} }
+      problems << "the bundle is not signed (is the upload key configured? issue #49)" unless signed
+
+      # aapt2 reads a proto-format APK, which is what a bundle's base module holds: the
+      # manifest and resources.pb moved to the root of a zip of their own.
+      _out, ok = quiet("unzip", "-q", "-o", aab, "base/manifest/AndroidManifest.xml", "base/resources.pb",
+                       "base/dex/*", "-d", dir)
+      UI.user_error!("#{aab} has no base module manifest") unless ok
+      base = File.join(dir, "base")
+      FileUtils.cp(File.join(base, "manifest/AndroidManifest.xml"), File.join(base, "AndroidManifest.xml"))
+      proto_apk = File.join(dir, "base.apk")
+      _out, ok = quiet("zip", "-q", "-j", proto_apk, File.join(base, "AndroidManifest.xml"),
+                       File.join(base, "resources.pb"))
+      UI.user_error!("Could not repackage the base module for aapt2") unless ok
+
+      aapt2 = aapt2!
+      badging, ok = quiet(aapt2, "dump", "badging", proto_apk)
+      UI.user_error!("aapt2 could not read the bundle's manifest") unless ok
+      package = badging[/^package: name='([^']*)'/, 1]
+      code = badging[/ versionCode='([^']*)'/, 1]
+      name = badging[/ versionName='([^']*)'/, 1]
+      problems << "package is #{package.inspect}, expected #{BUNDLE_ID.inspect}" unless package == BUNDLE_ID
+      problems << "versionCode is #{code.inspect}, expected #{version_code.to_s.inspect}" unless code == version_code.to_s
+      problems << "versionName is #{name.inspect}, expected #{version_name.inspect}" unless name == version_name
+
+      manifest, = quiet(aapt2, "dump", "xmltree", "--file", "AndroidManifest.xml", proto_apk)
+      problems << "the manifest is debuggable" if manifest =~ /:debuggable\(0x[0-9a-f]+\)=(true|-1)/
+      problems << "the manifest allows cleartext traffic" if manifest =~ /:usesCleartextTraffic\(0x[0-9a-f]+\)=(true|-1)/
+      problems << "the manifest has a network security config; release keeps Android's HTTPS-only default" if manifest =~ /:networkSecurityConfig\(/
+
+      # The API base URL is a BuildConfig constant, compiled into the dex as a string.
+      dex = Dir.glob(File.join(base, "dex", "*.dex")).map { |f| File.binread(f) }.join
+      problems << "the code does not contain #{PRODUCTION_API_BASE_URL}" unless dex.include?(PRODUCTION_API_BASE_URL)
+      problems << "the code contains the emulator's local backend (10.0.2.2)" if dex.include?("http://10.0.2.2")
+
+      # Firebase's config becomes string resources (google-services plugin).
+      resources = File.binread(File.join(base, "resources.pb"))
+      problems << "no #{FIREBASE_PROD_PROJECT} Firebase config in the resources: the build would have no push" unless resources.include?(FIREBASE_PROD_PROJECT)
+      problems << "the resources name the development Firebase project #{FIREBASE_DEV_PROJECT}" if resources.include?(FIREBASE_DEV_PROJECT)
+    end
+
+    unless problems.empty?
+      UI.user_error!("The .aab is not a production build; nothing was uploaded:\n- #{problems.join("\n- ")}")
+    end
+    UI.success("The .aab checks out: #{PRODUCTION_API_BASE_URL}, #{BUNDLE_ID} #{version_name} (#{version_code}), " \
+               "signed, not debuggable, no cleartext, Firebase #{FIREBASE_PROD_PROJECT}")
+  end
+
+  # Builds the release bundle with this versionCode, copies it to build/android-release/
+  # and verifies it. Returns its path.
+  def build_release_aab!(version_name:, version_code:)
+    gradle(
+      gradle_path: File.join(REPO_ROOT, "gradlew"),
+      project_dir: REPO_ROOT,
+      task: ":androidApp:bundleRelease",
+      properties: { "moyi.versionCode" => version_code }
+    )
+    UI.user_error!("Gradle finished but #{GRADLE_AAB} is not there") unless File.file?(GRADLE_AAB)
+    FileUtils.mkdir_p(ANDROID_BUILD_DIR)
+    aab = File.join(ANDROID_BUILD_DIR, "Moyi-#{version_name}-#{version_code}.aab")
+    FileUtils.cp(GRADLE_AAB, aab)
+    verify_aab!(aab, version_name: version_name, version_code: version_code)
+    aab
+  end
+
+  def positive_version_code!(value)
+    code = Integer(value.to_s, 10) rescue nil
+    UI.user_error!("version_code must be a whole number from 1 to 2100000000") unless code && code.between?(1, 2_100_000_000)
+    code
+  end
+
+  desc "Build the signed release bundle (production API) and upload it to the Play internal track. " \
+       "Options: release_status:draft (needed until Play has reviewed the app once), any_branch:true"
+  lane :beta do |options|
+    release_status = (options[:release_status] || "completed").to_s
+    unless %w[completed draft].include?(release_status)
+      UI.user_error!("release_status is completed (the default) or draft, not #{release_status.inspect}")
+    end
+
+    # 1. Everything that needs no network, cheapest first.
+    sha = require_clean_commit!
+    require_main_branch!(options)
+    check_android_release_firebase_config!
+    check_upload_signing!
+    json_key = play_json_key!
+
+    # 2. The versionCode: one more than the highest Play already holds, 1 if none.
+    version_name = android_version_name
+    codes = play_version_codes(json_key)
+    version_code = (codes.max || 0) + 1
+    UI.message("Version #{version_name}: highest versionCode on Play #{codes.max || 'none'}, this one #{version_code}")
+
+    # 3. Build and prove it is a production build before it leaves the Mac.
+    aab = build_release_aab!(version_name: version_name, version_code: version_code)
+
+    # 4. Upload. Internal track only; no listing, images or screenshots are touched.
+    begin
+      upload_to_play_store(
+        package_name: BUNDLE_ID,
+        json_key: json_key,
+        track: "internal",
+        aab: aab,
+        release_status: release_status,
+        version_name: "#{version_name} (#{version_code})",
+        skip_upload_apk: true,
+        skip_upload_metadata: true,
+        skip_upload_changelogs: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true
+      )
+    rescue => e
+      raise unless e.message =~ /draft app/i
+      UI.user_error!(
+        "Play only takes draft releases until the app has been reviewed once (\"#{e.message}\"). " \
+        "The edit was not committed. Run again with: fastlane android beta release_status:draft, " \
+        "then roll the draft out to testers in Play Console, Testing, Internal testing."
+      )
+    end
+    UI.success("Uploaded Moyi #{version_name} (#{version_code}) from #{sha[0, 7]} to the Play internal track " \
+               "as #{release_status}: #{aab}")
+  end
+
+  desc "Build the signed release bundle with a given versionCode and check it, as beta does; asks Play " \
+       "nothing and uploads nothing. fastlane android build_aab version_code:<n> [any_branch:true]"
+  lane :build_aab do |options|
+    version_code = positive_version_code!(options[:version_code])
+    require_clean_commit!
+    require_main_branch!(options)
+    check_android_release_firebase_config!
+    check_upload_signing!
+    aab = build_release_aab!(version_name: android_version_name, version_code: version_code)
+    UI.success("Built #{aab}; nothing was uploaded")
+  end
+
+  desc "Check an .aab is a production build, as beta does before uploading; uploads nothing. " \
+       "fastlane android check_aab aab:<path> version_code:<n> [version_name:<v>, default build.gradle.kts's]"
+  lane :check_aab do |options|
+    aab = File.expand_path(options[:aab].to_s, REPO_ROOT)
+    UI.user_error!("Pass aab:<path to an .aab>; #{aab} is not a file") unless File.file?(aab)
+    verify_aab!(aab, version_name: (options[:version_name] || android_version_name).to_s,
+                     version_code: positive_version_code!(options[:version_code]))
+  end
+end

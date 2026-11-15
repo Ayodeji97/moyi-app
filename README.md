@@ -212,12 +212,13 @@ adb shell am start -a android.intent.action.VIEW -d "https://getmoyi.app/i/7KQ4M
 xcrun simctl launch --terminate-running-process booted app.getmoyi.moyi -moyiOpenLink "https://getmoyi.app/i/7KQ4MZ"
 ```
 
-**Version numbers.** Both platforms ship as version `1.0`, build `1` for the first store
-uploads (Android `versionName`/`versionCode` in `androidApp/build.gradle.kts`, iOS
-`MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in `iosApp/Configuration/Config.xcconfig`).
-Each upload to Google Play or App Store Connect needs a new build number, so the build
-number goes up by one per upload, in its own PR; the version changes only for a release
-people should see as new.
+**Version numbers.** The version people see is decided by a commit: Android `versionName` in
+`androidApp/build.gradle.kts`, iOS `MARKETING_VERSION` in
+`iosApp/Configuration/Config.xcconfig`, both `1.0`; it changes, in its own PR, only for a
+release people should see as new. The build number is decided at upload time by the release
+lanes, which ask the store for the last one and pass the next one into the build, so a
+release changes no file: Android takes `-Pmoyi.versionCode=<n>` (1 when absent, as in every
+debug and CI build), iOS `CURRENT_PROJECT_VERSION` as a build setting.
 
 **Android release signing.** The release build is signed with the upload key only where
 these four Gradle properties exist, which is the owner's `~/.gradle/gradle.properties`,
@@ -328,7 +329,71 @@ What the lane checks, in order, and it stops at the first that fails:
 The `.ipa` and dSYMs land in `build/ios-release/`. Release notes come from
 `RELEASE_NOTES`, else `Internal test build <sha>`. `fastlane lanes` parses the Fastfile and
 needs no secrets. `fastlane ios check_ipa ipa:<path> build:<n>` runs check 5 alone on any
-`.ipa`, with no key and no upload. Android (Play internal track) is not automated yet.
+`.ipa`, with no key and no upload. Android has its own lane, below.
+
+## Releasing to Google Play
+
+One command, from the repository root, on the owner's Mac:
+
+```sh
+fastlane android beta
+```
+
+It builds the signed Android **release** bundle (production, `https://api.getmoyi.app/api/v1`)
+and uploads it to the Play **internal** testing track. Nothing else on Play is touched: no
+store listing, images or screenshots, no other track.
+
+Before the first run:
+
+- **fastlane**, from Homebrew, as for TestFlight.
+- **The Play Console app** `app.getmoyi.moyi` exists, with one bundle uploaded by hand: the
+  Play Developer API cannot create an app, and fastlane's docs ask for the first upload to
+  be made in Play Console. Build that one with `fastlane android build_aab version_code:1`
+  and upload `build/android-release/Moyi-1.0-1.aab` to Internal testing.
+- **The upload key** in `~/.gradle/gradle.properties` (Android release signing, above).
+- **`androidApp/src/release/google-services.json`**, moyi-prod's (Push notifications, above).
+- **A Google Play service account key**, kept outside the repository at
+  `~/.moyi/play-service-account.json` (`chmod 600`), or wherever
+  `PLAY_SERVICE_ACCOUNT_JSON` in `~/.moyi/release.env` says:
+  1. In the Google Cloud console, pick (or create) a project for Moyi's releases and enable
+     the **Google Play Android Developer API** (APIs and services, Library).
+  2. IAM and admin, Service accounts, **Create service account**, for example
+     `play-upload`. It needs no Google Cloud role. Open it, Keys, Add key, Create new key,
+     **JSON**. Move the download to `~/.moyi/play-service-account.json` and `chmod 600` it.
+  3. In Play Console, **Users and permissions**, Invite new users: the service account's
+     email (`...@<project>.iam.gserviceaccount.com`). Under App permissions add
+     `app.getmoyi.moyi` with **Release apps to testing tracks** and **View app
+     information**. Invite. It can take a few minutes, sometimes longer, to apply.
+
+What the lane checks, in order, and it stops at the first that fails:
+
+1. The working tree is clean, so the upload is exactly a commit (it prints the SHA), and
+   the checkout is on `main` with that commit on `origin/main`. `any_branch:true` lifts the
+   branch check for a rehearsal.
+2. The release Firebase config exists and is `moyi-prod` for `app.getmoyi.moyi`.
+3. The upload key's four Gradle properties are set and the keystore exists (names only,
+   never values), and the service account key exists and is one.
+4. The versionCode: one more than the highest Play already holds, across the internal,
+   alpha, beta and production tracks and every bundle uploaded, or 1 for the first.
+5. After `./gradlew :androidApp:bundleRelease -Pmoyi.versionCode=<n>`, it opens the `.aab`
+   and refuses to upload unless it is signed, the package is `app.getmoyi.moyi`, the
+   versionCode and versionName are the ones above, it is not debuggable, it has no
+   cleartext or network security config, the code carries the production base URL and
+   the resources name `moyi-prod` and never the development Firebase project.
+
+The `.aab` lands in `build/android-release/Moyi-<versionName>-<versionCode>.aab`. The Play
+release is named `<versionName> (<versionCode>)` and has no release notes.
+
+**First uploads: draft.** Until Google has reviewed the app once, Play accepts only draft
+releases and answers a completed one with "Only releases with status draft may be created
+on draft app". The lane catches that, commits nothing and says to run
+`fastlane android beta release_status:draft`; then roll the draft out in Play Console,
+Testing, Internal testing. Once the app has been reviewed, the default (`completed`) goes
+straight to internal testers.
+
+Two lanes need no Play key and upload nothing: `fastlane android build_aab version_code:<n>`
+runs checks 1, 2, the upload-key part of 3, and 5; `fastlane android check_aab
+aab:<path> version_code:<n>` runs check 5 alone on any `.aab`.
 
 ## Legal page URLs
 
