@@ -51,10 +51,12 @@ import kotlinx.coroutines.launch
  *   Today stops showing ([TodayAction.OnBackground]) and starts again on the next foreground.
  * - **The reveal**: when a day turns up revealed with the partner's words, and the
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
- * - **Asking for notifications** (owner ruling 2026-11-13): once there is a reason, after
- *   my entry is saved in a bond someone has joined, Today draws one note offering the phone's
- *   prompt, while the phone has not been asked and "Not now" has not been chosen on it
- *   ([NotificationAskMemory], per phone). The screen reads the permission; this decides.
+ * - **Asking for notifications** (owner ruling 2026-11-15, replacing 2026-11-13's "after my
+ *   first entry"): from the first arrival on Today, before writing and whether or not anyone
+ *   has joined, Today draws one note offering the phone's prompt, while the phone has not been
+ *   asked and "Not now" has not been chosen on it ([NotificationAskMemory], per phone). The
+ *   note comes first, not the phone's own prompt, because iOS shows that prompt only once.
+ *   The screen reads the permission; this decides.
  *
  * Today is the root of the signed-in app, so it owns the loop's lifetime: the day in
  * memory is forgotten when this ViewModel is created ([DailyLoop.open]) and when it is
@@ -359,16 +361,16 @@ class TodayViewModel(
         val asking: Boolean = false,
     ) {
         /**
-         * Drawn once my entry is saved today, in whatever layout Today shows next: Waiting
-         * (also PENDING_REVEAL) for the first to write, Revealed for the second, whose save
-         * opens the day. Never while nobody has joined: that note has its own two actions.
-         * Android below 13 is never [NotificationPermission.NotAsked], so never there.
+         * Drawn on the layouts of a live day, from the first arrival: NotWritten (under the
+         * prompt, above Write), Waiting (also PENDING_REVEAL), Revealed, and PartnerNotJoined
+         * (under that note's own actions). Never on a bond that has ended. Android below 13 is
+         * never [NotificationPermission.NotAsked], so never there.
          */
         fun offered(view: DayView): Boolean =
             permission == NotificationPermission.NotAsked &&
                 !dismissed &&
-                view.status in AskAfter &&
-                view.bondStatus != BondStatus.PENDING_MEMBER
+                view.status in AskOn &&
+                view.bondStatus !in EndedBond
     }
 
     /** Which of my entries the open delete dialog asks about: what deleting means differs. */
@@ -388,5 +390,8 @@ class TodayViewModel(
     )
 }
 
-/** The layouts in which my entry for today is saved on the server: where the note may be drawn. */
-private val AskAfter = setOf(TodayStatus.Waiting, TodayStatus.Revealed)
+/** The layouts of a live day: where the note may be drawn. */
+private val AskOn = setOf(TodayStatus.NotWritten, TodayStatus.Waiting, TodayStatus.Revealed, TodayStatus.PartnerNotJoined)
+
+/** A bond that takes no more days: reminders mean nothing there. */
+private val EndedBond = setOf(BondStatus.ARCHIVED, BondStatus.PENDING_DELETION, BondStatus.DELETED)

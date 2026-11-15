@@ -287,6 +287,8 @@ private fun ColumnScope.NotWritten(state: TodayState, onAction: (TodayAction) ->
         // layout keeps its one job, the Write action, and draws no invented line in its place.
         state.prompt?.let { MoyiText(text = it, role = TextRole.Entry) }
         Refusal(state, onAction)
+        // From the first arrival (owner ruling 2026-11-15): under the prompt, above Write.
+        NotificationAsk(state, onAction)
     }
 }
 
@@ -369,9 +371,10 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
 }
 
 /**
- * Asks for notifications once there is a reason (owner ruling 2026-11-13; mockup
- * "Ask for notifications" v2): under "Written." for the first to write, below both entries
- * for the second. Today's own note, with no heading so it never competes with "Written.":
+ * Asks for notifications from the first arrival on Today (owner ruling 2026-11-15, replacing
+ * 2026-11-13's "after the first entry"; mockup "Ask for notifications" v2): under the prompt
+ * before writing, under "Written." for the first to write, below both entries for the second,
+ * under the invite note while nobody has joined. Today's own note, with no heading so it never competes with "Written.":
  * the line names both rewards and the true limit, "Allow notifications" is an outlined
  * button (the PrimaryAction stays Write's), "Not now" a text link. Both are 48 targets.
  * Either answer to the phone's prompt, or "Not now", removes it for good; nothing thanks.
@@ -410,6 +413,7 @@ private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayActi
         )
         // No invite could be found or issued: the Generic error's words, as for a failed delete.
         ActionFailed(state)
+        NotificationAsk(state, onAction)
         // TODO(PR #7): Figma 220:27 places the InviteCode (358 × 195) 16 below this note.
         //  InviteCode is PR #7's component; add it here after the rebase.
     }

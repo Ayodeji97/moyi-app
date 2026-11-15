@@ -552,6 +552,7 @@ Numbered from 30 so they do not collide with sections other open PRs add; renumb
 - **The permission, when:** only on this screen, when the person turns a kind of notification on
   while the phone has never been asked, or taps *Allow notifications*. Never at launch or in
   onboarding (doc 13 §7). Denied is said once, with *Open phone settings*, and never asked again.
+- **Also on Today (owner ruling 2026-11-15, replacing 2026-11-13's "after the first entry"):** a note offers the phone's prompt from the first arrival on Today, on every layout of a live day, joined or not. This departs from doc 13 §7 ("after the user has seen the value") by the owner's choice; the note comes before the phone's one-time iOS prompt, so "Not now" leaves that prompt unspent.
 - **Open questions for the owner:** the copy; quiet hours' default when first turned on (PROPOSED
   22:00 to 07:00); whether the prompt should also come after the first entry is sent (doc 13 §7,
   "after the user has seen the value"; `states.md` §3a says onboarding "already spends a prompt on

@@ -34,9 +34,9 @@ class FakeNotificationAskMemory(var dismissed: Boolean = false) : NotificationAs
 }
 
 /**
- * Asking for notifications on Today, once there is a reason (owner ruling 2026-11-13): after my
- * entry is saved in a bond someone has joined, while the phone has not been asked and "Not now"
- * has not been chosen on it.
+ * Asking for notifications on Today from the first arrival (owner ruling 2026-11-15): on every
+ * layout of a live day, joined or not, while the phone has not been asked and "Not now" has not
+ * been chosen on it.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationAskTodayTest : MainDispatcherTest() {
@@ -75,27 +75,40 @@ class NotificationAskTodayTest : MainDispatcherTest() {
     }
 
     @Test
-    fun itDoesNotShowBeforeAnyEntryIsSaved() = runTest {
+    fun itShowsOnTheFirstArrivalBeforeAnythingIsWritten() = runTest {
         open(TodayStatus.NotWritten)
-        assertFalse(viewModel.state.value.askForNotifications)
-        // Kept on the phone, not yet saved on the server: not yet.
-        loop.show(joinedDay(TodayStatus.Queued))
-        assertFalse(viewModel.state.value.askForNotifications)
-        // Then saved: now there is a reason.
-        loop.show(joinedDay(TodayStatus.Waiting))
         assertTrue(viewModel.state.value.askForNotifications)
     }
 
     @Test
-    fun itDoesNotShowWhileNobodyHasJoined() = runTest {
+    fun itDoesNotShowWhileTheEntryIsOnlyOnThePhoneOrTheDayHasClosed() = runTest {
+        open(TodayStatus.Queued)
+        assertFalse(viewModel.state.value.askForNotifications)
+        loop.show(joinedDay(TodayStatus.SoloYouWrote))
+        assertFalse(viewModel.state.value.askForNotifications)
+        loop.show(joinedDay(TodayStatus.Tombstone))
+        assertFalse(viewModel.state.value.askForNotifications)
+    }
+
+    @Test
+    fun itShowsWhileNobodyHasJoinedBeforeAndAfterWriting() = runTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         viewModel.onAction(TodayAction.OnNotificationPermissionChecked(NotificationPermission.NotAsked))
-        // The note for a bond nobody has joined has its own two actions.
+        loop.show(dayView(TodayStatus.NotWritten).copy(bondStatus = BondStatus.PENDING_MEMBER, partnerName = null))
+        assertTrue(viewModel.state.value.askForNotifications)
+        // Under the invite note's own two actions.
         loop.show(dayView(TodayStatus.PartnerNotJoined).copy(bondStatus = BondStatus.PENDING_MEMBER, partnerName = null))
-        assertFalse(viewModel.state.value.askForNotifications)
-        // And never on a waiting day of such a bond, however it is drawn.
-        loop.show(dayView(TodayStatus.Waiting).copy(bondStatus = BondStatus.PENDING_MEMBER))
-        assertFalse(viewModel.state.value.askForNotifications)
+        assertTrue(viewModel.state.value.askForNotifications)
+    }
+
+    @Test
+    fun itDoesNotShowOnABondThatHasEnded() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        viewModel.onAction(TodayAction.OnNotificationPermissionChecked(NotificationPermission.NotAsked))
+        listOf(BondStatus.ARCHIVED, BondStatus.PENDING_DELETION, BondStatus.DELETED).forEach { ended ->
+            loop.show(dayView(TodayStatus.NotWritten).copy(bondStatus = ended))
+            assertFalse(viewModel.state.value.askForNotifications, ended.name)
+        }
     }
 
     @Test
@@ -159,7 +172,7 @@ class NotificationAskTodayTest : MainDispatcherTest() {
 
     @Test
     fun allowDoesNothingWhereTheNoteIsNotDrawn() = runTest {
-        open(TodayStatus.NotWritten)
+        open(TodayStatus.Queued)
         viewModel.events.test {
             viewModel.onAction(TodayAction.OnAllowNotificationsClick)
             expectNoEvents()
