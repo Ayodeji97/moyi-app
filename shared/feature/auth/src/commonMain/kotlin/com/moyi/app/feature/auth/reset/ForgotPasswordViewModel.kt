@@ -59,7 +59,7 @@ class ForgotPasswordViewModel(
             when (val result = authRepository.requestPasswordReset(email)) {
                 is Result.Success -> {
                     _state.update { it.copy(submit = SubmitStatus.Idle) }
-                    _events.send(ForgotPasswordEvent.NavigateToLinkSent(email))
+                    _events.send(ForgotPasswordEvent.NavigateToCode(email))
                 }
                 is Result.Failure -> _state.update { it.copy(submit = AuthErrorMapper.formFailure(result.error)) }
             }

@@ -47,12 +47,12 @@ class ForgotPasswordViewModelTest : MainDispatcherTest() {
     }
 
     @Test
-    fun acceptedGoesToLinkSentWithTheTrimmedEmail() = runTest {
+    fun acceptedGoesToTheCodeWithTheTrimmedEmail() = runTest {
         val viewModel = ForgotPasswordViewModel("", repo)
         viewModel.onAction(ForgotPasswordAction.OnEmailChange(" amara@example.com\n"))
         viewModel.events.test {
             viewModel.onAction(ForgotPasswordAction.OnSubmit)
-            assertEquals(ForgotPasswordEvent.NavigateToLinkSent("amara@example.com"), awaitItem())
+            assertEquals(ForgotPasswordEvent.NavigateToCode("amara@example.com"), awaitItem())
         }
         assertEquals(listOf("amara@example.com"), repo.requestResetCalls)
         assertEquals(SubmitStatus.Idle, viewModel.state.value.submit)

@@ -1,7 +1,6 @@
 package com.moyi.app
 
 import com.moyi.app.domain.link.DeepLink
-import com.moyi.app.feature.auth.navigation.ResetLinkSentRoute
 import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
 import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.onboarding.navigation.JoinCodeRoute
@@ -103,10 +102,9 @@ internal sealed interface LinkRouting {
  * soon as the shell has a screen, signed in or out.
  *
  * - [current] is the route on screen when it is one of the screens the link continues: on
- *   Verify (just signed up) the link takes its place, keeping the address; on Reset link
- *   sent it pushes Choose a new password with that address, as the screen's own link does;
- *   on Choose a new password it takes its place. The address is what signs the person in
- *   afterwards.
+ *   Verify (just signed up) the link takes its place, keeping the address; on Choose a new
+ *   password (where Forgot password lands, on the code step) it takes its place, keeping
+ *   the address. The address is what signs the person in afterwards.
  * - Anywhere else the screen is pushed over what is showing, so back returns there. The
  *   address is [signedInEmail] when someone is signed in, and empty when not: the phone
  *   does not know which account the email went to, and the screens say what to do then.
@@ -140,7 +138,6 @@ internal fun accountLinkRouting(
         }
         is DeepLink.ResetPassword -> when (current) {
             is ResetPasswordRoute -> LinkRouting.Push(current.copy(linkToken = link.token), replaceCurrent = true)
-            is ResetLinkSentRoute -> LinkRouting.Push(ResetPasswordRoute(email = current.email, linkToken = link.token))
             else -> LinkRouting.Push(ResetPasswordRoute(email = email, linkToken = link.token))
         }
         is DeepLink.Invite, DeepLink.Unknown -> LinkRouting.Wait

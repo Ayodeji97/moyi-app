@@ -79,13 +79,10 @@ class AuthBackStackTest {
     fun theResetScreensPushInOrderAndBackPopsOneAtATime() {
         val nav = controllerAtLogin()
         nav.navigate(ForgotPasswordRoute(email = "a+b@example.com"))
-        nav.navigate(ResetLinkSentRoute(email = "a+b@example.com"))
         nav.navigate(ResetPasswordRoute(email = "a+b@example.com"))
-        assertEquals(listOf("LoginRoute", "ForgotPasswordRoute", "ResetLinkSentRoute", "ResetPasswordRoute"), nav.stack())
+        assertEquals(listOf("LoginRoute", "ForgotPasswordRoute", "ResetPasswordRoute"), nav.stack())
         assertEquals(ResetPasswordRoute("a+b@example.com"), nav.currentBackStackEntry!!.toRoute<ResetPasswordRoute>())
 
-        nav.navigateUp()
-        assertEquals(listOf("LoginRoute", "ForgotPasswordRoute", "ResetLinkSentRoute"), nav.stack())
         nav.navigateUp()
         assertEquals(listOf("LoginRoute", "ForgotPasswordRoute"), nav.stack())
         assertEquals(ForgotPasswordRoute("a+b@example.com"), nav.currentBackStackEntry!!.toRoute<ForgotPasswordRoute>())
@@ -97,7 +94,6 @@ class AuthBackStackTest {
     fun aResetWhoseSignInFailedLeavesOnlySignInWithTheEmail() {
         val nav = controllerAtLogin()
         nav.navigate(ForgotPasswordRoute(email = "amara@example.com"))
-        nav.navigate(ResetLinkSentRoute(email = "amara@example.com"))
         nav.navigate(ResetPasswordRoute(email = "amara@example.com"))
 
         nav.replaceStackWithLogin("amara@example.com")

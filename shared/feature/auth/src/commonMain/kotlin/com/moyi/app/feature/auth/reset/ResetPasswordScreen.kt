@@ -27,6 +27,7 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.ScreenHeader
+import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.platform.LayerBackHandler
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.presentation.UiText
@@ -49,6 +50,7 @@ import com.moyi.app.feature.auth.resources.code_helper
 import com.moyi.app.feature.auth.resources.reset_link_ready
 import com.moyi.app.feature.auth.resources.reset_code_action
 import com.moyi.app.feature.auth.resources.reset_code_heading
+import com.moyi.app.feature.auth.resources.reset_code_line
 import com.moyi.app.feature.auth.resources.verify_action_sending
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -84,9 +86,13 @@ fun ResetPasswordRoot(
 /**
  * Two steps on one route (backend-contract-gaps.md row 39).
  *
- * **Code** (NEW, docs/missing-components.md §72): the code field alone, 24 under a heading,
- * as on verify, and "Check the code" in the action block. The sixth digit checks it too, and
- * a refusal shows on the field.
+ * **Code** (NEW, docs/missing-components.md §72): where Forgot password lands (§82, owner
+ * ruling 2026-11-16: no "Check your email" screen in between). The heading, then one muted
+ * line 16 under it saying where the code went, then the code field 24 under that, as on
+ * verify, and "Check the code" in the action block. The line names the address but reads the
+ * same whether or not it has an account (states.md §1b): it says "if". With no address (a
+ * refused emailed link, on a phone that never asked) the line is left out. The sixth digit
+ * checks the code too, and a refusal shows on the field.
  *
  * **Password**: placed per Figma 345:30 (auth-placement-spec §3.4): heading, then the new
  * password field (with its helper, 115 tall), then the consequence as body text, then the
@@ -128,6 +134,10 @@ fun ResetPasswordScreen(
             stringResource(Res.string.login_eyebrow),
             stringResource(if (onCodeStep) Res.string.reset_code_heading else Res.string.reset_new_heading),
         )
+        if (onCodeStep && state.email.isNotEmpty()) {
+            Spacer(Modifier.height(spacing.md))
+            MoyiText(stringResource(Res.string.reset_code_line, state.email), tone = TextTone.Muted)
+        }
         Spacer(Modifier.height(spacing.lg))
         if (onCodeStep) {
             // NEW, not in Figma (docs/missing-components.md §58): six digits, or the link pasted.

@@ -56,7 +56,7 @@ Section **Onboarding** 425:3, section **Account** 425:313. Every frame is 390 ×
 | Account 1 · sign in · IDLE | **344:18** | 362:1708 | |
 | Account 1 · sign in · KEYBOARD UP | 362:1284 | 362:1764 | |
 | Account 2 · forgot password · IDLE | 344:41 | 362:1720 | Built 2026-11-05 (`ForgotPasswordScreen`) |
-| Account 3 · reset link sent · NON-DISCLOSING | 345:23 | 362:1729 | Built 2026-11-05 (`ResetLinkSentScreen`) |
+| Account 3 · reset link sent · NON-DISCLOSING | 345:23 | 362:1729 | Built 2026-11-05 (`ResetLinkSentScreen`); removed 2026-11-16 (owner ruling, missing-components §82): Forgot password goes straight to the code step, whose line keeps the non-disclosure |
 | Account 4 · reset password · IDLE | 345:30 | 362:1738 | Built 2026-11-05 (`ResetPasswordScreen`), with the paste-code field first (missing-components §6a) |
 | Account 5 · unverified gate · BLOCKED | 345:46 | 362:1746 | Root screen with no back button. Eyebrow sits at y 24 |
 | Account 6 · rate limited · PAUSED | 345:53 | 362:1755 | This is the sign-in error state that exists in Figma |
@@ -209,7 +209,7 @@ Field-level validation (a malformed email) uses the Field Error variant: a 2 px 
   - Field · email (83, helper hidden) at y 292.
   - action (16, 772): PrimaryAction only.
   - Built 2026-11-05: heading and body 16 apart, the field 24 under the body.
-- **Reset link sent (345:23):** intro at 171. The action holds one secondary link (123 wide), centred at y 772. Built 2026-11-05; the link reads "Choose a new password".
+- **Reset link sent (345:23):** intro at 171. The action holds one secondary link (123 wide), centred at y 772. Built 2026-11-05; the link reads "Choose a new password". Removed 2026-11-16 (missing-components §82).
 - **Reset password (345:30):**
   - heading at 171.
   - Field · new password (115) at 228.

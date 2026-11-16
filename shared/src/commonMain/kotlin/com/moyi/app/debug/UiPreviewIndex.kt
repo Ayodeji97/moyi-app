@@ -14,7 +14,6 @@ import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.feature.auth.navigation.ForgotPasswordRoute
-import com.moyi.app.feature.auth.navigation.ResetLinkSentRoute
 import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
 import com.moyi.app.feature.auth.navigation.SessionEndedRoute
 import com.moyi.app.feature.auth.navigation.VerifyRoute
@@ -54,7 +53,6 @@ private val entries: List<Pair<String, Any>> = listOf(
     // The reset screens open directly too; their actions call the API, so without a
     // backend they show the offline error. For layout, like check email.
     "Auth: forgot password (prefilled)" to ForgotPasswordRoute(email = "amara@example.com"),
-    "Auth: reset link sent" to ResetLinkSentRoute(email = "amara@example.com"),
     "Auth: choose a new password" to ResetPasswordRoute(email = "amara@example.com"),
 )
 
