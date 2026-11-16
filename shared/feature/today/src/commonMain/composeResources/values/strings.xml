@@ -66,8 +66,8 @@
     <!-- The reminder screen (owner rulings 2026-11-15; mockup "Reminders" v4, dark and light boards): shown once per phone, the first time a live day reaches Today while the phone has not been asked about notifications. All PROPOSED: the mockup's words, approved in direction by the owner, not yet ruled string by string. -->
     <!-- PROPOSED. The screen's title (title role). -->
     <string name="reminder_ask_title">A moment each day</string>
-    <!-- PROPOSED. The line under the title (body, inkMuted). "Once or twice more" describes the neutral nudges of moyi-backend#200, which are not shipped yet: until they are, only the first reminder and the reveal arrive. -->
-    <string name="reminder_ask_line">Moyi can remind you at a time you choose, and once or twice more if you have not written yet. None once you have. You also hear when your day opens.</string>
+    <!-- PROPOSED, owner shortened it to one line (2026-11-16). The line under the title (body, inkMuted). It promises no count: moyi-backend#200 nudges may be skipped under the cross-Bond cap. -->
+    <string name="reminder_ask_line">A gentle reminder, at a time you choose.</string>
     <!-- PROPOSED. The app name in the preview card's header (label role, uppercased on screen), as the phone shows it over a push. The card is decorative: screen readers skip it. -->
     <string name="reminder_ask_preview_app">Moyi</string>
     <!-- push_reminder_title, word for word (androidApp push_strings.xml, iosApp Localizable.strings): the preview shows the real reminder. Change all three together. -->
@@ -77,7 +77,7 @@
     <!-- PROPOSED. The Field Select's label: the reminder time, which opens the time picker. -->
     <string name="reminder_ask_time_label">Remind me at</string>
     <!-- PROPOSED. The Field Select's helper: where the time can be changed later. -->
-    <string name="reminder_ask_time_helper">You can change this in Bond settings, Notifications.</string>
+    <string name="reminder_ask_time_helper">Change it any time in Bond settings.</string>
     <!-- PROPOSED. Stands where the Field is when the reminder time could not be read: no time is guessed. -->
     <string name="reminder_ask_time_unknown">You can choose your reminder time in Bond settings, Notifications.</string>
     <!-- Bond settings' settings_picker_confirm and settings_cancel, word for word: the time picker's answers. Repeated here because feature/today does not see bond's resources. -->
