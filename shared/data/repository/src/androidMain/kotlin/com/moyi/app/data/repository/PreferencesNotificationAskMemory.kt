@@ -19,9 +19,16 @@ class PreferencesNotificationAskMemory(context: Context) : NotificationAskMemory
         prefs.edit().putBoolean(KEY_DISMISSED, true).apply()
     }
 
+    override fun reminderScreenShownOn(): String? = prefs.getString(KEY_SCREEN_SHOWN_ON, null)
+
+    override fun rememberReminderScreenShown(date: String) {
+        prefs.edit().putString(KEY_SCREEN_SHOWN_ON, date).apply()
+    }
+
     private companion object {
         /** The permission controller's file; its own key ("asked") is left alone. */
         const val PREFS = "moyi_notification_permission"
         const val KEY_DISMISSED = "ask_dismissed"
+        const val KEY_SCREEN_SHOWN_ON = "reminder_screen_shown_on"
     }
 }

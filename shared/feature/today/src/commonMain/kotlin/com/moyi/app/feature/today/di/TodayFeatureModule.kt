@@ -9,6 +9,7 @@ import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.feature.today.common.RevealLedger
+import com.moyi.app.feature.today.reminder.ReminderAskViewModel
 import com.moyi.app.feature.today.reveal.RevealViewModel
 import com.moyi.app.feature.today.streak.StreakViewModel
 import com.moyi.app.feature.today.today.TodayViewModel
@@ -28,7 +29,7 @@ val todayFeatureModule = module {
     // Keyed by the signed-in person too: two members of one bond can share a phone.
     single { RevealLedger { (get<AuthRepository>().session.value as? SessionState.SignedIn)?.user?.id } }
     // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.
-    viewModel { TodayViewModel(get(), get(), get(), get(), askMemory = get()) }
+    viewModel { TodayViewModel(get(), get(), get(), get(), askMemory = get(), settingsNotices = get()) }
     viewModel { (editing: Boolean) ->
         WriteViewModel(editing, get(), get(), uploader = MediaUploader(get(), newIdempotencyKey = ::randomIdempotencyKey))
     }
@@ -39,4 +40,6 @@ val todayFeatureModule = module {
     viewModel { (date: String) -> ArchiveDayViewModel(date, get(), get(), get(), get()) }
     // The Streak screen, from the Archive's "Your streak", over the domain's StreakRepository.
     viewModel { StreakViewModel(get(), get()) }
+    // The reminder screen, once per phone at the first arrival, over the domain's BondSettingsRepository.
+    viewModel { (bondId: String) -> ReminderAskViewModel(bondId, get()) }
 }

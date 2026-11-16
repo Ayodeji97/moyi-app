@@ -15,6 +15,7 @@ import com.moyi.app.api.models.PatchBondRequest
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
+import com.moyi.app.core.onSuccess
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.safeApiCall
@@ -28,6 +29,8 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
+import com.moyi.app.domain.bond.SharedSetting
+import com.moyi.app.domain.bond.SharedSettingsNotices
 import com.moyi.app.domain.bond.TimeOfDay
 
 /**
@@ -43,6 +46,12 @@ import com.moyi.app.domain.bond.TimeOfDay
 class BondSettingsRepositoryImpl(
     authedClient: AuthedHttpClient,
     config: ApiConfig,
+    /**
+     * Every read is compared with what this device last saw, and every write remembered
+     * without a note, so the person's own change never comes back to them as one (owner ask
+     * 2026-11-16).
+     */
+    private val settingsNotices: SharedSettingsNotices,
 ) : BondSettingsRepository {
     private val bondsApi = BondsControllerApi(config.origin, authedClient.client)
     private val memberSettingsApi = BondMemberSettingsControllerApi(config.origin, authedClient.client)
@@ -50,7 +59,9 @@ class BondSettingsRepositoryImpl(
     private val deletionApi = BondDeletionControllerApi(config.origin, authedClient.client)
 
     override suspend fun settings(bondId: String): Result<BondSettings, DataError.Network> =
-        safeApiCallWithETag { bondsApi.getBond(bondId) }.mapOrSerialization { (body, etag) -> body.toSettings(etag) }
+        safeApiCallWithETag { bondsApi.getBond(bondId) }
+            .onSuccess { (body, _) -> body.toSharedSettings()?.let { settingsNotices.observe(it) } }
+            .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
 
     override suspend fun update(bondId: String, version: String, change: BondSettingsChange): Result<BondSettings, DataError.Network> {
         val request = PatchBondRequest(
@@ -59,7 +70,14 @@ class BondSettingsRepositoryImpl(
             revealTimeLocal = change.revealTime?.toString(),
             strictMode = change.strictMode,
         )
+        val own = setOfNotNull(
+            SharedSetting.NAME.takeIf { change.name != null },
+            SharedSetting.TYPE.takeIf { change.type != null },
+            SharedSetting.REVEAL_TIME.takeIf { change.revealTime != null },
+            SharedSetting.REST_DAYS.takeIf { change.strictMode != null },
+        )
         return safeApiCallWithETag { bondsApi.patchBond(bondId, ifMatch = version, patchBondRequest = request) }
+            .recordOwn(own)
             .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
     }
 
@@ -74,23 +92,31 @@ class BondSettingsRepositoryImpl(
 
     // A 202 that carries the bond and its new ETag, as every bond response does.
     override suspend fun requestDeletion(bondId: String): Result<BondSettings, DataError.Network> =
-        safeApiCallWithETag { deletionApi.requestBondDeletion(bondId) }.mapOrSerialization { (body, etag) -> body.toSettings(etag) }
+        safeApiCallWithETag { deletionApi.requestBondDeletion(bondId) }.recordOwn(setOf(SharedSetting.DELETION)).mapOrSerialization { (body, etag) -> body.toSettings(etag) }
 
     override suspend fun cancelDeletion(bondId: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { deletionApi.cancelBondDeletion(bondId) }
+            .onSuccess { settingsNotices.clearOwnRequest(bondId, SharedSetting.DELETION) }
 
     // The two-party flow takes no If-Match (ADR-0030), but its 200s carry the new ETag,
     // which the next PATCH /bonds/{id} needs.
     override suspend fun proposeTimezone(bondId: String, timezone: String): Result<BondSettings, DataError.Network> =
         safeApiCallWithETag { timezoneApi.proposeBondTimezone(bondId, ChangeTimezoneRequest(anchorTimezone = timezone)) }
+            .recordOwn(setOf(SharedSetting.TIMEZONE))
             .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
 
     override suspend fun confirmTimezone(bondId: String, proposalId: String): Result<BondSettings, DataError.Network> =
         safeApiCallWithETag { timezoneApi.confirmBondTimezone(bondId, ConfirmTimezoneRequest(proposalId = proposalId)) }
+            .recordOwn(setOf(SharedSetting.TIMEZONE))
             .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
 
     override suspend fun cancelTimezoneChange(bondId: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { timezoneApi.cancelBondTimezoneChange(bondId) }
+            .onSuccess { settingsNotices.clearOwnRequest(bondId, SharedSetting.TIMEZONE) }
+
+    /** This device's own write answered with the bond: remembered, and what it changed is not noted. */
+    private suspend fun <E : DataError> Result<Pair<BondResponse, String?>, E>.recordOwn(own: Set<SharedSetting>) =
+        onSuccess { (body, _) -> body.toSharedSettings()?.let { settingsNotices.recordOwn(it, own) } }
 
     override suspend fun memberSettings(bondId: String): Result<MemberSettings, DataError.Network> =
         safeApiCall { memberSettingsApi.getMemberSettings(bondId) }.mapOrSerialization { it.toDomain() }

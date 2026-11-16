@@ -20,6 +20,7 @@ import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextTone
+import com.moyi.app.designsystem.platform.timeOfDayText
 import com.moyi.app.domain.account.DataExportStatus
 import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.export_download
@@ -156,10 +157,11 @@ private fun readyLine(state: ExportState): String {
     }
 }
 
-/** The 24-hour clock time [instant] falls on where the device is, as the reveal time is written ("17:30"). */
-internal fun localTime(instant: Instant): String {
+/** The clock time [instant] falls on where the device is, written as the reveal time is ("5:30 PM", "17:30"). */
+@Composable
+private fun localTime(instant: Instant): String {
     val time = instant.toLocalDateTime(TimeZone.currentSystemDefault()).time
-    return "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
+    return timeOfDayText(time.hour, time.minute)
 }
 
 /** 2.14 is "2.1". Megabytes as storage counts them (1,000,000 bytes). */
