@@ -11,6 +11,7 @@ import com.moyi.app.designsystem.platform.taskEnterTransition
 import com.moyi.app.designsystem.platform.taskExitTransition
 import com.moyi.app.feature.today.archive.ArchiveDayRoot
 import com.moyi.app.feature.today.archive.ArchiveRoot
+import com.moyi.app.feature.today.reminder.ReminderAskRoot
 import com.moyi.app.feature.today.reveal.RevealRoot
 import com.moyi.app.feature.today.streak.StreakRoot
 import com.moyi.app.feature.today.today.TodayRoot
@@ -42,6 +43,14 @@ data class ArchiveDayRoute(val date: String)
 data object StreakRoute
 
 /**
+ * The reminder screen for [bondId] (owner rulings 2026-11-15): once per phone, over Today at
+ * the first arrival. Every way out (Turn on reminders answered, Not now, Continue to Today,
+ * Back) lands on Today.
+ */
+@Serializable
+data class ReminderAskRoute(val bondId: String)
+
+/**
  * The daily loop. Back stack, from Today:
  *
  * - Today → Write (push), a **task** (D10): it closes, it does not go back. Its X
@@ -57,6 +66,9 @@ data object StreakRoute
  *   (the arrow, Android Back, the iOS edge swipe) goes one step down each time. The
  *   empty Archive's Write opens the composer over it; Write closing lands on Today.
  * - Archive → Streak (push), from "Your streak". Back returns to the Archive.
+ * - Today → Reminder screen (owner rulings 2026-11-15): once per phone, at the first arrival,
+ *   opened by Today itself. It appears at once (no push), so the person meets it before the
+ *   day; every way out, Back included, lands on Today.
  * - Settings leaves the feature through a callback; the shell decides where.
  *
  * Every transition is instant (the NavHost sets none), with one exception: on iOS,
@@ -85,7 +97,11 @@ fun NavGraphBuilder.todayGraph(
         // Today stays drawn under Write while the task rises over it. Anywhere else,
         // null falls back to the NavHost's push (MoyiMotion).
         exitTransition = {
-            if (targetState.destination.hasRoute<WriteRoute>()) ExitTransition.KeepUntilTransitionsFinished else null
+            when {
+                targetState.destination.hasRoute<WriteRoute>() -> ExitTransition.KeepUntilTransitionsFinished
+                targetState.destination.hasRoute<ReminderAskRoute>() -> ExitTransition.None
+                else -> null
+            }
         },
     ) {
         TodayRoot(
@@ -95,7 +111,17 @@ fun NavGraphBuilder.todayGraph(
             onNavigateToArchive = { navController.navigate(ArchiveRoute) { launchSingleTop = true } },
             onNoOpenBond = onNoOpenBond,
             onNavigateToJoin = onJoinWithCode,
+            onNavigateToReminderAsk = { bondId -> navController.navigate(ReminderAskRoute(bondId)) { launchSingleTop = true } },
             debugTools = debugTools,
+        )
+    }
+    composable<ReminderAskRoute>(
+        enterTransition = { EnterTransition.None },
+        popEnterTransition = { EnterTransition.None },
+    ) { entry ->
+        ReminderAskRoot(
+            bondId = entry.toRoute<ReminderAskRoute>().bondId,
+            onDone = { navController.backToToday() },
         )
     }
     composable<WriteRoute>(
