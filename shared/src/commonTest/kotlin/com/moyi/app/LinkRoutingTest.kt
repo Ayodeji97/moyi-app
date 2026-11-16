@@ -72,7 +72,7 @@ class LinkRoutingTest {
             accountLinkRouting(verify, LinkPlace.SignedOut, null, null, signedInVerified = true),
         )
         assertEquals(
-            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token)),
+            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token, signedIn = true)),
             accountLinkRouting(reset, LinkPlace.SignedInApp, null, me, signedInVerified = true),
         )
     }
@@ -92,9 +92,26 @@ class LinkRoutingTest {
             LinkRouting.Push(ResetPasswordRoute(email = "", linkToken = token)),
             accountLinkRouting(reset, LinkPlace.SignedOut, null, null),
         )
+        // Signed in, anywhere: the Change password way, with the session's address (§84).
+        listOf(LinkPlace.Gate, LinkPlace.Onboarding, LinkPlace.Archived, LinkPlace.SignedInApp, LinkPlace.Elsewhere).forEach {
+            assertEquals(
+                LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token, signedIn = true)),
+                accountLinkRouting(reset, it, null, me),
+                it.toString(),
+            )
+        }
+        // Signed in but the address is not known here: the signed-out way, which asks for it.
         assertEquals(
-            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token)),
-            accountLinkRouting(reset, LinkPlace.SignedInApp, null, me),
+            LinkRouting.Push(ResetPasswordRoute(email = "", linkToken = token)),
+            accountLinkRouting(reset, LinkPlace.SignedInApp, null, null),
+        )
+    }
+
+    @Test
+    fun `a reset link over change password's code step keeps it signed in`() {
+        assertEquals(
+            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token, signedIn = true), replaceCurrent = true),
+            accountLinkRouting(reset, LinkPlace.Elsewhere, ResetPasswordRoute(me, signedIn = true), me),
         )
     }
 

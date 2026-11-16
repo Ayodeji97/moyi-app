@@ -93,6 +93,9 @@ interface AuthRepository {
      * - [PasswordChangeError.SignedOut]: the new password is saved, but this device could not
      *   sign in with it. The session here is ended ([SessionEndReason.PasswordChanged]) and
      *   [sessionEvents] says so: sign in again with the new password.
+     * - [PasswordChangeError.OtherAccount]: [proof] was an emailed link, and the new password
+     *   does not sign [email] in. The link was for another account: that account's password is
+     *   saved, and this device's session, which that reset did not touch, is kept as it was.
      */
     suspend fun changePassword(proof: EmailProof, email: String, password: String): Result<User, PasswordChangeError>
 
@@ -125,4 +128,11 @@ sealed interface PasswordChangeError : Error {
 
     /** The new password is saved, every session is revoked, and this device could not sign in again. */
     data class SignedOut(val error: DataError) : PasswordChangeError
+
+    /**
+     * The proof was an emailed link for another account: that account's password is saved,
+     * and the session on this device is unchanged. A link's token names no account, so this
+     * can only be known after the reset.
+     */
+    data object OtherAccount : PasswordChangeError
 }

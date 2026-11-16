@@ -118,11 +118,15 @@ data object ChangePasswordRoute
  *   reset's code step, signed in. Back pops one at a time. Saved: both are popped, back to
  *   Account, and [onPasswordChanged] lets the shell say so. Saved but this phone could not
  *   sign in again: the session ends and the shell routes to sign in on that.
+ * - A reset link opened while signed in pushes the reset, signed in, over what was showing.
+ *   Saved: it is popped, and [onPasswordChanged] (this account) or
+ *   [onOtherAccountPasswordChanged] (the link was another account's) lets the shell say so.
  */
 fun NavGraphBuilder.authGraph(
     navController: NavController,
     onSignedIn: () -> Unit,
     onPasswordChanged: () -> Unit = {},
+    onOtherAccountPasswordChanged: () -> Unit = {},
 ) {
     composable<LoginRoute> { entry ->
         val route = entry.toRoute<LoginRoute>()
@@ -178,6 +182,10 @@ fun NavGraphBuilder.authGraph(
             onPasswordChanged = {
                 navController.closePasswordChange()
                 onPasswordChanged()
+            },
+            onOtherAccountPasswordChanged = {
+                navController.closePasswordChange()
+                onOtherAccountPasswordChanged()
             },
         )
     }
