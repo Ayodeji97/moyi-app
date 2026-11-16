@@ -224,7 +224,9 @@ class FakeBondRepository(private val settings: FakeBondSettingsRepository) : Bon
 
 class FakeAuthRepository : AuthRepository {
     var logouts = 0
-    override val session: StateFlow<SessionState> = MutableStateFlow(SessionState.Unknown)
+    /** The session this device keeps; a test sets it to sign someone in or out. */
+    val sessionState = MutableStateFlow<SessionState>(SessionState.Unknown)
+    override val session: StateFlow<SessionState> = sessionState
     override val sessionEvents: Flow<SessionEvent> = emptyFlow()
 
     override suspend fun register(

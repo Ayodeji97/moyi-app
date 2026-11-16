@@ -2015,3 +2015,15 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **`ArchiveDayRow`:** the author labels of one row now share one column, as wide as the widest label (measured, so it grows with the font), capped at 40 percent of the line and ellipsised beyond that; the words of every line start at the same x. `MoyiDimens.ArchiveRow.AuthorMaxWidth` (96 dp) is replaced by `AuthorMaxShare` (0.4).
 - **`MoreMenu`:** the panel is 176 dp wide with its right edge on the dots' target and 4 dp below it (`MoyiDimens.MoreMenu.Width`, `GapBelow`), instead of starting at the dots and sliding left over the entry text.
 - **Dead code removed:** Bond settings' `OnGetHelpClick`, `OpenSupport` and the graph's `onOpenSupport` (no row sends them since #89), and with them Bond settings' unreachable sign-out (`OnSignOutClick`, its unsent question, `signingOut`, and the ViewModel's auth, outbox and sender parameters), plus `SupportOrigin.Settings` and its `support_back_settings` string. Account is the only place that signs out.
+
+## Signed in as, on Account (PR feat/settings-signed-in-email)
+
+### 81. "Signed in as {email}" row (owner request 2026-11-16)
+
+- **Why:** the signed-in address was shown nowhere, so the owner could not tell which account this phone uses with his partner.
+- **No new component:** a read-only `GroupedRow` (no `onClick`, so no chevron and no Button role: the GroupedCard rule for a row that only shows something), first in Account's first card. The whole sentence is the row's label, not label plus value: the label takes the row's width and wraps, while a value is measured first and would squeeze the label to nothing for a long address or at 200 % font. To assistive technology the row is one element that reads the sentence.
+- **Where it comes from:** the session this device keeps (`AuthRepository.session`, stored in the Keychain or the Keystore-encrypted file), which already holds the address from sign-in. So it shows offline, before `GET /me` answers, and under a failed load (Account's other rows stay there too). No new request.
+- **Unknown:** while no session is known the row is left out; no placeholder or skeleton is drawn (states.md, tokens.md section 7). On Account a session is always known, so in practice it is always there.
+- **Privacy:** the member's own address only; Account never holds the partner's. It is left out of `AccountState.toString()` so no log line carries it, and it appears on no other screen and in no push.
+- **`emailVerified`:** not shown. The only rule that uses it is the unverified gate (states.md: creating or joining a bond needs a verified address), which has its own screen.
+- **String proposed:** `account_signed_in_as` "Signed in as {email}" (`%1$s`). No dash, no exclamation mark.

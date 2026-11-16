@@ -18,6 +18,7 @@ import com.moyi.app.designsystem.component.ScreenHeader
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.component.TimeOfDayPicker
+import com.moyi.app.designsystem.platform.timeOfDayText
 import com.moyi.app.domain.notification.NotificationCategory
 import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.notifications_category_milestone
@@ -124,9 +125,10 @@ private fun Content(state: NotificationSettingsState, onAction: (NotificationSet
                         onToggle = { onAction(NotificationSettingsAction.OnCategoryToggle(category)) },
                     )
                     if (category == NotificationCategory.Reminder) {
+                        val reminder = member.reminderTime
                         SettingsRow(
                             label = stringResource(Res.string.notifications_reminder_time),
-                            value = if (state.saving == NotificationRow.ReminderTime) saving else member.reminderTime.toString(),
+                            value = if (state.saving == NotificationRow.ReminderTime) saving else timeOfDayText(reminder.hour, reminder.minute),
                             kind = RowKind.Opens,
                             enabled = !busy,
                             error = errorFor(NotificationRow.ReminderTime),
@@ -151,14 +153,14 @@ private fun Content(state: NotificationSettingsState, onAction: (NotificationSet
                 if (start != null && end != null) {
                     SettingsRow(
                         label = stringResource(Res.string.notifications_quiet_start),
-                        value = start.toString(),
+                        value = timeOfDayText(start.hour, start.minute),
                         kind = RowKind.Opens,
                         enabled = !busy,
                         onClick = { onAction(NotificationSettingsAction.OnQuietStartClick) },
                     )
                     SettingsRow(
                         label = stringResource(Res.string.notifications_quiet_end),
-                        value = end.toString(),
+                        value = timeOfDayText(end.hour, end.minute),
                         kind = RowKind.Opens,
                         enabled = !busy,
                         onClick = { onAction(NotificationSettingsAction.OnQuietEndClick) },
