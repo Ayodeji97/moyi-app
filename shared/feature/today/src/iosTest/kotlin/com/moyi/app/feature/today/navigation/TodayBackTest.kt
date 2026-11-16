@@ -66,6 +66,7 @@ class TodayBackTest {
                     single<com.moyi.app.domain.media.MediaRepository> { com.moyi.app.feature.today.FakeMedia() }
                     // Since #103 Today reads the phone's notification answers; unbound here, every test failed.
                     single<com.moyi.app.domain.notification.NotificationAskMemory> { com.moyi.app.feature.today.FakeNotificationAskMemory() }
+                    single<com.moyi.app.domain.bond.SharedSettingsNotices> { com.moyi.app.feature.today.FakeSettingsNotices() }
                 },
             )
         }

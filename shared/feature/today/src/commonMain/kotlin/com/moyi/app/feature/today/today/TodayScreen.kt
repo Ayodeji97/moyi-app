@@ -37,6 +37,7 @@ import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
+import com.moyi.app.domain.bond.SharedSettingNotice
 import com.moyi.app.feature.today.common.CenteredContent
 import com.moyi.app.feature.today.common.DayNote
 import com.moyi.app.feature.today.common.FakeCopy
@@ -291,6 +292,7 @@ private fun ColumnScope.NotWritten(state: TodayState, onAction: (TodayAction) ->
         state.prompt?.let { MoyiText(text = it, role = TextRole.Entry) }
         Refusal(state, onAction)
         // From the first arrival (owner ruling 2026-11-15): under the prompt, above Write.
+        SettingsNote(state, onAction)
         NotificationAsk(state, onAction)
     }
 }
@@ -305,6 +307,7 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
         Refusal(state, onAction)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         WaitingNote(partnerName = state.partnerName.orEmpty())
+        SettingsNote(state, onAction)
         NotificationAsk(state, onAction)
     }
 }
@@ -368,6 +371,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
             ActionFailed(state)
             Refusal(state, onAction)
             // The second writer's save opens the day at once, so this is where they see it.
+            SettingsNote(state, onAction)
             NotificationAsk(state, onAction)
         }
     }
@@ -416,6 +420,7 @@ private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayActi
         )
         // No invite could be found or issued: the Generic error's words, as for a failed delete.
         ActionFailed(state)
+        SettingsNote(state, onAction)
         NotificationAsk(state, onAction)
         // TODO(PR #7): Figma 220:27 places the InviteCode (358 × 195) 16 below this note.
         //  InviteCode is PR #7's component; add it here after the rebase.
@@ -631,6 +636,18 @@ private fun TodayWaitingAskNotificationsPreview() {
 private fun TodayRevealedAskNotificationsPreview() {
     MoyiTheme(darkTheme = true) {
         TodayScreen(state = previewState(TodayStatus.Revealed).copy(askForNotifications = true), onAction = {})
+    }
+}
+
+/** A shared setting changed since this phone last looked: the note in the ask's place (owner ask 2026-11-16). */
+@Preview
+@Composable
+private fun TodayWaitingSettingsNoticePreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(
+            state = previewState(TodayStatus.Waiting).copy(settingsNotice = SharedSettingNotice.TimezoneKept("Africa/Lagos")),
+            onAction = {},
+        )
     }
 }
 

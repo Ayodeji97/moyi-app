@@ -24,7 +24,7 @@ class ReminderScreenTodayTest : MainDispatcherTest() {
     private val loop = FakeDailyLoop()
     private val memory = FakeNotificationAskMemory()
 
-    private fun newViewModel() = TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), memory, today = { PHONE_TODAY })
+    private fun newViewModel() = TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), memory, FakeSettingsNotices(), today = { PHONE_TODAY })
 
     private val viewModel by lazy { newViewModel() }
 

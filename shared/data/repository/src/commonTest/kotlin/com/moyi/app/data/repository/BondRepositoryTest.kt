@@ -67,7 +67,8 @@ class BondRepositoryTest {
         val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
         val sessionManager = SessionManager(store, RefreshControllerApi(ApiConfig("http://localhost:8080/api/v1").origin, publicClient.client), NoPersonalData)
         val authed = AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager))
-        val bonds = BondRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"))
+        val notices = RecordingNotices()
+        val bonds = BondRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"), notices)
         val account = AccountRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"))
 
         fun body(path: String): String = assertIs<TextContent>(requests.single { it.url.encodedPath == path }.body).text
@@ -90,6 +91,7 @@ class BondRepositoryTest {
         )
         assertEquals(HttpMethod.Get, fixture.requests.single().method)
         assertEquals("/api/v1/bonds", fixture.requests.single().url.encodedPath)
+        assertEquals(listOf("b1", "b2"), fixture.notices.observed.map { it.bondId }, "every bond read is compared with what was last seen")
     }
 
     @Test

@@ -381,4 +381,48 @@
     <string name="reaction_from_partner_smile">%1$s smiled at this.</string>
     <string name="reaction_from_partner_moved">%1$s was moved by this.</string>
     <string name="reaction_from_partner_me_too">%1$s is grateful for that too.</string>
+    <!-- ===== A shared setting changed (owner ask 2026-11-16) =====
+         PROPOSED, awaiting the owner's approval. One note on Today per change to a setting both
+         members share, the next time the app loads the bond, in the place of the note asking for
+         notifications. None of them says who made the change: it may have been the reader on
+         another phone, and the backend does not record who answered a proposal. Never written for
+         leaving, blocking or anyone joining (T-09). Soft words for a proposal that did not go
+         through (owner ruling 2026-11-16: "kept the current time zone", not "declined"). -->
+    <!-- The reader's proposal was agreed. %1$s is the new zone's city, e.g. London. It applies from the next Bond-day (BR-6), so "from the day after it was agreed" stays true whenever it is read. -->
+    <string name="today_settings_tz_agreed">Your shared time zone is now %1$s time, from the day after it was agreed.</string>
+    <!-- The reader's proposal is gone before it lapsed, and the zone did not move. %1$s is the zone it stays on, as a city. -->
+    <string name="today_settings_tz_kept">Your shared time zone stays on %1$s time.</string>
+    <!-- The other member's proposal is gone before it lapsed. %1$s is the city it would have moved to. -->
+    <string name="today_settings_tz_withdrawn">The proposal to move to %1$s time was withdrawn. Your shared time zone stays as it is.</string>
+    <!-- The reader asked to close the box and the other member asked too: the 30-day cooling-off runs (states.md §9). close_box_line's "call it off". -->
+    <string name="today_settings_close_agreed">You have both asked to close the box. Either of you can call it off in Bond settings until it closes.</string>
+    <!-- The reader's request to close the box is gone before it lapsed. -->
+    <string name="today_settings_close_kept_open">Your request to close the box is no longer open. The box stays as it is.</string>
+    <!-- The other member's request to close the box is gone before it lapsed. -->
+    <string name="today_settings_close_withdrawn">The request to close the box was withdrawn. The box stays as it is.</string>
+    <!-- The 30-day cooling-off was called off. -->
+    <string name="today_settings_close_called_off">Closing the box was called off. The box stays as it is.</string>
+    <!-- Search by meaning (BondResponse.semanticSearchEnabled). The app has no screen for it yet, so these notes carry no "See Bond settings". The name is a placeholder of its own: no copy names the feature yet. -->
+    <string name="today_settings_search_agreed">Search by meaning is on again for this bond.</string>
+    <string name="today_settings_search_kept_off">Search by meaning stays off for this bond.</string>
+    <string name="today_settings_search_withdrawn">The request to turn search by meaning back on was withdrawn. It stays off.</string>
+    <string name="today_settings_search_turned_off">Search by meaning is now off for this bond.</string>
+    <!-- %1$s is the bond's new name, as the members wrote it. -->
+    <string name="today_settings_name">This bond is now called %1$s.</string>
+    <!-- %1$s is the new reveal time as the phone writes times (12 or 24 hours). -->
+    <string name="today_settings_reveal">Your day now opens at %1$s.</string>
+    <!-- No reveal time any more: settings_reveal_none's meaning. -->
+    <string name="today_settings_reveal_none">Your day now opens as soon as you have both written.</string>
+    <!-- Rest days, never "strict mode" (states.md §8). -->
+    <string name="today_settings_rest_days_on">Rest days are now on for this bond.</string>
+    <string name="today_settings_rest_days_off">Rest days are now off for this bond.</string>
+    <!-- The relationship type changed. It selects the prompts only (states.md §1a, §8), so the note says what that means. One sentence per type, never a label put into a sentence. -->
+    <string name="today_settings_type_couple">The prompts for this bond now suit partners.</string>
+    <string name="today_settings_type_friends">The prompts for this bond now suit close friends.</string>
+    <string name="today_settings_type_family">The prompts for this bond now suit family.</string>
+    <string name="today_settings_type_parent_child">The prompts for this bond now suit a parent and child.</string>
+    <!-- The outlined action: opens Bond settings, where the change is. It also marks the note read. -->
+    <string name="today_settings_see">See Bond settings</string>
+    <!-- The text link: the note has been read, and the next one (if any) shows. -->
+    <string name="today_settings_ok">OK</string>
 </resources>

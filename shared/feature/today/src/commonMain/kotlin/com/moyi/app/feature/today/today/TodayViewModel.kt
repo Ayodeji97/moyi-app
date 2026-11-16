@@ -8,6 +8,8 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
+import com.moyi.app.domain.bond.PendingNotice
+import com.moyi.app.domain.bond.SharedSettingsNotices
 import com.moyi.app.designsystem.platform.NotificationPermission
 import com.moyi.app.domain.notification.NotificationAskMemory
 import com.moyi.app.domain.today.OutboxSender
@@ -24,12 +26,16 @@ import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.common.holdsMediaOnItsWay
 import com.moyi.app.feature.today.common.recheckWhileOnItsWay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -62,6 +68,10 @@ import kotlin.time.Clock
  *   phone's prompt instead, until the phone answers or "Not now" is chosen on the note
  *   ([NotificationAskMemory], per phone). Both come before the phone's own prompt, because iOS
  *   shows that prompt only once. The screen reads the permission; this decides.
+ * - **A shared setting changed** (owner ask 2026-11-16): every load compares the bond with what
+ *   this device last saw ([SharedSettingsNotices], in the repositories), and each change waits
+ *   as a note until it is read. One note at a time, oldest first, in the ask's place: while one
+ *   waits, the ask does not show.
  *
  * Today is the root of the signed-in app, so it owns the loop's lifetime: the day in
  * memory is forgotten when this ViewModel is created ([DailyLoop.open]) and when it is
@@ -79,6 +89,8 @@ class TodayViewModel(
     private val outbox: OutboxSender,
     /** Whether "Not now" was chosen on this phone, and when the reminder screen was shown on it. */
     private val askMemory: NotificationAskMemory,
+    /** What changed in the bond's shared settings since this device last saw it (owner ask 2026-11-16). */
+    private val settingsNotices: SharedSettingsNotices,
     /** The phone's local date: the note waits until the day after the reminder screen. */
     private val today: () -> LocalDate = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
 ) : ViewModel() {
@@ -105,8 +117,20 @@ class TodayViewModel(
         loop.open(owner = this)
     }
 
-    val state: StateFlow<TodayState> = combine(loop.state, ui, ask) { day, ui, ask -> toState(day, ui, ask) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(loop.state.value, ui.value, ask.value))
+    /**
+     * The oldest note waiting for the bond Today shows, read again whenever the notes change
+     * (a load that found a change, a dismissal). Null with no bond, or nothing waiting.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val settingsNotice: StateFlow<PendingNotice?> = loop.state
+        .map { (it as? DailyLoopState.Ready)?.day?.bondId }
+        .distinctUntilChanged()
+        .flatMapLatest { bondId -> if (bondId == null) flowOf(emptyList()) else settingsNotices.notices(bondId) }
+        .map { it.firstOrNull() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val state: StateFlow<TodayState> = combine(loop.state, ui, ask, settingsNotice) { day, ui, ask, notice -> toState(day, ui, ask, notice) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(loop.state.value, ui.value, ask.value, settingsNotice.value))
 
     private val _events = Channel<TodayEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -162,8 +186,21 @@ class TodayViewModel(
                 askMemory.dismiss()
                 ask.update { it.copy(dismissed = true) }
             }
+            TodayAction.OnSettingsNoticeDismiss -> dismissSettingsNotice(openSettings = false)
+            TodayAction.OnSettingsNoticeOpenSettings -> dismissSettingsNotice(openSettings = true)
             TodayAction.OnDebugCycle -> debugCycle()
         }
+    }
+
+    /**
+     * The note about a shared setting has been read: it goes for good, and the next one waiting
+     * (if any) takes its place. "See Bond settings" counts as read, because the change is there.
+     */
+    private fun dismissSettingsNotice(openSettings: Boolean) {
+        val bondId = (loop.state.value as? DailyLoopState.Ready)?.day?.bondId ?: return
+        val notice = settingsNotice.value ?: return
+        viewModelScope.launch { settingsNotices.dismiss(bondId, notice.id) }
+        if (openSettings) send(TodayEvent.NavigateToSettings(bondId))
     }
 
     /**
@@ -334,11 +371,13 @@ class TodayViewModel(
         }
     }
 
-    private fun toState(day: DailyLoopState, ui: TodayUi, ask: NotificationAsk): TodayState = when (day) {
+    private fun toState(day: DailyLoopState, ui: TodayUi, ask: NotificationAsk, notice: PendingNotice?): TodayState = when (day) {
         DailyLoopState.Loading, DailyLoopState.NoOpenBond -> TodayState(load = TodayLoad.Loading)
         DailyLoopState.Failed -> TodayState(load = TodayLoad.Failed)
         is DailyLoopState.Ready -> {
             val view = day.day
+            // Only on a layout that has the note's place; elsewhere it waits for one that does.
+            val settingsNotice = notice?.notice?.takeIf { view.status in AskOn }
             TodayState(
                 load = TodayLoad.Ready,
                 status = view.status,
@@ -368,7 +407,9 @@ class TodayViewModel(
                 myReaction = view.myReaction.takeIf { view.canReact },
                 partnerReaction = view.partnerReaction,
                 reactionFailed = ui.reactionFailed && view.canReact,
-                askForNotifications = ask.offered(view, today()),
+                // One note at a time: a change to a shared setting is news, the ask is not.
+                askForNotifications = ask.offered(view, today()) && settingsNotice == null,
+                settingsNotice = settingsNotice,
             )
         }
     }
@@ -435,7 +476,7 @@ class TodayViewModel(
     )
 }
 
-/** The layouts of a live day: where the note may be drawn. */
+/** The layouts of a live day: where a note (the ask, or a change to a shared setting) may be drawn. */
 private val AskOn = setOf(TodayStatus.NotWritten, TodayStatus.Waiting, TodayStatus.Revealed, TodayStatus.PartnerNotJoined)
 
 /** A bond that takes no more days: reminders mean nothing there. */

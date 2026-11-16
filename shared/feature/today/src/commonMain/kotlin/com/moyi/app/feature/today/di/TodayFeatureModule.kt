@@ -29,7 +29,7 @@ val todayFeatureModule = module {
     // Keyed by the signed-in person too: two members of one bond can share a phone.
     single { RevealLedger { (get<AuthRepository>().session.value as? SessionState.SignedIn)?.user?.id } }
     // Explicit lambdas, not viewModelOf: the key factory and the reveal's holds have defaults Koin should not resolve.
-    viewModel { TodayViewModel(get(), get(), get(), get(), askMemory = get()) }
+    viewModel { TodayViewModel(get(), get(), get(), get(), askMemory = get(), settingsNotices = get()) }
     viewModel { (editing: Boolean) ->
         WriteViewModel(editing, get(), get(), uploader = MediaUploader(get(), newIdempotencyKey = ::randomIdempotencyKey))
     }

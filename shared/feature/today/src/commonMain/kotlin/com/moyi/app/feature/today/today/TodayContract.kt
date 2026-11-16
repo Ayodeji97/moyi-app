@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.VoiceNote
 import com.moyi.app.designsystem.platform.NotificationPermission
+import com.moyi.app.domain.bond.SharedSettingNotice
 import com.moyi.app.domain.today.OutboxRefusal
 import com.moyi.app.domain.today.Reaction
 import com.moyi.app.feature.today.common.QueuedDay
@@ -93,6 +94,13 @@ data class TodayState(
      * Never a heading, never the PrimaryAction: Write keeps that.
      */
     val askForNotifications: Boolean = false,
+    /**
+     * The oldest change to a shared setting this device has not told the person about yet
+     * (owner ask 2026-11-16), drawn as a note in the same place as the one asking for
+     * notifications, which it takes the place of while it is there: one note at a time. Null
+     * when nothing is waiting. Never about who is in the bond (T-09): the domain never makes one.
+     */
+    val settingsNotice: SharedSettingNotice? = null,
 )
 
 /** What the "More" menu on your own entry card can hold (owner ruling 2026-11-11). */
@@ -173,6 +181,12 @@ sealed interface TodayAction {
 
     /** "Not now": the note is gone for good on this phone. */
     data object OnNotNowClick : TodayAction
+
+    /** "OK" on the note about a shared setting: it has been read, and the next one (if any) shows. */
+    data object OnSettingsNoticeDismiss : TodayAction
+
+    /** "See Bond settings" on that note: read too, and Bond settings opens. */
+    data object OnSettingsNoticeOpenSettings : TodayAction
 
     /** DEBUG ONLY (`-PmoyiUiPreview=today`): step to the next drawn layout. */
     data object OnDebugCycle : TodayAction
