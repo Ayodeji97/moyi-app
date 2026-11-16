@@ -17,7 +17,14 @@ class UserDefaultsNotificationAskMemory(
         defaults.setBool(true, forKey = KEY_DISMISSED)
     }
 
+    override fun reminderScreenShownOn(): String? = defaults.stringForKey(KEY_SCREEN_SHOWN_ON)
+
+    override fun rememberReminderScreenShown(date: String) {
+        defaults.setObject(date, forKey = KEY_SCREEN_SHOWN_ON)
+    }
+
     private companion object {
         const val KEY_DISMISSED = "moyi.notificationAsk.dismissed"
+        const val KEY_SCREEN_SHOWN_ON = "moyi.notificationAsk.reminderScreenShownOn"
     }
 }

@@ -136,7 +136,7 @@ class MediaRecheckTest : MainDispatcherTest() {
     // ---- Today ----
 
     private val loop = FakeDailyLoop()
-    private val today by lazy { TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), FakeNotificationAskMemory()) }
+    private val today by lazy { TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), FakeNotificationAskMemory(), FakeSettingsNotices()) }
 
     private val photoOnItsWay = DailyLoopState.Ready(
         dayView(TodayStatus.Revealed).copy(partnerPhoto = EntryPhoto("p", null, null, null, EntryPhotoLook.OnItsWay)),

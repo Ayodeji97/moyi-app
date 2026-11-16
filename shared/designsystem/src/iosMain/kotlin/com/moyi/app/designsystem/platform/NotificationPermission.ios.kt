@@ -3,6 +3,7 @@ package com.moyi.app.designsystem.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.suspendCancellableCoroutine
+import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationOpenSettingsURLString
@@ -30,9 +31,14 @@ actual fun rememberNotificationPermission(): NotificationPermissionController = 
 private class IosNotificationPermission : NotificationPermissionController {
     private val center get() = UNUserNotificationCenter.currentNotificationCenter()
 
-    override suspend fun status(): NotificationPermission = suspendCancellableCoroutine { continuation ->
-        center.getNotificationSettingsWithCompletionHandler { settings ->
-            continuation.resume(settings?.authorizationStatus.toPermission())
+    override suspend fun status(): NotificationPermission {
+        // A process with no app bundle (the iOS test binaries) can never show a notification, and
+        // UNUserNotificationCenter throws an uncatchable NSException there, killing the whole run.
+        if (NSBundle.mainBundle.bundleIdentifier == null) return NotificationPermission.Denied
+        return suspendCancellableCoroutine { continuation ->
+            center.getNotificationSettingsWithCompletionHandler { settings ->
+                continuation.resume(settings?.authorizationStatus.toPermission())
+            }
         }
     }
 

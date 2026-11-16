@@ -63,6 +63,40 @@
     <string name="today_notifications_allow">Allow notifications</string>
     <!-- Approved (owner, 2026-11-13). The text link under it: hides the note for good on this phone. The same words as onboarding's join_confirm_secondary and auth's legal_not_now. -->
     <string name="today_notifications_not_now">Not now</string>
+    <!-- The reminder screen (owner rulings 2026-11-15; mockup "Reminders" v4, dark and light boards): shown once per phone, the first time a live day reaches Today while the phone has not been asked about notifications. All PROPOSED: the mockup's words, approved in direction by the owner, not yet ruled string by string. -->
+    <!-- PROPOSED. The screen's title (title role). -->
+    <string name="reminder_ask_title">A moment each day</string>
+    <!-- PROPOSED, owner shortened it to one line (2026-11-16). The line under the title (body, inkMuted). It promises no count: moyi-backend#200 nudges may be skipped under the cross-Bond cap. -->
+    <string name="reminder_ask_line">A gentle reminder, at a time you choose.</string>
+    <!-- PROPOSED. The app name in the preview card's header (label role, uppercased on screen), as the phone shows it over a push. The card is decorative: screen readers skip it. -->
+    <string name="reminder_ask_preview_app">Moyi</string>
+    <!-- push_reminder_title, word for word (androidApp push_strings.xml, iosApp Localizable.strings): the preview shows the real reminder. Change all three together. -->
+    <string name="reminder_ask_preview_title">A moment for today?</string>
+    <!-- push_reminder_body, word for word, as above. -->
+    <string name="reminder_ask_preview_body">Write one thing you are grateful for, when it suits you.</string>
+    <!-- PROPOSED. The Field Select's label: the reminder time, which opens the time picker. -->
+    <string name="reminder_ask_time_label">Remind me at</string>
+    <!-- PROPOSED. The Field Select's helper: where the time can be changed later. -->
+    <string name="reminder_ask_time_helper">Change it any time in Bond settings.</string>
+    <!-- PROPOSED. Stands where the Field is when the reminder time could not be read: no time is guessed. -->
+    <string name="reminder_ask_time_unknown">You can choose your reminder time in Bond settings, Notifications.</string>
+    <!-- Bond settings' settings_picker_confirm and settings_cancel, word for word: the time picker's answers. Repeated here because feature/today does not see bond's resources. -->
+    <string name="reminder_ask_picker_confirm">Save</string>
+    <string name="reminder_ask_picker_cancel">Cancel</string>
+    <!-- PROPOSED. The PrimaryAction: saves a changed time, then shows the phone's own prompt. -->
+    <string name="reminder_ask_turn_on">Turn on reminders</string>
+    <!-- Bond settings' settings_saving, word for word: the PrimaryAction while a changed time saves (no spinner, states.md). -->
+    <string name="reminder_ask_saving">Saving</string>
+    <!-- The same words as today_notifications_not_now: the full-width TextLink under the PrimaryAction. Goes to Today; the small note waits until the next day. -->
+    <string name="reminder_ask_not_now">Not now</string>
+    <!-- PROPOSED. After the phone's prompt was answered no: what is true and what to do (copy-states-next-action). Shaped like Bond settings' notifications_phone_denied. -->
+    <string name="reminder_ask_denied">Notifications are off for Moyi on this phone, so no reminder will arrive. To turn them on, open your phone's Settings, find Moyi and allow notifications.</string>
+    <!-- Bond settings' notifications_phone_open_settings, word for word: the PrimaryAction after a no, which opens the phone's settings for Moyi. -->
+    <string name="reminder_ask_open_settings">Open phone settings</string>
+    <!-- PROPOSED. The way on to Today after the prompt: a TextLink under Open phone settings, or the PrimaryAction when only the save failed. -->
+    <string name="reminder_ask_continue">Continue to Today</string>
+    <!-- PROPOSED. A changed time did not save (copy.md error shape: what happened, what is kept, what to do). %1$s is the time the server still holds, in the phone's 12 or 24 hour form. -->
+    <string name="reminder_ask_save_failed">Your new time did not save. Reminders stay at %1$s. You can change it in Bond settings, Notifications.</string>
     <!-- FIGMA NODE NAME on 188:507. A solo day, either way round. -->
     <string name="today_solo_line">This day closed with one entry.</string>
     <!-- states.md §3 announce for Solo day, either way round (you wrote, or they did). -->
@@ -347,4 +381,48 @@
     <string name="reaction_from_partner_smile">%1$s smiled at this.</string>
     <string name="reaction_from_partner_moved">%1$s was moved by this.</string>
     <string name="reaction_from_partner_me_too">%1$s is grateful for that too.</string>
+    <!-- ===== A shared setting changed (owner ask 2026-11-16) =====
+         PROPOSED, awaiting the owner's approval. One note on Today per change to a setting both
+         members share, the next time the app loads the bond, in the place of the note asking for
+         notifications. None of them says who made the change: it may have been the reader on
+         another phone, and the backend does not record who answered a proposal. Never written for
+         leaving, blocking or anyone joining (T-09). Soft words for a proposal that did not go
+         through (owner ruling 2026-11-16: "kept the current time zone", not "declined"). -->
+    <!-- The reader's proposal was agreed. %1$s is the new zone's city, e.g. London. It applies from the next Bond-day (BR-6), so "from the day after it was agreed" stays true whenever it is read. -->
+    <string name="today_settings_tz_agreed">Your shared time zone is now %1$s time, from the day after it was agreed.</string>
+    <!-- The reader's proposal is gone before it lapsed, and the zone did not move. %1$s is the zone it stays on, as a city. -->
+    <string name="today_settings_tz_kept">Your shared time zone stays on %1$s time.</string>
+    <!-- The other member's proposal is gone before it lapsed. %1$s is the city it would have moved to. -->
+    <string name="today_settings_tz_withdrawn">The proposal to move to %1$s time was withdrawn. Your shared time zone stays as it is.</string>
+    <!-- The reader asked to close the box and the other member asked too: the 30-day cooling-off runs (states.md §9). close_box_line's "call it off". -->
+    <string name="today_settings_close_agreed">You have both asked to close the box. Either of you can call it off in Bond settings until it closes.</string>
+    <!-- The reader's request to close the box is gone before it lapsed. -->
+    <string name="today_settings_close_kept_open">Your request to close the box is no longer open. The box stays as it is.</string>
+    <!-- The other member's request to close the box is gone before it lapsed. -->
+    <string name="today_settings_close_withdrawn">The request to close the box was withdrawn. The box stays as it is.</string>
+    <!-- The 30-day cooling-off was called off. -->
+    <string name="today_settings_close_called_off">Closing the box was called off. The box stays as it is.</string>
+    <!-- Search by meaning (BondResponse.semanticSearchEnabled). The app has no screen for it yet, so these notes carry no "See Bond settings". The name is a placeholder of its own: no copy names the feature yet. -->
+    <string name="today_settings_search_agreed">Search by meaning is on again for this bond.</string>
+    <string name="today_settings_search_kept_off">Search by meaning stays off for this bond.</string>
+    <string name="today_settings_search_withdrawn">The request to turn search by meaning back on was withdrawn. It stays off.</string>
+    <string name="today_settings_search_turned_off">Search by meaning is now off for this bond.</string>
+    <!-- %1$s is the bond's new name, as the members wrote it. -->
+    <string name="today_settings_name">This bond is now called %1$s.</string>
+    <!-- %1$s is the new reveal time as the phone writes times (12 or 24 hours). -->
+    <string name="today_settings_reveal">Your day now opens at %1$s.</string>
+    <!-- No reveal time any more: settings_reveal_none's meaning. -->
+    <string name="today_settings_reveal_none">Your day now opens as soon as you have both written.</string>
+    <!-- Rest days, never "strict mode" (states.md §8). -->
+    <string name="today_settings_rest_days_on">Rest days are now on for this bond.</string>
+    <string name="today_settings_rest_days_off">Rest days are now off for this bond.</string>
+    <!-- The relationship type changed. It selects the prompts only (states.md §1a, §8), so the note says what that means. One sentence per type, never a label put into a sentence. -->
+    <string name="today_settings_type_couple">The prompts for this bond now suit partners.</string>
+    <string name="today_settings_type_friends">The prompts for this bond now suit close friends.</string>
+    <string name="today_settings_type_family">The prompts for this bond now suit family.</string>
+    <string name="today_settings_type_parent_child">The prompts for this bond now suit a parent and child.</string>
+    <!-- The outlined action: opens Bond settings, where the change is. It also marks the note read. -->
+    <string name="today_settings_see">See Bond settings</string>
+    <!-- The text link: the note has been read, and the next one (if any) shows. -->
+    <string name="today_settings_ok">OK</string>
 </resources>
