@@ -7,12 +7,16 @@
 	     with the distribution profile, which sets it to "production". -->
 	<key>aps-environment</key>
 	<string>development</string>
-	<!-- applinks: getmoyi.app links open the app. webcredentials: Passwords offers and saves
-	     the Moyi login under getmoyi.app, shared with the website. Both are checked against
-	     the site's apple-app-site-association, which must list the app under each key. -->
+	<!-- applinks: getmoyi.app links open the app, and so do open.getmoyi.app ones, where the
+	     website's fallback page sends "Open in the Moyi app" (moyi-backend#207: a tap that
+	     crosses to another domain opens the app, one to the page's own domain stays in Safari).
+	     webcredentials: Passwords offers and saves the Moyi login under getmoyi.app, shared
+	     with the website. Each is checked against the apple-app-site-association served on
+	     its host, which must list the app under each key. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:getmoyi.app</string>
+		<string>applinks:open.getmoyi.app</string>
 		<string>webcredentials:getmoyi.app</string>
 	</array>
 </dict>

@@ -7,7 +7,7 @@ PRODUCT_NAME=Moyi
 // app and the APNs key are registered for exactly this ID.
 PRODUCT_BUNDLE_IDENTIFIER=app.getmoyi.moyi
 
-// Universal links for getmoyi.app (issue #49). The paths that open the app are chosen by
+// Universal links for getmoyi.app and open.getmoyi.app (issue #49, moyi-backend#207). The paths that open the app are chosen by
 // the site's .well-known/apple-app-site-association (moyi-backend#157), not here; the app
 // routes /verify, /reset-password and /i/<code> (iOSApp.swift onContinueUserActivity,
 // LinkInbox). Also needs the Associated Domains capability on this App ID.
