@@ -10,7 +10,6 @@ import com.moyi.app.feature.auth.legal.LegalRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
 import com.moyi.app.feature.auth.reset.ForgotPasswordRoot
-import com.moyi.app.feature.auth.reset.ResetLinkSentScreen
 import com.moyi.app.feature.auth.reset.ResetPasswordRoot
 import com.moyi.app.feature.auth.sessionended.SessionEndedScreen
 import com.moyi.app.feature.auth.verify.VerifyRoot
@@ -74,16 +73,10 @@ data class LegalRoute(val prompt: Boolean = false)
 data class ForgotPasswordRoute(val email: String = "")
 
 /**
- * Reset link sent. [email] is carried on to Choose a new password, which signs
- * in with it; the screen itself never shows it (it must read the same whether
- * or not the address has an account).
- */
-@Serializable
-data class ResetLinkSentRoute(val email: String)
-
-/**
- * Choose a new password. [email] is the address the link was asked for, used to sign in
- * after; empty when an emailed link opened the app without it. [linkToken] fills the paste
+ * Choose a new password, opened straight from Forgot password on its code step. [email] is
+ * the address the code was asked for: the code step names it, in a line that reads the same
+ * whether or not it has an account, and the reset signs in with it after. Empty when an
+ * emailed link opened the app without it. [linkToken] fills the paste
  * field when the emailed link opened the app.
  */
 @Serializable
@@ -102,9 +95,9 @@ data class ResetPasswordRoute(val email: String, val linkToken: String? = null)
  * - Sign in → success replaces the stack with the signed-in start ([onSignedIn]).
  * - Session ended → "Sign in" replaces the stack with sign in.
  * - Sign in → "I forgot my password" pushes Forgot password, prefilled with
- *   sign in's email. Forgot → 202 pushes Reset link sent; Reset link sent →
- *   "Choose a new password" pushes Choose a new password. Back pops one at a
- *   time: reset → sent → forgot (which kept its field) → sign in.
+ *   sign in's email. Forgot → 202 pushes Choose a new password on its code
+ *   step (owner ruling 2026-11-16: no "Check your email" screen in between).
+ *   Back pops one at a time: reset → forgot (which kept its field) → sign in.
  * - Choose a new password → saved and signed in: [onSignedIn], as sign in.
  *   Saved but the sign-in failed: the whole stack is replaced with sign in,
  *   email prefilled, as after verifying: the old password is gone, so back
@@ -152,15 +145,8 @@ fun NavGraphBuilder.authGraph(
         val route = entry.toRoute<ForgotPasswordRoute>()
         ForgotPasswordRoot(
             initialEmail = route.email,
-            onNavigateToLinkSent = { email -> navController.navigate(ResetLinkSentRoute(email)) },
+            onNavigateToCode = { email -> navController.navigate(ResetPasswordRoute(email)) },
             onNavigateBack = { navController.navigateUp() },
-        )
-    }
-    composable<ResetLinkSentRoute> { entry ->
-        val route = entry.toRoute<ResetLinkSentRoute>()
-        ResetLinkSentScreen(
-            onBack = { navController.navigateUp() },
-            onChooseNewPassword = { navController.navigate(ResetPasswordRoute(route.email)) },
         )
     }
     composable<ResetPasswordRoute> { entry ->

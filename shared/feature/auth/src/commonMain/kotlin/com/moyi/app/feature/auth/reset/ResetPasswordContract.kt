@@ -67,6 +67,6 @@ sealed interface ResetPasswordEvent {
      */
     data class NavigateToLogin(val email: String) : ResetPasswordEvent
 
-    /** Leave the screen: back to Reset link sent. */
+    /** Leave the screen: back to Forgot password, which kept the address. */
     data object NavigateBack : ResetPasswordEvent
 }

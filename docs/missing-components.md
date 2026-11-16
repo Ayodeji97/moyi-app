@@ -2027,3 +2027,14 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **Privacy:** the member's own address only; Account never holds the partner's. It is left out of `AccountState.toString()` so no log line carries it, and it appears on no other screen and in no push.
 - **`emailVerified`:** not shown. The only rule that uses it is the unverified gate (states.md: creating or joining a bond needs a verified address), which has its own screen.
 - **String proposed:** `account_signed_in_as` "Signed in as {email}" (`%1$s`). No dash, no exclamation mark.
+
+## Straight to the code (PR fix/reset-straight-to-code)
+
+### 82. No "Check your email" screen in the password reset (owner ruling 2026-11-16)
+
+- **Why:** after Forgot password sent the email, "Reset link sent" (Figma 345:23, §78) was a full screen with one line and an "Enter the code" button. The owner found the stop unnecessary: the next thing to do is always to type the code.
+- **Change:** Forgot password's `202` now opens Choose a new password on its code step directly. Back from the code step returns to Forgot password, which kept the address. `ResetLinkSentScreen`, `ResetLinkSentRoute`, its preview, its UI-preview entry, and the strings `reset_sent_line` and `reset_sent_action` are removed. A reset link that opens the app while the code step is on screen takes its place with the same address, as before (`accountLinkRouting`).
+- **No new component:** the code step gains one muted `MoyiText` line 16 under the heading, 24 above the code field, exactly as verify's "We sent a 6-digit code to {email}" line sits.
+- **Non-disclosure kept (states.md §1b, FR-004):** the server answers `202` whether or not the address has an account, so the line cannot say a code was sent. It says **"If {email} has an account, we sent it a 6-digit code."** The same words for any address; only the address the person typed is shown. With no address known (a refused emailed link on a phone that never asked) the line is left out.
+- **String proposed:** `reset_code_line` "If {email} has an account, we sent it a 6-digit code." (`%1$s`). No dash, no exclamation mark.
+- **Parent repository:** states.md §1b's "Reset link sent" row, and `copy.md` / `strings-proposed.md`, still describe the screen; they need the same edit there.

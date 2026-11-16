@@ -147,8 +147,7 @@
     <string name="session_ended_line">It was used from two places at once, so we ended it to keep your entries safe. Anything else you are signed in on is unaffected. We have emailed you about it.</string>
 
     <!-- ===== Password reset (Account 2 to 4, Figma 344:41, 345:23, 345:30) ===== -->
-    <!-- Reused, not repeated: the eyebrow is login_eyebrow ("Account"), the sent heading is
-         verify_heading ("Check your email", states.md §1b), the email field is auth_email_label,
+    <!-- Reused, not repeated: the eyebrow is login_eyebrow ("Account"), the email field is auth_email_label,
          the code field is code_label / code_helper / code_error_*, and the
          new password is auth_password_label with register_password_helper and register's errors. -->
 
@@ -160,14 +159,12 @@
     <string name="reset_request_action">Send the code</string>
     <!-- Approved 2026-11-10 (§61), was "Sending the link". The action while the request is in flight (states.md §1c). -->
     <string name="reset_request_action_sending">Sending the code</string>
-    <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58), replacing the owner's 2026-11-06 interim line ("copy the link and paste it in Moyi"): the email now carries a 6-digit code. Still names the next step (owner ruling 2026-11-06). No lifetime: it is a backend default that can drift. MUST read identically whether or not the account exists: never interpolate the address (strings-proposed.md note). -->
-    <string name="reset_sent_line">If that address has an account, we sent it a 6-digit code. Type it on the next screen, then choose your new password.</string>
-    <!-- reset.new.heading. The Reset password heading (345:30), and the link on Reset link sent that opens it. -->
-    <!-- PROPOSED (docs/missing-components.md section 78). The button on Reset link sent: names the screen it opens (Type your code), not the step after it. -->
-    <string name="reset_sent_action">Enter the code</string>
+    <!-- reset.new.heading. The Reset password heading (345:30), on the second step. -->
     <string name="reset_new_heading">Choose a new password</string>
     <!-- PROPOSED (docs/missing-components.md §72). The first step of Choose a new password: only the code, checked before any password is asked for. -->
     <string name="reset_code_heading">Type your code</string>
+    <!-- PROPOSED (owner ruling 2026-11-16, docs/missing-components.md §82). Under "Type your code", where the "Check your email" screen used to be: says where the code went. %1$s is {email}, the address typed on Forgot password. MUST read the same whether or not that address has an account (states.md §1b, FR-004: the server answers 202 either way), so it says "if", never that an account exists. -->
+    <string name="reset_code_line">If %1$s has an account, we sent it a 6-digit code.</string>
     <!-- PROPOSED (§72). The action on that first step. While it waits the label is verify_action_sending, "Checking". -->
     <string name="reset_code_action">Check the code</string>
     <!-- reset.consequence. Placed before the action (states.md §1b: announce the consequence before the action). -->

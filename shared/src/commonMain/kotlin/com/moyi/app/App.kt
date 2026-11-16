@@ -40,7 +40,6 @@ import com.moyi.app.feature.auth.navigation.alreadyVerifiedNotice
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
 import com.moyi.app.feature.auth.navigation.RegisterRoute
-import com.moyi.app.feature.auth.navigation.ResetLinkSentRoute
 import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
 import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.auth.navigation.authGraph
@@ -365,7 +364,6 @@ private fun NavHostController.currentAccountRoute(): Any? {
     val destination = entry.destination
     return when {
         destination.hasRoute<VerifyRoute>() -> entry.toRoute<VerifyRoute>()
-        destination.hasRoute<ResetLinkSentRoute>() -> entry.toRoute<ResetLinkSentRoute>()
         destination.hasRoute<ResetPasswordRoute>() -> entry.toRoute<ResetPasswordRoute>()
         else -> null
     }
