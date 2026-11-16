@@ -15,6 +15,7 @@ import com.moyi.app.data.testing.NoPersonalData
 import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.data.testing.tokenPairJson
+import com.moyi.app.domain.auth.EmailProof
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.notification.PushTokenSource
@@ -72,6 +73,7 @@ class PushTokenRegistrarTest {
                     when (request.url.encodedPath) {
                         "/api/v1/auth/login" -> respondJson(tokenPairJson("a1", "r1"))
                         "/api/v1/auth/logout" -> respond("", HttpStatusCode.NoContent)
+                        "/api/v1/auth/reset-password" -> respond("", HttpStatusCode.OK)
                         PUSH_TOKEN -> pushHandler(request)
                         else -> respondProblem(HttpStatusCode.Unauthorized, "REFRESH_TOKEN_INVALID")
                     }
@@ -243,4 +245,22 @@ class PushTokenRegistrarTest {
     private companion object {
         const val PUSH_TOKEN = "/api/v1/me/devices/current/push-token"
     }
+
+    @Test
+    fun aPasswordChangedWhileSignedInRegistersTheTokenAgainForTheSameMember() = runTest {
+        // The reset makes the server forget every device's token (ADR-0044), yet the session's
+        // user does not change, so without renew() nothing would send it again.
+        val fixture = Fixture(this, token = "fcm-1")
+        fixture.registrar.start()
+        fixture.repository.login("ada@example.test", "pw")
+        assertEquals(1, fixture.pushCalls().size)
+
+        fixture.repository.changePassword(EmailProof.Code("ada@example.test", "123456"), "ada@example.test", "new pw")
+
+        val puts = fixture.pushCalls()
+        assertEquals(listOf(HttpMethod.Put, HttpMethod.Put), puts.map { it.method })
+        assertEquals("""{"token":"fcm-1"}""", assertIs<TextContent>(puts.last().body).text)
+        assertTrue(fixture.requests.indexOfFirst { it.url.encodedPath == "/api/v1/auth/login" } < fixture.requests.indexOf(puts.last()))
+    }
+
 }

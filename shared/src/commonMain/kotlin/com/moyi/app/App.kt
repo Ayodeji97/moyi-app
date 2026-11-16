@@ -37,6 +37,8 @@ import com.moyi.app.debug.UiPreviewRoute
 import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.LegalRoute
 import com.moyi.app.feature.auth.navigation.alreadyVerifiedNotice
+import com.moyi.app.feature.auth.navigation.ChangePasswordRoute
+import com.moyi.app.feature.auth.navigation.passwordChangedNotice
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
 import com.moyi.app.feature.auth.navigation.RegisterRoute
@@ -140,6 +142,8 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         var firstScreenDrawn by remember { mutableStateOf(false) }
         // A verify link that opened nothing because the address is already confirmed (§62).
         var alreadyVerified by remember { mutableStateOf(false) }
+        // A password changed from Account was saved and this phone kept signed in (§83).
+        var passwordChanged by remember { mutableStateOf(false) }
 
         val startDestination = start
         Box(Modifier.fillMaxSize()) {
@@ -153,6 +157,7 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     session = session,
                     onFirstScreenDrawn = { firstScreenDrawn = true },
                     onAlreadyVerified = { alreadyVerified = true },
+                    onPasswordChanged = { passwordChanged = true },
                 )
             }
             if (!splashDone) {
@@ -164,8 +169,15 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
             } else {
                 // Over every screen, and only once the splash has gone, so its time is all seen.
                 MoyiSnackbar(
-                    message = if (alreadyVerified) alreadyVerifiedNotice() else null,
-                    onDismiss = { alreadyVerified = false },
+                    message = when {
+                        alreadyVerified -> alreadyVerifiedNotice()
+                        passwordChanged -> passwordChangedNotice()
+                        else -> null
+                    },
+                    onDismiss = {
+                        alreadyVerified = false
+                        passwordChanged = false
+                    },
                 )
             }
         }
@@ -180,6 +192,8 @@ private fun MoyiNavHost(
     onFirstScreenDrawn: () -> Unit,
     /** A verify link opened nothing because the address is already confirmed: say so. */
     onAlreadyVerified: () -> Unit,
+    /** A password changed from Account is saved and this phone stayed signed in: say so. */
+    onPasswordChanged: () -> Unit,
 ) {
     val navController = rememberNavController()
     val pushTaps = koinInject<PushTapInbox>()
@@ -224,6 +238,7 @@ private fun MoyiNavHost(
         authGraph(
             navController = navController,
             onSignedIn = { navController.resetTo(SignedInStartRoute) },
+            onPasswordChanged = onPasswordChanged,
         )
         todayGraph(
             navController = navController,
@@ -270,6 +285,8 @@ private fun MoyiNavHost(
             navController = navController,
             onOpenLegal = { navController.navigate(LegalRoute()) { launchSingleTop = true } },
             onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Account)) { launchSingleTop = true } },
+            // Change password: the auth feature's screens over Account, so they pop back to it.
+            onOpenChangePassword = { navController.navigate(ChangePasswordRoute) { launchSingleTop = true } },
         )
         if (UiPreview.onboarding) uiPreviewGraph(navController)
     }

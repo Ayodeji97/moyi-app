@@ -84,6 +84,43 @@ class ResetScreensTest {
         assertTrue(CONSEQUENCE !in spoken && "Save and sign in" !in spoken && "Password" !in spoken, spoken.toString())
     }
 
+    @Test
+    fun signedInTheCodeStepNamesTheAddressPlainly() = runComposeUiTest {
+        inPhone { ResetPasswordScreen(state = ResetPasswordState(email = "amara@example.com", signedIn = true), onAction = {}) }
+
+        onNodeWithText("We sent a 6-digit code to amara@example.com. Type it below, or open the link in the same email.")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun signedInThePasswordStepSaysThisPhoneStaysBeforeTheAction() = runComposeUiTest {
+        inPhone {
+            ResetPasswordScreen(
+                state = ResetPasswordState(email = "amara@example.com", step = ResetStep.Password, signedIn = true),
+                onAction = {},
+            )
+        }
+
+        val consequence = onNodeWithText(STAYS_SIGNED_IN).assertIsDisplayed().fetchSemanticsNode()
+        val action = onNodeWithText("Save the new password").assertIsDisplayed().fetchSemanticsNode()
+        assertTrue(consequence.boundsInRoot.bottom <= action.boundsInRoot.top)
+        val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        assertTrue("Save and sign in" !in spoken && CONSEQUENCE !in spoken, spoken.toString())
+    }
+
+    @Test
+    fun changePasswordSaysWhereTheCodeGoesAndTheConsequenceBeforeTheAction() = runComposeUiTest {
+        inPhone { ChangePasswordScreen(state = ChangePasswordState(email = "amara@example.com"), onAction = {}) }
+
+        onNodeWithText("We will email a 6-digit code to amara@example.com. Type it on the next screen, then choose your new password.")
+            .assertIsDisplayed()
+        val consequence = onNodeWithText(STAYS_SIGNED_IN).assertIsDisplayed().fetchSemanticsNode()
+        val action = onNodeWithText("Send the code").assertIsDisplayed().fetchSemanticsNode()
+        assertTrue(consequence.boundsInRoot.bottom <= action.boundsInRoot.top)
+        val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        assertTrue(spoken.indexOf(STAYS_SIGNED_IN) in 0 until spoken.indexOf("Send the code"), spoken.toString())
+    }
+
     private fun texts(node: SemanticsNode): List<String> {
         val own = node.config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }
         return listOfNotNull(own) + node.children.flatMap { texts(it) }
@@ -91,6 +128,7 @@ class ResetScreensTest {
 
     private companion object {
         const val SENT_TO_AMARA = "If amara@example.com has an account, we sent it a 6-digit code."
+        const val STAYS_SIGNED_IN = "Your other devices will be signed out. This phone stays signed in."
         const val CONSEQUENCE = "This signs you out everywhere else. You will need to sign in again on your other devices."
     }
 }

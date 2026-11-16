@@ -9,6 +9,7 @@ import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.feature.auth.legal.LegalRoot
 import com.moyi.app.feature.auth.login.LoginRoot
 import com.moyi.app.feature.auth.register.RegisterRoot
+import com.moyi.app.feature.auth.reset.ChangePasswordRoot
 import com.moyi.app.feature.auth.reset.ForgotPasswordRoot
 import com.moyi.app.feature.auth.reset.ResetPasswordRoot
 import com.moyi.app.feature.auth.sessionended.SessionEndedScreen
@@ -43,11 +44,14 @@ data object SessionEndedRoute
  * - [SessionEndReason.Invalid]: sign in, with the neutral line. The token expired, was
  *   revoked by a password reset, or could not be kept; "used from two places" would be false.
  * - [SessionEndReason.SignedOut]: sign in, plain. The person asked for it.
+ * - [SessionEndReason.PasswordChanged]: sign in, saying the new password is saved. The
+ *   password was changed here while signed in and signing in again with it failed.
  */
 fun routeAfterSessionEnd(reason: SessionEndReason): Any = when (reason) {
     SessionEndReason.ReuseDetected -> SessionEndedRoute
     SessionEndReason.Invalid -> LoginRoute(sessionEnded = true)
     SessionEndReason.SignedOut -> LoginRoute()
+    SessionEndReason.PasswordChanged -> LoginRoute(passwordChanged = true)
 }
 
 /**
@@ -77,10 +81,18 @@ data class ForgotPasswordRoute(val email: String = "")
  * the address the code was asked for: the code step names it, in a line that reads the same
  * whether or not it has an account, and the reset signs in with it after. Empty when an
  * emailed link opened the app without it. [linkToken] fills the paste
- * field when the emailed link opened the app.
+ * field when the emailed link opened the app. [signedIn]: opened from Change password, for
+ * the person signed in here, who stays signed in (the save is `changePassword`).
  */
 @Serializable
-data class ResetPasswordRoute(val email: String, val linkToken: String? = null)
+data class ResetPasswordRoute(val email: String, val linkToken: String? = null, val signedIn: Boolean = false)
+
+/**
+ * Change password, from Account while signed in (docs/missing-components.md §83): sends the
+ * code to the signed-in address, then the reset's code step with [ResetPasswordRoute.signedIn].
+ */
+@Serializable
+data object ChangePasswordRoute
 
 /**
  * The auth screens. Back stack, from the start destination (sign in):
@@ -102,10 +114,15 @@ data class ResetPasswordRoute(val email: String, val linkToken: String? = null)
  *   Saved but the sign-in failed: the whole stack is replaced with sign in,
  *   email prefilled, as after verifying: the old password is gone, so back
  *   must not return into the reset.
+ * - Account → Change password ([ChangePasswordRoute], push) → "Send the code" pushes the
+ *   reset's code step, signed in. Back pops one at a time. Saved: both are popped, back to
+ *   Account, and [onPasswordChanged] lets the shell say so. Saved but this phone could not
+ *   sign in again: the session ends and the shell routes to sign in on that.
  */
 fun NavGraphBuilder.authGraph(
     navController: NavController,
     onSignedIn: () -> Unit,
+    onPasswordChanged: () -> Unit = {},
 ) {
     composable<LoginRoute> { entry ->
         val route = entry.toRoute<LoginRoute>()
@@ -154,8 +171,19 @@ fun NavGraphBuilder.authGraph(
         ResetPasswordRoot(
             email = route.email,
             linkToken = route.linkToken,
+            signedIn = route.signedIn,
             onNavigateToHome = onSignedIn,
             onNavigateToLogin = { email -> navController.replaceStackWithLogin(email, passwordChanged = true) },
+            onNavigateBack = { navController.navigateUp() },
+            onPasswordChanged = {
+                navController.closePasswordChange()
+                onPasswordChanged()
+            },
+        )
+    }
+    composable<ChangePasswordRoute> {
+        ChangePasswordRoot(
+            onNavigateToCode = { email -> navController.navigate(ResetPasswordRoute(email, signedIn = true)) },
             onNavigateBack = { navController.navigateUp() },
         )
     }
@@ -165,6 +193,11 @@ fun NavGraphBuilder.authGraph(
     composable<LegalRoute> { entry ->
         LegalRoot(prompt = entry.toRoute<LegalRoute>().prompt, onClose = { navController.popBackStack() })
     }
+}
+
+/** Back to the screen Change password was opened from (Account); just this screen if it was not on the stack. */
+internal fun NavController.closePasswordChange() {
+    if (!popBackStack<ChangePasswordRoute>(inclusive = true)) navigateUp()
 }
 
 /** From the promise, back returns to it; from sign in, to sign in; alone, sign in replaces it. */
