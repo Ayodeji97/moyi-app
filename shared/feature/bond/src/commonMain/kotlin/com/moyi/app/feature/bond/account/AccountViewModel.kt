@@ -8,6 +8,7 @@ import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.account.AccountDeletionRepository
 import com.moyi.app.domain.auth.AuthRepository
+import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.bond.EmptyBondExit
 import com.moyi.app.domain.today.EntryOutbox
 import com.moyi.app.domain.today.OutboxSender
@@ -22,6 +23,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,6 +34,9 @@ import kotlinx.coroutines.launch
  * Account and Delete your account (FR-008, ADR-0058), one ViewModel scoped to the Account
  * entry, so the delete screen pushed over it sees the same state.
  *
+ * - **Signed in as**: the member's own email, from the session kept on this device
+ *   ([AuthRepository.session]), never from the network and never the partner's. Known at
+ *   once, offline too; it follows the session while it stays signed in.
  * - **Load**: `GET /me`'s `deletionRequest`, so a pending deletion shows after a restart or
  *   a reinstall. A failure is the Generic error with Try again.
  * - **Delete** asks for the password again (the backend's rule: a session is not proof
@@ -54,7 +61,7 @@ class AccountViewModel(
     /** A leave a join kept on the device: a sign-out tries it once more too, before the wipe takes it. */
     emptyBonds: EmptyBondExit,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(AccountState())
+    private val _state = MutableStateFlow(AccountState(email = auth.session.value.signedInEmail()))
     val state: StateFlow<AccountState> = _state.asStateFlow()
 
     private val _events = Channel<AccountEvent>(Channel.BUFFERED)
@@ -65,6 +72,11 @@ class AccountViewModel(
 
     init {
         load()
+        // Kept while the session ends: the shell routes away on sign-out, so the row does not blink out first.
+        auth.session
+            .mapNotNull { it.signedInEmail() }
+            .onEach { email -> _state.update { it.copy(email = email) } }
+            .launchIn(viewModelScope)
     }
 
     fun onAction(action: AccountAction) {
@@ -193,3 +205,6 @@ class AccountViewModel(
 }
 
 private const val NOT_FOUND = 404
+
+/** The member's own address while signed in; null before the session is known or once it ended. */
+private fun SessionState.signedInEmail(): String? = (this as? SessionState.SignedIn)?.user?.email?.takeIf { it.isNotBlank() }

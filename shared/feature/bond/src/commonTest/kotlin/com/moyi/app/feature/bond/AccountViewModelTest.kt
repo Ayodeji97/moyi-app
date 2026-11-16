@@ -9,6 +9,9 @@ import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.account.AccountDeletionRepository
 import com.moyi.app.domain.account.DeletionRequest
+import com.moyi.app.domain.auth.SessionState
+import com.moyi.app.domain.auth.User
+import com.moyi.app.domain.auth.UserStatus
 import com.moyi.app.domain.today.QueuedEntry
 import com.moyi.app.feature.bond.account.AccountAction
 import com.moyi.app.feature.bond.account.AccountEvent
@@ -94,6 +97,58 @@ class AccountViewModelTest : MainDispatcherTest() {
         viewModel.onAction(AccountAction.OnRetryClick)
 
         assertEquals(AccountLoad.Ready, viewModel.state.value.load)
+    }
+
+    // ----- signed in as -----
+
+    private fun signedIn(email: String) = SessionState.SignedIn(
+        User(id = "u-1", email = email, displayName = "Ada", emailVerified = true, status = UserStatus.ACTIVE),
+    )
+
+    @Test
+    fun theSessionsOwnEmailIsThereFromTheFirstFrame() {
+        auth.sessionState.value = signedIn("ada@example.com")
+        assertEquals("ada@example.com", viewModel.state.value.email)
+    }
+
+    @Test
+    fun theEmailShowsOfflineWhenMeCannotBeReached() {
+        auth.sessionState.value = signedIn("ada@example.com")
+        deletion.pendingReads += Result.Failure(DataError.Network.NoInternet)
+
+        val state = viewModel.state.value
+        assertEquals(AccountLoad.Failed, state.load)
+        assertEquals("ada@example.com", state.email, "the address is the device's own session, not /me's answer")
+    }
+
+    @Test
+    fun noEmailWhileTheSessionIsNotKnown() {
+        assertNull(viewModel.state.value.email)
+    }
+
+    @Test
+    fun theEmailArrivesWhenTheSessionIsRead() {
+        assertNull(viewModel.state.value.email)
+        auth.sessionState.value = signedIn("ada@example.com")
+        assertEquals("ada@example.com", viewModel.state.value.email)
+    }
+
+    @Test
+    fun theEmailStaysWhileSigningOutEndsTheSession() {
+        auth.sessionState.value = signedIn("ada@example.com")
+        assertEquals("ada@example.com", viewModel.state.value.email)
+
+        auth.sessionState.value = SessionState.SignedOut
+
+        assertEquals("ada@example.com", viewModel.state.value.email, "the shell routes away; the row does not blink out first")
+    }
+
+    @Test
+    fun theEmailNeverReachesALogLine() {
+        auth.sessionState.value = signedIn("ada@example.com")
+        val printed = viewModel.state.value.toString()
+        assertFalse("ada@example.com" in printed, printed)
+        assertTrue("email=<redacted>" in printed, printed)
     }
 
     // ----- asking -----

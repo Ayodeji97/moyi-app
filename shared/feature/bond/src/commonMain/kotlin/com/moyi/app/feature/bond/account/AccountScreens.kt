@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
 import com.moyi.app.designsystem.component.ConfirmDialog
@@ -38,6 +41,7 @@ import com.moyi.app.feature.bond.resources.account_eyebrow
 import com.moyi.app.feature.bond.resources.account_heading
 import com.moyi.app.feature.bond.resources.account_row_delete
 import com.moyi.app.feature.bond.resources.account_row_export
+import com.moyi.app.feature.bond.resources.account_signed_in_as
 import com.moyi.app.feature.bond.resources.delete_account_confirm
 import com.moyi.app.feature.bond.resources.delete_account_confirming
 import com.moyi.app.feature.bond.resources.delete_account_consequence
@@ -79,6 +83,11 @@ import kotlin.time.Instant
  * and Terms and Privacy are here so a person with no bond, whose only way in is the account
  * icon, can reach both (smoke test 2026-11-09); they open the same screens Bond settings does.
  *
+ * First in the card, **Signed in as {email}**: the member's own address from the session on
+ * this device, read only, so they can tell which account this is (PROPOSED,
+ * docs/missing-components.md §81). It needs nothing from `/me`, so it shows offline and under
+ * a failed load too.
+ *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, and every
  * row but Delete your account stays under it, because none of them needs anything `/me` holds.
  * While signing out every row waits, and Sign out says Signing out.
@@ -104,6 +113,7 @@ fun AccountScreen(
             }
             Spacer(Modifier.height(MoyiTheme.spacing.xxl))
             GroupedCard {
+                signedInRow(state)
                 exportRow(state, onAction)
                 helpAndLegalRows(state, onOpenHelp, onOpenLegal)
                 signOutRow(state, onAction)
@@ -114,6 +124,7 @@ fun AccountScreen(
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
             Column(verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.lg)) {
                 GroupedCard {
+                    signedInRow(state)
                     exportRow(state, onAction)
                     helpAndLegalRows(state, onOpenHelp, onOpenLegal)
                     signOutRow(state, onAction)
@@ -146,6 +157,19 @@ fun AccountScreen(
             onDismiss = { onAction(AccountAction.OnSignOutUnsentDismiss) },
         )
     }
+}
+
+/**
+ * "Signed in as {email}" (PROPOSED, docs/missing-components.md §81): the member's own address,
+ * so a person can tell which account this phone uses. Read only: no press, no chevron, so it
+ * reads to assistive technology as the one sentence it shows. The whole sentence is the label,
+ * which takes the row's width and wraps, so a long address or a large font never squeezes it.
+ * Left out while the address is unknown: no placeholder is drawn for it.
+ */
+@Composable
+private fun GroupedCardScope.signedInRow(state: AccountState) {
+    val email = state.email ?: return
+    row(label = stringResource(Res.string.account_signed_in_as, email))
 }
 
 @Composable
@@ -301,7 +325,23 @@ private val previewPending = DeletionRequest(
 @Preview
 @Composable
 private fun AccountPreview() {
-    MoyiTheme(darkTheme = true) { AccountScreen(AccountState(load = AccountLoad.Ready), onAction = {}, onBack = {}) }
+    MoyiTheme(darkTheme = true) { AccountScreen(AccountState(load = AccountLoad.Ready, email = "ada@example.com"), onAction = {}, onBack = {}) }
+}
+
+/** A long address at 200 % font (NFR-102): the label wraps under itself, nothing is cut. */
+@Preview(widthDp = 390)
+@Composable
+private fun AccountLongEmailLargeFontPreview() {
+    val density = LocalDensity.current
+    CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+        MoyiTheme(darkTheme = false) {
+            AccountScreen(
+                AccountState(load = AccountLoad.Ready, email = "ada.lovelace.analytical.engine.notes@correspondence.example.co.uk"),
+                onAction = {},
+                onBack = {},
+            )
+        }
+    }
 }
 
 @Preview

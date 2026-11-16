@@ -391,6 +391,8 @@
     <string name="account_eyebrow">Account</string>
     <!-- account.heading (strings-proposed.md §9). -->
     <string name="account_heading">Your account</string>
+    <!-- PROPOSED (docs/missing-components.md §81). The read-only first row of Account: the signed-in member's own address, so they can tell which account this phone uses. %1$s is {email}, the session's address; never the partner's. -->
+    <string name="account_signed_in_as">Signed in as %1$s</string>
     <!-- "Export your archive", the label drawn on the archived screens, the block confirm and the cooling-off (states.md §9). Its place on this screen is PROPOSED. -->
     <string name="account_row_export">Export your archive</string>
     <!-- account.delete (strings-proposed.md §9). -->
