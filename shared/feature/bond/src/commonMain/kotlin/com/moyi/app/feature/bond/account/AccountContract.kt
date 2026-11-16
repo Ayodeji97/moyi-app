@@ -17,10 +17,16 @@ enum class DeletionCall { Request, Cancel }
  * [password] is what the person typed to confirm. It lives here only while the delete screen
  * is open, is never saved (no SavedStateHandle: a password must not outlive the screen), and
  * is left out of [toString] so no log line can carry it.
+ *
+ * [email] is the signed-in member's own address, for the "Signed in as" row: read from the
+ * session this device keeps (Keychain or the Keystore-encrypted file), so it shows offline and
+ * before `GET /me` answers. Null while no session is known; the row is then left out. It is
+ * left out of [toString] too: an address is personal data and must not reach a log.
  */
 @Immutable
 data class AccountState(
     val load: AccountLoad = AccountLoad.Loading,
+    val email: String? = null,
     /** The deletion waiting to be carried out, from `GET /me`; null when none is. */
     val pending: DeletionRequest? = null,
     val password: String = "",
@@ -36,7 +42,7 @@ data class AccountState(
     val confirmingUnsentSignOut: Boolean = false,
 ) {
     override fun toString(): String =
-        "AccountState(load=$load, pending=$pending, password=<${password.length} chars>, passwordError=$passwordError, " +
+        "AccountState(load=$load, email=${if (email == null) "null" else "<redacted>"}, pending=$pending, password=<${password.length} chars>, passwordError=$passwordError, " +
             "error=$error, inFlight=$inFlight, signingOut=$signingOut, confirmingSignOut=$confirmingSignOut, confirmingUnsentSignOut=$confirmingUnsentSignOut)"
 }
 
