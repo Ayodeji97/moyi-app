@@ -2061,3 +2061,14 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **No new component:** the shell's `MoyiSnackbar`, as for "Your new password is saved."
 - **String proposed:** `reset_link_other_account_done` "That link was for another account. Its new password is saved. You are still signed in here." No dash, no exclamation mark.
 - **Not covered:** before the save, the password step cannot know the link is someone else's, so it shows this account's consequence line. The note afterwards corrects it.
+
+## Send it again on the reset's code step (PR feat/reset-send-again)
+
+### 85. "Send it again" under the reset code field
+
+- **Why:** the wrong-code error says "That code did not work. Check the digits, or send a new email.", but the only way to send one was Back to Forgot password (signed out) or Change password (signed in). Smoke test of #118/#119.
+- **No new component, no new string.** Verify's own resend, reused: the `TextLink` "Send it again" (`verify_resend`) 24 under the code field, replaced for a minute by the muted live-region line "Sent again. You can ask for another in a minute." (`verify_resent`, states.md §1 Resent). While it runs, the link reads "Sending the code" (`reset_request_action_sending`, the same request's label on Forgot password), so the control says what it is doing and no spinner is invented. It is disabled while a code is being checked.
+- **What it does:** `POST /auth/forgot-password` with the code step's address, signed out (Forgot password) and signed in (Change password) alike. The `202` reads the same for any address, so the acknowledgement discloses nothing. A new email voids the old code, so the field and its verdict are cleared.
+- **Failures** show above the action, as on verify: offline is `auth_error_offline`; `429` is `auth_error_rate_limited` "This is paused for a short while. Try again in a few minutes." The code typed so far stays.
+- **Not shown** when the step has no address (a refused emailed link on a phone that never asked): there is nowhere to send it.
+- **Error line unchanged:** "send a new email" now names the control right under it. A tighter "Check the digits, or send it again." is possible, but `code_error_invalid` is owner approved (§58) and is shared with verify, which has the same control, so it is left as is.

@@ -1,19 +1,18 @@
 package com.moyi.app.feature.auth.reset
 
-import androidx.compose.ui.platform.LocalAutofillManager
-import com.moyi.app.feature.auth.common.credentialAutofill
-import com.moyi.app.feature.auth.common.settle
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalAutofillManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,6 +26,7 @@ import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.ScreenHeader
+import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.platform.LayerBackHandler
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
@@ -34,27 +34,33 @@ import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.common.EmailCodeField
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
+import com.moyi.app.feature.auth.common.credentialAutofill
 import com.moyi.app.feature.auth.common.onBlur
+import com.moyi.app.feature.auth.common.settle
 import com.moyi.app.feature.auth.common.toActionState
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.auth_password_label
 import com.moyi.app.feature.auth.resources.auth_try_again
+import com.moyi.app.feature.auth.resources.change_password_action
+import com.moyi.app.feature.auth.resources.change_password_consequence
+import com.moyi.app.feature.auth.resources.code_error_invalid
+import com.moyi.app.feature.auth.resources.code_helper
 import com.moyi.app.feature.auth.resources.login_eyebrow
 import com.moyi.app.feature.auth.resources.register_password_helper
 import com.moyi.app.feature.auth.resources.reset_action
 import com.moyi.app.feature.auth.resources.reset_action_sending
-import com.moyi.app.feature.auth.resources.reset_consequence
-import com.moyi.app.feature.auth.resources.reset_new_heading
-import com.moyi.app.feature.auth.resources.code_error_invalid
-import com.moyi.app.feature.auth.resources.code_helper
-import com.moyi.app.feature.auth.resources.reset_link_ready
 import com.moyi.app.feature.auth.resources.reset_code_action
 import com.moyi.app.feature.auth.resources.reset_code_heading
 import com.moyi.app.feature.auth.resources.reset_code_line
-import com.moyi.app.feature.auth.resources.change_password_action
-import com.moyi.app.feature.auth.resources.change_password_consequence
-import com.moyi.app.feature.auth.resources.verify_line
+import com.moyi.app.feature.auth.resources.reset_consequence
+import com.moyi.app.feature.auth.resources.reset_link_ready
+import com.moyi.app.feature.auth.resources.reset_new_heading
+import com.moyi.app.feature.auth.resources.reset_request_action_sending
 import com.moyi.app.feature.auth.resources.verify_action_sending
+import com.moyi.app.feature.auth.resources.verify_line
+import com.moyi.app.feature.auth.resources.verify_resend
+import com.moyi.app.feature.auth.verify.ResendStatus
+import com.moyi.app.feature.auth.verify.ResentAcknowledgement
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -124,6 +130,7 @@ fun ResetPasswordScreen(
 ) {
     val spacing = MoyiTheme.spacing
     val failed = state.submit as? SubmitStatus.Failed
+    val actionError = failed?.message ?: state.resendFailure
     val onCodeStep = state.step == ResetStep.Code
     val codeFocus = remember { FocusRequester() }
     val passwordFocus = remember { FocusRequester() }
@@ -134,8 +141,8 @@ fun ResetPasswordScreen(
     MoyiScaffold(
         onBack = { onAction(ResetPasswordAction.OnBackClick) },
         action = {
-            if (failed != null) {
-                InlineError(failed.message.asString())
+            if (actionError != null) {
+                InlineError(actionError.asString())
                 Spacer(Modifier.height(spacing.lg))
             }
             val idleLabel = when {
@@ -172,6 +179,23 @@ fun ResetPasswordScreen(
                 imeAction = ImeAction.Done,
                 onImeAction = { onAction(ResetPasswordAction.OnSubmit) },
             )
+            // Verify's "Send it again" (§85): a new email to the same address, so not without one.
+            if (state.email.isNotEmpty()) {
+                Spacer(Modifier.height(spacing.lg))
+                when (state.resend) {
+                    ResendStatus.Sent -> ResentAcknowledgement()
+                    ResendStatus.Ready, ResendStatus.Sending -> TextLink(
+                        // While it runs, the link says what it is doing (no spinner, states.md).
+                        stringResource(
+                            if (state.resend == ResendStatus.Sending) Res.string.reset_request_action_sending else Res.string.verify_resend,
+                        ),
+                        onClick = { onAction(ResetPasswordAction.OnResendClick) },
+                        // Held while a check is in flight (ResetPasswordViewModel.resend).
+                        enabled = state.resend == ResendStatus.Ready && state.submit != SubmitStatus.Sending,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         } else {
             if (state.linkToken != null) {
                 MoyiText(stringResource(Res.string.reset_link_ready))
