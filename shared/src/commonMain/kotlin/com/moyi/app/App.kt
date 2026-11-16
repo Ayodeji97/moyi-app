@@ -38,6 +38,7 @@ import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.LegalRoute
 import com.moyi.app.feature.auth.navigation.alreadyVerifiedNotice
 import com.moyi.app.feature.auth.navigation.ChangePasswordRoute
+import com.moyi.app.feature.auth.navigation.otherAccountPasswordChangedNotice
 import com.moyi.app.feature.auth.navigation.passwordChangedNotice
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
@@ -144,6 +145,8 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         var alreadyVerified by remember { mutableStateOf(false) }
         // A password changed from Account was saved and this phone kept signed in (§83).
         var passwordChanged by remember { mutableStateOf(false) }
+        // A reset link opened while signed in was another account's; this phone is unchanged (§84).
+        var otherAccountPasswordChanged by remember { mutableStateOf(false) }
 
         val startDestination = start
         Box(Modifier.fillMaxSize()) {
@@ -158,6 +161,7 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     onFirstScreenDrawn = { firstScreenDrawn = true },
                     onAlreadyVerified = { alreadyVerified = true },
                     onPasswordChanged = { passwordChanged = true },
+                    onOtherAccountPasswordChanged = { otherAccountPasswordChanged = true },
                 )
             }
             if (!splashDone) {
@@ -172,11 +176,13 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     message = when {
                         alreadyVerified -> alreadyVerifiedNotice()
                         passwordChanged -> passwordChangedNotice()
+                        otherAccountPasswordChanged -> otherAccountPasswordChangedNotice()
                         else -> null
                     },
                     onDismiss = {
                         alreadyVerified = false
                         passwordChanged = false
+                        otherAccountPasswordChanged = false
                     },
                 )
             }
@@ -194,6 +200,8 @@ private fun MoyiNavHost(
     onAlreadyVerified: () -> Unit,
     /** A password changed from Account is saved and this phone stayed signed in: say so. */
     onPasswordChanged: () -> Unit,
+    /** A reset link opened while signed in was another account's: saved for it; say so. */
+    onOtherAccountPasswordChanged: () -> Unit,
 ) {
     val navController = rememberNavController()
     val pushTaps = koinInject<PushTapInbox>()
@@ -239,6 +247,7 @@ private fun MoyiNavHost(
             navController = navController,
             onSignedIn = { navController.resetTo(SignedInStartRoute) },
             onPasswordChanged = onPasswordChanged,
+            onOtherAccountPasswordChanged = onOtherAccountPasswordChanged,
         )
         todayGraph(
             navController = navController,

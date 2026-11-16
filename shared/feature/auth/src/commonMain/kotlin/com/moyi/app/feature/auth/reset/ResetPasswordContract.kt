@@ -73,6 +73,12 @@ sealed interface ResetPasswordEvent {
     data object PasswordChanged : ResetPasswordEvent
 
     /**
+     * Signed in, and the reset link was another account's: that account's password is saved,
+     * and this device is still signed in as before. Close the screen and say so.
+     */
+    data object OtherAccountPasswordChanged : ResetPasswordEvent
+
+    /**
      * Saved, but not signed in: the sign-in after it failed, or there was no address to sign
      * in with. The new password is set, so sign in next with the address filled in (when
      * known), and no way back into the reset.

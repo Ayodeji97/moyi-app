@@ -174,4 +174,43 @@ class ChangePasswordWhileSignedInTest : MainDispatcherTest() {
         assertEquals(SubmitStatus.Idle, reset.state.value.submit)
         assertEquals(SessionState.SignedOut, repo.session.value)
     }
+
+    // ----- A reset link opened while signed in (§84) -----
+
+    private fun linkOpenedSignedIn() =
+        ResetPasswordViewModel(email = email, authRepository = repo, linkToken = "link-token", signedIn = true).apply {
+            onAction(ResetPasswordAction.OnPasswordChange("correct horse"))
+        }
+
+    @Test
+    fun aLinkOpenedWhileSignedInSavesTheChangePasswordWayWithTheSessionsAddress() = runTest {
+        val viewModel = linkOpenedSignedIn()
+        assertEquals(ResetStep.Password, viewModel.state.value.step)
+        viewModel.events.test {
+            viewModel.onAction(ResetPasswordAction.OnSubmit)
+            assertEquals(ResetPasswordEvent.PasswordChanged, awaitItem())
+        }
+        assertEquals(
+            listOf(FakeAuthRepository.ChangeCall(EmailProof.Link("link-token"), email, "correct horse")),
+            repo.changeCalls,
+        )
+        assertTrue(repo.resetCalls.isEmpty())
+        assertTrue(repo.loginCalls.isEmpty())
+        assertIs<SessionState.SignedIn>(repo.session.value)
+    }
+
+    @Test
+    fun aLinkForAnotherAccountSaysSoAndLeavesThisPhoneSignedIn() = runTest {
+        val viewModel = linkOpenedSignedIn()
+        repo.changeResult = Result.Failure(PasswordChangeError.OtherAccount)
+        repo.sessionEvents.test {
+            viewModel.events.test {
+                viewModel.onAction(ResetPasswordAction.OnSubmit)
+                assertEquals(ResetPasswordEvent.OtherAccountPasswordChanged, awaitItem())
+            }
+            expectNoEvents()
+        }
+        assertEquals(SubmitStatus.Idle, viewModel.state.value.submit)
+        assertIs<SessionState.SignedIn>(repo.session.value)
+    }
 }

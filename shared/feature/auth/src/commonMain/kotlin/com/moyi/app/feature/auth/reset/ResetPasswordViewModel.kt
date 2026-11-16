@@ -47,10 +47,11 @@ import kotlinx.coroutines.launch
  * Back from the password returns to the code, unless the link opened the app: there is no
  * code step to return to, so Back leaves the screen.
  *
- * [signedIn]: opened from Account › Change password, for the person signed in here. The same
- * two steps, but the save is [AuthRepository.changePassword], which keeps this device signed
- * in with the new password (the reset revokes every session, this one too) instead of
- * signing in from scratch.
+ * [signedIn]: opened from Account › Change password, or by a reset link while someone is
+ * signed in here. The same two steps, but the save is [AuthRepository.changePassword], which
+ * keeps this device signed in with the new password (the reset revokes every session, this
+ * one too) instead of signing in from scratch. A link may be another account's: then that
+ * account's password is saved and this session is untouched ([PasswordChangeError.OtherAccount]).
  */
 class ResetPasswordViewModel(
     email: String,
@@ -220,6 +221,10 @@ class ResetPasswordViewModel(
             is Result.Failure -> when (val error = result.error) {
                 is PasswordChangeError.NotChanged -> onResetRefused(error.error, proof, password)
                 is PasswordChangeError.SignedOut -> _state.update { it.copy(submit = SubmitStatus.Idle) }
+                PasswordChangeError.OtherAccount -> {
+                    _state.update { it.copy(submit = SubmitStatus.Idle) }
+                    _events.send(ResetPasswordEvent.OtherAccountPasswordChanged)
+                }
             }
         }
     }

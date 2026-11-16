@@ -70,6 +70,8 @@ fun ResetPasswordRoot(
     signedIn: Boolean = false,
     /** Changed while signed in, and this device signed in again: close the change. */
     onPasswordChanged: () -> Unit = onNavigateToHome,
+    /** Signed in, and the link was another account's: saved for it, this device unchanged. */
+    onOtherAccountPasswordChanged: () -> Unit = onPasswordChanged,
     viewModel: ResetPasswordViewModel = koinViewModel { parametersOf(email, linkToken, signedIn) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -79,6 +81,7 @@ fun ResetPasswordRoot(
         when (event) {
             ResetPasswordEvent.NavigateToHome -> onNavigateToHome()
             ResetPasswordEvent.PasswordChanged -> onPasswordChanged()
+            ResetPasswordEvent.OtherAccountPasswordChanged -> onOtherAccountPasswordChanged()
             is ResetPasswordEvent.NavigateToLogin -> onNavigateToLogin(event.email)
             ResetPasswordEvent.NavigateBack -> onNavigateBack()
         }
