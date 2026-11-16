@@ -8,6 +8,7 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.core.map
+import com.moyi.app.core.onSuccess
 import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.AuthedHttpClient
 import com.moyi.app.data.network.safeApiCall
@@ -17,6 +18,7 @@ import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.bond.SharedSettingsNotices
 
 /**
  * [BondRepository] over the generated bond and invite APIs, on the AUTHED
@@ -27,13 +29,17 @@ import com.moyi.app.domain.bond.InvitePreview
 class BondRepositoryImpl(
     authedClient: AuthedHttpClient,
     config: ApiConfig,
+    /** Every read of the bonds is compared with what this device last saw (owner ask 2026-11-16). */
+    private val settingsNotices: SharedSettingsNotices,
 ) : BondRepository {
     private val bondsApi = BondsControllerApi(config.origin, authedClient.client)
     private val bondInvitesApi = BondInvitesControllerApi(config.origin, authedClient.client)
     private val invitesApi = InvitesControllerApi(config.origin, authedClient.client)
 
     override suspend fun bonds(): Result<List<Bond>, DataError.Network> =
-        safeApiCall { bondsApi.listBonds() }.map { response -> response.bonds.map { it.toBond() } }
+        safeApiCall { bondsApi.listBonds() }
+            .onSuccess { response -> response.bonds.forEach { bond -> bond.toSharedSettings()?.let { settingsNotices.observe(it) } } }
+            .map { response -> response.bonds.map { it.toBond() } }
 
     override suspend fun createBond(name: String, type: BondType, anchorTimezone: String): Result<Bond, DataError.Network> {
         val request = CreateBondRequest(

@@ -1,0 +1,33 @@
+-- Version 8 to 9: shared_settings_snapshot and shared_settings_notice, the shared settings this
+-- device last saw and the notes waiting to say what changed (SharedSettings.sq). New tables:
+-- nothing that was there changes.
+CREATE TABLE shared_settings_snapshot (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    anchor_timezone TEXT NOT NULL,
+    reveal_time TEXT,
+    strict_mode INTEGER NOT NULL,
+    semantic_search INTEGER NOT NULL,
+    deletion_scheduled INTEGER NOT NULL,
+    tz_proposal_id TEXT,
+    tz_proposal_zone TEXT,
+    tz_proposal_by_me INTEGER,
+    tz_proposal_expires_at INTEGER,
+    deletion_by_me INTEGER,
+    deletion_expires_at INTEGER,
+    semantic_by_me INTEGER,
+    semantic_expires_at INTEGER,
+    PRIMARY KEY (user_id, bond_id)
+);
+
+CREATE TABLE shared_settings_notice (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    new_value TEXT
+);
+

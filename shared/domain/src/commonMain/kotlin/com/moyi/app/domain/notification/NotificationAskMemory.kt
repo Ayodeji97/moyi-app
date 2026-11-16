@@ -10,7 +10,11 @@ package com.moyi.app.domain.notification
  * SharedPreferences, iOS's NSUserDefaults) and never in the token store or the local
  * database, which every sign-out wipes. Removing the app removes it, so a reinstall asks again.
  *
- * Not a secret, and it holds nothing about anyone: one flag.
+ * It also remembers the day the full reminder screen was shown on this phone (owner ruling
+ * 2026-11-15): that screen shows once per phone, at the first arrival on Today, and after it
+ * the small note waits until the next calendar day.
+ *
+ * Not a secret, and it holds nothing about anyone: one flag and one date.
  */
 interface NotificationAskMemory {
     /** True once "Not now" has been chosen on this phone. */
@@ -18,4 +22,13 @@ interface NotificationAskMemory {
 
     /** Remembers "Not now" on this phone, for good. */
     fun dismiss()
+
+    /**
+     * The phone's local date the reminder screen was shown on, as ISO `YYYY-MM-DD` (a string
+     * because the domain carries no date library), or null when it never has been on this phone.
+     */
+    fun reminderScreenShownOn(): String?
+
+    /** Remembers that the reminder screen was shown on [date] (ISO `YYYY-MM-DD`), so it never shows again. */
+    fun rememberReminderScreenShown(date: String)
 }

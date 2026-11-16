@@ -27,6 +27,21 @@ class TodayGraphTest {
         currentBackStackEntry!!.destination.hasRoute(route)
 
     @Test
+    fun theReminderScreenSitsOnTodayAndLeavesTodayAloneOnTheStack() {
+        val nav = controller()
+        nav.navigate(ReminderAskRoute("bond-1")) { launchSingleTop = true }
+        assertTrue(nav.isOn(ReminderAskRoute::class))
+        assertEquals("bond-1", nav.currentBackStackEntry!!.toRoute<ReminderAskRoute>().bondId)
+        assertTrue(nav.previousBackStackEntry!!.destination.hasRoute(TodayRoute::class))
+
+        // Every way out of it: Turn on reminders answered, Not now, Continue to Today.
+        nav.backToToday()
+
+        assertTrue(nav.isOn(TodayRoute::class))
+        assertNull(nav.previousBackStackEntry, "Today is the root: nothing behind it, and no reminder screen to go back to")
+    }
+
+    @Test
     fun theRevealSitsOnTodaySoTheNavHostsBackLandsOnToday() {
         // D12: before, the reveal replaced Today, so Android Back closed the app.
         val nav = controller()

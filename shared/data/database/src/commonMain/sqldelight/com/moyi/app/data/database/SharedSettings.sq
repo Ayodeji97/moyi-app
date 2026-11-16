@@ -1,0 +1,57 @@
+-- A bond's shared settings as this device last saw them, and the notes waiting to tell the
+-- person what changed since (owner ask 2026-11-16; SharedSettingsNotices). Compared on every
+-- read of the bond, replaced after it, and after every write this device makes.
+--
+-- Only the settings both members share: never who is in the bond, never an entry's words.
+-- The bond name is here because "This bond is now called ..." needs to know it changed; the
+-- database is encrypted, and the session wipes the table with everything else. user_id
+-- scopes a row to one person: two members of one bond can share a phone.
+--
+-- Enums by name (BondStatus, BondType); times as epoch milliseconds; booleans 0 or 1. A
+-- row this build cannot read counts as no snapshot: the next read only remembers.
+CREATE TABLE shared_settings_snapshot (
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    anchor_timezone TEXT NOT NULL,
+    reveal_time TEXT,
+    strict_mode INTEGER NOT NULL,
+    semantic_search INTEGER NOT NULL,
+    deletion_scheduled INTEGER NOT NULL,
+    tz_proposal_id TEXT,
+    tz_proposal_zone TEXT,
+    tz_proposal_by_me INTEGER,
+    tz_proposal_expires_at INTEGER,
+    deletion_by_me INTEGER,
+    deletion_expires_at INTEGER,
+    semantic_by_me INTEGER,
+    semantic_expires_at INTEGER,
+    PRIMARY KEY (user_id, bond_id)
+);
+
+-- One row per change not yet dismissed, oldest first. kind is the change by name; new_value
+-- what it changed to (a zone id, a name, HH:mm, a type), null when the kind says it all.
+CREATE TABLE shared_settings_notice (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    bond_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    new_value TEXT
+);
+
+snapshotFor:
+SELECT * FROM shared_settings_snapshot WHERE user_id = ? AND bond_id = ?;
+
+upsertSnapshot:
+INSERT OR REPLACE INTO shared_settings_snapshot VALUES ?;
+
+noticesFor:
+SELECT id, kind, new_value FROM shared_settings_notice WHERE user_id = ? AND bond_id = ? ORDER BY id;
+
+insertNotice:
+INSERT INTO shared_settings_notice (user_id, bond_id, kind, new_value) VALUES (?, ?, ?, ?);
+
+deleteNotice:
+DELETE FROM shared_settings_notice WHERE user_id = ? AND bond_id = ? AND id = ?;

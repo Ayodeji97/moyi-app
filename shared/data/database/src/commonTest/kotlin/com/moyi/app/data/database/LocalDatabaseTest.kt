@@ -120,8 +120,9 @@ class LocalDatabaseTest {
             archiveDayQueries.upsert(archived)
             archiveEmptyQueries.markEmpty("ada", "bond-2")
             pendingLeaveQueries.insert("ada", "bond-1", "bond-2")
+            sharedSettingsQueries.insertNotice("ada", "bond-1", "NAME_CHANGED", "Us")
         }
-        assertTrue(database.userTables().containsAll(listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty", "pending_leave")))
+        assertTrue(database.userTables().containsAll(listOf("cached_day", "draft", "outbox_entry", "archive_day", "archive_empty", "pending_leave", "shared_settings_snapshot", "shared_settings_notice")))
 
         database.wipe()
 
@@ -144,6 +145,8 @@ class LocalDatabaseTest {
     fun aVersionOneDatabaseIsMigratedToHoldDrafts() = runTest {
         // Version 1 (#37) had only cached_day: build that, then migrate it as a phone would.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
         driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE draft", 0)
         driver.execute(null, "DROP TABLE outbox_entry", 0)
@@ -156,7 +159,7 @@ class LocalDatabaseTest {
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = MoyiDatabase.Schema.version)
 
-        assertEquals(8L, MoyiDatabase.Schema.version)
+        assertEquals(9L, MoyiDatabase.Schema.version)
         old.io { draftQueries.upsert(draft) }
         assertEquals(draft, old.io { draftQueries.forKey("ada", "bond-1", "NEW_ENTRY").executeAsOne() })
         assertEquals(1L, old.rowCount("cached_day"), "the migration keeps what was there")
@@ -166,6 +169,8 @@ class LocalDatabaseTest {
     fun aVersionTwoDatabaseIsMigratedToHoldTheOutboxAndKeepsItsDraft() = runTest {
         // Version 2 (#38) had cached_day and draft: build that, then migrate it as a phone would.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
         driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE outbox_entry", 0)
         driver.execute(null, "DROP TABLE archive_day", 0)
@@ -190,6 +195,8 @@ class LocalDatabaseTest {
     fun aVersionThreeDatabaseIsMigratedToHoldTheArchiveAndKeepsEverythingElse() = runTest {
         // Version 3 (#39, #40) had cached_day, draft and outbox_entry: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
         driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE archive_day", 0)
         driver.execute(null, "DROP TABLE archive_empty", 0)
@@ -213,6 +220,8 @@ class LocalDatabaseTest {
     fun aVersionFourDatabaseIsMigratedToHoldTheEmptyArchiveMarkerAndKeepsEverythingElse() = runTest {
         // Version 4 (#43) had cached_day, draft, outbox_entry and archive_day: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
         driver.execute(null, "DROP TABLE pending_leave", 0)
         driver.execute(null, "DROP TABLE archive_empty", 0)
         val old = LocalDatabase(driver)
@@ -236,6 +245,8 @@ class LocalDatabaseTest {
     fun aVersionFiveDatabaseIsMigratedToHoldReactionsAndKeepsEveryRow() = runTest {
         // Version 5 (#45) had every table, without the reaction columns: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
         driver.execute(null, "DROP TABLE pending_leave", 0)
         val old = LocalDatabase(driver)
         old.io {
@@ -264,6 +275,8 @@ class LocalDatabaseTest {
     fun aVersionSixDatabaseIsMigratedToHoldEachEntrysMediaShapeAndKeepsEveryRow() = runTest {
         // Version 6 (#50) had every table and the reactions, without the media columns: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
         driver.execute(null, "DROP TABLE pending_leave", 0)
         val old = LocalDatabase(driver)
         old.io {
@@ -295,6 +308,8 @@ class LocalDatabaseTest {
     fun aVersionSevenDatabaseIsMigratedToHoldPendingLeavesAndKeepsEveryRow() = runTest {
         // Version 7 had every table and the media columns, without pending_leave: build that, then migrate it.
         val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
         driver.execute(null, "DROP TABLE pending_leave", 0)
         val old = LocalDatabase(driver)
         old.io {
@@ -312,6 +327,32 @@ class LocalDatabaseTest {
         }
         old.io { pendingLeaveQueries.insert("ada", "bond-1", "bond-2") }
         assertEquals(listOf(Pending_leave("ada", "bond-1", "bond-2")), old.io { pendingLeaveQueries.forUser("ada").executeAsList() })
+    }
+
+    @Test
+    fun aVersionEightDatabaseIsMigratedToHoldSharedSettingsAndKeepsEveryRow() = runTest {
+        // Version 8 had every table up to pending_leave: build that, then migrate it.
+        val driver = inMemoryDriver()
+        driver.execute(null, "DROP TABLE shared_settings_snapshot", 0)
+        driver.execute(null, "DROP TABLE shared_settings_notice", 0)
+        val old = LocalDatabase(driver)
+        old.io {
+            cachedDayQueries.insert(row("ada"))
+            pendingLeaveQueries.insert("ada", "bond-1", "bond-2")
+        }
+
+        MoyiDatabase.Schema.migrate(driver, oldVersion = 8, newVersion = MoyiDatabase.Schema.version)
+
+        assertEquals(1L, old.rowCount("cached_day"), "cached_day survives")
+        assertEquals(1L, old.rowCount("pending_leave"), "pending_leave survives")
+        old.io { sharedSettingsQueries.insertNotice("ada", "bond-1", "NAME_CHANGED", "Us") }
+        assertEquals(1, old.io { sharedSettingsQueries.noticesFor("ada", "bond-1").executeAsList() }.size)
+    }
+
+    @Test
+    fun aSharedSettingsNoticeIsReadOnlyForItsOwnPerson() = runTest {
+        database.io { sharedSettingsQueries.insertNotice("ada", "bond-1", "NAME_CHANGED", "Us") }
+        assertTrue(database.io { sharedSettingsQueries.noticesFor("ben", "bond-1").executeAsList() }.isEmpty())
     }
 
     @Test

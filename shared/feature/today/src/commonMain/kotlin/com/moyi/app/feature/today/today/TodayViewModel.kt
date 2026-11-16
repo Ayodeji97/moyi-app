@@ -8,6 +8,8 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
+import com.moyi.app.domain.bond.PendingNotice
+import com.moyi.app.domain.bond.SharedSettingsNotices
 import com.moyi.app.designsystem.platform.NotificationPermission
 import com.moyi.app.domain.notification.NotificationAskMemory
 import com.moyi.app.domain.today.OutboxSender
@@ -24,17 +26,25 @@ import com.moyi.app.feature.today.common.RevealLedger
 import com.moyi.app.feature.today.common.TodayStatus
 import com.moyi.app.feature.today.common.holdsMediaOnItsWay
 import com.moyi.app.feature.today.common.recheckWhileOnItsWay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 /**
  * Today, over the shared [DailyLoop].
@@ -51,10 +61,17 @@ import kotlinx.coroutines.launch
  *   Today stops showing ([TodayAction.OnBackground]) and starts again on the next foreground.
  * - **The reveal**: when a day turns up revealed with the partner's words, and the
  *   [RevealLedger] has not played that bond-day in this process, Today opens the reveal.
- * - **Asking for notifications** (owner ruling 2026-11-13): once there is a reason, after
- *   my entry is saved in a bond someone has joined, Today draws one note offering the phone's
- *   prompt, while the phone has not been asked and "Not now" has not been chosen on it
- *   ([NotificationAskMemory], per phone). The screen reads the permission; this decides.
+ * - **Asking for notifications** (owner rulings 2026-11-15): the first time Today shows a
+ *   live day on this phone while the phone has not been asked, Today opens the reminder screen
+ *   ([TodayEvent.NavigateToReminderAsk]), once per phone, before anything is written and
+ *   whether or not anyone has joined. From the next calendar day on, the small note offers the
+ *   phone's prompt instead, until the phone answers or "Not now" is chosen on the note
+ *   ([NotificationAskMemory], per phone). Both come before the phone's own prompt, because iOS
+ *   shows that prompt only once. The screen reads the permission; this decides.
+ * - **A shared setting changed** (owner ask 2026-11-16): every load compares the bond with what
+ *   this device last saw ([SharedSettingsNotices], in the repositories), and each change waits
+ *   as a note until it is read. One note at a time, oldest first, in the ask's place: while one
+ *   waits, the ask does not show.
  *
  * Today is the root of the signed-in app, so it owns the loop's lifetime: the day in
  * memory is forgotten when this ViewModel is created ([DailyLoop.open]) and when it is
@@ -70,8 +87,12 @@ class TodayViewModel(
     private val bonds: BondRepository,
     /** The queue of entries sent offline: tried again on every foreground, and Today reloads when it moves. */
     private val outbox: OutboxSender,
-    /** Whether "Not now" was chosen on this phone: the note asking for notifications never shows again. */
+    /** Whether "Not now" was chosen on this phone, and when the reminder screen was shown on it. */
     private val askMemory: NotificationAskMemory,
+    /** What changed in the bond's shared settings since this device last saw it (owner ask 2026-11-16). */
+    private val settingsNotices: SharedSettingsNotices,
+    /** The phone's local date: the note waits until the day after the reminder screen. */
+    private val today: () -> LocalDate = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
 ) : ViewModel() {
 
     /** The delete dialog, the delete in flight and a failed delete: Today's own, not the day's (D11). */
@@ -81,7 +102,13 @@ class TodayViewModel(
      * The note asking for notifications: apart from [ui], which a delete or the debug cycle
      * resets, because the phone's answer and "Not now" outlive both.
      */
-    private val ask = MutableStateFlow(NotificationAsk(dismissed = askMemory.isDismissed()))
+    private val ask = MutableStateFlow(
+        NotificationAsk(
+            dismissed = askMemory.isDismissed(),
+            // Unreadable counts as shown long ago: the screen never shows twice, and the note may.
+            screenShownOn = askMemory.reminderScreenShownOn()?.let { runCatching { LocalDate.parse(it) }.getOrDefault(LocalDate(1970, 1, 1)) },
+        ),
+    )
 
     /** Re-reads the day while it shows media on its way; only while Today is on screen. */
     private var recheck: Job? = null
@@ -90,8 +117,20 @@ class TodayViewModel(
         loop.open(owner = this)
     }
 
-    val state: StateFlow<TodayState> = combine(loop.state, ui, ask, ::toState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(loop.state.value, ui.value, ask.value))
+    /**
+     * The oldest note waiting for the bond Today shows, read again whenever the notes change
+     * (a load that found a change, a dismissal). Null with no bond, or nothing waiting.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val settingsNotice: StateFlow<PendingNotice?> = loop.state
+        .map { (it as? DailyLoopState.Ready)?.day?.bondId }
+        .distinctUntilChanged()
+        .flatMapLatest { bondId -> if (bondId == null) flowOf(emptyList()) else settingsNotices.notices(bondId) }
+        .map { it.firstOrNull() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val state: StateFlow<TodayState> = combine(loop.state, ui, ask, settingsNotice) { day, ui, ask, notice -> toState(day, ui, ask, notice) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(loop.state.value, ui.value, ask.value, settingsNotice.value))
 
     private val _events = Channel<TodayEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -138,14 +177,30 @@ class TodayViewModel(
             TodayAction.OnSettingsClick -> (loop.state.value as? DailyLoopState.Ready)?.let { send(TodayEvent.NavigateToSettings(it.day.bondId)) }
             TodayAction.OnShareInviteClick -> shareInvite()
             TodayAction.OnHaveCodeClick -> haveCode()
-            is TodayAction.OnNotificationPermissionChecked -> ask.update { it.copy(permission = action.permission, asking = false) }
+            is TodayAction.OnNotificationPermissionChecked -> {
+                ask.update { it.copy(permission = action.permission, asking = false) }
+                offerReminderScreen()
+            }
             TodayAction.OnAllowNotificationsClick -> allowNotifications()
             TodayAction.OnNotNowClick -> {
                 askMemory.dismiss()
                 ask.update { it.copy(dismissed = true) }
             }
+            TodayAction.OnSettingsNoticeDismiss -> dismissSettingsNotice(openSettings = false)
+            TodayAction.OnSettingsNoticeOpenSettings -> dismissSettingsNotice(openSettings = true)
             TodayAction.OnDebugCycle -> debugCycle()
         }
+    }
+
+    /**
+     * The note about a shared setting has been read: it goes for good, and the next one waiting
+     * (if any) takes its place. "See Bond settings" counts as read, because the change is there.
+     */
+    private fun dismissSettingsNotice(openSettings: Boolean) {
+        val bondId = (loop.state.value as? DailyLoopState.Ready)?.day?.bondId ?: return
+        val notice = settingsNotice.value ?: return
+        viewModelScope.launch { settingsNotices.dismiss(bondId, notice.id) }
+        if (openSettings) send(TodayEvent.NavigateToSettings(bondId))
     }
 
     /**
@@ -155,9 +210,22 @@ class TodayViewModel(
      */
     private fun allowNotifications() {
         val view = (loop.state.value as? DailyLoopState.Ready)?.day ?: return
-        if (!ask.value.offered(view) || ask.value.asking) return
+        if (!ask.value.offered(view, today()) || ask.value.asking) return
         ask.update { it.copy(asking = true) }
         send(TodayEvent.AskNotificationPermission)
+    }
+
+    /**
+     * Opens the reminder screen if this is the moment for it: once per phone, remembered before
+     * the screen opens, so a second day or permission read (or a new Today) never opens it again.
+     */
+    private fun offerReminderScreen() {
+        val view = (loop.state.value as? DailyLoopState.Ready)?.day ?: return
+        if (!ask.value.screenOffered(view)) return
+        val date = today()
+        askMemory.rememberReminderScreenShown(date.toString())
+        ask.update { it.copy(screenShownOn = date) }
+        send(TodayEvent.NavigateToReminderAsk(view.bondId))
     }
 
     /** At most one: a second foreground while it runs keeps the one already counting. */
@@ -180,6 +248,7 @@ class TodayViewModel(
                 if (view.status == TodayStatus.Revealed && view.partnerEntry != null && ledger.firstShowing(view.bondId, view.date)) {
                     send(TodayEvent.NavigateToReveal)
                 }
+                offerReminderScreen()
             }
             DailyLoopState.NoOpenBond -> send(TodayEvent.NavigateToStart)
             DailyLoopState.Loading, DailyLoopState.Failed -> Unit
@@ -302,11 +371,13 @@ class TodayViewModel(
         }
     }
 
-    private fun toState(day: DailyLoopState, ui: TodayUi, ask: NotificationAsk): TodayState = when (day) {
+    private fun toState(day: DailyLoopState, ui: TodayUi, ask: NotificationAsk, notice: PendingNotice?): TodayState = when (day) {
         DailyLoopState.Loading, DailyLoopState.NoOpenBond -> TodayState(load = TodayLoad.Loading)
         DailyLoopState.Failed -> TodayState(load = TodayLoad.Failed)
         is DailyLoopState.Ready -> {
             val view = day.day
+            // Only on a layout that has the note's place; elsewhere it waits for one that does.
+            val settingsNotice = notice?.notice?.takeIf { view.status in AskOn }
             TodayState(
                 load = TodayLoad.Ready,
                 status = view.status,
@@ -336,7 +407,9 @@ class TodayViewModel(
                 myReaction = view.myReaction.takeIf { view.canReact },
                 partnerReaction = view.partnerReaction,
                 reactionFailed = ui.reactionFailed && view.canReact,
-                askForNotifications = ask.offered(view),
+                // One note at a time: a change to a shared setting is news, the ask is not.
+                askForNotifications = ask.offered(view, today()) && settingsNotice == null,
+                settingsNotice = settingsNotice,
             )
         }
     }
@@ -350,25 +423,40 @@ class TodayViewModel(
     }
 
     /**
-     * The note asking for notifications. [permission] is null until the screen has read it,
-     * so nothing is drawn on a guess; [asking] while the phone's prompt is up.
+     * Asking for notifications: the reminder screen first, then the note. [permission] is null
+     * until the screen has read it, so nothing is asked on a guess; [asking] while the phone's
+     * prompt is up; [screenShownOn] is the phone's date the reminder screen was shown, or null.
      */
     private data class NotificationAsk(
         val dismissed: Boolean,
+        val screenShownOn: LocalDate? = null,
         val permission: NotificationPermission? = null,
         val asking: Boolean = false,
     ) {
         /**
-         * Drawn once my entry is saved today, in whatever layout Today shows next: Waiting
-         * (also PENDING_REVEAL) for the first to write, Revealed for the second, whose save
-         * opens the day. Never while nobody has joined: that note has its own two actions.
-         * Android below 13 is never [NotificationPermission.NotAsked], so never there.
+         * The phone has not answered and nobody chose "Not now" on the note, on a layout of a
+         * live day: NotWritten, Waiting (also PENDING_REVEAL), Revealed and PartnerNotJoined.
+         * Never on a bond that has ended. Android below 13 is never
+         * [NotificationPermission.NotAsked], so never there.
          */
-        fun offered(view: DayView): Boolean =
+        private fun mayAsk(view: DayView): Boolean =
             permission == NotificationPermission.NotAsked &&
                 !dismissed &&
-                view.status in AskAfter &&
-                view.bondStatus != BondStatus.PENDING_MEMBER
+                view.status in AskOn &&
+                view.bondStatus !in EndedBond
+
+        /** The reminder screen: the first time it may ask on this phone, and never again. */
+        fun screenOffered(view: DayView): Boolean = mayAsk(view) && screenShownOn == null
+
+        /**
+         * The note, drawn under the prompt and above Write (NotWritten), under "Written."
+         * (Waiting), below both entries (Revealed) and under the invite note's actions
+         * (PartnerNotJoined). Only from the calendar day after the reminder screen: until the
+         * screen has been shown, the screen asks instead, and the day it was shown its
+         * "Not now" is answer enough (owner ruling 2026-11-15).
+         */
+        fun offered(view: DayView, today: LocalDate): Boolean =
+            mayAsk(view) && screenShownOn != null && screenShownOn < today
     }
 
     /** Which of my entries the open delete dialog asks about: what deleting means differs. */
@@ -388,5 +476,8 @@ class TodayViewModel(
     )
 }
 
-/** The layouts in which my entry for today is saved on the server: where the note may be drawn. */
-private val AskAfter = setOf(TodayStatus.Waiting, TodayStatus.Revealed)
+/** The layouts of a live day: where a note (the ask, or a change to a shared setting) may be drawn. */
+private val AskOn = setOf(TodayStatus.NotWritten, TodayStatus.Waiting, TodayStatus.Revealed, TodayStatus.PartnerNotJoined)
+
+/** A bond that takes no more days: reminders mean nothing there. */
+private val EndedBond = setOf(BondStatus.ARCHIVED, BondStatus.PENDING_DELETION, BondStatus.DELETED)

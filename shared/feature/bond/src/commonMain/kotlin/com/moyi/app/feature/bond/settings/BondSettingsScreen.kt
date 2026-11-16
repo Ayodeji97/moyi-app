@@ -41,6 +41,7 @@ import com.moyi.app.designsystem.component.TextRole
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.designsystem.component.TimeOfDayPicker
+import com.moyi.app.designsystem.platform.timeOfDayText
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
@@ -275,7 +276,8 @@ private fun SettingsRoot(
                         label = stringResource(Res.string.settings_row_reveal),
                         value = when {
                             state.saving == SettingsField.RevealTime -> saving
-                            else -> settings.revealTime?.toString() ?: stringResource(Res.string.settings_reveal_none)
+                            else -> settings.revealTime?.let { timeOfDayText(it.hour, it.minute) }
+                                ?: stringResource(Res.string.settings_reveal_none)
                         },
                         enabled = !frozen,
                         error = errorFor(SettingsField.RevealTime),
