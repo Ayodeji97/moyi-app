@@ -24,9 +24,17 @@ struct iOSApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                // A universal link to getmoyi.app (the Associated Domains entitlement and the
-                // site's AASA), cold or warm. The shell parses and routes it (LinkInbox); the
-                // URL is never logged, as it may carry a token.
+                // A universal link to getmoyi.app or open.getmoyi.app (the Associated Domains
+                // entitlement and the site's AASA), cold or warm. With the SwiftUI App lifecycle
+                // iOS hands it to onOpenURL; without this, the link opened Moyi and stayed on
+                // Today. The shell parses and routes it (LinkInbox); the URL is never logged,
+                // as it may carry a token.
+                .onOpenURL { url in
+                    LinksKt.linkOpened(url: url.absoluteString)
+                }
+                // Kept as a fallback for a browsing activity that reaches the scene this way.
+                // The same link arriving through both opens once: LinkInbox holds equal links
+                // as one.
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                     if let url = activity.webpageURL {
                         LinksKt.linkOpened(url: url.absoluteString)

@@ -168,6 +168,25 @@ class LinkRoutingTest {
     }
 
     @Test
+    fun `the same link handed over twice opens once`() {
+        // iOS can deliver one universal link through both onOpenURL and
+        // onContinueUserActivity. Equal links share the slot, so one routing consumes both.
+        val inbox = LinkInbox()
+        val url = "https://open.getmoyi.app/reset-password?token=$token"
+        inbox.opened(url)
+        inbox.opened(url)
+        assertEquals(reset, inbox.accountLink.value)
+        inbox.consume(reset)
+        assertNull(inbox.accountLink.value)
+
+        inbox.opened("https://getmoyi.app/i/7KQ4MZ")
+        inbox.opened("https://open.getmoyi.app/i/7KQ4MZ")
+        assertEquals(invite, inbox.inviteLink.value)
+        inbox.consume(invite)
+        assertNull(inbox.inviteLink.value)
+    }
+
+    @Test
     fun `consuming a link keeps a newer one`() {
         val inbox = LinkInbox()
         inbox.opened("https://getmoyi.app/verify?token=$token")

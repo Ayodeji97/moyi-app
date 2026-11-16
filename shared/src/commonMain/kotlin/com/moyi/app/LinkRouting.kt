@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * The links that opened the app and have yet to be routed. Each platform's entry hands one
  * over ([opened]): Android's `MainActivity` from the `VIEW` intent (an App Link), iOS's
- * `onContinueUserActivity` from the universal link. The shell routes each when the app is
+ * `onOpenURL` from the universal link. The shell routes each when the app is
  * somewhere it can land ([accountLinkRouting], [inviteRouting]), then [consume]s it.
  *
  * Two slots, not one: an invite link waits for a session (sign up, verify, sign in), and
