@@ -42,6 +42,8 @@ import com.moyi.app.feature.onboarding.start.SignedInStartViewModel
 import com.moyi.app.feature.auth.login.LoginViewModel
 import com.moyi.app.feature.auth.register.RegisterViewModel
 import com.moyi.app.feature.auth.verify.VerifyViewModel
+import com.moyi.app.feature.today.di.todayFeatureModule
+import com.moyi.app.feature.today.reminder.ReminderAskViewModel
 import com.moyi.app.domain.today.CachedDay
 import com.moyi.app.domain.today.TodayCache
 import kotlinx.coroutines.Dispatchers
@@ -90,6 +92,8 @@ class AppKoinTest {
                 onboardingFeatureModule,
                 bondFeatureModule,
                 supportFeatureModule,
+                // Only what its ViewModels below need is bound: Koin resolves on demand.
+                todayFeatureModule,
                 appModule,
                 module {
                     single<AuthRepository> { repo }
@@ -134,6 +138,8 @@ class AppKoinTest {
             koin.get<UnverifiedGateViewModel>()
             koin.get<BondSettingsViewModel> { parametersOf("preview-bond") }
             koin.get<NotificationSettingsViewModel> { parametersOf("preview-bond") }
+            // As ReminderAskRoot passes it: the bond Today showed.
+            koin.get<ReminderAskViewModel> { parametersOf("preview-bond") }
             koin.get<SupportViewModel>()
             koin.get<RelationshipTypeViewModel>()
             koin.get<CreateBondViewModel> { parametersOf(RelationshipType.Couple) }

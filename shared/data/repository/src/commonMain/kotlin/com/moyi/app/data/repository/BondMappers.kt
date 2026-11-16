@@ -14,6 +14,10 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.bond.PendingProposal
+import com.moyi.app.domain.bond.PendingRequest
+import com.moyi.app.domain.bond.SharedSettingsSnapshot
+import com.moyi.app.domain.bond.TimeOfDay
 
 // The generated bond and invite models declare their fields `required` and
 // non-null (PR #52 synced the contract that says so), so a 2xx missing one fails
@@ -106,3 +110,33 @@ internal inline fun <T, R> Result<T, DataError.Network>.mapOrSerialization(trans
         is Result.Failure -> this
         is Result.Success -> transform(data)?.let { Result.Success(it) } ?: Result.Failure(DataError.Network.Serialization)
     }
+
+/**
+ * The shared settings this response carries, for [com.moyi.app.domain.bond.SharedSettingsNotices]:
+ * nothing about who is in the bond, and no entry.
+ * Null when it carries a reveal time that is not `HH:mm`: nothing is compared with a
+ * body that did not parse. `me.memberId` tells a proposal of mine from the other member's.
+ */
+internal fun BondResponse.toSharedSettings(): SharedSettingsSnapshot? {
+    val myMemberId = me.memberId
+    return SharedSettingsSnapshot(
+        bondId = id,
+        status = status.toDomain(),
+        name = name,
+        type = type.toDomain(),
+        anchorTimezone = anchorTimezone,
+        revealTime = revealTimeLocal?.let { TimeOfDay.parse(it) ?: return null },
+        strictMode = strictMode,
+        semanticSearchEnabled = semanticSearchEnabled,
+        deletionScheduled = deletionScheduledFor != null,
+        timezoneProposal = pendingTimezoneChange?.let {
+            PendingProposal(id = it.id, value = it.proposedTimezone, byMe = it.proposedByMemberId == myMemberId, expiresAt = it.expiresAt)
+        },
+        deletionRequest = pendingDeletionRequest?.let {
+            PendingRequest(byMe = it.requestedByMemberId == myMemberId, expiresAt = it.expiresAt)
+        },
+        semanticSearchRequest = pendingSemanticSearchRequest?.let {
+            PendingRequest(byMe = it.requestedByMemberId == myMemberId, expiresAt = it.expiresAt)
+        },
+    )
+}
