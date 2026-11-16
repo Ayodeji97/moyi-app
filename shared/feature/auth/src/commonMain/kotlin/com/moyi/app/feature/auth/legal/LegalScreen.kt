@@ -159,7 +159,7 @@ private fun LegalReady(state: LegalState, documents: LegalDocuments, onAction: (
 private val previewDocuments = LegalDocuments(
     terms = PublishedDocument("2026-12-01", "https://getmoyi.app/terms"),
     privacy = PublishedDocument("2026-12-01", "https://getmoyi.app/privacy"),
-    dataProcessingSummary = PublishedDocument("2026-12-01", "https://getmoyi.app/data"),
+    dataProcessingSummary = PublishedDocument("2026-12-01", "https://getmoyi.app/data-processing"),
 )
 
 @Preview
