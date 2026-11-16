@@ -64,7 +64,7 @@ class NotificationAskTodayTest : MainDispatcherTest() {
     private val memory = FakeNotificationAskMemory(screenShownOn = PHONE_TODAY.minus(DatePeriod(days = 1)).toString())
     private var phoneToday = PHONE_TODAY
 
-    private fun newViewModel() = TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), memory, today = { phoneToday })
+    private fun newViewModel() = TodayViewModel(loop, RevealLedger { "me" }, InviteBonds(), FakeOutbox(), memory, FakeSettingsNotices(), today = { phoneToday })
 
     private val viewModel by lazy { newViewModel() }
 
