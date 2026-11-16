@@ -154,7 +154,7 @@ Ordered by how early they bite (upload, then review, then the production step).
 | [ ] | **Age: 18+ in the listing as in the app.** Sign-up requires "I am 18 or over" (**Code**). Answer both questionnaires consistently with that (sections 3 and 4) | Owner | **Code** | |
 | [ ] | **Screenshots from seeded demo data, never real accounts.** iPhone 6.9" (and iPad 13" if B5 keeps iPad); Play phone screenshots (2 to 8) | Claude PR (capture), Owner (approve) | **Unknown** | |
 | [ ] | **App icon final** at 1024 × 1024 (Apple, no transparency) and 512 × 512 (Play) | Owner | **Unknown** (`docs/release-checklist.md` §5) | |
-| [ ] | **Version numbers**: 1 / 1.0 on both (`versionCode`, `CURRENT_PROJECT_VERSION`). Each upload needs a higher build number | Claude PR | **Code** | `docs/release-checklist.md` §6 |
+| [x] | **Version numbers**: the version people see is `1.0` on both, set by a commit (`versionName` in `androidApp/build.gradle.kts`, `MARKETING_VERSION` in `iosApp/Configuration/Config.xcconfig`). The build number is decided per upload by the fastlane lanes, so no file changes per upload: `fastlane ios beta` asks App Store Connect for the last TestFlight build of that version and passes the next one as `CURRENT_PROJECT_VERSION` (1 if none); `fastlane android beta` asks Play for every `versionCode` it holds (all tracks and the bundle library) and passes the highest plus one as `-Pmoyi.versionCode` (1 if none). Every other build (debug, CI) gets `versionCode` 1 | Claude PR (#109) | **Code** (`fastlane/Fastfile`, `androidApp/build.gradle.kts` at `9493e72`) | `README.md` "Version numbers", `docs/release-checklist.md` §6 |
 | [ ] | **The name on the store.** Doc 19 decided the marked form `Mọyì` for "logo, app name, marketing"; the brief for this file and the installed app (`app_name`, `PRODUCT_NAME`) say `Moyi` (**Code**). Pick one for both listings | Owner | **Docs** vs **Code** disagree | `../documents/19-naming-and-brand.md` |
 
 ## 3. App Store
@@ -195,7 +195,7 @@ In Play Console › App content (Policy), then the store listing, then the track
 | [ ] | **Play App Signing SHA-256 into `assetlinks.json`** after the first upload | Owner (site) | **Docs** (moyi-backend#157) | |
 | [ ] | **Store listing**: title, short description, full description, app icon 512 × 512, **feature graphic 1024 × 500** (required), phone screenshots, category, contact email, privacy URL | Owner approves | **DRAFT** (section 5) | [Store listing assets](https://support.google.com/googleplay/android-developer/answer/9866151) |
 | [ ] | **Developer contact details** shown publicly (email always; address for a monetised or organisation account) | Owner | **Unknown** | |
-| [ ] | **Release lane**: PR #109 (open) adds `fastlane android beta` for the internal track. Production then goes closed → production with a staged rollout (doc 20 §5: 10%, 50%, 100%) | Claude PR (lanes), Owner (rollout) | **Docs** (#109 not merged) | |
+| [ ] | **Release lane**: PR #109 (merged) adds `fastlane android beta` for the internal track. Production then goes closed → production with a staged rollout (doc 20 §5: 10%, 50%, 100%) | Claude PR (lanes), Owner (rollout) | **Code** (#109 merged; the lane uploads to the internal track only, `fastlane/Fastfile` at `9493e72`) | |
 
 ---
 
