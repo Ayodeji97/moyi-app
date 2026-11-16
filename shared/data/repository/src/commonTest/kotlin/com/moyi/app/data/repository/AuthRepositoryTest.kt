@@ -445,4 +445,47 @@ class AuthRepositoryTest {
         assertEquals(SessionState.SignedOut, fixture.repository.session.value)
         assertEquals(listOf<SessionEvent>(SessionEvent.Ended(SessionEndReason.PasswordChanged)), events)
     }
+
+    @Test
+    fun aLinkForAnotherAccountKeepsThisSessionAsItWas() = runTest {
+        // The link's reset changed another account; the new password does not sign Ada in.
+        val fixture = Fixture { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/auth/reset-password" -> respond("", HttpStatusCode.OK)
+                "/api/v1/auth/login" -> respondProblem(HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS")
+                else -> error("unexpected ${request.url}")
+            }
+        }
+        fixture.sessionManager.startSession(com.moyi.app.data.session.SessionGrant("a1", "r1", ada))
+        val events = events(fixture)
+
+        val result = fixture.repository.changePassword(EmailProof.Link("link-token"), "ada@example.test", "new password")
+
+        assertEquals(Result.Failure(PasswordChangeError.OtherAccount), result)
+        assertEquals("r1", fixture.store.current?.refreshToken)
+        assertEquals("a1", fixture.sessionManager.currentAccessToken())
+        assertEquals(SessionState.SignedIn(ada), fixture.repository.session.value)
+        assertEquals(0, fixture.refreshCalls.load())
+        assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun aCodeIsAlwaysThisAccountsSoARefusedSignInAfterItStillEndsTheSession() = runTest {
+        // A code is typed for the session's own address: a refused sign-in cannot mean another account.
+        val fixture = Fixture { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/auth/reset-password" -> respond("", HttpStatusCode.OK)
+                "/api/v1/auth/login" -> respondProblem(HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS")
+                else -> error("unexpected ${request.url}")
+            }
+        }
+        fixture.sessionManager.startSession(com.moyi.app.data.session.SessionGrant("a1", "r1", ada))
+        val events = events(fixture)
+
+        val result = fixture.repository.changePassword(EmailProof.Code("ada@example.test", "123456"), "ada@example.test", "new password")
+
+        assertIs<PasswordChangeError.SignedOut>(assertIs<Result.Failure<PasswordChangeError>>(result).error)
+        assertNull(fixture.store.current)
+        assertEquals(listOf<SessionEvent>(SessionEvent.Ended(SessionEndReason.PasswordChanged)), events)
+    }
 }

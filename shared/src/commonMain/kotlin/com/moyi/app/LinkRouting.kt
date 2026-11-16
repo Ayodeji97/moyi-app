@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * The links that opened the app and have yet to be routed. Each platform's entry hands one
  * over ([opened]): Android's `MainActivity` from the `VIEW` intent (an App Link), iOS's
- * `onContinueUserActivity` from the universal link. The shell routes each when the app is
+ * `onOpenURL` from the universal link. The shell routes each when the app is
  * somewhere it can land ([accountLinkRouting], [inviteRouting]), then [consume]s it.
  *
  * Two slots, not one: an invite link waits for a session (sign up, verify, sign in), and
@@ -111,6 +111,10 @@ internal sealed interface LinkRouting {
  * - Signed in, a confirmed address returns to the signed-in start ([VerifyRoute.signedIn]),
  *   which reads `GET /me` again and moves on from the gate. If the link is for another
  *   account, that account is confirmed (the token is the proof) and this one is unchanged.
+ * - Signed in, a reset link opens the reset as Change password does ([ResetPasswordRoute.signedIn]):
+ *   saving keeps this phone signed in, under the session lock. The link may be another
+ *   account's; the token does not say, so that is known only after the reset, and then this
+ *   session is left as it was (§84).
  * - Signed in with the address already confirmed ([signedInVerified], or a place only a
  *   verified person reaches: onboarding, Today, the archived bond), a verify link has nothing
  *   left to do ([LinkRouting.AlreadyVerified]): the person stays where they belong, which on a
@@ -138,7 +142,10 @@ internal fun accountLinkRouting(
         }
         is DeepLink.ResetPassword -> when (current) {
             is ResetPasswordRoute -> LinkRouting.Push(current.copy(linkToken = link.token), replaceCurrent = true)
-            else -> LinkRouting.Push(ResetPasswordRoute(email = email, linkToken = link.token))
+            // Signed in, the reset goes the Change password way (§84): this phone stays signed in.
+            else -> LinkRouting.Push(
+                ResetPasswordRoute(email = email, linkToken = link.token, signedIn = signedIn && email.isNotEmpty()),
+            )
         }
         is DeepLink.Invite, DeepLink.Unknown -> LinkRouting.Wait
     }

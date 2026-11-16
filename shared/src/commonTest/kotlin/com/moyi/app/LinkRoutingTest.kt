@@ -72,7 +72,7 @@ class LinkRoutingTest {
             accountLinkRouting(verify, LinkPlace.SignedOut, null, null, signedInVerified = true),
         )
         assertEquals(
-            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token)),
+            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token, signedIn = true)),
             accountLinkRouting(reset, LinkPlace.SignedInApp, null, me, signedInVerified = true),
         )
     }
@@ -92,9 +92,26 @@ class LinkRoutingTest {
             LinkRouting.Push(ResetPasswordRoute(email = "", linkToken = token)),
             accountLinkRouting(reset, LinkPlace.SignedOut, null, null),
         )
+        // Signed in, anywhere: the Change password way, with the session's address (§84).
+        listOf(LinkPlace.Gate, LinkPlace.Onboarding, LinkPlace.Archived, LinkPlace.SignedInApp, LinkPlace.Elsewhere).forEach {
+            assertEquals(
+                LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token, signedIn = true)),
+                accountLinkRouting(reset, it, null, me),
+                it.toString(),
+            )
+        }
+        // Signed in but the address is not known here: the signed-out way, which asks for it.
         assertEquals(
-            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token)),
-            accountLinkRouting(reset, LinkPlace.SignedInApp, null, me),
+            LinkRouting.Push(ResetPasswordRoute(email = "", linkToken = token)),
+            accountLinkRouting(reset, LinkPlace.SignedInApp, null, null),
+        )
+    }
+
+    @Test
+    fun `a reset link over change password's code step keeps it signed in`() {
+        assertEquals(
+            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token, signedIn = true), replaceCurrent = true),
+            accountLinkRouting(reset, LinkPlace.Elsewhere, ResetPasswordRoute(me, signedIn = true), me),
         )
     }
 
@@ -147,6 +164,25 @@ class LinkRoutingTest {
         inbox.consume(reset)
         inbox.consume(invite)
         assertNull(inbox.accountLink.value)
+        assertNull(inbox.inviteLink.value)
+    }
+
+    @Test
+    fun `the same link handed over twice opens once`() {
+        // iOS can deliver one universal link through both onOpenURL and
+        // onContinueUserActivity. Equal links share the slot, so one routing consumes both.
+        val inbox = LinkInbox()
+        val url = "https://open.getmoyi.app/reset-password?token=$token"
+        inbox.opened(url)
+        inbox.opened(url)
+        assertEquals(reset, inbox.accountLink.value)
+        inbox.consume(reset)
+        assertNull(inbox.accountLink.value)
+
+        inbox.opened("https://getmoyi.app/i/7KQ4MZ")
+        inbox.opened("https://open.getmoyi.app/i/7KQ4MZ")
+        assertEquals(invite, inbox.inviteLink.value)
+        inbox.consume(invite)
         assertNull(inbox.inviteLink.value)
     }
 

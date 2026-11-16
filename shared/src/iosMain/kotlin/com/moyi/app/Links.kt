@@ -3,9 +3,10 @@ package com.moyi.app
 import org.koin.mp.KoinPlatform
 
 /**
- * Swift calls this with a universal link that opened the app (`onContinueUserActivity`
- * with `NSUserActivityTypeBrowsingWeb`, in `iOSApp.swift`): `https://getmoyi.app/verify`,
- * `/reset-password` or `/i/…`, the paths the site's AASA lists (moyi-backend#157).
+ * Swift calls this with a universal link that opened the app (`onOpenURL`, with
+ * `onContinueUserActivity` as a fallback, in `iOSApp.swift`): `https://getmoyi.app/verify`,
+ * `/reset-password` or `/i/…`, on either host, the paths the site's AASA lists
+ * (moyi-backend#157).
  *
  * The URL goes to [LinkInbox] as it is and is never logged: it may carry a token. Starts
  * Koin if it is not running yet, as [notificationTapped] does: a link that launched the

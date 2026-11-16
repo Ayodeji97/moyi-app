@@ -13,6 +13,7 @@ import com.moyi.app.api.models.ResendVerificationRequest
 import com.moyi.app.api.models.ResetCodeCheckRequest
 import com.moyi.app.api.models.ResetPasswordRequest
 import com.moyi.app.api.models.VerifyEmailRequest
+import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
@@ -117,7 +118,11 @@ class AuthRepositoryImpl(
             }
             // From here this device's session is revoked on the server: sign in again, or end it here.
             when (val grant = requestGrant(email, password)) {
-                is Result.Failure -> {
+                is Result.Failure -> if (proof is EmailProof.Link && grant.error.isWrongCredentials()) {
+                    // A link names no account. The password just saved does not sign this account
+                    // in, so the link was another account's: this session was not revoked, and stays.
+                    Result.Failure(PasswordChangeError.OtherAccount)
+                } else {
                     end(SessionEndReason.PasswordChanged)
                     Result.Failure(PasswordChangeError.SignedOut(grant.error))
                 }
@@ -188,6 +193,10 @@ class AuthRepositoryImpl(
         }
     }
 }
+
+/** `401 INVALID_CREDENTIALS` from sign in: the address and password do not match (doc 06 §3.1). */
+private fun DataError.isWrongCredentials(): Boolean =
+    (this as? DataError.Network.Api)?.problem?.code == ApiErrorCode.INVALID_CREDENTIALS
 
 /*
  * Built BY NAME, always: the contract lists `code`, `email` and `token` in that order, so a
