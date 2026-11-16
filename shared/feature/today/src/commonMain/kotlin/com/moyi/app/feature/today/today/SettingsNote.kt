@@ -9,7 +9,7 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.SharedSettingNotice
 import com.moyi.app.feature.today.common.DayNote
 import com.moyi.app.feature.today.common.NoteAction
-import com.moyi.app.feature.today.common.timeOfDayText
+import com.moyi.app.designsystem.platform.timeOfDayText
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.today_settings_close_agreed
 import com.moyi.app.feature.today.resources.today_settings_close_called_off
@@ -82,7 +82,7 @@ private fun noticeLine(notice: SharedSettingNotice): String = when (notice) {
     SharedSettingNotice.SemanticSearchTurnedOff -> stringResource(Res.string.today_settings_search_turned_off)
     is SharedSettingNotice.NameChanged -> stringResource(Res.string.today_settings_name, notice.name)
     is SharedSettingNotice.RevealTimeChanged -> notice.time
-        ?.let { stringResource(Res.string.today_settings_reveal, timeOfDayText(it)) }
+        ?.let { stringResource(Res.string.today_settings_reveal, timeOfDayText(it.hour, it.minute)) }
         ?: stringResource(Res.string.today_settings_reveal_none)
     is SharedSettingNotice.RestDaysChanged ->
         stringResource(if (notice.on) Res.string.today_settings_rest_days_on else Res.string.today_settings_rest_days_off)
