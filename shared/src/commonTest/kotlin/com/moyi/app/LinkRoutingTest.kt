@@ -2,7 +2,6 @@ package com.moyi.app
 
 import com.moyi.app.domain.link.DeepLink
 import com.moyi.app.feature.auth.navigation.LoginRoute
-import com.moyi.app.feature.auth.navigation.ResetLinkSentRoute
 import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
 import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.onboarding.navigation.JoinCodeRoute
@@ -80,10 +79,7 @@ class LinkRoutingTest {
 
     @Test
     fun `a reset link continues the reset in progress with its address`() {
-        assertEquals(
-            LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token)),
-            accountLinkRouting(reset, LinkPlace.SignedOut, ResetLinkSentRoute(me), null),
-        )
+        // Forgot password lands on the code step of Choose a new password: the link takes its place.
         assertEquals(
             LinkRouting.Push(ResetPasswordRoute(email = me, linkToken = token), replaceCurrent = true),
             accountLinkRouting(reset, LinkPlace.SignedOut, ResetPasswordRoute(me), null),

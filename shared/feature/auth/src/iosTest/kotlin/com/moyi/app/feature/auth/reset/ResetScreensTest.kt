@@ -14,7 +14,6 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import com.moyi.app.designsystem.MoyiTheme
@@ -23,9 +22,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The two reset screens whose words carry a rule: Reset link sent must not
- * disclose whether the address has an account, and Choose a new password must
- * state the consequence before the action (states.md §1b).
+ * The reset screen's words that carry a rule: the code step must not disclose whether the
+ * address has an account, and the password step must state the consequence before the
+ * action (states.md §1b).
  */
 class ResetScreensTest {
     private fun ComposeUiTest.inPhone(content: @Composable () -> Unit) = setContent {
@@ -35,19 +34,24 @@ class ResetScreensTest {
     }
 
     @Test
-    fun linkSentReadsTheNonDisclosureSentenceAndNothingAboutTheAddress() = runComposeUiTest {
-        var chosen = 0
-        inPhone { ResetLinkSentScreen(onBack = {}, onChooseNewPassword = { chosen++ }) }
+    fun theCodeStepSaysWhereTheCodeWentWithoutSayingTheAccountExists() = runComposeUiTest {
+        inPhone { ResetPasswordScreen(state = ResetPasswordState(email = "amara@example.com"), onAction = {}) }
 
-        onNodeWithText(NON_DISCLOSURE).assertIsDisplayed()
+        // Forgot password lands here (no "Check your email" screen since 2026-11-16), so this
+        // one line carries the non-disclosure rule: an "if", the same words for any address.
+        onNodeWithText(SENT_TO_AMARA).assertIsDisplayed()
         val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
-        assertTrue(spoken.none { "@" in it }, "nothing on this screen may name an address: $spoken")
-        // The heading and the one line, word for word; no other sentence that could vary.
-        assertTrue("Check your email" in spoken, spoken.toString())
-        assertEquals(1, spoken.count { it == NON_DISCLOSURE }, spoken.toString())
+        assertEquals(1, spoken.count { "@" in it }, "only that line names the address: $spoken")
+    }
 
-        onNodeWithText("Enter the code").performClick()
-        assertEquals(1, chosen)
+    @Test
+    fun theCodeStepWithNoAddressNamesNone() = runComposeUiTest {
+        // A refused emailed link, on a phone that never asked: the code step with no address.
+        inPhone { ResetPasswordScreen(state = ResetPasswordState(email = ""), onAction = {}) }
+
+        onNodeWithText("Type your code").assertIsDisplayed()
+        val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        assertTrue(spoken.none { it.startsWith("If ") }, spoken.toString())
     }
 
     @Test
@@ -80,13 +84,51 @@ class ResetScreensTest {
         assertTrue(CONSEQUENCE !in spoken && "Save and sign in" !in spoken && "Password" !in spoken, spoken.toString())
     }
 
+    @Test
+    fun signedInTheCodeStepNamesTheAddressPlainly() = runComposeUiTest {
+        inPhone { ResetPasswordScreen(state = ResetPasswordState(email = "amara@example.com", signedIn = true), onAction = {}) }
+
+        onNodeWithText("We sent a 6-digit code to amara@example.com. Type it below, or open the link in the same email.")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun signedInThePasswordStepSaysThisPhoneStaysBeforeTheAction() = runComposeUiTest {
+        inPhone {
+            ResetPasswordScreen(
+                state = ResetPasswordState(email = "amara@example.com", step = ResetStep.Password, signedIn = true),
+                onAction = {},
+            )
+        }
+
+        val consequence = onNodeWithText(STAYS_SIGNED_IN).assertIsDisplayed().fetchSemanticsNode()
+        val action = onNodeWithText("Save the new password").assertIsDisplayed().fetchSemanticsNode()
+        assertTrue(consequence.boundsInRoot.bottom <= action.boundsInRoot.top)
+        val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        assertTrue("Save and sign in" !in spoken && CONSEQUENCE !in spoken, spoken.toString())
+    }
+
+    @Test
+    fun changePasswordSaysWhereTheCodeGoesAndTheConsequenceBeforeTheAction() = runComposeUiTest {
+        inPhone { ChangePasswordScreen(state = ChangePasswordState(email = "amara@example.com"), onAction = {}) }
+
+        onNodeWithText("We will email a 6-digit code to amara@example.com. Type it on the next screen, then choose your new password.")
+            .assertIsDisplayed()
+        val consequence = onNodeWithText(STAYS_SIGNED_IN).assertIsDisplayed().fetchSemanticsNode()
+        val action = onNodeWithText("Send the code").assertIsDisplayed().fetchSemanticsNode()
+        assertTrue(consequence.boundsInRoot.bottom <= action.boundsInRoot.top)
+        val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        assertTrue(spoken.indexOf(STAYS_SIGNED_IN) in 0 until spoken.indexOf("Send the code"), spoken.toString())
+    }
+
     private fun texts(node: SemanticsNode): List<String> {
         val own = node.config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }
         return listOfNotNull(own) + node.children.flatMap { texts(it) }
     }
 
     private companion object {
-        const val NON_DISCLOSURE = "If that address has an account, we sent it a 6-digit code. Type it on the next screen, then choose your new password."
+        const val SENT_TO_AMARA = "If amara@example.com has an account, we sent it a 6-digit code."
+        const val STAYS_SIGNED_IN = "Your other devices will be signed out. This phone stays signed in."
         const val CONSEQUENCE = "This signs you out everywhere else. You will need to sign in again on your other devices."
     }
 }

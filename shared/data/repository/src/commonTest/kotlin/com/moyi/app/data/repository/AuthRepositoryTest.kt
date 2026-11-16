@@ -25,6 +25,7 @@ import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.data.testing.tokenPairJson
 import com.moyi.app.data.testing.userJson
 import com.moyi.app.domain.auth.EmailProof
+import com.moyi.app.domain.auth.PasswordChangeError
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
@@ -381,5 +382,67 @@ class AuthRepositoryTest {
     fun restoreSessionDelegatesToTheSession() = runTest {
         val fixture = Fixture { error("no network expected") }
         assertEquals(SessionState.SignedOut, fixture.repository.restoreSession())
+    }
+
+    // ---- Change password while signed in ----
+
+    @Test
+    fun changingThePasswordResetsThenSignsThisDeviceInAgainOverThePublicClient() = runTest {
+        val fixture = Fixture { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/auth/reset-password" -> respond("", HttpStatusCode.OK)
+                "/api/v1/auth/login" -> respondJson(tokenPairJson("a2", "r2"))
+                else -> error("unexpected ${request.url}")
+            }
+        }
+        fixture.sessionManager.startSession(com.moyi.app.data.session.SessionGrant("a1", "r1", ada))
+        val events = events(fixture)
+
+        val result = fixture.repository.changePassword(EmailProof.Code("ada@example.test", "123456"), "ada@example.test", "new password")
+
+        assertEquals(Result.Success(ada), result)
+        assertEquals(listOf("/api/v1/auth/reset-password", "/api/v1/auth/login"), fixture.requests.map { it.url.encodedPath })
+        // Neither request carries the old bearer: both are public, and the reset refuses one.
+        assertTrue(fixture.requests.all { it.headers[HttpHeaders.Authorization] == null })
+        assertEquals("r2", fixture.store.current?.refreshToken)
+        assertEquals("a2", fixture.sessionManager.currentAccessToken())
+        assertEquals(SessionState.SignedIn(ada), fixture.repository.session.value)
+        assertEquals(0, fixture.refreshCalls.load())
+        assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun aRefusedResetChangesNothingAndSignsNothingIn() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.UnprocessableEntity, "PASSWORD_RESET_TOKEN_INVALID") }
+        fixture.sessionManager.startSession(com.moyi.app.data.session.SessionGrant("a1", "r1", ada))
+
+        val result = fixture.repository.changePassword(EmailProof.Code("ada@example.test", "000000"), "ada@example.test", "new password")
+
+        val error = assertIs<PasswordChangeError.NotChanged>(assertIs<Result.Failure<PasswordChangeError>>(result).error)
+        assertEquals(ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID, assertIs<DataError.Network.Api>(error.error).problem.code)
+        assertEquals(1, fixture.requests.size, "no sign-in after a refused reset")
+        assertEquals("r1", fixture.store.current?.refreshToken)
+        assertEquals("a1", fixture.sessionManager.currentAccessToken())
+    }
+
+    @Test
+    fun savedButTheSignInAfterItFailedEndsTheSessionHereSayingSo() = runTest {
+        val fixture = Fixture { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/auth/reset-password" -> respond("", HttpStatusCode.OK)
+                else -> throw IOException("offline")
+            }
+        }
+        fixture.sessionManager.startSession(com.moyi.app.data.session.SessionGrant("a1", "r1", ada))
+        val events = events(fixture)
+
+        val result = fixture.repository.changePassword(EmailProof.Code("ada@example.test", "123456"), "ada@example.test", "new password")
+
+        assertIs<PasswordChangeError.SignedOut>(assertIs<Result.Failure<PasswordChangeError>>(result).error)
+        // Never left holding the tokens the reset revoked.
+        assertNull(fixture.store.current)
+        assertNull(fixture.sessionManager.currentAccessToken())
+        assertEquals(SessionState.SignedOut, fixture.repository.session.value)
+        assertEquals(listOf<SessionEvent>(SessionEvent.Ended(SessionEndReason.PasswordChanged)), events)
     }
 }

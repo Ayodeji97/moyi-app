@@ -42,6 +42,7 @@ import com.moyi.app.feature.bond.resources.account_heading
 import com.moyi.app.feature.bond.resources.account_row_delete
 import com.moyi.app.feature.bond.resources.account_row_export
 import com.moyi.app.feature.bond.resources.account_signed_in_as
+import com.moyi.app.feature.bond.resources.account_row_change_password
 import com.moyi.app.feature.bond.resources.delete_account_confirm
 import com.moyi.app.feature.bond.resources.delete_account_confirming
 import com.moyi.app.feature.bond.resources.delete_account_consequence
@@ -86,7 +87,8 @@ import kotlin.time.Instant
  * First in the card, **Signed in as {email}**: the member's own address from the session on
  * this device, read only, so they can tell which account this is (PROPOSED,
  * docs/missing-components.md §81). It needs nothing from `/me`, so it shows offline and under
- * a failed load too.
+ * a failed load too. Under it, **Change password** ([onChangePassword], §83): a code to that
+ * address, then a new password, staying signed in here. It needs nothing from `/me` either.
  *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, and every
  * row but Delete your account stays under it, because none of them needs anything `/me` holds.
@@ -99,6 +101,7 @@ fun AccountScreen(
     onBack: () -> Unit,
     onOpenHelp: () -> Unit = {},
     onOpenLegal: () -> Unit = {},
+    onChangePassword: () -> Unit = {},
 ) {
     when (state.load) {
         AccountLoad.Loading -> Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
@@ -114,6 +117,7 @@ fun AccountScreen(
             Spacer(Modifier.height(MoyiTheme.spacing.xxl))
             GroupedCard {
                 signedInRow(state)
+                changePasswordRow(state, onChangePassword)
                 exportRow(state, onAction)
                 helpAndLegalRows(state, onOpenHelp, onOpenLegal)
                 signOutRow(state, onAction)
@@ -125,6 +129,7 @@ fun AccountScreen(
             Column(verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.lg)) {
                 GroupedCard {
                     signedInRow(state)
+                    changePasswordRow(state, onChangePassword)
                     exportRow(state, onAction)
                     helpAndLegalRows(state, onOpenHelp, onOpenLegal)
                     signOutRow(state, onAction)
@@ -170,6 +175,17 @@ fun AccountScreen(
 private fun GroupedCardScope.signedInRow(state: AccountState) {
     val email = state.email ?: return
     row(label = stringResource(Res.string.account_signed_in_as, email))
+}
+
+/**
+ * Change password (PROPOSED, docs/missing-components.md §83): opens the screen that sends a code
+ * to the signed-in address. Pure navigation, so it calls the shell directly. Left out with the
+ * Signed in as row while the address is unknown: there is nowhere to send the code.
+ */
+@Composable
+private fun GroupedCardScope.changePasswordRow(state: AccountState, onChangePassword: () -> Unit) {
+    if (state.email == null) return
+    row(label = stringResource(Res.string.account_row_change_password), enabled = !state.signingOut, onClick = onChangePassword)
 }
 
 @Composable

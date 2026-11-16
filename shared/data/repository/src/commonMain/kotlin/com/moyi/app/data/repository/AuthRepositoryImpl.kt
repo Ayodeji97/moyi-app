@@ -20,10 +20,12 @@ import com.moyi.app.data.network.ApiConfig
 import com.moyi.app.data.network.PublicHttpClient
 import com.moyi.app.data.network.safeApiCall
 import com.moyi.app.data.network.safeApiCallEmpty
+import com.moyi.app.data.session.SessionGrant
 import com.moyi.app.data.session.SessionManager
 import com.moyi.app.data.session.toSessionGrant
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.EmailProof
+import com.moyi.app.domain.auth.PasswordChangeError
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
@@ -96,12 +98,47 @@ class AuthRepositoryImpl(
     override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> =
         safeApiCallEmpty { passwordReset.reset(proof.toResetRequest(password)) }
 
-    override suspend fun login(email: String, password: String): Result<User, DataError> {
-        val request = LoginRequest(email = email, password = password, device = deviceInfo.deviceInfo().toRequest())
-        val grant = when (val response = safeApiCall { loginApi.login(request) }) {
-            is Result.Success -> response.data.toSessionGrant()
-            is Result.Failure -> return response
+    /**
+     * Reset, then sign in with the new password, both under the session lock
+     * ([SessionManager.whileHeld]). Every `when` branch after the reset's success ends with
+     * this device either signed in with the new session or signed out: never holding the
+     * tokens the reset revoked. The push token is told again afterwards, outside the lock:
+     * the reset made the server forget every device's ([PushTokenRegistrar.renew]).
+     */
+    override suspend fun changePassword(
+        proof: EmailProof,
+        email: String,
+        password: String,
+    ): Result<User, PasswordChangeError> {
+        val outcome = sessionManager.whileHeld<Result<User, PasswordChangeError>> {
+            when (val reset = safeApiCallEmpty { passwordReset.reset(proof.toResetRequest(password)) }) {
+                is Result.Failure -> return@whileHeld Result.Failure(PasswordChangeError.NotChanged(reset.error))
+                is Result.Success -> Unit
+            }
+            // From here this device's session is revoked on the server: sign in again, or end it here.
+            when (val grant = requestGrant(email, password)) {
+                is Result.Failure -> {
+                    end(SessionEndReason.PasswordChanged)
+                    Result.Failure(PasswordChangeError.SignedOut(grant.error))
+                }
+                is Result.Success -> try {
+                    start(grant.data)
+                    Result.Success(grant.data.user)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Signed in on the server, but the new session could not be kept here.
+                    end(SessionEndReason.PasswordChanged)
+                    Result.Failure(PasswordChangeError.SignedOut(DataError.Local.UNKNOWN))
+                }
+            }
         }
+        if (outcome is Result.Success) pushTokens?.renew()
+        return outcome
+    }
+
+    override suspend fun login(email: String, password: String): Result<User, DataError> {
+        val grant = requestGrant(email, password)
         return when (grant) {
             is Result.Failure -> grant
             is Result.Success -> try {
@@ -141,6 +178,15 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun restoreSession(): SessionState = sessionManager.restore()
+
+    /** `POST /auth/login`, read into a grant. Starts nothing: the caller decides where it goes. */
+    private suspend fun requestGrant(email: String, password: String): Result<SessionGrant, DataError> {
+        val request = LoginRequest(email = email, password = password, device = deviceInfo.deviceInfo().toRequest())
+        return when (val response = safeApiCall { loginApi.login(request) }) {
+            is Result.Success -> response.data.toSessionGrant()
+            is Result.Failure -> response
+        }
+    }
 }
 
 /*

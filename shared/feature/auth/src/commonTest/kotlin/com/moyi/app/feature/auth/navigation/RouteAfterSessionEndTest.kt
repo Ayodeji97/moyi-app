@@ -20,4 +20,8 @@ class RouteAfterSessionEndTest {
     @Test
     fun aSignOutThePersonAskedForNeedsNoExplanation() =
         assertEquals<Any>(LoginRoute(), routeAfterSessionEnd(SessionEndReason.SignedOut))
+
+    @Test
+    fun aPasswordChangedHereWhoseSignInFailedSaysTheNewOneIsSaved() =
+        assertEquals<Any>(LoginRoute(passwordChanged = true), routeAfterSessionEnd(SessionEndReason.PasswordChanged))
 }

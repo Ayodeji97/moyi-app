@@ -44,14 +44,14 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun ForgotPasswordRoot(
     initialEmail: String,
-    onNavigateToLinkSent: (email: String) -> Unit,
+    onNavigateToCode: (email: String) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: ForgotPasswordViewModel = koinViewModel { parametersOf(initialEmail) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is ForgotPasswordEvent.NavigateToLinkSent -> onNavigateToLinkSent(event.email)
+            is ForgotPasswordEvent.NavigateToCode -> onNavigateToCode(event.email)
             ForgotPasswordEvent.NavigateBack -> onNavigateBack()
         }
     }
