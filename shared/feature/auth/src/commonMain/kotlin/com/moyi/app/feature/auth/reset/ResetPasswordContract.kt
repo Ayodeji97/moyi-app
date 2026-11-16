@@ -1,8 +1,10 @@
 package com.moyi.app.feature.auth.reset
 
 import androidx.compose.runtime.Immutable
+import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
+import com.moyi.app.feature.auth.verify.ResendStatus
 
 /** The two steps of the reset: the code is checked first, then the new password is chosen. */
 enum class ResetStep { Code, Password }
@@ -46,6 +48,13 @@ data class ResetPasswordState(
      * step says this phone stays signed in while the others are signed out.
      */
     val signedIn: Boolean = false,
+    /**
+     * "Send it again" under the code field (§85), as on verify: a new email to [email], with
+     * a new code and link. Sent: a muted acknowledgement for a minute instead of the link.
+     */
+    val resend: ResendStatus = ResendStatus.Ready,
+    /** Why the last "Send it again" failed, shown above the action; the code check's own failure wins. */
+    val resendFailure: UiText? = null,
 )
 
 sealed interface ResetPasswordAction {
@@ -57,6 +66,9 @@ sealed interface ResetPasswordAction {
     data object OnPasswordBlur : ResetPasswordAction
     /** "Check the code" on the first step, "Save and sign in" on the second. */
     data object OnSubmit : ResetPasswordAction
+
+    /** "Send it again" on the code step: `POST /auth/forgot-password` with the same address. */
+    data object OnResendClick : ResetPasswordAction
 
     /** Back from the password returns to the code; from the code it leaves the screen. */
     data object OnBackClick : ResetPasswordAction

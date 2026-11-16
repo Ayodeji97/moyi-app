@@ -5,6 +5,10 @@ package com.moyi.app.feature.auth.reset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import com.moyi.app.feature.auth.verify.ResendStatus
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -42,6 +46,25 @@ class ResetScreensTest {
         onNodeWithText(SENT_TO_AMARA).assertIsDisplayed()
         val spoken = texts(onRoot(useUnmergedTree = true).fetchSemanticsNode())
         assertEquals(1, spoken.count { "@" in it }, "only that line names the address: $spoken")
+    }
+
+    @Test
+    fun theCodeStepOffersSendItAgainAndSaysWhatItIsDoing() = runComposeUiTest {
+        var state by mutableStateOf(ResetPasswordState(email = "amara@example.com"))
+        inPhone { ResetPasswordScreen(state = state, onAction = {}) }
+
+        onNodeWithText("Send it again").assertIsDisplayed()
+        state = state.copy(resend = ResendStatus.Sending)
+        onNodeWithText("Sending the code").assertIsDisplayed()
+        state = state.copy(resend = ResendStatus.Sent)
+        onNodeWithText("Sent again. You can ask for another in a minute.").assertIsDisplayed()
+        onNodeWithText("Send it again").assertDoesNotExist()
+    }
+
+    @Test
+    fun withNoAddressThereIsNothingToSendAgain() = runComposeUiTest {
+        inPhone { ResetPasswordScreen(state = ResetPasswordState(email = ""), onAction = {}) }
+        onNodeWithText("Send it again").assertDoesNotExist()
     }
 
     @Test

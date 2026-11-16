@@ -12,6 +12,7 @@ import com.moyi.app.feature.auth.apiError
 import com.moyi.app.feature.auth.common.SubmitStatus
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.auth_error_offline
+import com.moyi.app.feature.auth.resources.auth_error_rate_limited
 import com.moyi.app.feature.auth.resources.code_error_blank
 import com.moyi.app.feature.auth.resources.code_error_invalid
 import com.moyi.app.feature.auth.resources.code_error_link_invalid
@@ -23,8 +24,10 @@ import com.moyi.app.feature.auth.resources.register_password_error_breached
 import com.moyi.app.feature.auth.resources.register_password_error_long
 import com.moyi.app.feature.auth.resources.register_password_error_short
 import com.moyi.app.feature.auth.resources.reset_token_error_expired
+import com.moyi.app.feature.auth.verify.ResendStatus
 import com.moyi.app.feature.auth.violation
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -456,5 +459,106 @@ class ResetPasswordViewModelTest : MainDispatcherTest() {
         assertEquals(UiText.Resource(Res.string.reset_token_error_expired), opened.state.value.code.error)
         assertEquals(ResetStep.Code, opened.state.value.step)
         assertEquals(SubmitStatus.Idle, opened.state.value.submit)
+    }
+
+    // ----- "Send it again" on the code step (§85) -----
+
+    @Test
+    fun sendItAgainAsksForANewEmailToTheSameAddressAndClearsTheOldCode() = runTest {
+        typeCode("123")
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        assertEquals(listOf("amara@example.com"), repo.requestResetCalls)
+        assertEquals("", viewModel.state.value.code.value)
+        assertEquals(ResendStatus.Sent, viewModel.state.value.resend)
+        assertEquals(ResetStep.Code, viewModel.state.value.step)
+    }
+
+    @Test
+    fun sendItAgainClearsARefusedCodesVerdict() = runTest {
+        repo.checkResetResult = Result.Failure(apiError(422, ApiErrorCode.PASSWORD_RESET_TOKEN_INVALID))
+        typeCode()
+        assertEquals(UiText.Resource(Res.string.code_error_invalid), viewModel.state.value.code.error)
+
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        assertNull(viewModel.state.value.code.error)
+        assertEquals("", viewModel.state.value.code.value)
+    }
+
+    @Test
+    fun sendItAgainWaitsAMinuteThenComesBack() = runTest {
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        assertEquals(1, repo.requestResetCalls.size)
+
+        advanceTimeBy(59_000)
+        assertEquals(ResendStatus.Sent, viewModel.state.value.resend)
+        advanceTimeBy(2_000)
+        assertEquals(ResendStatus.Ready, viewModel.state.value.resend)
+
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        assertEquals(2, repo.requestResetCalls.size)
+    }
+
+    @Test
+    fun sendItAgainSaysSendingWhileItRunsAndATapMeanwhileSendsNothingMore() = runTest {
+        val gate = CompletableDeferred<Unit>().also { repo.gate = it }
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        assertEquals(ResendStatus.Sending, viewModel.state.value.resend)
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        gate.complete(Unit)
+        assertEquals(1, repo.requestResetCalls.size)
+        assertEquals(ResendStatus.Sent, viewModel.state.value.resend)
+    }
+
+    @Test
+    fun aPausedSendSaysSoAboveTheActionAndKeepsTheCode() = runTest {
+        repo.requestResetResult = Result.Failure(apiError(429, ApiErrorCode.RATE_LIMITED))
+        typeCode("123")
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        val state = viewModel.state.value
+        assertEquals(UiText.Resource(Res.string.auth_error_rate_limited), state.resendFailure)
+        assertEquals(ResendStatus.Ready, state.resend)
+        assertEquals("123", state.code.value)
+        assertEquals(SubmitStatus.Idle, state.submit)
+    }
+
+    @Test
+    fun anOfflineSendSaysSoAndANewCheckClearsIt() = runTest {
+        repo.requestResetResult = Result.Failure(DataError.Network.NoInternet)
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        assertEquals(UiText.Resource(Res.string.auth_error_offline), viewModel.state.value.resendFailure)
+
+        typeCode()
+        assertNull(viewModel.state.value.resendFailure)
+    }
+
+    @Test
+    fun sendItAgainIsHeldWhileACodeIsBeingChecked() = runTest {
+        val gate = CompletableDeferred<Unit>().also { repo.gate = it }
+        typeCode()
+        assertEquals(SubmitStatus.Sending, viewModel.state.value.submit)
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+        gate.complete(Unit)
+        assertTrue(repo.requestResetCalls.isEmpty())
+    }
+
+    @Test
+    fun withNoAddressOrOnThePasswordStepNothingIsSent() = runTest {
+        val noAddress = ResetPasswordViewModel("", repo)
+        noAddress.onAction(ResetPasswordAction.OnResendClick)
+
+        fill()
+        assertEquals(ResetStep.Password, viewModel.state.value.step)
+        viewModel.onAction(ResetPasswordAction.OnResendClick)
+
+        assertTrue(repo.requestResetCalls.isEmpty())
+    }
+
+    @Test
+    fun signedInSendItAgainGoesToTheSessionsAddress() = runTest {
+        val signedIn = ResetPasswordViewModel("amara@example.com", repo, signedIn = true)
+        signedIn.onAction(ResetPasswordAction.OnResendClick)
+        assertEquals(listOf("amara@example.com"), repo.requestResetCalls)
+        assertEquals(ResendStatus.Sent, signedIn.state.value.resend)
     }
 }

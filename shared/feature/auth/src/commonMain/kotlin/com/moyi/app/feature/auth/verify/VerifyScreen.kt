@@ -186,7 +186,7 @@ fun VerifyScreen(
  * leaving focus on nothing.
  */
 @Composable
-private fun ResentAcknowledgement() {
+internal fun ResentAcknowledgement() {
     MoyiText(
         text = stringResource(Res.string.verify_resent),
         tone = TextTone.Muted,

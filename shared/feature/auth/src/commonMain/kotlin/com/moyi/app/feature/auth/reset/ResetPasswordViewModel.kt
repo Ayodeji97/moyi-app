@@ -23,13 +23,17 @@ import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.code_error_blank
 import com.moyi.app.feature.auth.resources.code_error_no_address
 import com.moyi.app.feature.auth.resources.code_error_short
+import com.moyi.app.feature.auth.verify.ResendStatus
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Two steps (backend-contract-gaps.md row 39). First the code: six digits typed from the
@@ -65,6 +69,7 @@ class ResetPasswordViewModel(
     val events = _events.receiveAsFlow()
 
     private val openedByLink = linkToken != null
+    private var cooldown: Job? = null
 
     fun onAction(action: ResetPasswordAction) {
         when (action) {
@@ -76,6 +81,7 @@ class ResetPasswordViewModel(
             ResetPasswordAction.OnSubmit ->
                 if (_state.value.step == ResetStep.Code) checkCode() else submit()
             ResetPasswordAction.OnBackClick -> onBack()
+            ResetPasswordAction.OnResendClick -> resend()
         }
     }
 
@@ -136,7 +142,8 @@ class ResetPasswordViewModel(
             return
         }
         val proof = EmailProof.Code(email = current.email, code = digits)
-        _state.update { it.copy(submit = SubmitStatus.Sending) }
+        // A new check supersedes an old resend failure: one message at a time above the action.
+        _state.update { it.copy(submit = SubmitStatus.Sending, resendFailure = null) }
         viewModelScope.launch {
             when (val result = authRepository.checkResetCode(current.email, digits)) {
                 is Result.Success -> _state.update { it.copy(step = ResetStep.Password, submit = SubmitStatus.Idle) }
@@ -151,6 +158,43 @@ class ResetPasswordViewModel(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * "Send it again" (§85), on the code step only, and only with an address to send to.
+     * `POST /auth/forgot-password` answers `202` whether or not the address has an account,
+     * so success reads the same for any address. A new email voids the old code (a code is
+     * good "until a newer email is sent"), so the field and its verdict are cleared.
+     *
+     * Held while a code check is in flight, and for a minute after a send ([ResendStatus.Sent]),
+     * as verify's is. A failure (offline, `429`) shows above the action and touches nothing else:
+     * the code typed so far stays.
+     */
+    private fun resend() {
+        val current = _state.value
+        if (current.step != ResetStep.Code || current.email.isEmpty()) return
+        if (current.resend != ResendStatus.Ready || current.submit == SubmitStatus.Sending) return
+        _state.update { it.copy(resend = ResendStatus.Sending, resendFailure = null, submit = SubmitStatus.Idle) }
+        viewModelScope.launch {
+            when (val result = authRepository.requestPasswordReset(current.email)) {
+                is Result.Success -> {
+                    _state.update { it.copy(code = FieldInput(), resend = ResendStatus.Sent) }
+                    startCooldown()
+                }
+                is Result.Failure -> _state.update {
+                    it.copy(resend = ResendStatus.Ready, resendFailure = AuthErrorMapper.formFailure(result.error).message)
+                }
+            }
+        }
+    }
+
+    /** "You can ask for another in a minute": the link comes back after one. */
+    private fun startCooldown() {
+        cooldown?.cancel()
+        cooldown = viewModelScope.launch {
+            delay(RESEND_COOLDOWN)
+            _state.update { if (it.resend == ResendStatus.Sent) it.copy(resend = ResendStatus.Ready) else it }
         }
     }
 
@@ -246,5 +290,10 @@ class ResetPasswordViewModel(
                 else -> it.copy(submit = AuthErrorMapper.proofFormFailure(error, proof))
             }
         }
+    }
+
+    private companion object {
+        /** As verify's: matches the `verify.resent` copy, "You can ask for another in a minute". */
+        val RESEND_COOLDOWN = 1.minutes
     }
 }
