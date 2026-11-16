@@ -38,7 +38,7 @@ import com.moyi.app.designsystem.platform.rememberNotificationPermission
 import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.TimeOfDay
-import com.moyi.app.feature.today.common.timeOfDayText
+import com.moyi.app.designsystem.platform.timeOfDayText
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.reminder_ask_continue
 import com.moyi.app.feature.today.resources.reminder_ask_denied
@@ -106,7 +106,7 @@ fun ReminderAskRoot(
 @Composable
 fun ReminderAskScreen(state: ReminderAskState, onAction: (ReminderAskAction) -> Unit) {
     val spacing = MoyiTheme.spacing
-    val shownTime = state.time?.let { timeOfDayText(it) }
+    val shownTime = state.time?.let { timeOfDayText(it.hour, it.minute) }
     MoyiScaffold(
         action = {
             if (state.phase == ReminderAskPhase.Answered) {
@@ -172,7 +172,7 @@ private fun Answered(state: ReminderAskState, onAction: (ReminderAskAction) -> U
     val spacing = MoyiTheme.spacing
     val serverTime = state.member?.reminderTime
     if (state.saveFailed && serverTime != null) {
-        InlineError(stringResource(Res.string.reminder_ask_save_failed, timeOfDayText(serverTime)))
+        InlineError(stringResource(Res.string.reminder_ask_save_failed, timeOfDayText(serverTime.hour, serverTime.minute)))
         Spacer(Modifier.height(spacing.sm))
     }
     if (state.denied) {
