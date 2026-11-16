@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonSkippableComposable
+import androidx.compose.runtime.currentRecomposeScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,14 +67,27 @@ interface GroupedCardScope {
  * read string resources and state directly); the card lays them out and puts a divider
  * between neighbours. See [GroupedRow] for the row it is made for.
  */
+// Why it is never skipped, and why a stray item() call recomposes the card: [content] is
+// collected into `items` here and drawn below, in this function's own pass. Compose gives
+// [content] a recompose scope of its own, so when the caller recomposes with new values,
+// a skippable card was skipped (the same remembered lambda came in) while [content] re-ran
+// alone, adding fresh rows to a list nobody draws again: the screen kept the old ones
+// (Bond settings' reveal time after a save, the iOS smoke test of 2026-11-16).
+// - Never skipped: whenever the caller runs, the card collects and draws again.
+// - An item() outside the card's own pass (content re-ran alone, e.g. after reading a
+//   State) asks for the card's pass, which draws what content now says.
+@NonSkippableComposable
 @Composable
 fun GroupedCard(modifier: Modifier = Modifier, content: @Composable GroupedCardScope.() -> Unit) {
     val items = mutableListOf<@Composable () -> Unit>()
+    val card = currentRecomposeScope
+    var collecting = true
     object : GroupedCardScope {
         override fun item(content: @Composable () -> Unit) {
-            items += content
+            if (collecting) items += content else card.invalidate()
         }
     }.content()
+    collecting = false
     val colors = MoyiTheme.colors
     val shape = MoyiTheme.shapes.radius
     Column(
