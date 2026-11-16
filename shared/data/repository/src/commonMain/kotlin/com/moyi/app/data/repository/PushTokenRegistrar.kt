@@ -76,6 +76,18 @@ class PushTokenRegistrar(
     }
 
     /**
+     * A password reset made the server forget every device's push token (ADR-0044) while this
+     * device stayed signed in as the same member ([AuthRepositoryImpl.changePassword]). The
+     * session's user did not change, so nothing above would send the token again: forget what
+     * was registered and try now. Must not be called holding the session lock: the `PUT` may
+     * need a refresh.
+     */
+    suspend fun renew() {
+        mutex.withLock { registered = null }
+        retries.value++
+    }
+
+    /**
      * Voluntary sign-out only, while the session still holds its tokens. Sends the
      * `DELETE` when this device may have registered a token (it has one now, or one was
      * registered in this process), and gives up after [FORGET_LIMIT]. Never throws: a

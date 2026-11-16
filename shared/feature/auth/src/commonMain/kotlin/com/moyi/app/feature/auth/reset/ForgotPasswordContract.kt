@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.moyi.app.feature.auth.common.FieldInput
 import com.moyi.app.feature.auth.common.SubmitStatus
 
-/** Forgot password (Account 2, Figma 344:41): one email field, then the link is sent. */
+/** Forgot password (Account 2, Figma 344:41): one email field, then the code is sent. */
 @Immutable
 data class ForgotPasswordState(
     val email: FieldInput = FieldInput(),
@@ -20,11 +20,12 @@ sealed interface ForgotPasswordAction {
 
 sealed interface ForgotPasswordEvent {
     /**
-     * 202, which the server answers whether or not the address has an
-     * account. Reset link sent next; [email] travels on only so that "Choose
-     * a new password" can sign in with it afterwards. It is never shown.
+     * 202, which the server answers whether or not the address has an account. The code
+     * step of Choose a new password next (owner ruling 2026-11-16: no screen in between).
+     * [email] travels on to say where the code went, in words that read the same whether or
+     * not the address has an account, and to sign in with afterwards.
      */
-    data class NavigateToLinkSent(val email: String) : ForgotPasswordEvent
+    data class NavigateToCode(val email: String) : ForgotPasswordEvent
 
     /** Back to sign in. */
     data object NavigateBack : ForgotPasswordEvent

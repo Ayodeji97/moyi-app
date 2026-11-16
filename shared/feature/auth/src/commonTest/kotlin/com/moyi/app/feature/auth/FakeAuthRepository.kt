@@ -5,6 +5,7 @@ import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.EmailProof
+import com.moyi.app.domain.auth.PasswordChangeError
 import com.moyi.app.domain.auth.SessionEndReason
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
@@ -35,6 +36,7 @@ class FakeAuthRepository : AuthRepository {
     var checkResetResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var resetResult: EmptyResult<DataError.Network> = Result.Success(Unit)
     var loginResult: Result<User, DataError> = Result.Success(USER)
+    var changeResult: Result<User, PasswordChangeError> = Result.Success(USER)
 
     var gate: CompletableDeferred<Unit>? = null
 
@@ -62,6 +64,10 @@ class FakeAuthRepository : AuthRepository {
     /** (proof, password) pairs sent to resetPassword. */
     val resetCalls = mutableListOf<Pair<EmailProof, String>>()
     val loginCalls = mutableListOf<Pair<String, String>>()
+
+    data class ChangeCall(val proof: EmailProof, val email: String, val password: String)
+
+    val changeCalls = mutableListOf<ChangeCall>()
     var logoutCalls = 0
 
     override suspend fun register(
@@ -105,6 +111,20 @@ class FakeAuthRepository : AuthRepository {
         resetCalls += proof to password
         gate?.await()
         return resetResult
+    }
+
+    /** As the real one: signed in again on success, signed out with an event after a failed sign-in. */
+    override suspend fun changePassword(proof: EmailProof, email: String, password: String): Result<User, PasswordChangeError> {
+        changeCalls += ChangeCall(proof, email, password)
+        gate?.await()
+        when (val result = changeResult) {
+            is Result.Success -> sessionState.value = SessionState.SignedIn(result.data)
+            is Result.Failure -> if (result.error is PasswordChangeError.SignedOut) {
+                sessionState.value = SessionState.SignedOut
+                events.send(SessionEvent.Ended(SessionEndReason.PasswordChanged))
+            }
+        }
+        return changeResult
     }
 
     override suspend fun login(email: String, password: String): Result<User, DataError> {

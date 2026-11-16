@@ -40,6 +40,12 @@ data class ResetPasswordState(
      * the sign-in after it: one action, "Save and sign in".
      */
     val submit: SubmitStatus = SubmitStatus.Idle,
+    /**
+     * Opened from Account › Change password: the person is signed in here and stays so. The
+     * code step says plainly where the code went (the account exists), and the password
+     * step says this phone stays signed in while the others are signed out.
+     */
+    val signedIn: Boolean = false,
 )
 
 sealed interface ResetPasswordAction {
@@ -61,12 +67,18 @@ sealed interface ResetPasswordEvent {
     data object NavigateToHome : ResetPasswordEvent
 
     /**
+     * Changed while signed in ([ResetPasswordState.signedIn]): saved, and this device signed in
+     * again with the new password. Close the change and say it is done.
+     */
+    data object PasswordChanged : ResetPasswordEvent
+
+    /**
      * Saved, but not signed in: the sign-in after it failed, or there was no address to sign
      * in with. The new password is set, so sign in next with the address filled in (when
      * known), and no way back into the reset.
      */
     data class NavigateToLogin(val email: String) : ResetPasswordEvent
 
-    /** Leave the screen: back to Reset link sent. */
+    /** Leave the screen: back to Forgot password (or Change password), which kept the address. */
     data object NavigateBack : ResetPasswordEvent
 }

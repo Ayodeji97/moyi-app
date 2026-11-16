@@ -33,4 +33,11 @@ enum class SessionEndReason {
 
     /** The person signed out. */
     SignedOut,
+
+    /**
+     * The password was changed on this device while signed in ([AuthRepository.changePassword]),
+     * which revoked every session, this one too, and signing in again with the new password
+     * failed. The new password is saved: sign in with it.
+     */
+    PasswordChanged,
 }

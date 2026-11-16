@@ -334,4 +334,65 @@ class SessionManagerTest {
         assertTrue(server.logs.entries.none { "You made the tea." in it.message }, "a row's words must never reach a log")
         assertTrue(server.logs.entries.any { "IllegalStateException" in it.message })
     }
+
+    // ---- A password changed on this device (whileHeld) ----
+
+    @Test
+    fun aSessionForTheSameMemberContinuesTheirsAndWipesNothing() = runTest {
+        val server = TestServer(initial = null) { fail("no network expected") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+
+        server.sessionManager.whileHeld { start(grant("a2", "r2")) }
+
+        assertEquals(1, server.wipes, "only the first sign-in wiped: drafts and the outbox stay")
+        assertEquals("r2", server.store.current?.refreshToken)
+        assertEquals("a2", server.sessionManager.currentAccessToken())
+        assertEquals(SessionState.SignedIn(ada), server.sessionManager.sessionState.value)
+    }
+
+    @Test
+    fun aSessionForSomeoneElseStillWipes() = runTest {
+        val server = TestServer(initial = null) { fail("no network expected") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+        val other = ada.copy(id = "someone-else")
+
+        server.sessionManager.whileHeld { start(SessionGrant("b1", "rb1", other)) }
+
+        assertEquals(2, server.wipes)
+        assertEquals(SessionState.SignedIn(other), server.sessionManager.sessionState.value)
+    }
+
+    @Test
+    fun aRefreshAskedForWhileHeldWaitsAndGetsTheNewTokenWithoutPresentingTheRevokedOne() = runTest {
+        val server = TestServer(initial = null, dispatcher = StandardTestDispatcher(testScheduler)) {
+            fail("the revoked refresh token must never be presented")
+        }
+        server.sessionManager.startSession(grant("a1", "r1"))
+        val resetDone = CompletableDeferred<Unit>()
+
+        val change = async { server.sessionManager.whileHeld { resetDone.await(); start(grant("a2", "r2")) } }
+        runCurrent()
+        // A request refused with a1 while the reset is on the wire: its refresh queues.
+        val refused = async { server.sessionManager.refresh(staleAccess = "a1") }
+        runCurrent()
+        resetDone.complete(Unit)
+        change.await()
+
+        assertEquals("a2", refused.await())
+        assertEquals(0, server.refreshCalls.load())
+        assertEquals(SessionState.SignedIn(ada), server.sessionManager.sessionState.value)
+    }
+
+    @Test
+    fun endingWhileHeldEndsTheSessionWithTheReasonGiven() = runTest {
+        val server = TestServer(initial = null) { fail("no network expected") }
+        server.sessionManager.startSession(grant("a1", "r1"))
+        val events = collectEvents(server.sessionManager)
+
+        server.sessionManager.whileHeld { end(SessionEndReason.PasswordChanged) }
+
+        assertEquals(SessionState.SignedOut, server.sessionManager.sessionState.value)
+        assertNull(server.store.current)
+        assertEquals(listOf<SessionEvent>(SessionEvent.Ended(SessionEndReason.PasswordChanged)), events)
+    }
 }

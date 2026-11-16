@@ -19,6 +19,7 @@ import com.moyi.app.core.EmptyResult
 import com.moyi.app.core.Result
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.EmailProof
+import com.moyi.app.domain.auth.PasswordChangeError
 import com.moyi.app.domain.auth.SessionEvent
 import com.moyi.app.domain.auth.SessionState
 import com.moyi.app.domain.auth.User
@@ -249,6 +250,8 @@ class FakeAuthRepository : AuthRepository {
     override suspend fun checkResetCode(email: String, code: String): EmptyResult<DataError.Network> = error("not used")
 
     override suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun changePassword(proof: EmailProof, email: String, password: String): Result<User, PasswordChangeError> =
+        error("not used")
 
     override suspend fun logout() {
         logouts++
