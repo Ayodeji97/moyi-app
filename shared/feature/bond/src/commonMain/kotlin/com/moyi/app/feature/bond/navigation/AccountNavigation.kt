@@ -60,14 +60,17 @@ internal data object ExportRoute
  * - Account → Get help ([onOpenSupport]) or Terms and Privacy ([onOpenLegal]): the shell's
  *   own screens, the same ones Bond settings opens, pushed over Account so back returns to it.
  *   They are here so a person with no bond can reach them (smoke test 2026-11-09).
+ * - Account → Change password ([onOpenChangePassword]): the auth feature's screens, pushed
+ *   over Account by the shell; once the new password is saved they pop back to Account.
  */
 fun NavGraphBuilder.accountGraph(
     navController: NavController,
     onOpenLegal: () -> Unit,
     onOpenSupport: () -> Unit,
+    onOpenChangePassword: () -> Unit = {},
 ) {
     navigation<AccountGraph>(startDestination = AccountRoute) {
-        accountDestinations(navController, onOpenLegal, onOpenSupport)
+        accountDestinations(navController, onOpenLegal, onOpenSupport, onOpenChangePassword)
     }
 }
 
@@ -83,6 +86,7 @@ private fun NavGraphBuilder.accountDestinations(
     navController: NavController,
     onOpenLegal: () -> Unit,
     onOpenSupport: () -> Unit,
+    onOpenChangePassword: () -> Unit,
 ) {
     composable<AccountRoute> { entry ->
         AccountDestination(entry, navController) { viewModel ->
@@ -93,6 +97,7 @@ private fun NavGraphBuilder.accountDestinations(
                 onBack = { navController.popBackStack() },
                 onOpenHelp = onOpenSupport,
                 onOpenLegal = onOpenLegal,
+                onChangePassword = onOpenChangePassword,
             )
         }
     }

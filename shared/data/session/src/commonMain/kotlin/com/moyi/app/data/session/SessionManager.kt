@@ -35,7 +35,9 @@ import kotlinx.coroutines.withContext
  *
  * - **Personal data** ([personalData], the local database) is wiped whenever a
  *   session ends, for any reason, and whenever one starts (a different account
- *   may be signing in). Both run under the session lock, before the new state is
+ *   may be signing in), unless the new session is the signed-in member's own (a
+ *   password changed on this device, [whileHeld]): the same person's drafts and
+ *   outbox stay. Both run under the session lock, before the new state is
  *   published, so no screen can read the last person's cache as the next one's.
  *
  * It refreshes through [refreshApi], which must sit on the PUBLIC client: a
@@ -142,17 +144,51 @@ class SessionManager(
      * @throws Exception if the store could not write; nothing is published then.
      */
     suspend fun startSession(grant: SessionGrant) {
-        mutex.withLock {
-            withContext(NonCancellable) {
-                wipePersonalData()
-                store.write(grant.toStoredSession())
-                lastAmbiguousFailure = null
-                issued.clear()
-                issued += grant.accessToken
-                accessToken.value = grant.accessToken
-                state.value = SessionState.SignedIn(grant.user)
-            }
-        }
+        mutex.withLock { withContext(NonCancellable) { startLocked(grant) } }
+    }
+
+    /**
+     * Runs [block] holding the session lock, to its end even if the caller goes away: for a
+     * password changed on this device, whose reset revokes this session on the server and
+     * whose sign-in after it brings the new one ([SessionSwap.start]).
+     *
+     * Holding the lock is the point. A request refused while [block] runs queues its refresh
+     * behind it instead of presenting the refresh token the reset just revoked (which would
+     * end the session). Once [block] has started the new session, that queued refresh finds
+     * a newer access token than the one refused and is handed it without a network call.
+     *
+     * [block] must not wait for anything that itself refreshes (an authed request): that
+     * refresh would wait for this lock. HttpTimeout bounds the public calls it makes.
+     */
+    suspend fun <T> whileHeld(block: suspend SessionSwap.() -> T): T =
+        mutex.withLock { withContext(NonCancellable) { swap.block() } }
+
+    /** What [whileHeld]'s block may do to the session, with the lock already held. */
+    inner class SessionSwap internal constructor() {
+        /** As [startSession]. @throws Exception if the store could not write; nothing is published then. */
+        suspend fun start(grant: SessionGrant) = startLocked(grant)
+
+        /** As [endSession]. */
+        suspend fun end(reason: SessionEndReason) = endLocked(reason)
+    }
+
+    private val swap = SessionSwap()
+
+    /**
+     * Called with the lock held. A session for the member already signed in here (a password
+     * changed on this device) continues theirs: nothing is wiped, and the access tokens issued
+     * before stay recognised, so a request refused with one is retried with the new token.
+     * Anyone else, or no one signed in before: the device is wiped and starts afresh.
+     */
+    private suspend fun startLocked(grant: SessionGrant) {
+        val continuing = (state.value as? SessionState.SignedIn)?.user?.id == grant.user.id
+        if (!continuing) wipePersonalData()
+        store.write(grant.toStoredSession())
+        lastAmbiguousFailure = null
+        if (!continuing) issued.clear()
+        issued += grant.accessToken
+        accessToken.value = grant.accessToken
+        state.value = SessionState.SignedIn(grant.user)
     }
 
     /** Wipes the session on this device and emits [SessionEvent.Ended]. Does not call the server. */

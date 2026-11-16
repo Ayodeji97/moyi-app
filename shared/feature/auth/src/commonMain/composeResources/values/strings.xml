@@ -173,6 +173,20 @@
     <string name="reset_action">Save and sign in</string>
     <!-- PROPOSED. The action while the new password is saved and the person signed in (states.md §1c). -->
     <string name="reset_action_sending">Saving</string>
+    <!-- ===== Change password, signed in (Account › Change password; NEW, no Figma frame: docs/missing-components.md §83) ===== -->
+    <!-- Reused: the eyebrow is login_eyebrow ("Account"); the action is reset_request_action ("Send the code") and its Sending label; the code step's line is verify_line (the account is the signed-in one, so it names the address plainly); the code and password fields are the reset's. -->
+
+    <!-- PROPOSED (§83). The heading of the screen Account's Change password row opens. -->
+    <string name="change_password_heading">Change your password</string>
+    <!-- PROPOSED (§83). Under the heading. %1$s is {email}, the address this phone is signed in with (from the session): nothing is typed. Names the next two steps (copy names the next action). -->
+    <string name="change_password_line">We will email a 6-digit code to %1$s. Type it on the next screen, then choose your new password.</string>
+    <!-- PROPOSED (§83). The consequence, before the action on both the first screen and the new-password step (states.md §1b: announce the consequence before the action). True per the backend: a reset revokes every session and refresh family of the account, and this phone signs in again with the new password at once. -->
+    <string name="change_password_consequence">Your other devices will be signed out. This phone stays signed in.</string>
+    <!-- PROPOSED (§83). The new-password step's action when signed in, instead of reset_action ("Save and sign in"): the person is already signed in. While it waits the label is reset_action_sending ("Saving"). -->
+    <string name="change_password_action">Save the new password</string>
+    <!-- PROPOSED (§83). The snackbar over Account once the new password is saved and this phone kept signed in. -->
+    <string name="change_password_done">Your new password is saved.</string>
+
     <!-- PROPOSED. 410 PASSWORD_RESET_TOKEN_EXPIRED (expired, or already used), under the code field. Only a link is ever answered 410. -->
     <string name="reset_token_error_expired">That link has expired. Go back and ask for a new one.</string>
     <!-- PROPOSED (§58). Under the code field on Choose a new password when the reset link opened the app or was pasted: the link is the proof, so nothing needs typing. -->

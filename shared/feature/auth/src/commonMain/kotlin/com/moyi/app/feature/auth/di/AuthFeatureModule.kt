@@ -5,6 +5,7 @@ import com.moyi.app.feature.auth.common.PlatformDeviceLocale
 import com.moyi.app.feature.auth.legal.LegalViewModel
 import com.moyi.app.feature.auth.login.LoginViewModel
 import com.moyi.app.feature.auth.register.RegisterViewModel
+import com.moyi.app.feature.auth.reset.ChangePasswordViewModel
 import com.moyi.app.feature.auth.reset.ForgotPasswordViewModel
 import com.moyi.app.feature.auth.reset.ResetPasswordViewModel
 import com.moyi.app.feature.auth.verify.VerifyViewModel
@@ -21,6 +22,8 @@ val authFeatureModule = module {
     viewModel { (email: String, linkToken: String?) -> VerifyViewModel(email, get(), linkToken) }
     viewModel { (email: String, sessionEnded: Boolean) -> LoginViewModel(email, sessionEnded, get()) }
     viewModel { (email: String) -> ForgotPasswordViewModel(email, get()) }
-    viewModel { (email: String, linkToken: String?) -> ResetPasswordViewModel(email, get(), linkToken) }
+    // signedIn: opened from Account › Change password, so the save keeps this device signed in.
+    viewModel { (email: String, linkToken: String?, signedIn: Boolean) -> ResetPasswordViewModel(email, get(), linkToken, signedIn) }
+    viewModelOf(::ChangePasswordViewModel)
     viewModel { (prompt: Boolean) -> LegalViewModel(prompt, get()) }
 }

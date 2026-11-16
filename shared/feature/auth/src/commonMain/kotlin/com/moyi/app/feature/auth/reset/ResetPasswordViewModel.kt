@@ -7,6 +7,7 @@ import com.moyi.app.core.Result
 import com.moyi.app.designsystem.presentation.UiText
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.auth.EmailProof
+import com.moyi.app.domain.auth.PasswordChangeError
 import com.moyi.app.feature.auth.common.AuthErrorMapper
 import com.moyi.app.feature.auth.common.AuthValidation
 import com.moyi.app.feature.auth.common.FieldInput
@@ -45,13 +46,19 @@ import kotlinx.coroutines.launch
  *
  * Back from the password returns to the code, unless the link opened the app: there is no
  * code step to return to, so Back leaves the screen.
+ *
+ * [signedIn]: opened from Account › Change password, for the person signed in here. The same
+ * two steps, but the save is [AuthRepository.changePassword], which keeps this device signed
+ * in with the new password (the reset revokes every session, this one too) instead of
+ * signing in from scratch.
  */
 class ResetPasswordViewModel(
     email: String,
     private val authRepository: AuthRepository,
     linkToken: String? = null,
+    private val signedIn: Boolean = false,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ResetPasswordState(email = email, linkToken = linkToken))
+    private val _state = MutableStateFlow(ResetPasswordState(email = email, linkToken = linkToken, signedIn = signedIn))
     val state: StateFlow<ResetPasswordState> = _state.asStateFlow()
 
     private val _events = Channel<ResetPasswordEvent>()
@@ -167,6 +174,10 @@ class ResetPasswordViewModel(
             ?: EmailProof.Code(email = current.email, code = current.code.value)
         _state.update { checked.copy(submit = SubmitStatus.Sending) }
         val password = checked.password.value
+        if (signedIn) {
+            viewModelScope.launch { changeWhileSignedIn(proof, current.email, password) }
+            return
+        }
         viewModelScope.launch {
             when (val reset = authRepository.resetPassword(proof, password)) {
                 is Result.Success -> signIn(current.email, password)
@@ -191,6 +202,24 @@ class ResetPasswordViewModel(
             is Result.Failure -> {
                 _state.update { it.copy(submit = SubmitStatus.Idle) }
                 _events.send(ResetPasswordEvent.NavigateToLogin(email))
+            }
+        }
+    }
+
+    /**
+     * Signed in: one call does the reset and keeps this device signed in. A refusal reads as
+     * on the signed-out path. Saved but not signed in again: the session here has ended and
+     * the shell routes to sign in on that (SessionEvent.Ended), so this screen sends nothing.
+     */
+    private suspend fun changeWhileSignedIn(proof: EmailProof, email: String, password: String) {
+        when (val result = authRepository.changePassword(proof, email, password)) {
+            is Result.Success -> {
+                _state.update { it.copy(submit = SubmitStatus.Idle) }
+                _events.send(ResetPasswordEvent.PasswordChanged)
+            }
+            is Result.Failure -> when (val error = result.error) {
+                is PasswordChangeError.NotChanged -> onResetRefused(error.error, proof, password)
+                is PasswordChangeError.SignedOut -> _state.update { it.copy(submit = SubmitStatus.Idle) }
             }
         }
     }

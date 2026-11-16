@@ -2,6 +2,7 @@ package com.moyi.app.domain.auth
 
 import com.moyi.app.core.DataError
 import com.moyi.app.core.EmptyResult
+import com.moyi.app.core.Error
 import com.moyi.app.core.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +77,26 @@ interface AuthRepository {
     suspend fun resetPassword(proof: EmailProof, password: String): EmptyResult<DataError.Network>
 
     /**
+     * The same reset as [resetPassword], for the person signed in on this device (Account ›
+     * Change password), who stays signed in here. The reset revokes every session and refresh
+     * family of the account, this device's included, so the new password signs this device in
+     * again at once ([login]'s request), and the new session replaces the old one with the
+     * new refresh token stored before the new access token is used.
+     *
+     * The reset and the sign-in after it run under the session lock: no refresh can start in
+     * between, so a request refused meanwhile waits and is retried with the new access token,
+     * instead of presenting the revoked refresh token and ending the session. The member is
+     * the same, so what this device keeps for them (drafts, the outbox, the cache) stays.
+     *
+     * - [PasswordChangeError.NotChanged]: the reset was refused or did not arrive; the
+     *   password and this device's session are as they were.
+     * - [PasswordChangeError.SignedOut]: the new password is saved, but this device could not
+     *   sign in with it. The session here is ended ([SessionEndReason.PasswordChanged]) and
+     *   [sessionEvents] says so: sign in again with the new password.
+     */
+    suspend fun changePassword(proof: EmailProof, email: String, password: String): Result<User, PasswordChangeError>
+
+    /**
      * Signs in and keeps the session on this device. [DataError.Local] if the
      * session could not be stored, which leaves the person signed out.
      */
@@ -95,4 +116,13 @@ interface AuthRepository {
      * calls it again when the app returns to the foreground while Unknown.
      */
     suspend fun restoreSession(): SessionState
+}
+
+/** Why [AuthRepository.changePassword] did not leave this device signed in with the new password. */
+sealed interface PasswordChangeError : Error {
+    /** The reset was refused, or never answered: the password and the session are unchanged. */
+    data class NotChanged(val error: DataError.Network) : PasswordChangeError
+
+    /** The new password is saved, every session is revoked, and this device could not sign in again. */
+    data class SignedOut(val error: DataError) : PasswordChangeError
 }

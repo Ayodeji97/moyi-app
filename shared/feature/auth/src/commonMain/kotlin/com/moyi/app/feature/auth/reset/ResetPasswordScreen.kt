@@ -51,6 +51,9 @@ import com.moyi.app.feature.auth.resources.reset_link_ready
 import com.moyi.app.feature.auth.resources.reset_code_action
 import com.moyi.app.feature.auth.resources.reset_code_heading
 import com.moyi.app.feature.auth.resources.reset_code_line
+import com.moyi.app.feature.auth.resources.change_password_action
+import com.moyi.app.feature.auth.resources.change_password_consequence
+import com.moyi.app.feature.auth.resources.verify_line
 import com.moyi.app.feature.auth.resources.verify_action_sending
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -63,7 +66,11 @@ fun ResetPasswordRoot(
     onNavigateToLogin: (email: String) -> Unit,
     onNavigateBack: () -> Unit,
     linkToken: String? = null,
-    viewModel: ResetPasswordViewModel = koinViewModel { parametersOf(email, linkToken) },
+    /** Opened from Account › Change password: the person is signed in here and stays so. */
+    signedIn: Boolean = false,
+    /** Changed while signed in, and this device signed in again: close the change. */
+    onPasswordChanged: () -> Unit = onNavigateToHome,
+    viewModel: ResetPasswordViewModel = koinViewModel { parametersOf(email, linkToken, signedIn) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val autofillManager = LocalAutofillManager.current
@@ -71,6 +78,7 @@ fun ResetPasswordRoot(
         autofillManager.settle(event.credentialAutofill)
         when (event) {
             ResetPasswordEvent.NavigateToHome -> onNavigateToHome()
+            ResetPasswordEvent.PasswordChanged -> onPasswordChanged()
             is ResetPasswordEvent.NavigateToLogin -> onNavigateToLogin(event.email)
             ResetPasswordEvent.NavigateBack -> onNavigateBack()
         }
@@ -93,6 +101,12 @@ fun ResetPasswordRoot(
  * same whether or not it has an account (states.md §1b): it says "if". With no address (a
  * refused emailed link, on a phone that never asked) the line is left out. The sixth digit
  * checks the code too, and a refusal shows on the field.
+ *
+ * **Signed in** ([ResetPasswordState.signedIn], Account › Change password, §83): the same
+ * two steps and places. The code step's line is verify's ("We sent a 6-digit code to
+ * {email}..."): the account is the signed-in one, so there is nothing to keep from anyone. The
+ * password step's consequence says the other devices are signed out and this one stays, and
+ * the action is "Save the new password": nobody signs in, the person already is.
  *
  * **Password**: placed per Figma 345:30 (auth-placement-spec §3.4): heading, then the new
  * password field (with its helper, 115 tall), then the consequence as body text, then the
@@ -121,7 +135,11 @@ fun ResetPasswordScreen(
                 InlineError(failed.message.asString())
                 Spacer(Modifier.height(spacing.lg))
             }
-            val idleLabel = if (onCodeStep) Res.string.reset_code_action else Res.string.reset_action
+            val idleLabel = when {
+                onCodeStep -> Res.string.reset_code_action
+                state.signedIn -> Res.string.change_password_action
+                else -> Res.string.reset_action
+            }
             val sendingLabel = if (onCodeStep) Res.string.verify_action_sending else Res.string.reset_action_sending
             PrimaryAction(
                 text = stringResource(if (failed?.offerRetry == true) Res.string.auth_try_again else idleLabel),
@@ -136,7 +154,8 @@ fun ResetPasswordScreen(
         )
         if (onCodeStep && state.email.isNotEmpty()) {
             Spacer(Modifier.height(spacing.md))
-            MoyiText(stringResource(Res.string.reset_code_line, state.email), tone = TextTone.Muted)
+            val line = if (state.signedIn) Res.string.verify_line else Res.string.reset_code_line
+            MoyiText(stringResource(line, state.email), tone = TextTone.Muted)
         }
         Spacer(Modifier.height(spacing.lg))
         if (onCodeStep) {
@@ -174,7 +193,7 @@ fun ResetPasswordScreen(
                     .onBlur { onAction(ResetPasswordAction.OnPasswordBlur) },
             )
             Spacer(Modifier.height(spacing.lg))
-            MoyiText(stringResource(Res.string.reset_consequence))
+            MoyiText(stringResource(if (state.signedIn) Res.string.change_password_consequence else Res.string.reset_consequence))
         }
     }
 }

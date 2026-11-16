@@ -101,4 +101,21 @@ class AuthBackStackTest {
         assertEquals(listOf("LoginRoute"), nav.stack())
         assertEquals(LoginRoute(email = "amara@example.com"), nav.currentBackStackEntry!!.toRoute<LoginRoute>())
     }
+
+    @Test
+    fun aPasswordChangedFromAccountPopsBothScreensBackToAccount() {
+        // The promise stands in for Account, which lives in another feature.
+        val nav = controllerAtPromise()
+        nav.navigate(ChangePasswordRoute)
+        nav.navigate(ResetPasswordRoute(email = "amara@example.com", signedIn = true))
+        assertEquals(listOf("PromiseStandIn", "ChangePasswordRoute", "ResetPasswordRoute"), nav.stack())
+        assertEquals(
+            ResetPasswordRoute("amara@example.com", signedIn = true),
+            nav.currentBackStackEntry!!.toRoute<ResetPasswordRoute>(),
+        )
+
+        nav.closePasswordChange()
+
+        assertEquals(listOf("PromiseStandIn"), nav.stack())
+    }
 }
