@@ -22,7 +22,13 @@ import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.MemberSettings
+import com.moyi.app.domain.bond.PendingNotice
+import com.moyi.app.domain.bond.SharedSetting
+import com.moyi.app.domain.bond.SharedSettingsNotices
+import com.moyi.app.domain.bond.SharedSettingsSnapshot
 import com.moyi.app.domain.bond.TimeOfDay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -60,7 +66,8 @@ class BondSettingsRepositoryTest {
         private val config = ApiConfig("http://localhost:8080/api/v1")
         private val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
         private val sessionManager = SessionManager(InMemoryTokenStore(), RefreshControllerApi(config.origin, publicClient.client), NoPersonalData)
-        val repo = BondSettingsRepositoryImpl(AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager)), config)
+        val notices = RecordingNotices()
+        val repo = BondSettingsRepositoryImpl(AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager)), config, notices)
 
         fun json(): JsonObject = Json.parseToJsonElement(assertIs<TextContent>(requests.single().body).text).jsonObject
     }
@@ -402,4 +409,86 @@ class BondSettingsRepositoryTest {
         assertEquals(HttpMethod.Delete, fixture.requests.first().method)
         assertEquals("/api/v1/bonds/b1/timezone", fixture.requests.first().url.encodedPath)
     }
+
+    // ----- what changed since this device last looked (owner ask 2026-11-16) -----
+
+    @Test
+    fun aReadIsComparedWithWhatThisDeviceLastSaw() = runTest {
+        val fixture = Fixture { respondBond(bondJson(revealTime = "\"21:00\"", pending = pendingJson(proposedBy = "m2")), etag = "\"7\"") }
+
+        fixture.repo.settings("b1")
+
+        val seen = fixture.notices.observed.single()
+        assertEquals("Amara and Tunde", seen.name)
+        assertEquals(TimeOfDay(21, 0), seen.revealTime)
+        assertEquals(false, seen.timezoneProposal?.byMe, "proposed by the other member")
+        assertTrue(fixture.notices.own.isEmpty())
+    }
+
+    @Test
+    fun aChangeFromThisDeviceIsRememberedWithoutANoteForWhatItChanged() = runTest {
+        val fixture = Fixture { respondBond(bondJson(revealTime = "\"20:30\""), etag = "\"8\"") }
+
+        fixture.repo.update("b1", version = "\"7\"", change = BondSettingsChange(revealTime = TimeOfDay(20, 30), strictMode = true))
+
+        assertEquals(setOf(SharedSetting.REVEAL_TIME, SharedSetting.REST_DAYS), fixture.notices.own.single().second)
+        assertTrue(fixture.notices.observed.isEmpty(), "never compared as somebody else's change")
+    }
+
+    @Test
+    fun eachTwoPartyAnswerFromThisDeviceIsItsOwn() = runTest {
+        val fixture = Fixture { respondBond(bondJson(), etag = "\"9\"") }
+
+        fixture.repo.proposeTimezone("b1", "Europe/London")
+        fixture.repo.confirmTimezone("b1", "p1")
+        fixture.repo.requestDeletion("b1")
+
+        assertEquals(
+            listOf(setOf(SharedSetting.TIMEZONE), setOf(SharedSetting.TIMEZONE), setOf(SharedSetting.DELETION)),
+            fixture.notices.own.map { it.second },
+        )
+    }
+
+    @Test
+    fun aWithdrawalOrDeclineFromThisDeviceClearsTheRememberedRequest() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        fixture.repo.cancelTimezoneChange("b1")
+        fixture.repo.cancelDeletion("b1")
+
+        assertEquals(listOf("b1" to SharedSetting.TIMEZONE, "b1" to SharedSetting.DELETION), fixture.notices.cleared)
+    }
+
+    @Test
+    fun aFailedWriteRemembersNothing() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.PreconditionFailed, "PRECONDITION_FAILED") }
+
+        fixture.repo.update("b1", version = "\"7\"", change = BondSettingsChange(name = "New"))
+        fixture.repo.cancelTimezoneChange("b1")
+
+        assertTrue(fixture.notices.own.isEmpty() && fixture.notices.cleared.isEmpty() && fixture.notices.observed.isEmpty())
+    }
+}
+
+/** Records what the repository told it, so each call's part can be checked alone. */
+internal class RecordingNotices : SharedSettingsNotices {
+    val observed = mutableListOf<SharedSettingsSnapshot>()
+    val own = mutableListOf<Pair<SharedSettingsSnapshot, Set<SharedSetting>>>()
+    val cleared = mutableListOf<Pair<String, SharedSetting>>()
+
+    override suspend fun observe(current: SharedSettingsSnapshot) {
+        observed += current
+    }
+
+    override suspend fun recordOwn(current: SharedSettingsSnapshot, own: Set<SharedSetting>) {
+        this.own += current to own
+    }
+
+    override suspend fun clearOwnRequest(bondId: String, setting: SharedSetting) {
+        cleared += bondId to setting
+    }
+
+    override fun notices(bondId: String): Flow<List<PendingNotice>> = flowOf(emptyList())
+
+    override suspend fun dismiss(bondId: String, id: Long) = Unit
 }
