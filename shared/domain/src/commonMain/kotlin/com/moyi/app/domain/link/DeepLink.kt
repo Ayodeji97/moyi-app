@@ -1,8 +1,14 @@
 package com.moyi.app.domain.link
 
 /**
- * A link to `https://getmoyi.app` that opened the app (an Android App Link or an iOS
- * universal link), as the app understands it.
+ * A link to `https://getmoyi.app` (or `https://open.getmoyi.app`, the same paths) that opened
+ * the app (an Android App Link or an iOS universal link), as the app understands it.
+ *
+ * `open.getmoyi.app` exists for the website's fallback page (moyi-backend#207): a link opened in
+ * a browser lands on a getmoyi.app page whose "Open in the Moyi app" button goes to the same
+ * path and query on `open.getmoyi.app`. A tap that crosses to another domain is one iOS opens
+ * in the app, where a tap on a link to the page's own domain stays in Safari. The site serves
+ * the same apple-app-site-association and assetlinks.json there.
  *
  * The backend builds three, each from one configured base (moyi-backend `config/deploy.yml`,
  * `MOYI_*_LINK_BASE_URL`; the site's AASA and `assetlinks.json` claim the same paths):
@@ -41,14 +47,21 @@ sealed interface DeepLink {
     data object Unknown : DeepLink
 
     companion object {
-        /** The one host the app claims (the iOS entitlement and the Android intent filter). */
+        /** The website's host, which the emails and invites link to (the iOS entitlement and the Android intent filter). */
         const val HOST = "getmoyi.app"
+
+        /** The fallback page's "Open in the Moyi app" host (moyi-backend#207), claimed the same way. */
+        const val OPEN_HOST = "open.getmoyi.app"
+
+        /** Exactly these, compared without case; nothing else, not even another subdomain. */
+        private val HOSTS = listOf(HOST, OPEN_HOST)
 
         /**
          * [url] as a [DeepLink]. Pure and total: anything it does not recognise is [Unknown].
          *
-         * - The scheme must be `https` and the host exactly [HOST] (any case), with no user
-         *   info and no port: `www.getmoyi.app`, `getmoyi.app.evil.example` and
+         * - The scheme must be `https` and the host exactly [HOST] or [OPEN_HOST] (any case),
+         *   with no user info and no port: `www.getmoyi.app`, `getmoyi.app.evil.example`,
+         *   `open.getmoyi.app.evil.com`, `evilgetmoyi.app` and
          *   `evil.example/?x=https://getmoyi.app/verify` are all [Unknown].
          * - `/verify` and `/reset-password` need a `token` in the query, made only of the
          *   URL-safe base64 alphabet the backend uses (letters, digits, `-`, `_`), at most
@@ -61,7 +74,7 @@ sealed interface DeepLink {
             val rest = url.trim().removePrefixIgnoringCase("https://") ?: return Unknown
             val authorityEnd = rest.indexOfFirst { it == '/' || it == '?' || it == '#' }.let { if (it < 0) rest.length else it }
             val authority = rest.substring(0, authorityEnd)
-            if (!authority.equals(HOST, ignoreCase = true)) return Unknown
+            if (HOSTS.none { authority.equals(it, ignoreCase = true) }) return Unknown
 
             val afterAuthority = rest.substring(authorityEnd).substringBefore('#')
             val path = afterAuthority.substringBefore('?').let { if (it.length > 1) it.removeSuffix("/") else it }

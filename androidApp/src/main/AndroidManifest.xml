@@ -102,6 +102,22 @@
                 <data android:path="/reset-password" />
                 <data android:pathPrefix="/i/" />
             </intent-filter>
+            <!-- The same three paths on open.getmoyi.app: the website's fallback page sends its
+                 "Open in the Moyi app" button there (moyi-backend#207), and the site serves the
+                 same assetlinks.json on that host. Its own filter, so each host is verified on
+                 its own; DeepLink.parse accepts exactly these two hosts. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="https" />
+                <data android:host="open.getmoyi.app" />
+                <data android:path="/verify" />
+                <data android:path="/reset-password" />
+                <data android:pathPrefix="/i/" />
+            </intent-filter>
         </activity>
     </application>
 

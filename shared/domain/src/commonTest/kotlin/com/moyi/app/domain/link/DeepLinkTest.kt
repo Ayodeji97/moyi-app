@@ -38,6 +38,36 @@ class DeepLinkTest {
     }
 
     @Test
+    fun `the fallback page's open host carries the same three links`() {
+        assertEquals(DeepLink.VerifyEmail(token), DeepLink.parse("https://open.getmoyi.app/verify?token=$token"))
+        assertEquals(DeepLink.ResetPassword(token), DeepLink.parse("https://open.getmoyi.app/reset-password?token=$token"))
+        assertEquals(DeepLink.Invite("7KQ4MZ"), DeepLink.parse("https://open.getmoyi.app/i/7kq4mz"))
+        assertEquals(DeepLink.VerifyEmail(token), DeepLink.parse("HTTPS://Open.GetMoyi.APP/verify/?utm=x&token=$token#top"))
+        // The same strict rules as the site's host.
+        assertEquals(DeepLink.Unknown, DeepLink.parse("https://open.getmoyi.app/verify?token=bad%20token"))
+        assertEquals(DeepLink.Unknown, DeepLink.parse("https://open.getmoyi.app/about"))
+    }
+
+    @Test
+    fun `look-alikes of the open host are refused`() {
+        listOf(
+            "https://open.getmoyi.app.evil.com/verify?token=$token",
+            "https://evilopen.getmoyi.app/verify?token=$token",
+            "https://open-getmoyi.app/verify?token=$token",
+            "https://opengetmoyi.app/verify?token=$token",
+            "https://x.open.getmoyi.app/verify?token=$token",
+            "https://open.getmoyi.ap/verify?token=$token",
+            "https://open.getmoyi.app.:443/verify?token=$token",
+            "https://open.getmoyi.app./verify?token=$token",
+            "https://open.getmoyi.app:443/verify?token=$token",
+            "https://open.getmoyi.app@evil.com/verify?token=$token",
+            "https://evil.com@open.getmoyi.app/verify?token=$token",
+            "http://open.getmoyi.app/verify?token=$token",
+            "https://evil.com/?next=https://open.getmoyi.app/verify?token=$token",
+        ).forEach { assertEquals(DeepLink.Unknown, DeepLink.parse(it), it) }
+    }
+
+    @Test
     fun `any other host is refused`() {
         listOf(
             "https://www.getmoyi.app/verify?token=$token",
