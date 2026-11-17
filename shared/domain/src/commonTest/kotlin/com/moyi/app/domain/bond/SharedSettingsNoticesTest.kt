@@ -35,6 +35,48 @@ class SharedSettingsNoticesTest {
 
     private suspend fun waiting() = notices.notices("b1").first().map { it.notice }
 
+    private val searchOff = base.copy(semanticSearchEnabled = false)
+    private val theyAsked = searchOff.copy(semanticSearchRequest = PendingRequest(byMe = false, expiresAt = now + 7.days))
+
+    @Test
+    fun theirAskWaitsAsANote() = runTest {
+        notices.observe(searchOff)
+        notices.observe(theyAsked)
+
+        assertEquals(listOf<SharedSettingNotice>(SharedSettingNotice.SemanticSearchAsked), waiting())
+    }
+
+    @Test
+    fun theAskGoesOnceItIsAnsweredHere() = runTest {
+        notices.observe(searchOff)
+        notices.observe(theyAsked)
+
+        notices.recordOwn(base, own = setOf(SharedSetting.SEMANTIC_SEARCH))
+
+        assertTrue(waiting().isEmpty(), "agreed on this phone: no question is left")
+    }
+
+    @Test
+    fun theAskGivesWayToTheWithdrawal() = runTest {
+        notices.observe(searchOff)
+        notices.observe(theyAsked)
+
+        notices.observe(searchOff)
+
+        assertEquals(listOf<SharedSettingNotice>(SharedSettingNotice.SemanticSearchWithdrawn), waiting())
+    }
+
+    @Test
+    fun theSnapshotFollowsEveryReadAndWrite() = runTest {
+        assertEquals(null, notices.snapshot("b1").first(), "nothing read yet")
+
+        notices.observe(base)
+        assertEquals(true, notices.snapshot("b1").first()?.semanticSearchEnabled)
+
+        notices.recordOwn(searchOff, own = setOf(SharedSetting.SEMANTIC_SEARCH))
+        assertEquals(false, notices.snapshot("b1").first()?.semanticSearchEnabled, "this device's own write counts")
+    }
+
     @Test
     fun theFirstReadOnlyRemembers() = runTest {
         notices.observe(base)

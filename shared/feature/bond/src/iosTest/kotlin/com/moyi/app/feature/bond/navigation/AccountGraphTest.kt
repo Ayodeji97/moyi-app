@@ -89,6 +89,18 @@ class AccountGraphTest {
     }
 
     @Test
+    fun aNoteAboutSearchOpensItsScreenWithBondSettingsUnderIt() {
+        val nav = controller()
+
+        nav.navigateToSearchByMeaning("b-1")
+
+        assertEquals(SearchByMeaningRoute, nav.currentBackStackEntry!!.toRoute<SearchByMeaningRoute>())
+        assertEquals("b-1", nav.getBackStackEntry<BondSettingsGraph>().toRoute<BondSettingsGraph>().bondId, "the screen shares the graph's ViewModel")
+        nav.popBackStack()
+        assertEquals(BondSettingsRoute, nav.currentBackStackEntry!!.toRoute<BondSettingsRoute>(), "back returns to Bond settings")
+    }
+
+    @Test
     fun theArchivedBondsExportOpensExportWithNoAccountUnderIt() {
         val nav = controller()
 

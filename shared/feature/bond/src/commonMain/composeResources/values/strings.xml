@@ -475,4 +475,73 @@
     <!-- PROPOSED. Sizes. %1$s is a number in the device's format. -->
     <string name="export_size_mb">%1$s MB</string>
     <string name="export_size_kb">%1$s KB</string>
+
+    <!-- ===== Search by meaning (FR-204, ADR-0054; docs/missing-components.md §89) =====
+         PROPOSED, awaiting the owner's approval, except where a line says it was ruled. Started
+         from the design preview (claude.ai artifact 9gVyobcTaDq9fMA16fkvTG, 2026-11-16) and the
+         owner's rulings of 2026-11-17. No dash, no exclamation mark; the provider is never named
+         (ruling 3), the Privacy Policy is linked instead. -->
+    <!-- Ruled 2026-11-17 (1): Bond settings' own group for it, after The day. -->
+    <string name="settings_group_search">Finding your days · both of you</string>
+    <!-- Ruled 2026-11-17 (2): the feature's name, the row's label. Its value is settings_value_on / settings_value_off, or this while a request waits (either member's). -->
+    <string name="settings_row_search">Search by meaning</string>
+    <!-- PROPOSED. The row's value while a request to turn it on waits: settings_close_box_value_asked's word. -->
+    <string name="settings_search_value_asked">Asked</string>
+    <!-- PROPOSED. The screen's heading while it is off and nobody has asked. -->
+    <string name="search_heading_off">Search by meaning is off</string>
+    <!-- PROPOSED. The screen's heading while it is on. -->
+    <string name="search_heading_on">Search by meaning is on</string>
+    <!-- PROPOSED (the preview's line, its two examples in quotation marks: an underline in the app means a link). -->
+    <string name="search_what">Find days by meaning, not just words. A search for “looked after me” can find “you made me soup”.</string>
+    <!-- PROPOSED. Off: PrimaryAction, POST /bonds/{id}/semantic-search. -->
+    <string name="search_ask">Ask to turn it on</string>
+    <!-- PROPOSED. PrimaryAction Sending (close_box_confirming's word). -->
+    <string name="search_asking">Asking</string>
+    <!-- PROPOSED. Under Ask while nobody has joined: the same POST turns it on at once. -->
+    <string name="search_alone_line">Nobody has joined yet, so it turns on now.</string>
+    <!-- PROPOSED. Asked (mine): the mechanism, not the person (close_box_asked_heading's shape). -->
+    <string name="search_asked_heading">You asked to turn on search by meaning</string>
+    <!-- PROPOSED. %1$s is the other member's name, %2$s the day the request lapses (pendingSemanticSearchRequest.expiresAt, 7 days). -->
+    <string name="search_asked_line">It turns on if %1$s agrees by %2$s.</string>
+    <!-- PROPOSED. The same, when the name or the day is not known. -->
+    <string name="search_asked_line_plain">It turns on if the other person agrees.</string>
+    <!-- PROPOSED. The one action on Asked: DELETE (close_box_withdraw's words). -->
+    <string name="search_cancel">Cancel this request</string>
+    <string name="search_cancelling">Cancelling</string>
+    <!-- PROPOSED. PartnerAsked: %1$s is the other member's name. -->
+    <string name="search_partner_heading">%1$s asked to turn on search by meaning</string>
+    <!-- PROPOSED. The same, when the other member's name is not known. -->
+    <string name="search_partner_heading_unnamed">The other person asked to turn on search by meaning</string>
+    <!-- PROPOSED. Agreeing is consent to every day already written being sent too (the sweep backfills, ADR-0054 decision 1). -->
+    <string name="search_partner_line">If you agree, it covers all your days.</string>
+    <!-- PROPOSED. PartnerAsked: PrimaryAction, the same POST, and its Sending label. -->
+    <string name="search_agree">Agree</string>
+    <string name="search_agreeing">Agreeing</string>
+    <!-- Ruled 2026-11-17 (7): "Decline", not "Not now". The DELETE; its Sending label is PROPOSED. -->
+    <string name="search_decline">Decline</string>
+    <string name="search_declining">Declining</string>
+    <!-- PROPOSED. On: PrimaryAction, PATCH semanticSearchEnabled=false, after the confirmation. Also the dialog's confirm label. -->
+    <string name="search_turn_off">Turn it off</string>
+    <!-- PROPOSED. PrimaryAction Sending. -->
+    <string name="search_turning_off">Turning off</string>
+    <!-- PROPOSED. Ruled 2026-11-17 (11): turning it off asks first. ConfirmDialog title; Cancel is settings_cancel. -->
+    <string name="search_off_confirm_title">Turn off search by meaning?</string>
+    <!-- PROPOSED. The dialog's line: why it asks. -->
+    <string name="search_off_confirm_line">Turning it back on needs you both to agree.</string>
+    <!-- PROPOSED. The dialog's line while nobody has joined: then the person turns it back on alone. -->
+    <string name="search_off_confirm_line_alone">Nobody has joined yet, so you can turn it back on yourself.</string>
+    <!-- Ruled 2026-11-17 (5), word for word. A bond that has ended (or counts down to deletion): off, with no action to turn it on. -->
+    <string name="search_ended_line">This bond has ended, so search by meaning cannot be turned on.</string>
+    <!-- PROPOSED. The facts card's label (Ruled 2026-11-17 (4): a new design-system component, FactsCard). -->
+    <string name="search_facts_label">Good to know</string>
+    <!-- PROPOSED. The contract: only the entry text is sent (ADR-0054 decision C), never media. The provider is not named (ruling 3). -->
+    <string name="search_fact_sent">Your words go to a search service. Photos and voice notes do not.</string>
+    <!-- PROPOSED. %1$s is the other member's name. Search finds their entry only once the day has opened (the contract). Worded without a possessive, which does not translate. -->
+    <string name="search_fact_hidden">Search never shows what %1$s wrote before your day opens.</string>
+    <!-- PROPOSED. The same, when the other member's name is not known (nobody has joined). -->
+    <string name="search_fact_hidden_unnamed">Search never shows what the other person wrote before your day opens.</string>
+    <!-- PROPOSED. -->
+    <string name="search_fact_either">Either of you can turn it off.</string>
+    <!-- PROPOSED. Ruled 2026-11-17 (3): the card links the Privacy Policy (GET /meta/legal's privacy URL, in the in-app browser). -->
+    <string name="search_privacy_link">Read the Privacy Policy</string>
 </resources>

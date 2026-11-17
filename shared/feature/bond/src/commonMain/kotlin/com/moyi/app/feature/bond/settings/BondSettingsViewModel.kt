@@ -13,6 +13,7 @@ import com.moyi.app.domain.bond.BondSettingsRepository
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.TimeOfDay
+import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.settings_error_conflict
 import com.moyi.app.feature.bond.resources.settings_error_generic
@@ -69,11 +70,19 @@ import com.moyi.app.feature.onboarding.resources.bond_name_error_too_long
  * - **The invite** (states.md §2): share and copy the live one, cancel it (`DELETE`), or
  *   create a new one, which replaces any other. `409 BOND_FULL` means someone joined:
  *   reload and say so. A `404` from cancel means it was already dead: done.
+ * - **Search by meaning** (FR-204, ADR-0054; [BondSettingsState.searchStep]): one `POST` asks or
+ *   agrees, one `DELETE` cancels or declines (then the root, as close the box does), and turning
+ *   it off is a `PATCH` with `If-Match`, asked first (owner ruling 2026-11-17, 11), `412` handled as
+ *   every other change. Off works on an ended bond (ADR-0054 decision 9), so it is open during
+ *   the cooling-off too. A `409 BOND_ARCHIVED` on the ask is not [BondSettingsEvent.Ended]: the bond
+ *   is still shown (it counts down to deletion), so it is read again and the screen says it has ended.
  */
 class BondSettingsViewModel(
     private val bondId: String,
     private val repository: BondSettingsRepository,
     private val bonds: BondRepository,
+    /** The documents in force, read when the person opens the Privacy Policy from search by meaning. */
+    private val legal: LegalRepository,
     /** Every zone id the platform knows; kotlinx-datetime's list unless a test gives one. */
     private val zoneIds: () -> Set<String> = { TimeZone.availableZoneIds },
     /** Today's date in the bond's zone is read from it; a test gives a fixed one. */
@@ -156,6 +165,21 @@ class BondSettingsViewModel(
             }
             BondSettingsAction.OnCloseBoxConfirm -> requestDeletion()
             BondSettingsAction.OnCloseBoxWithdraw -> cancelDeletion()
+            BondSettingsAction.OnSearchClick -> if (canEdit()) {
+                _state.update { it.copy(error = null, confirmingSearchOff = false) }
+                send(BondSettingsEvent.OpenSearch)
+                refreshQuietly()
+            }
+            BondSettingsAction.OnSearchAsk -> requestSemanticSearch()
+            BondSettingsAction.OnSearchCancel -> cancelSemanticSearch()
+            BondSettingsAction.OnSearchTurnOffClick ->
+                if (canEdit() && _state.value.searchStep == SearchStep.On) _state.update { it.copy(confirmingSearchOff = true, error = null) }
+            BondSettingsAction.OnSearchTurnOffDismiss -> _state.update { it.copy(confirmingSearchOff = false) }
+            BondSettingsAction.OnSearchTurnOffConfirm -> {
+                _state.update { it.copy(confirmingSearchOff = false) }
+                turnOffSemanticSearch()
+            }
+            BondSettingsAction.OnPrivacyPolicyClick -> openPrivacyPolicy()
             BondSettingsAction.OnEditorClosed -> _state.update { it.copy(error = null, nameError = null) }
             BondSettingsAction.OnTimeZoneClick -> {
                 val settings = _state.value.settings ?: return
@@ -505,6 +529,114 @@ class BondSettingsViewModel(
             send(BondSettingsEvent.Ended)
         } else {
             _state.update { it.copy(saving = null, closeBoxSecondaryInFlight = false, error = SettingsError(SettingsField.CloseBox, error.message())) }
+        }
+    }
+
+    // ----- search by meaning (FR-204, ADR-0054) -----
+
+    /**
+     * Ask, or agree: the answer says which, and the screen follows it (Asked, or On). Not offered on
+     * an ended bond: the server would refuse it (`409 BOND_ARCHIVED`).
+     */
+    private fun requestSemanticSearch() {
+        if (!canEdit()) return
+        val step = _state.value.searchStep
+        if (step != SearchStep.Off && step != SearchStep.PartnerAsked) return
+        if (_state.value.settings?.ended == true) return
+        _state.update { it.copy(saving = SettingsField.Search, searchSecondaryInFlight = false, error = null) }
+        viewModelScope.launch {
+            when (val result = repository.requestSemanticSearch(bondId)) {
+                is Result.Success -> _state.update { it.copy(settings = result.data, saving = null) }
+                is Result.Failure -> searchFailure(result.error)
+            }
+        }
+    }
+
+    /**
+     * Cancel my ask, or decline theirs: the same `DELETE`, then the root (close the box's way). A
+     * `404` is "nothing was pending" (it lapsed, or was answered): what the person asked for, or
+     * moot; the read that follows shows which.
+     */
+    private fun cancelSemanticSearch() {
+        if (!canEdit()) return
+        val step = _state.value.searchStep
+        if (step != SearchStep.Asked && step != SearchStep.PartnerAsked) return
+        _state.update { it.copy(saving = SettingsField.Search, searchSecondaryInFlight = true, error = null) }
+        viewModelScope.launch {
+            val result = repository.cancelSemanticSearchRequest(bondId)
+            if (result is Result.Failure && !result.error.isNotFound()) return@launch searchFailure(result.error)
+            refreshAfter { it.copy(pendingSemanticSearch = null) }
+            _state.update { it.copy(searchSecondaryInFlight = false) }
+            send(BondSettingsEvent.Saved)
+        }
+    }
+
+    /** Off, alone, at once: a `PATCH` with the version, so a `412` reloads and says so, as every change does. */
+    private fun turnOffSemanticSearch() {
+        if (!canEdit()) return
+        val current = _state.value.settings ?: return
+        if (!current.semanticSearchEnabled) return
+        _state.update { it.copy(saving = SettingsField.Search, searchSecondaryInFlight = false, error = null) }
+        viewModelScope.launch {
+            when (val result = repository.turnOffSemanticSearch(bondId, current.version)) {
+                is Result.Success -> _state.update { it.copy(settings = result.data, saving = null) }
+                is Result.Failure -> searchFailure(result.error)
+            }
+        }
+    }
+
+    private suspend fun searchFailure(error: DataError.Network) {
+        when {
+            (error as? DataError.Network.Api)?.problem?.status == 404 -> {
+                _state.update { it.copy(saving = null, searchSecondaryInFlight = false) }
+                send(BondSettingsEvent.Ended)
+            }
+            error.code() == ApiErrorCode.PRECONDITION_FAILED -> {
+                conflict(SettingsField.Search)
+                _state.update { it.copy(searchSecondaryInFlight = false) }
+            }
+            // Ended, or counting down to deletion, since it was read: read it again, and the screen
+            // says it cannot be turned on. Only if that read fails is there an error to show.
+            error.code() == ApiErrorCode.BOND_ARCHIVED -> {
+                val fresh = (repository.settings(bondId) as? Result.Success)?.data
+                _state.update {
+                    it.copy(
+                        settings = fresh ?: it.settings,
+                        saving = null,
+                        searchSecondaryInFlight = false,
+                        error = if (fresh == null) SettingsError(SettingsField.Search, error.message()) else null,
+                    )
+                }
+            }
+            else -> _state.update { it.copy(saving = null, searchSecondaryInFlight = false, error = SettingsError(SettingsField.Search, error.message())) }
+        }
+    }
+
+    /**
+     * Reads the bond again as the screen opens, with nothing shown while it does: the other member
+     * may have asked (or answered) since Bond settings was read, and there is no push for it yet
+     * (docs/backend-contract-gaps.md row 46). A failure keeps what is shown; a write that started
+     * meanwhile wins.
+     */
+    private fun refreshQuietly() {
+        viewModelScope.launch {
+            val fresh = (repository.settings(bondId) as? Result.Success)?.data ?: return@launch
+            _state.update { if (it.saving == null) it.copy(settings = fresh) else it }
+        }
+    }
+
+    /** The Privacy Policy in force, read now (it is versioned, ADR-0056), never a URL kept in the app. */
+    private fun openPrivacyPolicy() {
+        viewModelScope.launch {
+            when (val result = legal.documents()) {
+                is Result.Success -> {
+                    _state.update { if (it.error?.field == SettingsField.Search) it.copy(error = null) else it }
+                    send(BondSettingsEvent.OpenPage(result.data.privacy.url))
+                }
+                is Result.Failure -> _state.update {
+                    if (it.saving != null) it else it.copy(error = SettingsError(SettingsField.Search, result.error.message()))
+                }
+            }
         }
     }
 

@@ -255,7 +255,7 @@ class PausedBondTest : MainDispatcherTest() {
     fun anEmptyArchiveOffersNoWriteWhileTheBondIsPaused() = runTest {
         val archiveLoop = FakeDailyLoop(DailyLoopState.Ready(dayView(TodayStatus.NotWritten).copy(paused = true)))
         val repository = FakeArchiveRepository().apply { pages[null] = ArchivePage(emptyList(), null) }
-        val list = ArchiveViewModel(ArchiveFeed(archiveLoop, repository, FakeArchiveCache()))
+        val list = ArchiveViewModel(ArchiveFeed(archiveLoop, repository, FakeArchiveCache()), FakeSettingsNotices())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect {} }
 
         assertTrue(list.state.value.isEmpty)

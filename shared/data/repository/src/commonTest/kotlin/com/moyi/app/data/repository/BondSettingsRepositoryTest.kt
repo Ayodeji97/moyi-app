@@ -20,6 +20,7 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.PendingDeletionRequest
+import com.moyi.app.domain.bond.PendingSemanticSearchRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.PendingNotice
@@ -45,6 +46,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -276,6 +278,88 @@ class BondSettingsRepositoryTest {
         assertEquals("/api/v1/bonds/b1/deletion-request", fixture.requests.single().url.encodedPath)
     }
 
+    // ----- search by meaning (FR-204, ADR-0054) -----
+
+    @Test
+    fun searchByMeaningAndWhoAskedAreReadWithTheSettings() = runTest {
+        val mine = """{"requestedByMemberId":"m1","requestedAt":"2026-11-16T10:00:00Z","expiresAt":"2026-11-23T10:00:00Z"}"""
+        val asked = assertIs<Result.Success<BondSettings>>(Fixture { respondBond(bondJson(semanticSearch = false, pendingSearch = mine), etag = "\"3\"") }.repo.settings("b1")).data
+        assertFalse(asked.semanticSearchEnabled)
+        assertEquals(PendingSemanticSearchRequest(requestedByMe = true, expiresAt = Instant.parse("2026-11-23T10:00:00Z")), asked.pendingSemanticSearch)
+
+        val theirs = mine.replace("m1", "m2")
+        val partner = assertIs<Result.Success<BondSettings>>(Fixture { respondBond(bondJson(semanticSearch = false, pendingSearch = theirs), etag = "\"3\"") }.repo.settings("b1")).data
+        assertEquals(false, partner.pendingSemanticSearch?.requestedByMe)
+
+        val on = assertIs<Result.Success<BondSettings>>(Fixture { respondBond(bondJson(semanticSearch = true), etag = "\"3\"") }.repo.settings("b1")).data
+        assertTrue(on.semanticSearchEnabled)
+        assertNull(on.pendingSemanticSearch)
+    }
+
+    @Test
+    fun turningSearchOffIsAPatchOfFalseAloneWithTheVersion() = runTest {
+        val fixture = Fixture { respondBond(bondJson(semanticSearch = false), etag = "\"8\"") }
+
+        val result = assertIs<Result.Success<BondSettings>>(fixture.repo.turnOffSemanticSearch("b1", version = "\"7\"")).data
+
+        val request = fixture.requests.single()
+        assertEquals(HttpMethod.Patch, request.method)
+        assertEquals("/api/v1/bonds/b1", request.url.encodedPath)
+        assertEquals("\"7\"", request.headers[HttpHeaders.IfMatch])
+        assertEquals(Json.parseToJsonElement("""{"semanticSearchEnabled":false}"""), fixture.json())
+        assertFalse(result.semanticSearchEnabled)
+        assertEquals("\"8\"", result.version)
+        assertEquals(listOf(setOf(SharedSetting.SEMANTIC_SEARCH)), fixture.notices.own.map { it.second }, "my own change is not told back to me")
+    }
+
+    @Test
+    fun aTurnOffAfterTheOtherMemberChangedTheBondIsAConflict() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.PreconditionFailed, "PRECONDITION_FAILED") }
+        assertEquals(
+            Result.Failure(DataError.Network.Api(ApiProblem(412, ApiErrorCode.PRECONDITION_FAILED))),
+            fixture.repo.turnOffSemanticSearch("b1", version = "\"7\""),
+        )
+        assertTrue(fixture.notices.own.isEmpty())
+    }
+
+    @Test
+    fun askingForSearchIsAPostAnsweredWithTheBond() = runTest {
+        val mine = """{"requestedByMemberId":"m1","requestedAt":"2026-11-16T10:00:00Z","expiresAt":"2026-11-23T10:00:00Z"}"""
+        val fixture = Fixture { respondBond(bondJson(semanticSearch = false, pendingSearch = mine), etag = "\"4\"", status = HttpStatusCode.Accepted) }
+
+        val result = assertIs<Result.Success<BondSettings>>(fixture.repo.requestSemanticSearch("b1")).data
+
+        val request = fixture.requests.single()
+        assertEquals(HttpMethod.Post, request.method)
+        assertEquals("/api/v1/bonds/b1/semantic-search", request.url.encodedPath)
+        assertEquals(true, result.pendingSemanticSearch?.requestedByMe)
+        assertEquals("\"4\"", result.version, "the next PATCH needs the 202's ETag")
+        assertEquals(listOf(setOf(SharedSetting.SEMANTIC_SEARCH)), fixture.notices.own.map { it.second })
+    }
+
+    @Test
+    fun askingForSearchOnAnEndedBondIsBondArchived() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.Conflict, "BOND_ARCHIVED") }
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(409, ApiErrorCode.BOND_ARCHIVED))), fixture.repo.requestSemanticSearch("b1"))
+    }
+
+    @Test
+    fun cancellingOrDecliningTheSearchRequestIsADeleteThatClearsTheRememberedRequest() = runTest {
+        val fixture = Fixture { respond("", HttpStatusCode.NoContent) }
+
+        assertEquals(Result.Success(Unit), fixture.repo.cancelSemanticSearchRequest("b1"))
+        assertEquals(HttpMethod.Delete, fixture.requests.single().method)
+        assertEquals("/api/v1/bonds/b1/semantic-search", fixture.requests.single().url.encodedPath)
+        assertEquals(listOf("b1" to SharedSetting.SEMANTIC_SEARCH), fixture.notices.cleared)
+    }
+
+    @Test
+    fun aSearchRequestAlreadyGoneIsANotFound() = runTest {
+        val fixture = Fixture { respondProblem(HttpStatusCode.NotFound, "NOT_FOUND") }
+        assertEquals(Result.Failure(DataError.Network.Api(ApiProblem(404, ApiErrorCode.NOT_FOUND))), fixture.repo.cancelSemanticSearchRequest("b1"))
+        assertTrue(fixture.notices.cleared.isEmpty())
+    }
+
     @Test
     fun memberSettingsAreTheCallersOwn() = runTest {
         val fixture = Fixture {
@@ -313,11 +397,13 @@ class BondSettingsRepositoryTest {
         deletionScheduledFor: String = "null",
         pendingDeletion: String = "null",
         allowedFrom: String = "null",
+        semanticSearch: Boolean = true,
+        pendingSearch: String = "null",
     ): String =
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":$deletionScheduledFor,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false,"paused":false,""" +
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":$pendingSearch,"semanticSearchEnabled":$semanticSearch,"paused":false,""" +
             """"timezoneChangeAllowedFrom":$allowedFrom}"""
 
     private fun pendingJson(proposedBy: String): String =
@@ -489,6 +575,8 @@ internal class RecordingNotices : SharedSettingsNotices {
     }
 
     override fun notices(bondId: String): Flow<List<PendingNotice>> = flowOf(emptyList())
+
+    override fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?> = flowOf(null)
 
     override suspend fun dismiss(bondId: String, id: Long) = Unit
 }

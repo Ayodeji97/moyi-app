@@ -41,7 +41,7 @@ class ArchiveViewModelTest : MainDispatcherTest() {
     private val feed = ArchiveFeed(loop, repository, cache)
 
     /** The list ViewModel, with its state collected (it is shared WhileSubscribed, as the screen would). */
-    private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed).also { viewModel ->
+    private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed, FakeSettingsNotices()).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
     }
 

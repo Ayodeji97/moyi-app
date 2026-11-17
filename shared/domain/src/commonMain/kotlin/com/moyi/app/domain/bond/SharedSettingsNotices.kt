@@ -3,6 +3,7 @@ package com.moyi.app.domain.bond
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
@@ -105,6 +106,16 @@ sealed interface SharedSettingNotice {
         override val setting get() = SharedSetting.SEMANTIC_SEARCH
     }
 
+    /**
+     * The other member asked to turn search by meaning back on, and it waits for this person.
+     * Told here because no push says so yet (moyi-backend#205; owner ruling 2026-11-17, 6). The
+     * one note that names the other member: the request carries their member id, so it cannot
+     * have been the reader's own, from another phone.
+     */
+    data object SemanticSearchAsked : SharedSettingNotice {
+        override val setting get() = SharedSetting.SEMANTIC_SEARCH
+    }
+
     /** Search by meaning was turned off (either member may, alone). */
     data object SemanticSearchTurnedOff : SharedSettingNotice {
         override val setting get() = SharedSetting.SEMANTIC_SEARCH
@@ -133,7 +144,9 @@ sealed interface SharedSettingNotice {
  * What changed between [previous] (as this device last saw the bond) and [current], as of [now].
  * Pure: the rules, with nothing stored or sent.
  *
- * - **Nothing to compare with** ([previous] null): nothing. The first look only remembers.
+ * - **Nothing to compare with** ([previous] null): nothing, but for one case. The first look
+ *   only remembers, except a live request by the other member to turn search by meaning on:
+ *   it waits for the person's answer and nothing else tells them of it (no push yet, #205).
  * - **T-09: never about who is in the bond.** Both readings must be of a bond with two people
  *   in it that has not ended ([BondStatus.ACTIVE] or [BondStatus.PENDING_DELETION]). Leaving
  *   and blocking end the bond and cancel every open proposal (ADR-0030); read as "withdrawn",
@@ -141,7 +154,8 @@ sealed interface SharedSettingNotice {
  * - **A proposal or request that lapsed** (its `expiresAt` has passed): nothing. Nobody did it.
  * - **The other member's proposal applied** is the person's own agreement (on another phone):
  *   nothing. **My proposal applied**: agreed. **Gone unapplied before it lapsed**: mine, it
- *   stays as it was; theirs, withdrawn. A proposal opening is told by the backend's push.
+ *   stays as it was; theirs, withdrawn. A proposal opening is told by the backend's push, but
+ *   for a request to turn search by meaning on, which has none: it is a note here.
  * - **Changes either member makes alone**: the new value.
  *
  * One note per change, in this order: time zone, closing the box, search by meaning, name,
@@ -151,8 +165,30 @@ fun sharedSettingsNotices(
     previous: SharedSettingsSnapshot?,
     current: SharedSettingsSnapshot,
     now: Instant,
+): List<SharedSettingNotice> = diff(previous?.toMillis(), current.toMillis(), now)
+
+/**
+ * The snapshot with every time to the millisecond, as a store keeps it (SQLDelight: epoch
+ * milliseconds). The server sends microseconds, so a request read again from the server would
+ * otherwise never equal the same request read back from the store, and every read would take a
+ * live request for a new one (or for one that went).
+ */
+private fun SharedSettingsSnapshot.toMillis(): SharedSettingsSnapshot = copy(
+    timezoneProposal = timezoneProposal?.let { it.copy(expiresAt = it.expiresAt.toMillis()) },
+    deletionRequest = deletionRequest?.let { it.copy(expiresAt = it.expiresAt.toMillis()) },
+    semanticSearchRequest = semanticSearchRequest?.let { it.copy(expiresAt = it.expiresAt.toMillis()) },
+)
+
+private fun Instant.toMillis(): Instant = Instant.fromEpochMilliseconds(toEpochMilliseconds())
+
+private fun diff(
+    previous: SharedSettingsSnapshot?,
+    current: SharedSettingsSnapshot,
+    now: Instant,
 ): List<SharedSettingNotice> {
-    if (previous == null) return emptyList()
+    if (previous == null) {
+        return listOfNotNull(SharedSettingNotice.SemanticSearchAsked.takeIf { current.status in TwoPeopleOpen && current.waitingSemanticSearchAsk(now) })
+    }
     if (previous.status !in TwoPeopleOpen || current.status !in TwoPeopleOpen) return emptyList()
     return buildList {
         timezone(previous, current, now)?.let(::add)
@@ -202,7 +238,17 @@ private fun deletion(previous: SharedSettingsSnapshot, current: SharedSettingsSn
     }
 }
 
+/** The other member's request to turn search by meaning on, still live and still off: it waits for the reader. */
+internal fun SharedSettingsSnapshot.waitingSemanticSearchAsk(now: Instant): Boolean {
+    val request = semanticSearchRequest ?: return false
+    return !request.byMe && request.expiresAt > now && !semanticSearchEnabled
+}
+
 private fun semanticSearch(previous: SharedSettingsSnapshot, current: SharedSettingsSnapshot, now: Instant): SharedSettingNotice? {
+    // A new ask from the other member (not the one already seen): it waits for the reader's answer.
+    if (current.waitingSemanticSearchAsk(now) && current.semanticSearchRequest != previous.semanticSearchRequest) {
+        return SharedSettingNotice.SemanticSearchAsked
+    }
     val request = previous.semanticSearchRequest
     if (request == null || current.semanticSearchRequest == request) {
         val turnedOff = previous.semanticSearchEnabled && !current.semanticSearchEnabled
@@ -255,14 +301,21 @@ interface SharedSettingsNotices {
     suspend fun recordOwn(current: SharedSettingsSnapshot, own: Set<SharedSetting>)
 
     /**
-     * This device declined, withdrew or called off [setting]'s waiting request ([SharedSetting.TIMEZONE]
-     * or [SharedSetting.DELETION]). The call answers `204` with no bond, so the remembered one is
+     * This device declined, withdrew or called off [setting]'s waiting request ([SharedSetting.TIMEZONE],
+     * [SharedSetting.DELETION] or [SharedSetting.SEMANTIC_SEARCH]). The call answers `204` with no bond, so the remembered one is
      * changed to match, and the next read does not take the person's own answer for the other's.
      */
     suspend fun clearOwnRequest(bondId: String, setting: SharedSetting)
 
     /** The notes waiting for [bondId], oldest first, again whenever they change. */
     fun notices(bondId: String): Flow<List<PendingNotice>>
+
+    /**
+     * [bondId]'s shared settings as this device last read or wrote them, again whenever they
+     * change; null before the first read. For screens that follow a shared setting without
+     * reading the bond themselves (the archive's search helper follows search by meaning).
+     */
+    fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?>
 
     /** The person dismissed the note (or followed it to Bond settings): it is not shown again. */
     suspend fun dismiss(bondId: String, id: Long)
@@ -288,6 +341,13 @@ class SharedSettingsNoticesImpl(
         val previous = store.snapshot(current.bondId)
         val notices = sharedSettingsNotices(previous, current, now()).withoutOwn(own)
         if (previous != current || notices.isNotEmpty()) store.save(current, notices)
+        // A note asking for an answer goes once nothing waits for one: answered here or on another
+        // phone, withdrawn, or lapsed. Unlike the others it is not news but a question.
+        if (!current.waitingSemanticSearchAsk(now())) {
+            store.notices(current.bondId)
+                .filter { it.notice == SharedSettingNotice.SemanticSearchAsked }
+                .forEach { store.removeNotice(current.bondId, it.id) }
+        }
     }
 
     override suspend fun clearOwnRequest(bondId: String, setting: SharedSetting) = change {
@@ -307,6 +367,9 @@ class SharedSettingsNoticesImpl(
 
     override fun notices(bondId: String): Flow<List<PendingNotice>> =
         revision.map { quietly { store.notices(bondId) } ?: emptyList() }
+
+    override fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?> =
+        revision.map { quietly { store.snapshot(bondId) } }.distinctUntilChanged()
 
     override suspend fun dismiss(bondId: String, id: Long) = change { store.removeNotice(bondId, id) }
 

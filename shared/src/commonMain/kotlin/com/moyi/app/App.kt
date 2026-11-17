@@ -53,6 +53,7 @@ import com.moyi.app.feature.bond.navigation.BondSettingsGraph
 import com.moyi.app.feature.bond.navigation.accountGraph
 import com.moyi.app.feature.bond.navigation.bondArchivedDestination
 import com.moyi.app.feature.bond.navigation.bondSettingsGraph
+import com.moyi.app.feature.bond.navigation.navigateToSearchByMeaning
 import com.moyi.app.feature.onboarding.navigation.InviteHandoffRoute
 import com.moyi.app.feature.onboarding.navigation.JoinCodeRoute
 import com.moyi.app.feature.bond.navigation.openReport
@@ -253,6 +254,7 @@ private fun MoyiNavHost(
         todayGraph(
             navController = navController,
             onOpenSettings = { bondId -> navController.navigate(BondSettingsGraph(bondId)) { launchSingleTop = true } },
+            onOpenSearchSettings = { bondId -> navController.navigateToSearchByMeaning(bondId) },
             // The Archive day view's Report (FR-100): the report flow, over the day.
             onReport = { bondId, entryId, partnerName -> navController.openReport(bondId, entryId, partnerName) },
             // Left or ended on the other phone: the signed-in start asks the server again.

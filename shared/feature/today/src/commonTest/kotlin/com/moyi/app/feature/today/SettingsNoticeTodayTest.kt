@@ -48,6 +48,11 @@ class FakeSettingsNotices(vararg waiting: Pair<String, SharedSettingNotice>) : S
     override fun notices(bondId: String): Flow<List<PendingNotice>> =
         pending.map { all -> all.filter { it.first == bondId }.map { it.second } }
 
+    /** What the device last read of each bond: the archive's helper follows it. */
+    val snapshots = MutableStateFlow<Map<String, SharedSettingsSnapshot>>(emptyMap())
+
+    override fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?> = snapshots.map { it[bondId] }
+
     override suspend fun dismiss(bondId: String, id: Long) {
         dismissed += id
         pending.value = pending.value.filterNot { it.first == bondId && it.second.id == id }
@@ -127,6 +132,21 @@ class SettingsNoticeTodayTest : MainDispatcherTest() {
         viewModel.events.test {
             viewModel.onAction(TodayAction.OnSettingsNoticeOpenSettings)
             assertEquals(TodayEvent.NavigateToSettings(bondId), awaitItem())
+        }
+        assertNull(viewModel.state.value.settingsNotice)
+    }
+
+    @Test
+    fun seeBondSettingsOnASearchNoteOpensSearchByMeaning() = runTest {
+        notices.add(bondId, SharedSettingNotice.SemanticSearchAsked)
+        notices.add(bondId, SharedSettingNotice.SemanticSearchTurnedOff)
+        open()
+
+        viewModel.events.test {
+            viewModel.onAction(TodayAction.OnSettingsNoticeOpenSettings)
+            assertEquals(TodayEvent.NavigateToSearchSettings(bondId), awaitItem())
+            viewModel.onAction(TodayAction.OnSettingsNoticeOpenSettings)
+            assertEquals(TodayEvent.NavigateToSearchSettings(bondId), awaitItem(), "the now-off note opens it too (ruling 13)")
         }
         assertNull(viewModel.state.value.settingsNotice)
     }
