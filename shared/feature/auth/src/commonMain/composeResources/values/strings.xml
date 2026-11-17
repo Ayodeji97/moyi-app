@@ -184,10 +184,8 @@
     <string name="change_password_consequence">Your other devices will be signed out. This phone stays signed in.</string>
     <!-- Approved 2026-11-17 (owner, §83). The new-password step's action when signed in, instead of reset_action ("Save and sign in"): the person is already signed in. While it waits the label is reset_action_sending ("Saving"). -->
     <string name="change_password_action">Save the new password</string>
-    <!-- Approved 2026-11-17 (owner, §83). The snackbar over Account once the new password is saved and this phone kept signed in. -->
+    <!-- Approved 2026-11-17 (owner, §83). The snackbar (MoyiSnackbar) over Account once the new password is saved and this phone kept signed in. -->
     <string name="change_password_done">Your new password is saved.</string>
-    <!-- Approved 2026-11-17 (owner, §84). The snackbar once a reset link opened while signed in turned out to be for another account: the new password is saved for that account, and this phone is still signed in as before. -->
-    <string name="reset_link_other_account_done">That link was for another account. Its new password is saved. You are still signed in here.</string>
 
     <!-- PROPOSED. 410 PASSWORD_RESET_TOKEN_EXPIRED (expired, or already used), under the code field. Only a link is ever answered 410. -->
     <string name="reset_token_error_expired">That link has expired. Go back and ask for a new one.</string>

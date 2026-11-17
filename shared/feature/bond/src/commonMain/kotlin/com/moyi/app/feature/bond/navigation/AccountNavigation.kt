@@ -62,6 +62,8 @@ internal data object ExportRoute
  *   They are here so a person with no bond can reach them (smoke test 2026-11-09).
  * - Account → Change password ([onOpenChangePassword]): the auth feature's screens, pushed
  *   over Account by the shell; once the new password is saved they pop back to Account.
+ * - A note for Account ([showAccount], §87): back to Account if it is on the stack, else
+ *   Account pushed over what is showing.
  */
 fun NavGraphBuilder.accountGraph(
     navController: NavController,
@@ -71,6 +73,19 @@ fun NavGraphBuilder.accountGraph(
 ) {
     navigation<AccountGraph>(startDestination = AccountRoute) {
         accountDestinations(navController, onOpenLegal, onOpenSupport, onOpenChangePassword)
+    }
+}
+
+/**
+ * Account on screen, for a note that waits there (docs/missing-components.md §87): popped back
+ * to when it is already on the back stack (whatever was over it closes), opened otherwise, over
+ * what is showing, so back returns there.
+ */
+fun NavController.showAccount() {
+    if (runCatching { getBackStackEntry<AccountRoute>() }.isSuccess) {
+        popBackStack<AccountRoute>(inclusive = false)
+    } else {
+        navigate(AccountGraph) { launchSingleTop = true }
     }
 }
 

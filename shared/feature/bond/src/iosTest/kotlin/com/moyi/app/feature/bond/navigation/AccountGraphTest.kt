@@ -65,6 +65,30 @@ class AccountGraphTest {
     }
 
     @Test
+    fun aNoteForAccountOpensItOverWhatIsShowing() {
+        val nav = controller()
+
+        nav.showAccount()
+
+        assertEquals(AccountRoute, nav.currentBackStackEntry!!.toRoute<AccountRoute>())
+        nav.popBackStack()
+        assertEquals(null, nav.currentBackStackEntry!!.toRoute<BondArchivedRoute>().partnerName, "back returns to where it was")
+    }
+
+    @Test
+    fun aNoteForAccountReturnsToAnAccountAlreadyOpenAndOpensNoSecond() {
+        val nav = controller()
+        nav.navigate(AccountGraph)
+        nav.navigate(ExportRoute)
+
+        nav.showAccount()
+
+        assertEquals(AccountRoute, nav.currentBackStackEntry!!.toRoute<AccountRoute>())
+        nav.popBackStack()
+        assertEquals(null, nav.currentBackStackEntry!!.toRoute<BondArchivedRoute>().partnerName, "one Account, not two")
+    }
+
+    @Test
     fun theArchivedBondsExportOpensExportWithNoAccountUnderIt() {
         val nav = controller()
 

@@ -3,7 +3,6 @@ package com.moyi.app.feature.auth.navigation
 import androidx.compose.runtime.Composable
 import com.moyi.app.feature.auth.resources.Res
 import com.moyi.app.feature.auth.resources.change_password_done
-import com.moyi.app.feature.auth.resources.reset_link_other_account_done
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -13,11 +12,3 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun passwordChangedNotice(): String = stringResource(Res.string.change_password_done)
-
-/**
- * What the shell's snackbar says once a reset link opened while signed in turned out to be
- * another account's: that account's password is saved, and this phone is signed in as before
- * (docs/missing-components.md §84).
- */
-@Composable
-fun otherAccountPasswordChangedNotice(): String = stringResource(Res.string.reset_link_other_account_done)

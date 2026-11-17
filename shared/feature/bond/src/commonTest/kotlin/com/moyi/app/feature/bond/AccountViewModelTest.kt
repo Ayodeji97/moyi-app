@@ -16,6 +16,8 @@ import com.moyi.app.domain.today.QueuedEntry
 import com.moyi.app.feature.bond.account.AccountAction
 import com.moyi.app.feature.bond.account.AccountEvent
 import com.moyi.app.feature.bond.account.AccountLoad
+import com.moyi.app.feature.bond.account.AccountNote
+import com.moyi.app.feature.bond.account.AccountNotes
 import com.moyi.app.feature.bond.account.AccountViewModel
 import com.moyi.app.feature.bond.account.DeletionCall
 import com.moyi.app.feature.bond.resources.Res
@@ -71,7 +73,38 @@ class AccountViewModelTest : MainDispatcherTest() {
     private val auth = FakeAuthRepository()
     private val outbox = FakeOutbox()
     private val emptyBonds = FakeEmptyBondExit()
-    private val viewModel by lazy { AccountViewModel(deletion, auth, outbox, outbox, emptyBonds) }
+    private val notes = AccountNotes()
+    private val viewModel by lazy { AccountViewModel(deletion, auth, outbox, outbox, emptyBonds, notes) }
+
+    // ----- the note card (docs/missing-components.md §87) -----
+
+    @Test
+    fun aNotePostedBeforeAccountOpensShowsAsItsCard() = runTest {
+        notes.post(AccountNote.OtherAccountPasswordSaved)
+
+        assertEquals(AccountNote.OtherAccountPasswordSaved, viewModel.state.value.note)
+    }
+
+    @Test
+    fun aNotePostedWhileAccountIsOpenShowsToo() = runTest {
+        assertNull(viewModel.state.value.note)
+
+        notes.post(AccountNote.OtherAccountPasswordSaved)
+
+        assertEquals(AccountNote.OtherAccountPasswordSaved, viewModel.state.value.note)
+    }
+
+    @Test
+    fun theNoteStaysUntilOkAndOkClearsItForTheWholeApp() = runTest {
+        notes.post(AccountNote.OtherAccountPasswordSaved)
+        viewModel.onAction(AccountAction.OnRetryClick)
+        assertEquals(AccountNote.OtherAccountPasswordSaved, viewModel.state.value.note, "nothing else takes it away")
+
+        viewModel.onAction(AccountAction.OnNoteDismiss)
+
+        assertNull(viewModel.state.value.note)
+        assertNull(notes.note.value, "a later Account does not show it again")
+    }
 
     private fun api(status: Int, code: ApiErrorCode) = Result.Failure(DataError.Network.Api(ApiProblem(status, code)))
 

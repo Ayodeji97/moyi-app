@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -39,6 +40,8 @@ import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.account_delete_value_pending
 import com.moyi.app.feature.bond.resources.account_eyebrow
 import com.moyi.app.feature.bond.resources.account_heading
+import com.moyi.app.feature.bond.resources.account_note_ok
+import com.moyi.app.feature.bond.resources.account_note_other_account_password
 import com.moyi.app.feature.bond.resources.account_row_delete
 import com.moyi.app.feature.bond.resources.account_row_export
 import com.moyi.app.feature.bond.resources.account_signed_in_as
@@ -90,6 +93,9 @@ import kotlin.time.Instant
  * a failed load too. Under it, **Change password** ([onChangePassword], §83): a code to that
  * address, then a new password, staying signed in here. It needs nothing from `/me` either.
  *
+ * At the top, while one waits, **a note card** ([AccountNoteCard], §87): a line and OK, which
+ * stays until OK is tapped.
+ *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, and every
  * row but Delete your account stays under it, because none of them needs anything `/me` holds.
  * While signing out every row waits, and Sign out says Signing out.
@@ -106,6 +112,10 @@ fun AccountScreen(
     when (state.load) {
         AccountLoad.Loading -> Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
         AccountLoad.Failed -> MoyiScaffold(onBack = onBack, contentArrangement = Arrangement.Center) {
+            if (state.note != null) {
+                AccountNoteCard(state.note, onAction)
+                Spacer(Modifier.height(MoyiTheme.spacing.xxl))
+            }
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 StateBlock(
                     heading = stringResource(Res.string.settings_load_error_heading),
@@ -127,6 +137,7 @@ fun AccountScreen(
             ScreenHeader(eyebrow = stringResource(Res.string.account_eyebrow), heading = stringResource(Res.string.account_heading))
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
             Column(verticalArrangement = Arrangement.spacedBy(MoyiTheme.spacing.lg)) {
+                if (state.note != null) AccountNoteCard(state.note, onAction)
                 GroupedCard {
                     signedInRow(state)
                     changePasswordRow(state, onChangePassword)
@@ -161,6 +172,36 @@ fun AccountScreen(
             onConfirm = { onAction(AccountAction.OnSignOutUnsentConfirm) },
             onDismiss = { onAction(AccountAction.OnSignOutUnsentDismiss) },
         )
+    }
+}
+
+/**
+ * A note that waits for OK (owner ruling 2026-11-17, docs/missing-components.md §87). No new
+ * component: Account's own [GroupedCard], holding one item laid out as Today's settings note
+ * (`DayNote`): the line in `ink`, then OK as a full-width [TextLink] (48 target, underlined),
+ * 8 under it. The card's 16 inset and a 16 top keep the line off the hairline. Nothing goes
+ * away by itself, so nothing is missed: it is the snackbar's longer cousin.
+ */
+@Composable
+private fun AccountNoteCard(note: AccountNote, onAction: (AccountAction) -> Unit) {
+    GroupedCard {
+        item {
+            Column(Modifier.fillMaxWidth().padding(top = MoyiTheme.spacing.md)) {
+                MoyiText(
+                    text = stringResource(
+                        when (note) {
+                            AccountNote.OtherAccountPasswordSaved -> Res.string.account_note_other_account_password
+                        },
+                    ),
+                )
+                Spacer(Modifier.height(MoyiTheme.spacing.sm))
+                TextLink(
+                    text = stringResource(Res.string.account_note_ok),
+                    onClick = { onAction(AccountAction.OnNoteDismiss) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
     }
 }
 
@@ -357,6 +398,23 @@ private fun AccountLongEmailLargeFontPreview() {
                 onBack = {},
             )
         }
+    }
+}
+
+/** The note card at the top (§87), light and dark. */
+@Preview
+@Composable
+private fun AccountNoteLightPreview() {
+    MoyiTheme(darkTheme = false) {
+        AccountScreen(AccountState(load = AccountLoad.Ready, email = "ada@example.com", note = AccountNote.OtherAccountPasswordSaved), onAction = {}, onBack = {})
+    }
+}
+
+@Preview
+@Composable
+private fun AccountNoteDarkPreview() {
+    MoyiTheme(darkTheme = true) {
+        AccountScreen(AccountState(load = AccountLoad.Ready, email = "ada@example.com", note = AccountNote.OtherAccountPasswordSaved), onAction = {}, onBack = {})
     }
 }
 
