@@ -77,8 +77,8 @@
     <string name="code_error_blank">Type the 6 digits from the email first.</string>
     <!-- PROPOSED (§58). The action pressed with fewer than six digits. -->
     <string name="code_error_short">A code has 6 digits. Check the email for the rest.</string>
-    <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58). 422 VERIFICATION_TOKEN_INVALID or PASSWORD_RESET_TOKEN_INVALID for a typed code. The server gives one answer for a wrong code, an expired one and one stopped after too many wrong tries, on purpose, so this names the way out for all of them. No numbers: the code lifetime and try limit are backend defaults that can drift. No blame. -->
-    <string name="code_error_invalid">That code did not work. Check the digits, or send a new email.</string>
+    <!-- Approved (owner ruling 2026-11-09, docs/missing-components.md §58; reworded by owner ruling 2026-11-17, §86). 422 VERIFICATION_TOKEN_INVALID or PASSWORD_RESET_TOKEN_INVALID for a typed code. The server gives one answer for a wrong code, an expired one and one stopped after too many wrong tries, on purpose, so this names the way out for all of them: the "Send it again" link (verify_resend) right under the code field, on verify and on the reset's code step alike. It is shown only when the step knows the address, and so is the link (without one the error is code_error_no_address). No numbers: the code lifetime and try limit are backend defaults that can drift. No blame. -->
+    <string name="code_error_invalid">That code did not work. Check the digits, or tap Send it again.</string>
     <!-- PROPOSED (§58). 422 for a pasted or opened link that matches nothing. -->
     <string name="code_error_link_invalid">That link did not work. Copy it again from the email, or type the code.</string>
     <!-- PROPOSED (§58). A code typed on a phone that does not know the address (the screen was opened by a link, signed out): a code alone names no account. -->
@@ -176,17 +176,17 @@
     <!-- ===== Change password, signed in (Account › Change password; NEW, no Figma frame: docs/missing-components.md §83) ===== -->
     <!-- Reused: the eyebrow is login_eyebrow ("Account"); the action is reset_request_action ("Send the code") and its Sending label; the code step's line is verify_line (the account is the signed-in one, so it names the address plainly); the code and password fields are the reset's. -->
 
-    <!-- PROPOSED (§83). The heading of the screen Account's Change password row opens. -->
+    <!-- Approved 2026-11-17 (owner, §83). The heading of the screen Account's Change password row opens. -->
     <string name="change_password_heading">Change your password</string>
-    <!-- PROPOSED (§83). Under the heading. %1$s is {email}, the address this phone is signed in with (from the session): nothing is typed. Names the next two steps (copy names the next action). -->
+    <!-- Approved 2026-11-17 (owner, §83). Under the heading. %1$s is {email}, the address this phone is signed in with (from the session): nothing is typed. Names the next two steps (copy names the next action). -->
     <string name="change_password_line">We will email a 6-digit code to %1$s. Type it on the next screen, then choose your new password.</string>
-    <!-- PROPOSED (§83). The consequence, before the action on both the first screen and the new-password step (states.md §1b: announce the consequence before the action). True per the backend: a reset revokes every session and refresh family of the account, and this phone signs in again with the new password at once. -->
+    <!-- Approved 2026-11-17 (owner, §83). The consequence, before the action on both the first screen and the new-password step (states.md §1b: announce the consequence before the action). True per the backend: a reset revokes every session and refresh family of the account, and this phone signs in again with the new password at once. -->
     <string name="change_password_consequence">Your other devices will be signed out. This phone stays signed in.</string>
-    <!-- PROPOSED (§83). The new-password step's action when signed in, instead of reset_action ("Save and sign in"): the person is already signed in. While it waits the label is reset_action_sending ("Saving"). -->
+    <!-- Approved 2026-11-17 (owner, §83). The new-password step's action when signed in, instead of reset_action ("Save and sign in"): the person is already signed in. While it waits the label is reset_action_sending ("Saving"). -->
     <string name="change_password_action">Save the new password</string>
-    <!-- PROPOSED (§83). The snackbar over Account once the new password is saved and this phone kept signed in. -->
+    <!-- Approved 2026-11-17 (owner, §83). The snackbar over Account once the new password is saved and this phone kept signed in. -->
     <string name="change_password_done">Your new password is saved.</string>
-    <!-- PROPOSED (§84). The snackbar once a reset link opened while signed in turned out to be for another account: the new password is saved for that account, and this phone is still signed in as before. -->
+    <!-- Approved 2026-11-17 (owner, §84). The snackbar once a reset link opened while signed in turned out to be for another account: the new password is saved for that account, and this phone is still signed in as before. -->
     <string name="reset_link_other_account_done">That link was for another account. Its new password is saved. You are still signed in here.</string>
 
     <!-- PROPOSED. 410 PASSWORD_RESET_TOKEN_EXPIRED (expired, or already used), under the code field. Only a link is ever answered 410. -->
