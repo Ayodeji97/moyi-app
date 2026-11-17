@@ -416,7 +416,7 @@
     <string name="today_settings_search_kept_off">Search by meaning stays off for this bond.</string>
     <string name="today_settings_search_withdrawn">The request to turn search by meaning back on was withdrawn. It stays off.</string>
     <string name="today_settings_search_turned_off">Search by meaning is now off for this bond.</string>
-    <!-- PROPOSED (docs/missing-components.md §90). The other member asked to turn search by meaning on and it waits for this person's answer (owner ruling 2026-11-17, 6: until push #205 exists). Like every note here it does not name who; it names the next step. -->
+    <!-- approved 2026-11-17 (owner) (docs/missing-components.md §90). The other member asked to turn search by meaning on and it waits for this person's answer (owner ruling 2026-11-17, 6: until push #205 exists). Like every note here it does not name who; it names the next step. -->
     <string name="today_settings_search_asked">You have been asked to turn search by meaning on. Answer in Bond settings.</string>
     <!-- %1$s is the bond's new name, as the members wrote it. -->
     <string name="today_settings_name">This bond is now called %1$s.</string>
