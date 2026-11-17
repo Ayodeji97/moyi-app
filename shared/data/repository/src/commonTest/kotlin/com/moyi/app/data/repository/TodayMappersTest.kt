@@ -232,6 +232,7 @@ class TodayMappersTest {
         bondDay = day,
         myEntry = myEntry,
         partnerEntry = partnerEntry,
+        paused = false,
         prompt = prompt,
         streak = TodayStreakResponse(current = 0, freezesAvailable = 0, longest = 0, strictMode = false),
     )

@@ -317,7 +317,7 @@ class BondSettingsRepositoryTest {
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":$deletionScheduledFor,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false,""" +
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false,"paused":false,""" +
             """"timezoneChangeAllowedFrom":$allowedFrom}"""
 
     private fun pendingJson(proposedBy: String): String =

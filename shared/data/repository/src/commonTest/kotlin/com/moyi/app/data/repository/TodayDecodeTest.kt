@@ -128,7 +128,7 @@ class TodayDecodeTest {
     }
 
     private fun todayWith(partnerEntry: String) =
-        """{"bondDay": {"date": "2026-11-09", "status": "REVEALED", "settlesAt": "2026-11-10T12:00:00Z"}, "myEntry": ${mine()}, "partnerEntry": $partnerEntry, "streak": $STREAK, "prompt": {"id": "p1", "text": "A prompt"}}"""
+        """{"bondDay": {"date": "2026-11-09", "status": "REVEALED", "settlesAt": "2026-11-10T12:00:00Z"}, "myEntry": ${mine()}, "partnerEntry": $partnerEntry, "streak": $STREAK, "paused": false, "prompt": {"id": "p1", "text": "A prompt"}}"""
 
     private fun mine() =
         """{"id": "e1", "bondId": "b1", "date": "2026-11-09", "authorMemberId": "m1", "text": "Mine", "status": "REVEALED", "createdAt": "2026-11-09T07:38:46.119642Z", "intendedAt": "2026-11-09T07:38:44.782Z", "favourited": false, "reaction": "SMILE", "image": null, "voice": null}"""
