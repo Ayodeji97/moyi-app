@@ -96,6 +96,15 @@ class NotificationAskTodayTest : MainDispatcherTest() {
     }
 
     @Test
+    fun itDoesNotShowWhileTheBondIsPaused() = runTest {
+        // No reminder is sent in a paused bond (ADR-0066 decision 10): there is nothing to ask for.
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        loop.show(joinedDay(TodayStatus.Waiting).copy(paused = true))
+        viewModel.onAction(TodayAction.OnNotificationPermissionChecked(NotificationPermission.NotAsked))
+        assertFalse(viewModel.state.value.askForNotifications)
+    }
+
+    @Test
     fun itShowsOnTheFirstArrivalBeforeAnythingIsWritten() = runTest {
         open(TodayStatus.NotWritten)
         assertTrue(viewModel.state.value.askForNotifications)

@@ -1,0 +1,6 @@
+-- Version 9 to 10: whether the cached day's bond is paused (ADR-0066, the paused bond), so a
+-- launch drawn from the cache shows the paused day, not a Write action the server would refuse.
+-- Added at the end of cached_day, where CachedDay.sq declares it, so a migrated phone and a
+-- fresh install have the same column order. A row cached before this reads as not paused;
+-- the next answer from the server fills it in (the server always wins).
+ALTER TABLE cached_day ADD COLUMN paused INTEGER NOT NULL DEFAULT 0;

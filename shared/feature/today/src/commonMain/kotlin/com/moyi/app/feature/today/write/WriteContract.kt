@@ -27,6 +27,14 @@ enum class WriteSubmit {
      * is "See today". The typed words stay on screen, to copy, until the person leaves.
      */
     Revealed,
+
+    /**
+     * The bond is paused (`409 BOND_PAUSED`, ADR-0066): nothing was written or queued. Everything
+     * stays (the words, the draft, the photo, the voice note), and a neutral line says why, as
+     * [Revealed]'s does: nothing went wrong that the person could mend. The action stays Send (or
+     * Save), so it can be tried again; typing clears the line, as it clears Save failed.
+     */
+    Paused,
 }
 
 /**

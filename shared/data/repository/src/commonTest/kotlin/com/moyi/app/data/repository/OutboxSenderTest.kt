@@ -177,6 +177,29 @@ class OutboxSenderTest {
     }
 
     @Test
+    fun aPausedBondHoldsTheEntryAsItIsAndSendsTheSameRequestOnceItResumes() = runTest {
+        // ADR-0066: "nothing is written, and the same request succeeds once it resumes".
+        val stack = stack(
+            { respondProblem(HttpStatusCode.Conflict, "BOND_PAUSED") },
+            { respondProblem(HttpStatusCode.Conflict, "BOND_PAUSED") },
+            created,
+        )
+        stack.outbox.enqueue(queued)
+        val sender = stack.sender(backgroundScope)
+
+        assertEquals(OutboxPass.Held, sender.sendQueued())
+        assertEquals(queued, stack.outbox.queuedFor("b1"), "held exactly as it was: never dropped")
+        assertEquals(null, stack.outbox.refusalFor("b1"), "and never refused")
+        assertEquals(null, stack.drafts.read("b1", DraftKind.NewEntry), "nor turned back into a draft")
+
+        assertEquals(OutboxPass.Held, sender.sendQueued())
+        // Resumed.
+        assertEquals(OutboxPass.Empty, sender.sendQueued())
+        assertEquals(setOf("key-1"), stack.keys().toSet(), "one key on every try")
+        assertEquals(1, stack.bodies().toSet().size, "and one body, intendedAt included")
+    }
+
+    @Test
     fun a401IsRefreshedOnceAndTheSameRequestSentAgain() = runTest {
         val stack = stack({ respondProblem(HttpStatusCode.Unauthorized, "UNAUTHORIZED", bearerChallenge = true) }, created)
         stack.outbox.enqueue(queued)
@@ -238,6 +261,64 @@ class OutboxSenderTest {
         assertEquals(listOf(0L, 2_000L, 2_500L), entries.at, "the network came back: try now, not at 6 s")
         advanceTimeBy(2_001)
         assertEquals(4_500L, entries.at.last(), "and the wait starts again from 2 s")
+    }
+
+    @Test
+    fun aHeldEntryEndsTheRetryAndAsksThePlatformForNothingMore() = runTest {
+        // A pause can last days: no timer keeps knocking. The next foreground or connection tries it.
+        val entries = PausedEntries()
+        var schedules = 0
+        var online: () -> Unit = {}
+        val sender = OutboxSenderImpl(MemoryOutbox(queued), entries, NoCache, { schedules++ }, { online = it }, backgroundScope, Backoff(initial = 2.seconds, max = 10.seconds))
+        sender.start()
+
+        sender.retrySoon()
+        runCurrent()
+        advanceTimeBy(10.minutes)
+        assertEquals(listOf(0L), entries.at, "tried once, then held: no backoff")
+        assertEquals(1, schedules, "asked once, before the first try, and never again")
+
+        entries.paused = false
+        online()
+        runCurrent()
+        assertEquals(2, entries.at.size, "a trigger tries it again")
+        assertEquals(1, entries.sent, "and once resumed it is sent")
+    }
+
+    @Test
+    fun anEntryWaitingForAConnectionBesideAHeldOneKeepsTheRetryGoing() = runTest {
+        val other = queued.copy(bondId = "b2", idempotencyKey = "key-2")
+        val entries = PausedEntries(offlineBonds = setOf("b2"))
+        val sender = OutboxSenderImpl(MemoryOutbox(queued, other), entries, NoCache, {}, {}, backgroundScope)
+        assertEquals(OutboxPass.Waiting, sender.sendQueued(), "Waiting wins over Held: the connection is worth retrying")
+    }
+
+    /** A [TodayRepository] whose bond is [paused] (`409 BOND_PAUSED`), and offline for [offlineBonds]. */
+    private inner class PausedEntries(private val offlineBonds: Set<String> = emptySet()) : TodayRepository {
+        var paused = true
+        val at = mutableListOf<Long>()
+        var sent = 0
+
+        override suspend fun submitEntry(
+            bondId: String,
+            text: String,
+            promptId: String?,
+            idempotencyKey: String,
+            intendedAt: Instant?,
+            imageMediaId: String?,
+            voiceMediaId: String?,
+        ): Result<MyEntry, DataError.Network> {
+            at += currentCoroutineContext()[TestCoroutineScheduler]?.currentTime ?: -1
+            if (bondId in offlineBonds) return Result.Failure(DataError.Network.NoInternet)
+            if (paused) return Result.Failure(DataError.Network.Api(ApiProblem(status = 409, code = ApiErrorCode.BOND_PAUSED)))
+            sent++
+            return Result.Success(MyEntry("e1", text, EntryStatus.SUBMITTED))
+        }
+
+        override suspend fun today(bondId: String): Result<Today, DataError.Network> = error("not used")
+        override suspend fun editEntry(entryId: String, text: String, idempotencyKey: String, imageMediaId: String?, voiceMediaId: String?, removeImage: Boolean, removeVoice: Boolean) = error("not used")
+        override suspend fun deleteEntry(entryId: String): EmptyResult<DataError.Network> = error("not used")
+        override suspend fun setReaction(entryId: String, reaction: Reaction?): EmptyResult<DataError.Network> = error("not used")
     }
 
     @Test

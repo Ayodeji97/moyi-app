@@ -124,6 +124,7 @@ internal fun CachedDay.toRow(userId: String): Cached_day {
         partner_voice_status = partnerVoice?.status?.name,
         partner_voice_duration_ms = partnerVoice?.durationMs?.toLong(),
         partner_voice_sensitive = partnerVoice?.sensitive?.toFlag(),
+        paused = today.paused.toFlag(),
     )
 }
 
@@ -182,6 +183,7 @@ internal fun Cached_day.toCachedDay(): CachedDay? {
             myEntry = myEntry,
             partnerEntry = partnerEntry,
             prompt = prompt,
+            paused = paused != 0L,
         ),
     )
 }

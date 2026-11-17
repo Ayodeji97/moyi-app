@@ -55,7 +55,8 @@ class OutboxWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private val runner: OutboxBackgroundRunner by inject()
 
     override suspend fun doWork(): Result = when (runner.run()) {
-        OutboxPass.Empty, OutboxPass.SignedOut -> Result.success()
+        // Held: a paused bond. No retry on WorkManager's backoff; the next foreground tries it.
+        OutboxPass.Empty, OutboxPass.SignedOut, OutboxPass.Held -> Result.success()
         OutboxPass.Waiting -> Result.retry()
     }
 }

@@ -113,6 +113,7 @@ class ArchiveFeed(
                     bondId = bond.bondId,
                     partnerName = bond.partnerName,
                     bondStatus = bond.bondStatus,
+                    paused = bond.paused,
                     days = cached.days,
                     nextCursor = cached.nextCursor,
                     pageEnd = cached.days.lastOrNull()?.date,
@@ -134,6 +135,7 @@ class ArchiveFeed(
                             bondId = bond.bondId,
                             partnerName = bond.partnerName,
                             bondStatus = bond.bondStatus,
+                            paused = bond.paused,
                             days = fallback.days,
                             nextCursor = fallback.nextCursor,
                             pages = 1,
@@ -148,6 +150,7 @@ class ArchiveFeed(
                             bondId = bond.bondId,
                             partnerName = bond.partnerName,
                             bondStatus = bond.bondStatus,
+                            paused = bond.paused,
                             days = if (asked.plain) joinPage(it.days, page, after = null) ?: page.days else page.days,
                             nextCursor = page.nextCursor,
                             pageEnd = page.days.lastOrNull()?.date,
@@ -311,6 +314,8 @@ data class FeedState(
      * day offline). Null when unknown: then the reaction set is drawn as before (ruling 5).
      */
     val bondStatus: BondStatus? = null,
+    /** The bond was paused when this list was loaded (ADR-0066), from Today's day: the empty state offers no Write. */
+    val paused: Boolean = false,
     val days: List<ArchiveDay> = emptyList(),
     val nextCursor: String? = null,
     /**
@@ -331,7 +336,7 @@ data class FeedState(
 
     // The query is a person's own words: never in a log, like the entries.
     override fun toString(): String =
-        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, bondId=$bondId, partnerName=$partnerName, bondStatus=$bondStatus, " +
+        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, bondId=$bondId, partnerName=$partnerName, bondStatus=$bondStatus, paused=$paused, " +
             "days=$days, nextCursor=$nextCursor, pageEnd=$pageEnd, loadingMore=$loadingMore, pageFailed=$pageFailed, pages=$pages)"
 }
 

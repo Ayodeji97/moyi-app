@@ -136,6 +136,12 @@ class RepositoryDailyLoop(
                 WriteResult.Saved
             }
             is Result.Failure -> when {
+                // A paused bond (ADR-0066): nothing was written, and nothing is queued here. The
+                // composer keeps it all and says why; Today is read again to show the paused day.
+                result.error.isBondPaused() -> {
+                    load()
+                    WriteResult.Paused
+                }
                 // An entry with a photo or a voice note is not queued: the outbox keeps words only,
                 // and an upload left unattached is deleted by the server after a day. The composer
                 // keeps everything.
@@ -189,7 +195,7 @@ class RepositoryDailyLoop(
             }
             is Result.Failure -> {
                 publish(currentBond, day, confirmed = false)
-                // 404 (never shown), 409 ENTRY_IMMUTABLE (erased), BOND_ARCHIVED: the day is not
+                // 404 (never shown), 409 ENTRY_IMMUTABLE (erased), BOND_ARCHIVED, BOND_PAUSED: the day is not
                 // what this screen thinks, so it is read again. REACTION_BUSY is a 409 too; the
                 // reload is harmless there and shows the server's answer.
                 if (result.error.isConflictOrGone()) load()
@@ -222,6 +228,11 @@ class RepositoryDailyLoop(
                 WriteResult.Saved
             }
             is Result.Failure -> when {
+                // A paused bond: the edit is not saved, the composer keeps it and says why.
+                result.error.isBondPaused() -> {
+                    load()
+                    WriteResult.Paused
+                }
                 // The new photo or voice note would not attach (held by moderation, or gone): the
                 // composer says so, as it does for a new entry. The entry keeps the one it had.
                 imageMediaId != null && result.error.isNotAttachable(IMAGE_FIELD) -> WriteResult.PhotoRefused
@@ -461,6 +472,10 @@ class RepositoryDailyLoop(
     /** `422 VALIDATION_FAILED` naming [field] (`MEDIA_NOT_ATTACHABLE`, backend `GratitudeErrors`). */
     private fun DataError.Network.isNotAttachable(field: String): Boolean =
         this is DataError.Network.Api && problem.fieldErrors.any { it.field == field }
+
+    /** `409 BOND_PAUSED` (ADR-0066): the bond takes no new entries, edits or reactions for now. */
+    private fun DataError.Network.isBondPaused(): Boolean =
+        this is DataError.Network.Api && problem.status == 409 && problem.code == ApiErrorCode.BOND_PAUSED
 
     /** `409 ENTRY_IMMUTABLE`: the entry's day has been revealed (BR-7). */
     private fun DataError.Network.isEntryImmutable(): Boolean =

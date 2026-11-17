@@ -64,6 +64,11 @@ data class Backoff(
  * - `2xx`, a replay included: removed. Today reloads ([changes]) and shows what the server holds.
  * - A `2xx` whose body could not be read: the server took it, so it is removed too.
  * - No answer, a timeout, `5xx`, `429`, `409 IDEMPOTENCY_KEY_IN_FLIGHT`: left for the next try.
+ * - `409 BOND_PAUSED` (ADR-0066): held, exactly as it is. Not refused and not turned back into a
+ *   draft: nothing was written, and the same request is accepted once the bond resumes. A pass
+ *   that leaves only held entries is [OutboxPass.Held], which ends the in-process retry and
+ *   asks the platform for nothing more: a pause can last days, so the next foreground or
+ *   connection tries again instead of a timer.
  * - Any other refusal: never retried. Its words go back to the new-entry draft, and the
  *   refusal waits for Today to say so ([EntryOutbox.refuse]).
  * - `401` (the refresh was refused, so the session ended and its wipe took the queue):
@@ -123,8 +128,10 @@ class OutboxSenderImpl(
 
     override suspend fun sendQueued(): OutboxPass = mutex.withLock {
         var changed = false
+        var waiting = false
+        val tried = outbox.queued()
         try {
-            for (entry in outbox.queued()) {
+            for (entry in tried) {
                 val result = entries.submitEntry(entry.bondId, entry.text, entry.promptId, entry.idempotencyKey, entry.intendedAt)
                 val failure = when (result) {
                     is Result.Success -> null
@@ -136,7 +143,9 @@ class OutboxSenderImpl(
                         outbox.remove(entry.idempotencyKey)
                         changed = true
                     }
-                    SendFailure.Transient -> Unit
+                    SendFailure.Transient -> waiting = true
+                    // Kept as it is: same key, same body, sent again once the bond resumes.
+                    SendFailure.Paused -> Unit
                     SendFailure.SessionEnded -> return@withLock OutboxPass.SignedOut
                     is SendFailure.Refused -> {
                         outbox.refuse(entry, failure.reason)
@@ -150,6 +159,14 @@ class OutboxSenderImpl(
                 _changes.tryEmit(Unit)
             }
         }
-        if (outbox.queued().isEmpty()) OutboxPass.Empty else OutboxPass.Waiting
+        val left = outbox.queued()
+        val triedKeys = tried.mapTo(HashSet()) { it.idempotencyKey }
+        when {
+            left.isEmpty() -> OutboxPass.Empty
+            // One queued while this pass ran has not been tried yet: it is waiting, not held.
+            waiting || left.any { it.idempotencyKey !in triedKeys } -> OutboxPass.Waiting
+            // Everything still queued is held by a paused bond.
+            else -> OutboxPass.Held
+        }
     }
 }

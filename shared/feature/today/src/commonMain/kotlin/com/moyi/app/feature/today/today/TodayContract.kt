@@ -101,6 +101,12 @@ data class TodayState(
      * when nothing is waiting. Never about who is in the bond (T-09): the domain never makes one.
      */
     val settingsNotice: SharedSettingNotice? = null,
+    /**
+     * The bond is paused (`paused`, ADR-0066): read-only for entries. No Write, no Edit, no
+     * reaction set (the reaction I left still shows); a note says it is paused, and a queued
+     * entry says it will send when it resumes. Nothing says why, and nothing names who.
+     */
+    val paused: Boolean = false,
 )
 
 /** What the "More" menu on your own entry card can hold (owner ruling 2026-11-11). */
@@ -113,7 +119,8 @@ enum class OwnEntryMenuItem { Edit, Delete }
  * there is no own entry to change here, so no menu.
  */
 fun TodayState.ownEntryMenu(): List<OwnEntryMenuItem> = when (status) {
-    TodayStatus.Waiting -> listOf(OwnEntryMenuItem.Edit, OwnEntryMenuItem.Delete)
+    // A paused bond takes no edit (`409 BOND_PAUSED`), but erasing one's own entry still works.
+    TodayStatus.Waiting -> if (paused) listOf(OwnEntryMenuItem.Delete) else listOf(OwnEntryMenuItem.Edit, OwnEntryMenuItem.Delete)
     TodayStatus.Revealed -> listOf(OwnEntryMenuItem.Delete)
     else -> emptyList()
 }

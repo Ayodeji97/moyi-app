@@ -118,6 +118,13 @@
     <string name="today_queued_refused_written">You had already written for that day, so these words didn't send. They're kept in Write for your next entry.</string>
     <!-- Approved (2026-11-08, strings-proposed.md §13). The outlined action under a neutral refusal line: opens Write on the kept words. -->
     <string name="today_queued_refused_open_write">Open Write</string>
+    <!-- ===== A paused bond (ADR-0066, docs/missing-components.md §88) ===== -->
+    <!-- PROPOSED (§88). The heading of the note Today shows while the bond is paused (`paused`: an admin suspended a member; doc 04 §8.1: the other member "is told that the Bond is paused, and nothing about why"). Also the pane announcement of the not-written layout while paused. Never says why, never names the partner, never says when it ends. -->
+    <string name="today_paused_heading">Your bond is paused.</string>
+    <!-- PROPOSED (§88). The note's line, under today_paused_heading: what is held back (new entries, edits, reactions) and what is kept (every day can still be read). No "until", because nobody knows when, or whether, it resumes. -->
+    <string name="today_paused_line">Nothing new can be written for now. Your days are still here to read.</string>
+    <!-- PROPOSED (§88). Queued, while the bond is paused: the outbox holds the entry (409 BOND_PAUSED is not a refusal) and sends the same request once it resumes. Past its own day by then, it counts for the day it sends (BR-3a), as today_queued_line_late says. -->
+    <string name="today_queued_line_paused">Your bond is paused. This will send when it resumes, and count for the day it sends.</string>
     <!-- PROPOSED. The line that stands where your deleted entry was (EntryCard Tombstone, 420:59, one body line). -->
     <string name="today_tombstone_line">You deleted what you wrote.</string>
 
@@ -221,6 +228,8 @@
     <string name="write_revealed">%1$s has written, so today has opened. Your entry stays as it was before this edit.</string>
     <!-- PROPOSED (§65). As write_revealed, when the day carried no partner name. -->
     <string name="write_revealed_no_name">Your partner has written, so today has opened. Your entry stays as it was before this edit.</string>
+    <!-- PROPOSED (§88). Write, when Send or Save met a paused bond (409 BOND_PAUSED): nothing was written or queued, and everything stays in the composer (words, photo, voice note, draft). Neutral, like write_revealed, not danger: nothing was lost. Never says why it is paused. -->
+    <string name="write_paused">Your bond is paused, so this didn't save. It's all still here.</string>
     <!-- PROPOSED (§65). The one action after write_revealed: closes the composer, on Today showing the revealed day. -->
     <string name="write_see_today">See today</string>
     <!-- PROPOSED. PrimaryAction State=QueuedOffline while the entry waits for a connection. -->

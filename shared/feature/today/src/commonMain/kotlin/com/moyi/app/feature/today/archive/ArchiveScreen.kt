@@ -214,7 +214,8 @@ fun ArchiveScreen(
             state.load == ArchiveLoad.Failed -> Failed(onRetry = { onAction(ArchiveAction.OnRetryClick) })
             state.noResults -> NoResults()
             state.isEmpty && state.filter == ArchiveFilter.Favourites -> NoFavourites()
-            state.isEmpty -> Empty(onWrite = { onAction(ArchiveAction.OnWriteClick) })
+            // Paused (ADR-0066): the empty state keeps its words, without Write.
+            state.isEmpty -> Empty(onWrite = if (state.canWrite) ({ onAction(ArchiveAction.OnWriteClick) }) else null)
             else -> DayList(state, onAction)
         }
     }
@@ -412,7 +413,7 @@ private fun ColumnScope.Failed(onRetry: () -> Unit) {
  * above it (265:15) is not a design-system component, so it is owed, not improvised.
  */
 @Composable
-private fun ColumnScope.Empty(onWrite: () -> Unit) {
+private fun ColumnScope.Empty(onWrite: (() -> Unit)?) {
     Column(
         Modifier.fillMaxWidth().weight(1f),
         verticalArrangement = Arrangement.Center,
@@ -422,8 +423,10 @@ private fun ColumnScope.Empty(onWrite: () -> Unit) {
             heading = stringResource(Res.string.archive_empty_heading),
             line = stringResource(Res.string.archive_empty_line),
         )
-        Spacer(Modifier.height(MoyiTheme.spacing.lg))
-        PrimaryAction(text = stringResource(Res.string.today_write_action), onClick = onWrite)
+        if (onWrite != null) {
+            Spacer(Modifier.height(MoyiTheme.spacing.lg))
+            PrimaryAction(text = stringResource(Res.string.today_write_action), onClick = onWrite)
+        }
     }
 }
 

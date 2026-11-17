@@ -149,7 +149,7 @@ data class DayView(
     val partnerVoice: VoiceNote? = null,
     /**
      * The partner's entry takes **my** reaction here: it is revealed and its words are shown
-     * ([reactable]), and the bond still takes writes ([BondStatus.takesWrites]). Never on my own entry, never before the reveal, never on a tombstone.
+     * ([reactable]), and the bond still takes writes ([BondStatus.takesWrites]) and is not [paused]. Never on my own entry, never before the reveal, never on a tombstone.
      */
     val canReact: Boolean = false,
     /** The reaction I left on the partner's entry; null when none. Only where [canReact]. */
@@ -160,12 +160,17 @@ data class DayView(
     val queuedDay: QueuedDay? = null,
     /** A queued entry the server refused, whose words went back to the draft: Today says so once. */
     val refusal: OutboxRefusal? = null,
+    /**
+     * The bond is paused (ADR-0066): read-only for entries. No Write, no Edit, no reaction; a
+     * queued entry is held until it resumes. Never says why, and never names who.
+     */
+    val paused: Boolean = false,
 ) {
     /** Never the words: a data class would print both entries into any log that printed this. */
     override fun toString(): String =
         "DayView(bondId=$bondId, bondStatus=$bondStatus, date=$date, status=$status, myEntryId=$myEntryId, " +
             "myEntry=${myEntry?.let { "(redacted)" }}, partnerEntry=${partnerEntry?.let { "(redacted)" }}, " +
-            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, queuedDay=$queuedDay, refusal=$refusal, " +
+            "myPhoto=$myPhoto, partnerPhoto=$partnerPhoto, myVoice=$myVoice, partnerVoice=$partnerVoice, queuedDay=$queuedDay, refusal=$refusal, paused=$paused, " +
             "canReact=$canReact, myReaction=$myReaction, partnerReaction=$partnerReaction)"
 }
 
@@ -190,6 +195,13 @@ enum class WriteResult {
 
     /** As [PhotoRefused], for the voice note (`MEDIA_NOT_ATTACHABLE` on `voiceMediaId`). */
     VoiceRefused,
+
+    /**
+     * `409 BOND_PAUSED` (ADR-0066): the bond takes no new entries or edits for now. Nothing was
+     * written and nothing is queued; the composer keeps everything (words, photo, voice note, the
+     * draft) and says why. Today has been reloaded, so it shows the paused day underneath.
+     */
+    Paused,
 
     /**
      * An edit only: `409 ENTRY_IMMUTABLE`. The partner wrote while the composer was open, so the

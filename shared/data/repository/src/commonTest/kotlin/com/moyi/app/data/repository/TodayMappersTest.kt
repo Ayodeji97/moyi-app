@@ -43,6 +43,12 @@ class TodayMappersTest {
     }
 
     @Test
+    fun aPausedDayIsReadAsPausedAndAnyOtherAsNot() {
+        assertEquals(true, today(day(BondDayResponse.Status.OPEN), paused = true).toToday()?.paused)
+        assertEquals(false, today(day(BondDayResponse.Status.OPEN)).toToday()?.paused)
+    }
+
+    @Test
     fun theDateIsTheIsoBondDate() {
         assertEquals("2026-09-14", today(day(BondDayResponse.Status.OPEN)).toToday()?.date)
     }
@@ -228,11 +234,12 @@ class TodayMappersTest {
         myEntry: EntryResponse? = null,
         partnerEntry: PartnerEntryResponse? = null,
         prompt: TodayPromptResponse? = null,
+        paused: Boolean = false,
     ) = TodayResponse(
         bondDay = day,
         myEntry = myEntry,
         partnerEntry = partnerEntry,
-        paused = false,
+        paused = paused,
         prompt = prompt,
         streak = TodayStreakResponse(current = 0, freezesAvailable = 0, longest = 0, strictMode = false),
     )
