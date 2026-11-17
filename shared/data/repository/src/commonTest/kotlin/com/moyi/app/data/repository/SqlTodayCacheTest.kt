@@ -77,6 +77,14 @@ class SqlTodayCacheTest {
     }
 
     @Test
+    fun aPausedDayComesBackPaused() = runTest {
+        cache.write(day(null).copy(today = day(null).today.copy(paused = true, prompt = null)))
+        assertEquals(true, cache.read()?.today?.paused)
+        cache.write(day(null))
+        assertEquals(false, cache.read()?.today?.paused)
+    }
+
+    @Test
     fun theInviteIsNeverKept() = runTest {
         cache.write(day(null).copy(bond = bond.copy(invite = Invite("i1", "K7Q2PD", "https://getmoyi.app/i/K7Q2PD"))))
         assertNull(cache.read()?.bond?.invite)

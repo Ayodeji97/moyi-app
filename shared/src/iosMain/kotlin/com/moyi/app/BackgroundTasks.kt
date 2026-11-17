@@ -40,6 +40,7 @@ private fun runOutboxTask(task: BGTask) {
         } catch (_: Exception) {
             OutboxPass.Waiting
         }
+        // Only Waiting asks again: Held (a paused bond) waits for the next foreground instead.
         if (pass == OutboxPass.Waiting) koin.get<OutboxScheduler>().schedule()
         task.setTaskCompletedWithSuccess(pass != OutboxPass.Waiting)
     }

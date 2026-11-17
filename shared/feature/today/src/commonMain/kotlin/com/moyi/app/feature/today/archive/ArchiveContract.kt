@@ -43,6 +43,8 @@ data class ArchiveState(
     val pageFailed: Boolean = false,
     /** Moves on with every page, so the list asks again near its end (ArchiveScreen). */
     val pages: Int = 0,
+    /** The empty state offers Write: not while the bond is paused (ADR-0066), when it would only be refused. */
+    val canWrite: Boolean = true,
     val filter: ArchiveFilter = ArchiveFilter.AllDays,
     /**
      * The All days / Favourites chips are drawn. Hidden over an archive with nothing in

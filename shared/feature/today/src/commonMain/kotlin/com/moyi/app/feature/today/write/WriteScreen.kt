@@ -55,6 +55,7 @@ import com.moyi.app.feature.today.resources.write_photo_source_title
 import com.moyi.app.feature.today.resources.write_photo_source_title_replace
 import com.moyi.app.feature.today.resources.write_photo_unreadable
 import com.moyi.app.feature.today.resources.write_queued
+import com.moyi.app.feature.today.resources.write_paused
 import com.moyi.app.feature.today.resources.write_revealed
 import com.moyi.app.feature.today.resources.write_revealed_no_name
 import com.moyi.app.feature.today.resources.write_see_today
@@ -160,6 +161,18 @@ fun WriteScreen(
                 MoyiText(
                     text = state.partnerName?.let { stringResource(Res.string.write_revealed, it) }
                         ?: stringResource(Res.string.write_revealed_no_name),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                Spacer(Modifier.height(MoyiTheme.spacing.sm))
+            }
+            if (state.submit == WriteSubmit.Paused) {
+                // A paused bond (ADR-0066): neutral like the line above, not danger. Nothing was lost,
+                // and nothing here can mend it. It never says why the bond is paused.
+                MoyiText(
+                    text = stringResource(Res.string.write_paused),
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -348,7 +361,7 @@ private fun actionState(state: WriteState): PrimaryActionState = when (state.sub
     WriteSubmit.Queued -> PrimaryActionState.QueuedOffline(stringResource(Res.string.write_queued))
     // Over the limit or empty: not sendable (181:83's state was not read; Disabled is the reading).
     WriteSubmit.Revealed -> PrimaryActionState.Idle
-    WriteSubmit.Idle, WriteSubmit.Failed -> if (state.canSubmit) PrimaryActionState.Idle else PrimaryActionState.Disabled
+    WriteSubmit.Idle, WriteSubmit.Failed, WriteSubmit.Paused -> if (state.canSubmit) PrimaryActionState.Idle else PrimaryActionState.Disabled
 }
 
 // ---- Previews ----
@@ -376,5 +389,8 @@ private const val PREVIEW_TEXT = "The way you sat on the phone with me until I f
 
 @Preview @Composable private fun WriteRevealedPreview() =
     WritePreview(WriteState(text = PREVIEW_TEXT, prompt = null, editing = true, submit = WriteSubmit.Revealed, partnerName = "Tola"))
+
+/** A paused bond refused the send: the neutral line, everything kept (ADR-0066). */
+@Preview @Composable private fun WritePausedPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, submit = WriteSubmit.Paused))
 
 @Preview @Composable private fun WriteQueuedPreview() = WritePreview(WriteState(text = PREVIEW_TEXT, submit = WriteSubmit.Queued))

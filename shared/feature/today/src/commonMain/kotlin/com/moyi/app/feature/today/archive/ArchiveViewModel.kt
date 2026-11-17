@@ -163,7 +163,8 @@ class ArchiveViewModel(
                 search.update { it.copy(query = action.query.take(SEARCH_MAX_LENGTH)) }
             }
             ArchiveAction.OnSearchFocused -> search.update { it.copy(focus = false) }
-            ArchiveAction.OnWriteClick -> send(ArchiveEvent.NavigateToWrite)
+            // Not drawn while the bond is paused; a tap that raced the pause in is ignored.
+            ArchiveAction.OnWriteClick -> if (!feed.state.value.paused) send(ArchiveEvent.NavigateToWrite)
             ArchiveAction.OnStreakClick -> send(ArchiveEvent.NavigateToStreak)
             ArchiveAction.OnDebugCycle -> debugLayout.value = when (debugLayout.value) {
                 null -> DebugLayout.Empty
@@ -281,6 +282,7 @@ class ArchiveViewModel(
             showSearch = hasDays,
             query = input.query,
             focusSearch = input.focus,
+            canWrite = !feed.paused,
         )
     }
 

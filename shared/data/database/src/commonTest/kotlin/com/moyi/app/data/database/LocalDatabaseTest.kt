@@ -49,6 +49,7 @@ class LocalDatabaseTest {
         partner_voice_status = null,
         partner_voice_duration_ms = null,
         partner_voice_sensitive = null,
+        paused = 0L,
     )
 
     private val draft = Draft(
@@ -105,10 +106,17 @@ class LocalDatabaseTest {
 
     /** cached_day as it was before version 7 (6.sqm), which added the shape of each entry's photo and voice note. */
     private fun app.cash.sqldelight.db.SqlDriver.withoutMedia() {
+        // Every version before 7 also predates 9.sqm's paused column.
+        withoutPaused()
         listOf("my", "partner").forEach { who ->
             listOf("photo_id", "photo_status", "photo_width", "photo_height", "photo_sensitive", "voice_id", "voice_status", "voice_duration_ms", "voice_sensitive")
                 .forEach { execute(null, "ALTER TABLE cached_day DROP COLUMN ${who}_$it", 0) }
         }
+    }
+
+    /** cached_day as it was before version 10 (9.sqm), which added whether the bond is paused. */
+    private fun app.cash.sqldelight.db.SqlDriver.withoutPaused() {
+        execute(null, "ALTER TABLE cached_day DROP COLUMN paused", 0)
     }
 
     @Test
@@ -159,7 +167,7 @@ class LocalDatabaseTest {
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = MoyiDatabase.Schema.version)
 
-        assertEquals(9L, MoyiDatabase.Schema.version)
+        assertEquals(10L, MoyiDatabase.Schema.version)
         old.io { draftQueries.upsert(draft) }
         assertEquals(draft, old.io { draftQueries.forKey("ada", "bond-1", "NEW_ENTRY").executeAsOne() })
         assertEquals(1L, old.rowCount("cached_day"), "the migration keeps what was there")
@@ -319,6 +327,7 @@ class LocalDatabaseTest {
             archiveDayQueries.upsert(archived)
             archiveEmptyQueries.markEmpty("ada", "bond-2")
         }
+        driver.withoutPaused()
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 7, newVersion = MoyiDatabase.Schema.version)
 
@@ -340,6 +349,7 @@ class LocalDatabaseTest {
             cachedDayQueries.insert(row("ada"))
             pendingLeaveQueries.insert("ada", "bond-1", "bond-2")
         }
+        driver.withoutPaused()
 
         MoyiDatabase.Schema.migrate(driver, oldVersion = 8, newVersion = MoyiDatabase.Schema.version)
 
@@ -347,6 +357,24 @@ class LocalDatabaseTest {
         assertEquals(1L, old.rowCount("pending_leave"), "pending_leave survives")
         old.io { sharedSettingsQueries.insertNotice("ada", "bond-1", "NAME_CHANGED", "Us") }
         assertEquals(1, old.io { sharedSettingsQueries.noticesFor("ada", "bond-1").executeAsList() }.size)
+    }
+
+    @Test
+    fun aVersionNineDatabaseIsMigratedToHoldWhetherTheBondIsPausedAndKeepsItsCachedDay() = runTest {
+        // Version 9 had every table, and cached_day without paused: build that, then migrate it.
+        val driver = inMemoryDriver()
+        val old = LocalDatabase(driver)
+        old.io { cachedDayQueries.insert(row("ada")) }
+        driver.withoutPaused()
+
+        MoyiDatabase.Schema.migrate(driver, oldVersion = 9, newVersion = MoyiDatabase.Schema.version)
+
+        // The row cached before reads as not paused; the next answer from the server fills it in.
+        val migrated = old.io { cachedDayQueries.forUser("ada").executeAsOne() }
+        assertEquals("You made the tea.", migrated.my_entry_text)
+        assertEquals(0L, migrated.paused)
+        old.io { cachedDayQueries.deleteAll(); cachedDayQueries.insert(row("ada").copy(paused = 1L)) }
+        assertEquals(1L, old.io { cachedDayQueries.forUser("ada").executeAsOne().paused })
     }
 
     @Test

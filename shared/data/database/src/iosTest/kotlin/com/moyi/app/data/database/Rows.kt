@@ -42,6 +42,7 @@ internal object Rows {
         partner_voice_status = null,
         partner_voice_duration_ms = null,
         partner_voice_sensitive = null,
+        paused = 0L,
     )
 
     val draft = Draft(

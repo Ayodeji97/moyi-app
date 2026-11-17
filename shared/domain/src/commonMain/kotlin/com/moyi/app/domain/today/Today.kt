@@ -18,8 +18,13 @@ data class Today(
     val myEntry: MyEntry?,
     /** The other member's, in whatever shape the server let me see; null when there is none to report. */
     val partnerEntry: PartnerEntry?,
-    /** The bond's prompt of the day; null when the bond takes no writes, or the library has none. */
+    /** The bond's prompt of the day; null when the bond takes no writes, is [paused], or the library has none. */
     val prompt: Prompt?,
+    /**
+     * The bond takes no new entries, edits or reactions for now (`paused`, ADR-0066); everything
+     * in it can still be read. The server says nothing of why, and neither may the app.
+     */
+    val paused: Boolean = false,
 )
 
 /** `bondDay.status` (doc 04, backend `BondDayStatus`): every value the contract declares. */
@@ -40,7 +45,10 @@ enum class BondDayStatus {
     /** Closed with none. */
     EMPTY,
 
-    /** No one is being asked yet: the bond is waiting for its second member (doc 04 §8.3a). */
+    /**
+     * No one is being asked yet: the bond is waiting for its second member (doc 04 §8.3a). Also a
+     * day that overlapped a pause (ADR-0066 decision 16): neither missed nor kept by anyone.
+     */
     SUSPENDED,
 
     /** Closed by a streak freeze. */

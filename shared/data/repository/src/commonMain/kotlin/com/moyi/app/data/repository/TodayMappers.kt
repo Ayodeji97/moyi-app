@@ -37,6 +37,7 @@ internal fun TodayResponse.toToday(): Today? {
         partnerEntry = partnerEntry?.let { it.toPartnerEntry() ?: return null },
         // A prompt is an offer, never a requirement: none is no prompt, not a broken day.
         prompt = prompt?.toPrompt(),
+        paused = paused,
     )
 }
 

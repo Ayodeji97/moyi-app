@@ -159,6 +159,8 @@ class TodayViewModel(
                 send(TodayEvent.NavigateToWrite(editing = false))
             }
             TodayAction.OnEditClick -> {
+                // Not drawn while paused; a tap that raced the pause in is ignored (`409 BOND_PAUSED`).
+                if ((loop.state.value as? DailyLoopState.Ready)?.day?.paused == true) return
                 ui.update { it.copy(failed = false) }
                 send(TodayEvent.NavigateToWrite(editing = true))
             }
@@ -404,12 +406,14 @@ class TodayViewModel(
                 deleting = ui.deleting,
                 actionFailed = ui.failed,
                 canReact = view.canReact,
-                myReaction = view.myReaction.takeIf { view.canReact },
+                // Paused: the set goes, but the reaction already left still shows on their card.
+                myReaction = view.myReaction.takeIf { view.canReact || view.paused },
                 partnerReaction = view.partnerReaction,
                 reactionFailed = ui.reactionFailed && view.canReact,
                 // One note at a time: a change to a shared setting is news, the ask is not.
                 askForNotifications = ask.offered(view, today()) && settingsNotice == null,
                 settingsNotice = settingsNotice,
+                paused = view.paused,
             )
         }
     }
@@ -436,14 +440,16 @@ class TodayViewModel(
         /**
          * The phone has not answered and nobody chose "Not now" on the note, on a layout of a
          * live day: NotWritten, Waiting (also PENDING_REVEAL), Revealed and PartnerNotJoined.
-         * Never on a bond that has ended. Android below 13 is never
+         * Never on a bond that has ended, or while it is paused. Android below 13 is never
          * [NotificationPermission.NotAsked], so never there.
          */
         private fun mayAsk(view: DayView): Boolean =
             permission == NotificationPermission.NotAsked &&
                 !dismissed &&
                 view.status in AskOn &&
-                view.bondStatus !in EndedBond
+                view.bondStatus !in EndedBond &&
+                // No reminder is sent in a paused bond (ADR-0066 decision 10): nothing to ask for.
+                !view.paused
 
         /** The reminder screen: the first time it may ask on this phone, and never again. */
         fun screenOffered(view: DayView): Boolean = mayAsk(view) && screenShownOn == null

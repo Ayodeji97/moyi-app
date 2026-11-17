@@ -227,12 +227,17 @@ class ArchiveDayViewModel(
     }
 
     /**
-     * Whether the bond takes writes, from what the app already holds: the status the list was
-     * loaded with, else Today's (both from `GET /bonds`, or the cached day offline). True when
-     * neither knows, which keeps the set as it was before the ruling.
+     * Whether the bond takes writes, from what the app already holds: not while Today's day says
+     * it is paused; otherwise the status the list was loaded with, else Today's (both from
+     * `GET /bonds`, or the cached day offline). True when neither knows, which keeps the set as
+     * it was before the ruling.
      */
     private fun bondTakesWrites(): Boolean {
-        val status = feed.state.value.bondStatus ?: (loop.state.value as? DailyLoopState.Ready)?.day?.bondStatus
+        val today = (loop.state.value as? DailyLoopState.Ready)?.day
+        // Paused (ADR-0066): every reaction is refused with `409 BOND_PAUSED`, so no set is drawn.
+        // Today's day is the one place the app learns it; the Archive opens from Today.
+        if (today?.paused == true) return false
+        val status = feed.state.value.bondStatus ?: today?.bondStatus
         return status?.takesWrites ?: true
     }
 

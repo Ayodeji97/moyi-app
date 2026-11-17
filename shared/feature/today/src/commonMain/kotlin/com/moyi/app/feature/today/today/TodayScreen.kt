@@ -78,6 +78,9 @@ import com.moyi.app.feature.today.resources.today_partner_pending_line_unnamed
 import com.moyi.app.feature.today.resources.today_queued_line
 import com.moyi.app.feature.today.resources.today_queued_line_earlier
 import com.moyi.app.feature.today.resources.today_queued_line_late
+import com.moyi.app.feature.today.resources.today_queued_line_paused
+import com.moyi.app.feature.today.resources.today_paused_heading
+import com.moyi.app.feature.today.resources.today_paused_line
 import com.moyi.app.feature.today.resources.today_queued_refused
 import com.moyi.app.feature.today.resources.today_queued_refused_open_write
 import com.moyi.app.feature.today.resources.today_queued_refused_written
@@ -203,7 +206,8 @@ private fun TodayDay(
             )
         },
         scrollContent = false,
-        action = if (state.status == TodayStatus.NotWritten) {
+        // Paused (ADR-0066): no Write. The bond takes no new entry, and the note says so.
+        action = if (state.status == TodayStatus.NotWritten && !state.paused) {
             {
                 PrimaryAction(text = stringResource(Res.string.today_write_action), onClick = { onAction(TodayAction.OnWriteClick) })
                 // Before writing, while nobody has joined: the way to the code they were sent
@@ -278,7 +282,8 @@ private fun TodayDay(
  */
 @Composable
 private fun ColumnScope.NotWritten(state: TodayState, onAction: (TodayAction) -> Unit) {
-    val announce = stringResource(Res.string.today_announce_not_written)
+    // Paused: the note's heading is what is announced, not "Not yet written for today".
+    val announce = stringResource(if (state.paused) Res.string.today_paused_heading else Res.string.today_announce_not_written)
     Column(
         Modifier
             .fillMaxWidth()
@@ -290,6 +295,8 @@ private fun ColumnScope.NotWritten(state: TodayState, onAction: (TodayAction) ->
         // The server's prompt of the day. With none (an ended bond, an empty library), the
         // layout keeps its one job, the Write action, and draws no invented line in its place.
         state.prompt?.let { MoyiText(text = it, role = TextRole.Entry) }
+        // Paused, the server sends no prompt; the note stands in the prompt's place, at the top.
+        if (state.paused) PausedNote(spaced = false)
         Refusal(state, onAction)
         // From the first arrival (owner ruling 2026-11-15): under the prompt, above Write.
         SettingsNote(state, onAction)
@@ -305,8 +312,14 @@ private fun ColumnScope.Waiting(state: TodayState, onAction: (TodayAction) -> Un
         OwnCard(state, onAction)
         ActionFailed(state)
         Refusal(state, onAction)
-        Spacer(Modifier.height(MoyiTheme.spacing.md))
-        WaitingNote(partnerName = state.partnerName.orEmpty())
+        if (state.paused) {
+            // Not the waiting note: while paused the day does not move on, so it would promise
+            // what cannot happen. The paused note takes its place.
+            PausedNote()
+        } else {
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+            WaitingNote(partnerName = state.partnerName.orEmpty())
+        }
         SettingsNote(state, onAction)
         NotificationAsk(state, onAction)
     }
@@ -362,6 +375,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
                 text = stringResource(Res.string.today_tombstone_line),
                 variant = EntryCardVariant.Tombstone,
             )
+            if (state.paused) PausedNote()
         } else {
             // Entries are immutable after the reveal: no edit (states.md §5). Delete goes
             // through a confirmation. It lives in the card's "More" menu, not as a button at
@@ -370,6 +384,7 @@ private fun ColumnScope.Revealed(state: TodayState, onAction: (TodayAction) -> U
             PartnerReactionLine(state)
             ActionFailed(state)
             Refusal(state, onAction)
+            if (state.paused) PausedNote()
             // The second writer's save opens the day at once, so this is where they see it.
             SettingsNote(state, onAction)
             NotificationAsk(state, onAction)
@@ -420,6 +435,7 @@ private fun ColumnScope.PartnerNotJoined(state: TodayState, onAction: (TodayActi
         )
         // No invite could be found or issued: the Generic error's words, as for a failed delete.
         ActionFailed(state)
+        if (state.paused) PausedNote()
         SettingsNote(state, onAction)
         NotificationAsk(state, onAction)
         // TODO(PR #7): Figma 220:27 places the InviteCode (358 × 195) 16 below this note.
@@ -435,6 +451,7 @@ private fun ColumnScope.SoloYouWrote(state: TodayState) {
         OwnCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         DayNote(line = stringResource(Res.string.today_solo_line))
+        if (state.paused) PausedNote()
     }
 }
 
@@ -446,6 +463,7 @@ private fun ColumnScope.SoloTheyWrote(state: TodayState) {
         PartnerCard(state)
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         MoyiText(stringResource(Res.string.today_solo_line))
+        if (state.paused) PausedNote()
     }
 }
 
@@ -462,8 +480,31 @@ private fun ColumnScope.Queued(state: TodayState) {
         Spacer(Modifier.height(MoyiTheme.spacing.md))
         // The outbox sends it when the connection returns, with the key and `intendedAt` of the
         // Send tap. The line says which Bond-day it will count for (BR-3a; QueuedDay).
-        DayNote(line = queuedLine(state.queuedDay ?: state.date?.let { QueuedDay.ThisDay(it) }))
+        // Paused: the outbox holds it until the bond resumes, so the line says that, not "online".
+        DayNote(
+            line = if (state.paused) {
+                stringResource(Res.string.today_queued_line_paused)
+            } else {
+                queuedLine(state.queuedDay ?: state.date?.let { QueuedDay.ThisDay(it) })
+            },
+        )
     }
+}
+
+/**
+ * The bond is paused (ADR-0066; doc 04 §8.1: "told that the Bond is paused, and nothing about
+ * why"). What happened, and what is kept: nothing new can be written, the days can still be
+ * read. It never says why, never names the partner, and never says when it ends (nobody knows).
+ * A DayNote like the waiting note (heading and muted line): no new component.
+ * [spaced] puts the screen rhythm's 16 above it, as under a card; false where it opens the layout.
+ */
+@Composable
+private fun PausedNote(spaced: Boolean = true) {
+    if (spaced) Spacer(Modifier.height(MoyiTheme.spacing.md))
+    DayNote(
+        heading = stringResource(Res.string.today_paused_heading),
+        line = stringResource(Res.string.today_paused_line),
+    )
 }
 
 /**
@@ -578,7 +619,8 @@ internal fun PartnerCard(state: TodayState) {
         photo = state.partnerPhoto,
         voice = state.partnerVoice,
         // Only while reactions are open (not on an ended bond): my choice, as a pill (§67).
-        reaction = myReactionPill(state.myReaction.takeIf { state.canReact }),
+        // Paused, the set is gone but the reaction already left stays readable.
+        reaction = myReactionPill(state.myReaction.takeIf { state.canReact || state.paused }),
     )
 }
 
@@ -688,6 +730,38 @@ private fun TodayRefusedWrittenPreview() {
     MoyiTheme(darkTheme = true) {
         TodayScreen(state = previewState(TodayStatus.Waiting).copy(refusal = OutboxRefusal.AlreadyWritten), onAction = {})
     }
+}
+
+/** The bond is paused, nothing written: no Write, the note in the prompt's place (ADR-0066). */
+@Preview
+@Composable
+private fun TodayPausedNotWrittenPreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(state = previewState(TodayStatus.NotWritten).copy(paused = true, prompt = null), onAction = {})
+    }
+}
+
+/** Paused after writing: the note in the waiting note's place, no Edit in the menu. */
+@Preview
+@Composable
+private fun TodayPausedWaitingPreview() {
+    MoyiTheme(darkTheme = true) { TodayScreen(state = previewState(TodayStatus.Waiting).copy(paused = true), onAction = {}) }
+}
+
+/** Paused on a revealed day: both entries, no reaction set, the note under them. */
+@Preview
+@Composable
+private fun TodayPausedRevealedPreview() {
+    MoyiTheme(darkTheme = true) {
+        TodayScreen(state = previewState(TodayStatus.Revealed).copy(paused = true, canReact = false), onAction = {})
+    }
+}
+
+/** A queued entry held by the pause: it sends when the bond resumes. */
+@Preview
+@Composable
+private fun TodayPausedQueuedPreview() {
+    MoyiTheme(darkTheme = true) { TodayScreen(state = previewState(TodayStatus.Queued).copy(paused = true), onAction = {}) }
 }
 
 @Preview

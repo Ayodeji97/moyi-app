@@ -39,7 +39,10 @@ enum class OutboxRefusal {
      */
     AlreadyWritten,
 
-    /** Any other refusal (`422`, `404`, `409 BOND_ARCHIVED`, another `4xx`): sending again cannot help. */
+    /**
+     * Any other refusal (`422`, `404`, `409 BOND_ARCHIVED`, another `4xx`): sending again cannot help.
+     * Never `409 BOND_PAUSED`: that entry is held, not refused ([SendFailure.Paused]).
+     */
     NotAccepted,
 }
 
@@ -121,6 +124,14 @@ enum class OutboxPass {
     /** At least one entry is still waiting for a connection (or for the server to recover). */
     Waiting,
 
+    /**
+     * Nothing is waiting for a connection, but at least one entry is held because its bond is
+     * paused (`409 BOND_PAUSED`, ADR-0066). It stays queued, words and key unchanged, and is
+     * not tried again on a timer: a pause can last days. The next foreground, connection or
+     * Today refresh tries it, and once the bond resumes the same request is accepted.
+     */
+    Held,
+
     /** The session ended (its refresh was refused): the wipe takes the queue with it. */
     SignedOut,
 }
@@ -133,13 +144,20 @@ sealed interface SendFailure {
     /** `401` after the refresh: the session is gone. */
     data object SessionEnded : SendFailure
 
+    /**
+     * `409 BOND_PAUSED` (ADR-0066): the bond takes no new entries for now. Nothing was written,
+     * and the same request (same key, same body) is accepted once it resumes, so the entry is
+     * held as it is: never refused, never turned back into a draft.
+     */
+    data object Paused : SendFailure
+
     /** The server answered and will answer the same again: never retried. */
     data class Refused(val reason: OutboxRefusal) : SendFailure
 }
 
 /**
  * Classifies a failed `POST /bonds/{id}/entries` (doc 06 §2). Only the connection and the
- * server's own trouble are transient; every other `4xx` is an answer.
+ * server's own trouble are transient; a paused bond holds the entry; every other `4xx` is an answer.
  *
  * A `409 IDEMPOTENCY_KEY_IN_FLIGHT` is transient: the same key is still being handled (a
  * request whose answer was lost), and the next try is answered with its result.
@@ -158,6 +176,7 @@ fun DataError.Network.sendFailure(): SendFailure = when (this) {
         problem.status == HTTP_UNAUTHORIZED -> SendFailure.SessionEnded
         problem.status >= HTTP_SERVER_ERROR || problem.status == HTTP_TOO_MANY_REQUESTS -> SendFailure.Transient
         problem.code == ApiErrorCode.IDEMPOTENCY_KEY_IN_FLIGHT -> SendFailure.Transient
+        problem.code == ApiErrorCode.BOND_PAUSED -> SendFailure.Paused
         problem.code == ApiErrorCode.ENTRY_ALREADY_EXISTS || problem.code == ApiErrorCode.DAY_CLOSED ->
             SendFailure.Refused(OutboxRefusal.AlreadyWritten)
         else -> SendFailure.Refused(OutboxRefusal.NotAccepted)

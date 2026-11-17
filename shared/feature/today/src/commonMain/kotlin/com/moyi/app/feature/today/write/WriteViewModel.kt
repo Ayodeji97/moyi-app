@@ -292,6 +292,9 @@ class WriteViewModel(
                 }
                 // The draft stays: the words are still unsent (states.md §10, Save failed).
                 WriteResult.Failed -> _state.update { it.copy(submit = WriteSubmit.Failed) }
+                // A paused bond: nothing written, nothing queued. Everything stays, the draft too, and
+                // the same key and body are reused if Send is tapped again (the server took nothing).
+                WriteResult.Paused -> _state.update { it.copy(submit = WriteSubmit.Paused) }
                 // The server would not attach it: the next photo, or none, starts a new upload.
                 WriteResult.PhotoRefused -> {
                     upload = UploadProgress.None
@@ -576,7 +579,7 @@ class WriteViewModel(
     }
 
     /** Typing after a failure or while queued keeps the state honest: the words changed. */
-    private fun WriteSubmit.afterEdit(): WriteSubmit = if (this == WriteSubmit.Failed) WriteSubmit.Idle else this
+    private fun WriteSubmit.afterEdit(): WriteSubmit = if (this == WriteSubmit.Failed || this == WriteSubmit.Paused) WriteSubmit.Idle else this
 
     /**
      * DEBUG ONLY. Steps through the drawn composer frames, in Figma's order: empty (181:3),
