@@ -11,7 +11,7 @@ import kotlinx.datetime.LocalDate
 enum class SettingsLoad { Loading, Failed, Ready }
 
 /** What a save, a leave or an error belongs to: the row (or editor) that shows it. */
-enum class SettingsField { Name, Type, RevealTime, RestDays, Leave, TimeZone, Invite, Block, CloseBox }
+enum class SettingsField { Name, Type, RevealTime, RestDays, Leave, TimeZone, Invite, Block, CloseBox, Search }
 
 /**
  * Which of the three time-zone screens (Figma 397:22, 397:67, 397:102) the pending
@@ -26,6 +26,13 @@ enum class TimeZoneStep { Propose, Proposed, Confirm }
  * member asked is Agree (their own ask is the agreement); both asked is CoolingOff.
  */
 enum class CloseBoxStep { Ask, Asked, Agree, CoolingOff }
+
+/**
+ * Which search-by-meaning screen (FR-204, ADR-0054) the bond calls for: it is off and nobody
+ * asked (Off: ask to turn it on); this person asked (Asked: they can only cancel it); the other
+ * member asked (PartnerAsked: agree or decline); it is on (On: turn it off, alone).
+ */
+enum class SearchStep { Off, Asked, PartnerAsked, On }
 
 /** An inline error, under the row or above the editor's action that caused it. Its input is kept. */
 @Immutable
@@ -70,6 +77,10 @@ data class BondSettingsState(
     val zoneChangeFrom: LocalDate? = null,
     /** The same for a close-the-box screen: true while its `DELETE` is the call in flight. */
     val closeBoxSecondaryInFlight: Boolean = false,
+    /** The same for the search-by-meaning screen: true while its `DELETE` (cancel, decline) is in flight. */
+    val searchSecondaryInFlight: Boolean = false,
+    /** "Turn off search by meaning?" is up: turning it back on needs both (owner ruling 2026-11-17, 11). */
+    val confirmingSearchOff: Boolean = false,
 ) {
     val leaving: Boolean get() = saving == SettingsField.Leave
     val blocking: Boolean get() = saving == SettingsField.Block
@@ -82,6 +93,17 @@ data class BondSettingsState(
                 settings.pendingDeletion?.requestedByMe == true -> CloseBoxStep.Asked
                 settings.pendingDeletion != null -> CloseBoxStep.Agree
                 else -> CloseBoxStep.Ask
+            }
+        }
+
+    val searchStep: SearchStep
+        get() {
+            val settings = settings ?: return SearchStep.Off
+            return when {
+                settings.semanticSearchEnabled -> SearchStep.On
+                settings.pendingSemanticSearch?.requestedByMe == true -> SearchStep.Asked
+                settings.pendingSemanticSearch != null -> SearchStep.PartnerAsked
+                else -> SearchStep.Off
             }
         }
 
@@ -136,6 +158,19 @@ sealed interface BondSettingsAction {
     /** Withdraw your ask, decline theirs, or call off the cooling-off: the same `DELETE`. */
     data object OnCloseBoxWithdraw : BondSettingsAction
 
+    // Search by meaning (FR-204, ADR-0054)
+    data object OnSearchClick : BondSettingsAction
+    /** Ask, or agree to the other member's ask: the same `POST`. */
+    data object OnSearchAsk : BondSettingsAction
+    /** Cancel your ask, or decline theirs: the same `DELETE`. */
+    data object OnSearchCancel : BondSettingsAction
+    /** Turn it off: asks first, because turning it back on needs both. */
+    data object OnSearchTurnOffClick : BondSettingsAction
+    data object OnSearchTurnOffConfirm : BondSettingsAction
+    data object OnSearchTurnOffDismiss : BondSettingsAction
+    /** The facts card's link: the Privacy Policy in force (`GET /meta/legal`), in the in-app browser. */
+    data object OnPrivacyPolicyClick : BondSettingsAction
+
     /** An editor closed without saving (back): its error goes with it. */
     data object OnEditorClosed : BondSettingsAction
 
@@ -172,6 +207,10 @@ sealed interface BondSettingsEvent {
     data object OpenLeave : BondSettingsEvent
     data object OpenBlock : BondSettingsEvent
     data object OpenCloseBox : BondSettingsEvent
+    data object OpenSearch : BondSettingsEvent
+
+    /** A page to read in the in-app browser (the Privacy Policy). */
+    data class OpenPage(val url: String) : BondSettingsEvent
 
     /** The report flow about the other member of [bondId], named [partnerName]. */
     data class OpenReport(val bondId: String, val partnerName: String) : BondSettingsEvent

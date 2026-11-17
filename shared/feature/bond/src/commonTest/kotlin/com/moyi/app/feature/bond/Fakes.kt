@@ -34,6 +34,12 @@ import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.PendingDeletionRequest
+import com.moyi.app.domain.bond.PendingSemanticSearchRequest
+import com.moyi.app.domain.legal.AcceptedVersions
+import com.moyi.app.domain.legal.LegalDocuments
+import com.moyi.app.domain.legal.LegalRepository
+import com.moyi.app.domain.legal.LegalStatus
+import com.moyi.app.domain.legal.PublishedDocument
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
 import kotlinx.coroutines.CompletableDeferred
@@ -167,6 +173,44 @@ class FakeBondSettingsRepository(var server: BondSettings = settingsV1) : BondSe
         cancels++
         cancelAnswers.removeFirstOrNull()?.let { return it }
         server = server.copy(pendingTimezone = null)
+        return Result.Success(Unit)
+    }
+
+    val searchOffAnswers = ArrayDeque<Result<BondSettings, DataError.Network>>()
+    val searchAskAnswers = ArrayDeque<Result<BondSettings, DataError.Network>>()
+    val searchCancelAnswers = ArrayDeque<EmptyResult<DataError.Network>>()
+    /** The version each turn-off sent as `If-Match`, in order. */
+    val searchOffs = mutableListOf<String>()
+    var searchAsks = 0
+    var searchCancels = 0
+
+    /** As the server: off at once, for one member alone, and any live request goes with it. */
+    override suspend fun turnOffSemanticSearch(bondId: String, version: String): Result<BondSettings, DataError.Network> {
+        searchOffs += version
+        gate?.await()
+        searchOffAnswers.removeFirstOrNull()?.let { return it }
+        server = server.copy(semanticSearchEnabled = false, pendingSemanticSearch = null, version = bump())
+        return Result.Success(server)
+    }
+
+    /** As the server: the first ask waits for the other member (on at once while nobody has joined); theirs turns it on. */
+    override suspend fun requestSemanticSearch(bondId: String): Result<BondSettings, DataError.Network> {
+        searchAsks++
+        gate?.await()
+        searchAskAnswers.removeFirstOrNull()?.let { return it }
+        server = if (server.pendingSemanticSearch?.requestedByMe == false || server.waitingForPartner || server.semanticSearchEnabled) {
+            server.copy(semanticSearchEnabled = true, pendingSemanticSearch = null, version = bump())
+        } else {
+            server.copy(pendingSemanticSearch = PendingSemanticSearchRequest(requestedByMe = true, expiresAt = askLapses), version = bump())
+        }
+        return Result.Success(server)
+    }
+
+    override suspend fun cancelSemanticSearchRequest(bondId: String): EmptyResult<DataError.Network> {
+        searchCancels++
+        gate?.await()
+        searchCancelAnswers.removeFirstOrNull()?.let { return it }
+        server = server.copy(pendingSemanticSearch = null, version = bump())
         return Result.Success(Unit)
     }
 
@@ -325,4 +369,22 @@ class FakeEmptyBondExit : EmptyBondExit {
         if (fail) error("the device's store could not be read")
         if (hang) awaitCancellation()
     }
+}
+
+val privacyUrl = "https://getmoyi.app/privacy"
+
+/** `GET /meta/legal`, answering from [documentsAnswers] when queued, otherwise with the documents in force. */
+class FakeLegalRepository : LegalRepository {
+    private val documents = LegalDocuments(
+        terms = PublishedDocument("1", "https://getmoyi.app/terms"),
+        privacy = PublishedDocument("1", privacyUrl),
+        dataProcessingSummary = PublishedDocument("1", "https://getmoyi.app/data-processing"),
+    )
+    val documentsAnswers = ArrayDeque<Result<LegalDocuments, DataError.Network>>()
+
+    override suspend fun documents(): Result<LegalDocuments, DataError.Network> = documentsAnswers.removeFirstOrNull() ?: Result.Success(documents)
+
+    override suspend fun status(): Result<LegalStatus, DataError.Network> = Result.Success(LegalStatus(documents, AcceptedVersions("1", "1")))
+
+    override suspend fun acceptCurrent(): EmptyResult<DataError.Network> = Result.Success(Unit)
 }

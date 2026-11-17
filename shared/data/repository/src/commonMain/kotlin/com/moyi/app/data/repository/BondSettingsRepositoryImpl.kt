@@ -4,6 +4,7 @@ import com.moyi.app.api.apis.BondDeletionControllerApi
 import com.moyi.app.api.apis.BondMemberSettingsControllerApi
 import com.moyi.app.api.apis.BondTimezoneControllerApi
 import com.moyi.app.api.apis.BondsControllerApi
+import com.moyi.app.api.apis.SemanticSearchControllerApi
 import com.moyi.app.api.models.BondResponse
 import com.moyi.app.api.models.ChangeTimezoneRequest
 import com.moyi.app.api.models.ConfirmTimezoneRequest
@@ -28,6 +29,7 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.PendingDeletionRequest
+import com.moyi.app.domain.bond.PendingSemanticSearchRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.SharedSetting
 import com.moyi.app.domain.bond.SharedSettingsNotices
@@ -57,6 +59,7 @@ class BondSettingsRepositoryImpl(
     private val memberSettingsApi = BondMemberSettingsControllerApi(config.origin, authedClient.client)
     private val timezoneApi = BondTimezoneControllerApi(config.origin, authedClient.client)
     private val deletionApi = BondDeletionControllerApi(config.origin, authedClient.client)
+    private val semanticSearchApi = SemanticSearchControllerApi(config.origin, authedClient.client)
 
     override suspend fun settings(bondId: String): Result<BondSettings, DataError.Network> =
         safeApiCallWithETag { bondsApi.getBond(bondId) }
@@ -114,6 +117,22 @@ class BondSettingsRepositoryImpl(
         safeApiCallEmpty { timezoneApi.cancelBondTimezoneChange(bondId) }
             .onSuccess { settingsNotices.clearOwnRequest(bondId, SharedSetting.TIMEZONE) }
 
+    // Only `false` is ever sent: `true` is 422 on this field (turning it on needs both, the POST below).
+    override suspend fun turnOffSemanticSearch(bondId: String, version: String): Result<BondSettings, DataError.Network> =
+        safeApiCallWithETag { bondsApi.patchBond(bondId, ifMatch = version, patchBondRequest = PatchBondRequest(semanticSearchEnabled = false)) }
+            .recordOwn(setOf(SharedSetting.SEMANTIC_SEARCH))
+            .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
+
+    // The deletion request's shape (ADR-0054): a 202 that carries the bond and its new ETag.
+    override suspend fun requestSemanticSearch(bondId: String): Result<BondSettings, DataError.Network> =
+        safeApiCallWithETag { semanticSearchApi.requestSemanticSearch(bondId) }
+            .recordOwn(setOf(SharedSetting.SEMANTIC_SEARCH))
+            .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
+
+    override suspend fun cancelSemanticSearchRequest(bondId: String): EmptyResult<DataError.Network> =
+        safeApiCallEmpty { semanticSearchApi.cancelSemanticSearchRequest(bondId) }
+            .onSuccess { settingsNotices.clearOwnRequest(bondId, SharedSetting.SEMANTIC_SEARCH) }
+
     /** This device's own write answered with the bond: remembered, and what it changed is not noted. */
     private suspend fun <E : DataError> Result<Pair<BondResponse, String?>, E>.recordOwn(own: Set<SharedSetting>) =
         onSuccess { (body, _) -> body.toSharedSettings()?.let { settingsNotices.recordOwn(it, own) } }
@@ -167,6 +186,13 @@ internal fun BondResponse.toSettings(etag: String?): BondSettings? = BondSetting
     timezoneChangeAllowedFrom = timezoneChangeAllowedFrom?.toString(),
     myName = members.orEmpty().firstOrNull { it.id == me.memberId }?.displayName,
     createdAt = createdAt,
+    semanticSearchEnabled = semanticSearchEnabled,
+    pendingSemanticSearch = pendingSemanticSearchRequest?.let { pending ->
+        PendingSemanticSearchRequest(
+            requestedByMe = pending.requestedByMemberId == me.memberId,
+            expiresAt = pending.expiresAt,
+        )
+    },
 )
 
 private fun MemberSettingsResponse.toDomain(): MemberSettings? = MemberSettings(
