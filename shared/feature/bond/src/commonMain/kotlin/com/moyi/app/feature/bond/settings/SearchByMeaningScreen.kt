@@ -1,9 +1,14 @@
 package com.moyi.app.feature.bond.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -17,6 +22,7 @@ import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.ScreenHeader
+import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextTone
 import com.moyi.app.domain.bond.BondSettings
@@ -25,6 +31,9 @@ import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.PendingSemanticSearchRequest
 import com.moyi.app.feature.bond.resources.Res
 import com.moyi.app.feature.bond.resources.settings_cancel
+import com.moyi.app.feature.bond.resources.settings_load_error_action
+import com.moyi.app.feature.bond.resources.settings_load_error_heading
+import com.moyi.app.feature.bond.resources.settings_load_error_line
 import com.moyi.app.feature.bond.resources.search_agree
 import com.moyi.app.feature.bond.resources.search_agreeing
 import com.moyi.app.feature.bond.resources.search_alone_line
@@ -85,7 +94,11 @@ fun SearchByMeaningScreen(
     onAction: (BondSettingsAction) -> Unit,
     onBack: () -> Unit,
 ) {
-    val settings = state.settings ?: return
+    val settings = state.settings
+    if (settings == null) {
+        NotRead(state.load, onAction, onBack)
+        return
+    }
     val spacing = MoyiTheme.spacing
     val busy = state.saving == SettingsField.Search
     val primaryInFlight = busy && !state.searchSecondaryInFlight
@@ -231,6 +244,29 @@ private val previewSearchBond = BondSettings(
 )
 
 private fun searchState(settings: BondSettings) = BondSettingsState(load = SettingsLoad.Ready, settings = settings)
+
+/**
+ * Opened from a note on Today, the screen can come before the bond is read: the bare `surface`
+ * while it is, as the root draws it; a failed read is the root's Generic error with Try again,
+ * under the back target, so the way out stays.
+ */
+@Composable
+private fun NotRead(load: SettingsLoad, onAction: (BondSettingsAction) -> Unit, onBack: () -> Unit) {
+    if (load != SettingsLoad.Failed) {
+        Box(Modifier.fillMaxSize().background(MoyiTheme.colors.surface))
+        return
+    }
+    MoyiScaffold(onBack = onBack, contentArrangement = Arrangement.Center) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            StateBlock(
+                heading = stringResource(Res.string.settings_load_error_heading),
+                line = stringResource(Res.string.settings_load_error_line),
+                actionLabel = stringResource(Res.string.settings_load_error_action),
+                onAction = { onAction(BondSettingsAction.OnRetryClick) },
+            )
+        }
+    }
+}
 
 @Preview
 @Composable

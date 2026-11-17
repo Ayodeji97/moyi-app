@@ -9,6 +9,7 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.PendingNotice
+import com.moyi.app.domain.bond.SharedSetting
 import com.moyi.app.domain.bond.SharedSettingsNotices
 import com.moyi.app.designsystem.platform.NotificationPermission
 import com.moyi.app.domain.notification.NotificationAskMemory
@@ -196,13 +197,21 @@ class TodayViewModel(
 
     /**
      * The note about a shared setting has been read: it goes for good, and the next one waiting
-     * (if any) takes its place. "See Bond settings" counts as read, because the change is there.
+     * (if any) takes its place. "See Bond settings" counts as read, because the change is there;
+     * a note about search by meaning opens its own screen, where the answer is.
      */
     private fun dismissSettingsNotice(openSettings: Boolean) {
         val bondId = (loop.state.value as? DailyLoopState.Ready)?.day?.bondId ?: return
         val notice = settingsNotice.value ?: return
         viewModelScope.launch { settingsNotices.dismiss(bondId, notice.id) }
-        if (openSettings) send(TodayEvent.NavigateToSettings(bondId))
+        if (!openSettings) return
+        send(
+            if (notice.notice.setting == SharedSetting.SEMANTIC_SEARCH) {
+                TodayEvent.NavigateToSearchSettings(bondId)
+            } else {
+                TodayEvent.NavigateToSettings(bondId)
+            },
+        )
     }
 
     /**

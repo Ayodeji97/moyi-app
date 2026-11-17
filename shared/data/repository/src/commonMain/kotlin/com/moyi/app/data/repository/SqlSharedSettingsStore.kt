@@ -121,6 +121,7 @@ private fun SharedSettingNotice.toColumns(): Pair<String, String?> = when (this)
     SharedSettingNotice.SemanticSearchKeptOff -> "SEMANTIC_SEARCH_KEPT_OFF" to null
     SharedSettingNotice.SemanticSearchWithdrawn -> "SEMANTIC_SEARCH_WITHDRAWN" to null
     SharedSettingNotice.SemanticSearchTurnedOff -> "SEMANTIC_SEARCH_TURNED_OFF" to null
+    SharedSettingNotice.SemanticSearchAsked -> "SEMANTIC_SEARCH_ASKED" to null
     is SharedSettingNotice.NameChanged -> "NAME_CHANGED" to name
     is SharedSettingNotice.RevealTimeChanged -> "REVEAL_TIME_CHANGED" to time?.toString()
     is SharedSettingNotice.RestDaysChanged -> "REST_DAYS_CHANGED" to on.toString()
@@ -139,6 +140,7 @@ private fun noticeOf(kind: String, value: String?): SharedSettingNotice? = when 
     "SEMANTIC_SEARCH_KEPT_OFF" -> SharedSettingNotice.SemanticSearchKeptOff
     "SEMANTIC_SEARCH_WITHDRAWN" -> SharedSettingNotice.SemanticSearchWithdrawn
     "SEMANTIC_SEARCH_TURNED_OFF" -> SharedSettingNotice.SemanticSearchTurnedOff
+    "SEMANTIC_SEARCH_ASKED" -> SharedSettingNotice.SemanticSearchAsked
     "NAME_CHANGED" -> value?.let { SharedSettingNotice.NameChanged(it) }
     // No value: the day now opens as soon as both have written. A value that is not HH:mm is unreadable.
     "REVEAL_TIME_CHANGED" -> if (value == null) SharedSettingNotice.RevealTimeChanged(null) else TimeOfDay.parse(value)?.let { SharedSettingNotice.RevealTimeChanged(it) }

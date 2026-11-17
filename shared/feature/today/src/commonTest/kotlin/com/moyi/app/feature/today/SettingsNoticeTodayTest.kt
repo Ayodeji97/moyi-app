@@ -132,6 +132,21 @@ class SettingsNoticeTodayTest : MainDispatcherTest() {
     }
 
     @Test
+    fun seeBondSettingsOnASearchNoteOpensSearchByMeaning() = runTest {
+        notices.add(bondId, SharedSettingNotice.SemanticSearchAsked)
+        notices.add(bondId, SharedSettingNotice.SemanticSearchTurnedOff)
+        open()
+
+        viewModel.events.test {
+            viewModel.onAction(TodayAction.OnSettingsNoticeOpenSettings)
+            assertEquals(TodayEvent.NavigateToSearchSettings(bondId), awaitItem())
+            viewModel.onAction(TodayAction.OnSettingsNoticeOpenSettings)
+            assertEquals(TodayEvent.NavigateToSearchSettings(bondId), awaitItem(), "the now-off note opens it too (ruling 13)")
+        }
+        assertNull(viewModel.state.value.settingsNotice)
+    }
+
+    @Test
     fun anotherBondsNoteIsNotShownHere() = runTest {
         notices.add("some-other-bond", SharedSettingNotice.NameChanged("Elsewhere"))
         open()

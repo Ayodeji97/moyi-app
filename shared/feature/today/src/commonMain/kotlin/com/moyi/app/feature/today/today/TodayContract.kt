@@ -204,6 +204,8 @@ sealed interface TodayEvent {
     data object NavigateToReveal : TodayEvent
     /** Bond settings, for the bond this day belongs to. */
     data class NavigateToSettings(val bondId: String) : TodayEvent
+    /** Bond settings · Search by meaning, with Bond settings under it: the note was about search by meaning. */
+    data class NavigateToSearchSettings(val bondId: String) : TodayEvent
     data object NavigateToArchive : TodayEvent
 
     /** The OS share sheet with the invite; fire and forget, it proves nothing was sent. */

@@ -81,6 +81,16 @@ internal data object NotificationsRoute
 internal data object SearchByMeaningRoute
 
 /**
+ * Bond settings · Search by meaning for [bondId], with Bond settings under it, so back returns
+ * there: what "See Bond settings" on a note about search by meaning opens (owner rulings
+ * 2026-11-17, 6 and 13). The screen draws the bare surface until the bond is read.
+ */
+fun NavController.navigateToSearchByMeaning(bondId: String) {
+    navigate(BondSettingsGraph(bondId)) { launchSingleTop = true }
+    navigate(SearchByMeaningRoute) { launchSingleTop = true }
+}
+
+/**
  * Bond · archived, the signed-in start's answer when the person's bond has ended and they
  * are in no open one. [partnerName] is the other member's, for the line; null when unknown.
  */

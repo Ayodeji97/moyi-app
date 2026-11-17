@@ -77,6 +77,8 @@ data class ReminderAskRoute(val bondId: String)
  *
  * @param onOpenSettings the settings target in Today's nav row, with the day's bond:
  *   the shell opens Bond settings.
+ * @param onOpenSearchSettings "See Bond settings" on a note about search by meaning: the shell
+ *   opens Bond settings · Search by meaning, with Bond settings under it.
  * @param onReport the day view's Report: the shell opens the report flow over it (feature
  *   bond), about the partner's entry when one is given, or the member.
  * @param onNoOpenBond the person is in no open bond any more (left or ended on the
@@ -87,6 +89,7 @@ data class ReminderAskRoute(val bondId: String)
 fun NavGraphBuilder.todayGraph(
     navController: NavController,
     onOpenSettings: (bondId: String) -> Unit,
+    onOpenSearchSettings: (bondId: String) -> Unit,
     onReport: (bondId: String, entryId: String?, partnerName: String?) -> Unit,
     onNoOpenBond: () -> Unit,
     /** "I have an invite code" on Today: the join flow from the bond nobody has joined (in onboarding). */
@@ -108,6 +111,7 @@ fun NavGraphBuilder.todayGraph(
             onNavigateToWrite = { editing -> navController.navigate(WriteRoute(editing)) },
             onNavigateToReveal = { navController.openReveal() },
             onNavigateToSettings = onOpenSettings,
+            onNavigateToSearchSettings = onOpenSearchSettings,
             onNavigateToArchive = { navController.navigate(ArchiveRoute) { launchSingleTop = true } },
             onNoOpenBond = onNoOpenBond,
             onNavigateToJoin = onJoinWithCode,

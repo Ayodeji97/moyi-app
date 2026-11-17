@@ -53,6 +53,7 @@ class SqlSharedSettingsStoreTest {
         SharedSettingNotice.SemanticSearchKeptOff,
         SharedSettingNotice.SemanticSearchWithdrawn,
         SharedSettingNotice.SemanticSearchTurnedOff,
+        SharedSettingNotice.SemanticSearchAsked,
         SharedSettingNotice.NameChanged("Tea"),
         SharedSettingNotice.RevealTimeChanged(TimeOfDay(20, 30)),
         SharedSettingNotice.RevealTimeChanged(null),
