@@ -168,6 +168,7 @@ class BondSettingsViewModel(
             BondSettingsAction.OnSearchClick -> if (canEdit()) {
                 _state.update { it.copy(error = null, confirmingSearchOff = false) }
                 send(BondSettingsEvent.OpenSearch)
+                refreshQuietly()
             }
             BondSettingsAction.OnSearchAsk -> requestSemanticSearch()
             BondSettingsAction.OnSearchCancel -> cancelSemanticSearch()
@@ -608,6 +609,19 @@ class BondSettingsViewModel(
                 }
             }
             else -> _state.update { it.copy(saving = null, searchSecondaryInFlight = false, error = SettingsError(SettingsField.Search, error.message())) }
+        }
+    }
+
+    /**
+     * Reads the bond again as the screen opens, with nothing shown while it does: the other member
+     * may have asked (or answered) since Bond settings was read, and there is no push for it yet
+     * (docs/backend-contract-gaps.md row 46). A failure keeps what is shown; a write that started
+     * meanwhile wins.
+     */
+    private fun refreshQuietly() {
+        viewModelScope.launch {
+            val fresh = (repository.settings(bondId) as? Result.Success)?.data ?: return@launch
+            _state.update { if (it.saving == null) it.copy(settings = fresh) else it }
         }
     }
 

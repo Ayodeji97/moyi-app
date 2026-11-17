@@ -73,6 +73,17 @@ class SearchByMeaningViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun openingTheScreenReadsTheBondAgainSoAnAskMadeSinceShows() = runTest {
+        start(off)
+        repo.server = off.copy(pendingSemanticSearch = PendingSemanticSearchRequest(requestedByMe = false))
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnSearchClick)
+            assertEquals(BondSettingsEvent.OpenSearch, awaitItem())
+        }
+        assertEquals(SearchStep.PartnerAsked, viewModel.state.value.searchStep)
+    }
+
+    @Test
     fun theRowStillOpensDuringTheCoolingOff() = runTest {
         start(off.copy(status = BondStatus.PENDING_DELETION, semanticSearchEnabled = true)).events.test {
             viewModel.onAction(BondSettingsAction.OnSearchClick)
