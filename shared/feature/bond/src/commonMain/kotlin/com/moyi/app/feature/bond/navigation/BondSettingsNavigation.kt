@@ -12,6 +12,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.toRoute
+import com.moyi.app.designsystem.platform.rememberInAppBrowser
 import com.moyi.app.designsystem.platform.rememberNotificationPermission
 import com.moyi.app.designsystem.platform.rememberShareSheet
 import com.moyi.app.designsystem.platform.rememberTextClipboard
@@ -31,6 +32,7 @@ import com.moyi.app.feature.bond.settings.BondTypeScreen
 import com.moyi.app.feature.bond.settings.CloseBoxScreen
 import com.moyi.app.feature.bond.settings.InviteScreen
 import com.moyi.app.feature.bond.settings.LeaveScreen
+import com.moyi.app.feature.bond.settings.SearchByMeaningScreen
 import com.moyi.app.feature.bond.settings.TimeZoneScreen
 import com.moyi.app.feature.bond.settings.ZonePickerScreen
 import com.moyi.app.feature.onboarding.resources.invite_share_text
@@ -75,6 +77,9 @@ internal data object CloseBoxRoute
 @Serializable
 internal data object NotificationsRoute
 
+@Serializable
+internal data object SearchByMeaningRoute
+
 /**
  * Bond · archived, the signed-in start's answer when the person's bond has ended and they
  * are in no open one. [partnerName] is the other member's, for the line; null when unknown.
@@ -102,6 +107,10 @@ data class BondArchivedRoute(val partnerName: String? = null)
  * - Bond settings → Close the box (push), one destination whose content follows the bond
  *   (ask, asked, agree, cooling off). Asking stays on it; withdrawing, declining or
  *   calling it off returns to the root.
+ * - Bond settings → Search by meaning (push), one destination whose content follows the bond
+ *   (off, asked, the other member asked, on). Asking, agreeing and turning it off stay on it;
+ *   cancelling or declining returns to the root. Turning it off asks first, in a dialog over
+ *   it. Read the Privacy Policy opens the in-app browser and goes nowhere in the graph.
  * - Bond settings → Notifications (push), with a ViewModel of its own: its toggles and
  *   times change in place. The phone's permission prompt is shown from here only
  *   (NotificationPermissionPolicy), and Open phone settings leaves the app. Back returns
@@ -176,6 +185,12 @@ fun NavGraphBuilder.bondSettingsGraph(
                 CloseBoxScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
             }
         }
+        composable<SearchByMeaningRoute> { entry ->
+            SettingsDestination(entry, navController, onBondEnded, onJoinWithCode) { viewModel ->
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                SearchByMeaningScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeEditor(viewModel) })
+            }
+        }
         composable<NotificationsRoute> { entry -> NotificationsDestination(entry, navController, onBondEnded) }
         composable<BondTypeRoute> { entry ->
             SettingsDestination(entry, navController, onBondEnded, onJoinWithCode) { viewModel ->
@@ -204,6 +219,7 @@ private fun SettingsDestination(
     val viewModel: BondSettingsViewModel = koinViewModel(viewModelStoreOwner = graphEntry) { parametersOf(bondId) }
     val clipboard = rememberTextClipboard()
     val shareSheet = rememberShareSheet()
+    val browser = rememberInAppBrowser()
     val scope = rememberCoroutineScope()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
@@ -218,6 +234,8 @@ private fun SettingsDestination(
             BondSettingsEvent.OpenLeave -> navController.navigate(LeaveRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenBlock -> navController.navigate(BlockRoute) { launchSingleTop = true }
             BondSettingsEvent.OpenCloseBox -> navController.navigate(CloseBoxRoute) { launchSingleTop = true }
+            BondSettingsEvent.OpenSearch -> navController.navigate(SearchByMeaningRoute) { launchSingleTop = true }
+            is BondSettingsEvent.OpenPage -> browser.open(event.url)
             BondSettingsEvent.OpenNotifications -> navController.navigate(NotificationsRoute) { launchSingleTop = true }
             is BondSettingsEvent.OpenReport -> navController.openReport(event.bondId, entryId = null, event.partnerName, fromSettings = true)
             BondSettingsEvent.OpenAccount -> navController.navigate(AccountGraph) { launchSingleTop = true }

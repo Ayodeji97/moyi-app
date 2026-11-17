@@ -274,6 +274,9 @@ class EmptyBondExitTest {
         override suspend fun proposeTimezone(bondId: String, timezone: String) = error("not used")
         override suspend fun confirmTimezone(bondId: String, proposalId: String) = error("not used")
         override suspend fun cancelTimezoneChange(bondId: String) = error("not used")
+        override suspend fun turnOffSemanticSearch(bondId: String, version: String) = error("not used")
+        override suspend fun requestSemanticSearch(bondId: String) = error("not used")
+        override suspend fun cancelSemanticSearchRequest(bondId: String) = error("not used")
         override suspend fun memberSettings(bondId: String) = error("not used")
         override suspend fun replaceMemberSettings(bondId: String, settings: MemberSettings) = error("not used")
     }

@@ -51,6 +51,9 @@ import com.moyi.app.feature.bond.resources.settings_cancel
 import com.moyi.app.feature.bond.resources.settings_group_day
 import com.moyi.app.feature.bond.resources.settings_group_ending
 import com.moyi.app.feature.bond.resources.settings_group_invite
+import com.moyi.app.feature.bond.resources.settings_group_search
+import com.moyi.app.feature.bond.resources.settings_row_search
+import com.moyi.app.feature.bond.resources.settings_search_value_asked
 import com.moyi.app.feature.onboarding.resources.bond_type_have_code
 import com.moyi.app.feature.bond.resources.settings_invite_heading
 import com.moyi.app.feature.bond.resources.settings_invite_value_active
@@ -107,14 +110,16 @@ import com.moyi.app.feature.onboarding.resources.Res as OnboardingRes
  * `label` heading 16 above its 56 rows.
  *
  * Drawn here: This bond (relationship type, bond name), The day (shared time zone, reveal
- * time, rest days), Just you (notifications, account, sign out), Invite (only while the bond
+ * time, rest days), Finding your days (search by meaning: On, Off, or Asked while a request
+ * waits; owner ruling 2026-11-17), Just you (notifications, account, sign out), Invite (only while the bond
  * waits for its second member or holds a live code), Ending (leave, block and leave while
  * the other member is known, and close the box, which the root does not draw). Left out
  * on purpose, with no dead row (docs/figma/bond-settings-check.md): nothing now. Your
  * reminder lives on Notifications (Just you), with the kinds of push and quiet hours.
  *
  * During the close-the-box cooling-off the bond takes no other write, so the rows that
- * change it are disabled; Sign out and the Ending rows stay.
+ * change it are disabled; Sign out, Search by meaning (off is allowed on a bond that has
+ * ended, ADR-0054 decision 9) and the Ending rows stay.
  *
  * Loading is the bare `surface`; a failed load is the Generic error with Try again, under
  * the back target, so the way out stays. Under it stays the one group that needs nothing
@@ -305,6 +310,23 @@ private fun SettingsRoot(
                     ),
                     tone = TextTone.Muted,
                 )
+            }
+            SettingsGroup(stringResource(Res.string.settings_group_search)) {
+                GroupedCard {
+                    row(
+                        label = stringResource(Res.string.settings_row_search),
+                        value = stringResource(
+                            when (state.searchStep) {
+                                SearchStep.On -> Res.string.settings_value_on
+                                SearchStep.Off -> Res.string.settings_value_off
+                                SearchStep.Asked, SearchStep.PartnerAsked -> Res.string.settings_search_value_asked
+                            },
+                        ),
+                        // Not frozen in the cooling-off: turning it off is still allowed there.
+                        enabled = !busy,
+                        onClick = { onAction(BondSettingsAction.OnSearchClick) },
+                    )
+                }
             }
             JustYouGroup(settings.partnerName, busy, notifications = true, onAction = onAction)
             // Only while the bond waits for its second member, or still holds a live code:

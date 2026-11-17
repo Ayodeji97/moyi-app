@@ -258,4 +258,7 @@ private class FakeMemberSettings(private var held: MemberSettings) : BondSetting
     override suspend fun confirmTimezone(bondId: String, proposalId: String): Result<BondSettings, DataError.Network> = error("not used")
 
     override suspend fun cancelTimezoneChange(bondId: String): EmptyResult<DataError.Network> = error("not used")
+    override suspend fun turnOffSemanticSearch(bondId: String, version: String): Result<BondSettings, DataError.Network> = error("not used")
+    override suspend fun requestSemanticSearch(bondId: String): Result<BondSettings, DataError.Network> = error("not used")
+    override suspend fun cancelSemanticSearchRequest(bondId: String): EmptyResult<DataError.Network> = error("not used")
 }

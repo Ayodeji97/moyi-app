@@ -16,6 +16,7 @@ import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.PendingDeletionRequest
+import com.moyi.app.domain.bond.PendingSemanticSearchRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
 import com.moyi.app.domain.bond.TimeOfDay
 import com.moyi.app.domain.notification.NotificationCategory
@@ -45,6 +46,9 @@ import kotlin.time.Duration.Companion.milliseconds
  * from now; Keep the box calls it off; asking again then waits on Tunde (Asked) until
  * cancelled. Leave and Block and leave end the bond (ARCHIVED), so the signed-in start
  * shows the archived bond.
+ *
+ * Search by meaning is off and Tunde has asked to turn it on (Agree). Agreeing turns it on;
+ * Turn it off (after the confirmation) turns it off; asking then waits on Tunde (Asked).
  */
 internal class PreviewBondSettingsRepository(private val latency: Duration = 800.milliseconds) : BondSettingsRepository {
     private var settings = BondSettings(
@@ -61,6 +65,9 @@ internal class PreviewBondSettingsRepository(private val latency: Duration = 800
         invite = previewInvite("K7Q2PD"),
         // Tunde asked to close the box: Bond settings › Close the box opens on Agree.
         pendingDeletion = PendingDeletionRequest(requestedByMe = false, expiresAt = Clock.System.now() + 7.days),
+        // Tunde asked to turn search by meaning on: Bond settings › Search by meaning opens on Agree.
+        semanticSearchEnabled = false,
+        pendingSemanticSearch = PendingSemanticSearchRequest(requestedByMe = false, expiresAt = Clock.System.now() + 7.days),
     )
     private var zoneChanged = false
 
@@ -131,6 +138,30 @@ internal class PreviewBondSettingsRepository(private val latency: Duration = 800
     override suspend fun cancelTimezoneChange(bondId: String): EmptyResult<DataError.Network> {
         delay(latency)
         settings = settings.copy(pendingTimezone = null)
+        return Result.Success(Unit)
+    }
+
+    override suspend fun turnOffSemanticSearch(bondId: String, version: String): Result<BondSettings, DataError.Network> {
+        delay(latency)
+        settings = settings.copy(semanticSearchEnabled = false, pendingSemanticSearch = null, version = next())
+        return Result.Success(settings)
+    }
+
+    /** Asks, or agrees to Tunde's ask, which turns it on. */
+    override suspend fun requestSemanticSearch(bondId: String): Result<BondSettings, DataError.Network> {
+        delay(latency)
+        val theirs = settings.pendingSemanticSearch?.requestedByMe == false
+        settings = if (theirs || settings.semanticSearchEnabled) {
+            settings.copy(semanticSearchEnabled = true, pendingSemanticSearch = null, version = next())
+        } else {
+            settings.copy(pendingSemanticSearch = PendingSemanticSearchRequest(requestedByMe = true, expiresAt = Clock.System.now() + 7.days), version = next())
+        }
+        return Result.Success(settings)
+    }
+
+    override suspend fun cancelSemanticSearchRequest(bondId: String): EmptyResult<DataError.Network> {
+        delay(latency)
+        settings = settings.copy(pendingSemanticSearch = null, version = next())
         return Result.Success(Unit)
     }
 

@@ -159,6 +159,19 @@ object MoyiDimens {
     }
 
     /**
+     * The facts card (docs/missing-components.md §89, owner-approved new component): EntryCard's
+     * surface and padding; the facts under the label are `body` lines after a small round mark.
+     */
+    object FactsCard {
+        /** 16, the EntryCard label gap: the label sits over the facts as over an entry's words. */
+        val LabelGap = 16.dp
+        /** The round mark before each fact: small enough to read as a list, not as a control. */
+        val Mark = 6.dp
+        /** Between the mark and its sentence: the `sm` step. */
+        val MarkGap = 8.dp
+    }
+
+    /**
      * tokens.md §3 and §6 ("the composer toolbar lives inside the field"): text and icon
      * glyphs align at 20 from the box edge. A 48 target centring a 24 glyph contributes 12;
      * the text wrap matches it with 12; the box's own padding is the remaining 8.

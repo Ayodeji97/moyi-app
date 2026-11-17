@@ -255,8 +255,8 @@ interface SharedSettingsNotices {
     suspend fun recordOwn(current: SharedSettingsSnapshot, own: Set<SharedSetting>)
 
     /**
-     * This device declined, withdrew or called off [setting]'s waiting request ([SharedSetting.TIMEZONE]
-     * or [SharedSetting.DELETION]). The call answers `204` with no bond, so the remembered one is
+     * This device declined, withdrew or called off [setting]'s waiting request ([SharedSetting.TIMEZONE],
+     * [SharedSetting.DELETION] or [SharedSetting.SEMANTIC_SEARCH]). The call answers `204` with no bond, so the remembered one is
      * changed to match, and the next read does not take the person's own answer for the other's.
      */
     suspend fun clearOwnRequest(bondId: String, setting: SharedSetting)

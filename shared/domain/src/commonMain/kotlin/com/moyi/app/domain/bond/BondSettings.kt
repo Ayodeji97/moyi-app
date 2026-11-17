@@ -49,6 +49,13 @@ data class BondSettings(
     val myName: String? = null,
     /** When the bond began (`BondResponse.createdAt`): the header's "since". Null only for a source that does not know. */
     val createdAt: Instant? = null,
+    /**
+     * Search by meaning (FR-204, ADR-0054): the bond's entries are embedded so search also finds
+     * by meaning. On by default for every bond. Either member turns it off alone; on again needs both.
+     */
+    val semanticSearchEnabled: Boolean = true,
+    /** One member asked to turn search by meaning back on and the other has not answered yet, or null. */
+    val pendingSemanticSearch: PendingSemanticSearchRequest? = null,
 ) {
     val restDays: Boolean get() = !strictMode
 
@@ -57,7 +64,23 @@ data class BondSettings(
 
     /** Nobody has joined yet: a proposed zone applies at once, as there is nobody to agree (doc 06). */
     val waitingForPartner: Boolean get() = status == BondStatus.PENDING_MEMBER
+
+    /**
+     * The bond takes no new write: it has ended, or it counts down to deletion. Asking to turn search
+     * by meaning on is then `409 BOND_ARCHIVED`; turning it off is still accepted (ADR-0054 decision 9).
+     */
+    val ended: Boolean get() = !status.takesWrites || coolingOff
 }
+
+/**
+ * A request to turn search by meaning back on, waiting for the other member (ADR-0054): the other
+ * member's own `POST` is the agreement. [requestedByMe] decides which screen shows, so the one who
+ * asked is never offered "Agree" to their own request. It lapses at [expiresAt], seven days after.
+ */
+data class PendingSemanticSearchRequest(
+    val requestedByMe: Boolean,
+    val expiresAt: Instant? = null,
+)
 
 /**
  * A proposed shared time zone (FR-027, ADR-0030): one member proposes, the other
@@ -184,6 +207,23 @@ interface BondSettingsRepository {
 
     /** `DELETE /bonds/{id}/timezone`: either member withdraws the waiting proposal. */
     suspend fun cancelTimezoneChange(bondId: String): EmptyResult<DataError.Network>
+
+    /**
+     * `PATCH /bonds/{id}` with `{"semanticSearchEnabled": false}` and `If-Match: [version]`: either
+     * member turns search by meaning off alone, which deletes the bond's vectors and calls off a live
+     * request. Accepted on an ended bond too (ADR-0054 decision 9). `412` when the bond changed first.
+     */
+    suspend fun turnOffSemanticSearch(bondId: String, version: String): Result<BondSettings, DataError.Network>
+
+    /**
+     * `POST /bonds/{id}/semantic-search`: asks to turn search by meaning on, or agrees to the other
+     * member's ask. `202` with the bond, which says which happened; on a bond nobody has joined it is
+     * on at once. `409 BOND_ARCHIVED` on a bond that has ended or counts down to deletion.
+     */
+    suspend fun requestSemanticSearch(bondId: String): Result<BondSettings, DataError.Network>
+
+    /** `DELETE /bonds/{id}/semantic-search`: withdraws my ask, or declines theirs. `404` when nothing was pending. */
+    suspend fun cancelSemanticSearchRequest(bondId: String): EmptyResult<DataError.Network>
 
     suspend fun memberSettings(bondId: String): Result<MemberSettings, DataError.Network>
 
