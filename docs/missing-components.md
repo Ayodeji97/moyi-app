@@ -2115,7 +2115,7 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **A direct send is not queued.** Write's own Send that meets `BOND_PAUSED` returns `WriteResult.Paused`: nothing is queued, the draft stays on the device, and Write is not offered on Today until the bond resumes, when the draft is there again. An edit is never queued anyway. A send with a photo or a voice note keeps them in the composer.
 - **The day is cached with `paused`** (`cached_day.paused`, migration `9.sqm`, schema 10), so a launch drawn from the cache does not flash a Write that the server would refuse.
 - **No notification ask while paused:** no reminder is sent in a paused bond (ADR-0066 decision 10), so Today does not ask for notifications (neither the reminder screen nor the note).
-- **Strings, all PROPOSED** (feature/today `strings.xml`), no dash, no exclamation mark:
+- **Strings, all approved by the owner 2026-11-17** (feature/today `strings.xml`), no dash, no exclamation mark:
   - `today_paused_heading` "Your bond is paused." (also the not-written layout's pane announcement)
   - `today_paused_line` "Nothing new can be written for now. Your days are still here to read."
   - `today_queued_line_paused` "Your bond is paused. This will send when it resumes, and count for the day it sends."
