@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -63,16 +64,24 @@ fun TextLink(
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart,
     ) {
-        Text(
-            text = text,
-            style = MoyiTheme.type.body.copy(textDecoration = TextDecoration.Underline),
-            color = when {
-                !enabled -> MoyiTheme.colors.inkMuted
-                destructive -> MoyiTheme.colors.danger
-                else -> MoyiTheme.colors.ink
-            },
-            textAlign = if (centered) TextAlign.Center else TextAlign.Start,
-        )
+        val color = when {
+            !enabled -> MoyiTheme.colors.inkMuted
+            destructive -> MoyiTheme.colors.danger
+            else -> MoyiTheme.colors.ink
+        }
+        // A new colour builds a new text node. On iOS (Skiko) the underline's colour is fixed
+        // when the paragraph is built, and a colour change alone repaints only the letters
+        // (`ParagraphLayouter.setColor` updates the foreground paint, not the decoration), so
+        // after a light/dark switch the underline kept the old theme's ink. Android draws the
+        // underline with the text's paint and was never affected.
+        key(color) {
+            Text(
+                text = text,
+                style = MoyiTheme.type.body.copy(textDecoration = TextDecoration.Underline),
+                color = color,
+                textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+            )
+        }
     }
 }
 
