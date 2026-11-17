@@ -40,10 +40,12 @@ data class AccountState(
     val confirmingSignOut: Boolean = false,
     /** Sign out would delete entries still waiting to send: the question is up. */
     val confirmingUnsentSignOut: Boolean = false,
+    /** A note shown as a card at the top until OK ([AccountNotes]); null when none waits. */
+    val note: AccountNote? = null,
 ) {
     override fun toString(): String =
         "AccountState(load=$load, email=${if (email == null) "null" else "<redacted>"}, pending=$pending, password=<${password.length} chars>, passwordError=$passwordError, " +
-            "error=$error, inFlight=$inFlight, signingOut=$signingOut, confirmingSignOut=$confirmingSignOut, confirmingUnsentSignOut=$confirmingUnsentSignOut)"
+            "error=$error, inFlight=$inFlight, signingOut=$signingOut, confirmingSignOut=$confirmingSignOut, confirmingUnsentSignOut=$confirmingUnsentSignOut, note=$note)"
 }
 
 sealed interface AccountAction {
@@ -75,6 +77,9 @@ sealed interface AccountAction {
 
     /** Stay signed in: the entries keep waiting to send. */
     data object OnSignOutUnsentDismiss : AccountAction
+
+    /** OK under the note card: it has been read, and it goes (docs/missing-components.md §87). */
+    data object OnNoteDismiss : AccountAction
 }
 
 sealed interface AccountEvent {

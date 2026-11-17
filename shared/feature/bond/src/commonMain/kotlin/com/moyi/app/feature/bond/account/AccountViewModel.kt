@@ -51,6 +51,8 @@ import kotlinx.coroutines.launch
  *   "Sign out?" (never both). Confirming (owner ruling 2026-11-09) runs Bond settings' sequence ([SignOut]): one more
  *   try to send what is waiting, then ask, or sign out. Account is the one place a person
  *   with no open bond can sign out. A second tap while it runs does nothing.
+ * - **A note** ([AccountNotes], docs/missing-components.md §87) shows as a card at the top
+ *   until OK, which clears it for the whole app.
  */
 class AccountViewModel(
     private val deletion: AccountDeletionRepository,
@@ -60,6 +62,8 @@ class AccountViewModel(
     sender: OutboxSender,
     /** A leave a join kept on the device: a sign-out tries it once more too, before the wipe takes it. */
     emptyBonds: EmptyBondExit,
+    /** The note waiting for this screen (a reset link that was another account's, §87). */
+    private val notes: AccountNotes = AccountNotes(),
 ) : ViewModel() {
     private val _state = MutableStateFlow(AccountState(email = auth.session.value.signedInEmail()))
     val state: StateFlow<AccountState> = _state.asStateFlow()
@@ -76,6 +80,9 @@ class AccountViewModel(
         auth.session
             .mapNotNull { it.signedInEmail() }
             .onEach { email -> _state.update { it.copy(email = email) } }
+            .launchIn(viewModelScope)
+        notes.note
+            .onEach { note -> _state.update { it.copy(note = note) } }
             .launchIn(viewModelScope)
     }
 
@@ -102,6 +109,7 @@ class AccountViewModel(
                 viewModelScope.launch { signOutSequence.anyway() }
             }
             AccountAction.OnSignOutUnsentDismiss -> _state.update { it.copy(confirmingUnsentSignOut = false) }
+            AccountAction.OnNoteDismiss -> notes.dismiss()
         }
     }
 

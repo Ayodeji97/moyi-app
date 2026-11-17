@@ -38,7 +38,6 @@ import com.moyi.app.debug.uiPreviewGraph
 import com.moyi.app.feature.auth.navigation.LegalRoute
 import com.moyi.app.feature.auth.navigation.alreadyVerifiedNotice
 import com.moyi.app.feature.auth.navigation.ChangePasswordRoute
-import com.moyi.app.feature.auth.navigation.otherAccountPasswordChangedNotice
 import com.moyi.app.feature.auth.navigation.passwordChangedNotice
 import com.moyi.app.feature.auth.navigation.LoginRoute
 import com.moyi.app.feature.auth.navigation.routeAfterSessionEnd
@@ -46,6 +45,8 @@ import com.moyi.app.feature.auth.navigation.RegisterRoute
 import com.moyi.app.feature.auth.navigation.ResetPasswordRoute
 import com.moyi.app.feature.auth.navigation.VerifyRoute
 import com.moyi.app.feature.auth.navigation.authGraph
+import com.moyi.app.feature.bond.account.AccountNote
+import com.moyi.app.feature.bond.account.AccountNotes
 import com.moyi.app.feature.bond.navigation.AccountGraph
 import com.moyi.app.feature.bond.navigation.BondArchivedRoute
 import com.moyi.app.feature.bond.navigation.BondSettingsGraph
@@ -56,6 +57,7 @@ import com.moyi.app.feature.onboarding.navigation.InviteHandoffRoute
 import com.moyi.app.feature.onboarding.navigation.JoinCodeRoute
 import com.moyi.app.feature.bond.navigation.openReport
 import com.moyi.app.feature.bond.navigation.reportGraph
+import com.moyi.app.feature.bond.navigation.showAccount
 import com.moyi.app.feature.onboarding.navigation.OnboardingRoute
 import com.moyi.app.feature.onboarding.navigation.PromiseRoute
 import com.moyi.app.feature.onboarding.navigation.SignedInStartRoute
@@ -145,8 +147,6 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
         var alreadyVerified by remember { mutableStateOf(false) }
         // A password changed from Account was saved and this phone kept signed in (§83).
         var passwordChanged by remember { mutableStateOf(false) }
-        // A reset link opened while signed in was another account's; this phone is unchanged (§84).
-        var otherAccountPasswordChanged by remember { mutableStateOf(false) }
 
         val startDestination = start
         Box(Modifier.fillMaxSize()) {
@@ -161,7 +161,6 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     onFirstScreenDrawn = { firstScreenDrawn = true },
                     onAlreadyVerified = { alreadyVerified = true },
                     onPasswordChanged = { passwordChanged = true },
-                    onOtherAccountPasswordChanged = { otherAccountPasswordChanged = true },
                 )
             }
             if (!splashDone) {
@@ -176,13 +175,11 @@ fun App(viewModel: AppViewModel = koinViewModel()) {
                     message = when {
                         alreadyVerified -> alreadyVerifiedNotice()
                         passwordChanged -> passwordChangedNotice()
-                        otherAccountPasswordChanged -> otherAccountPasswordChangedNotice()
                         else -> null
                     },
                     onDismiss = {
                         alreadyVerified = false
                         passwordChanged = false
-                        otherAccountPasswordChanged = false
                     },
                 )
             }
@@ -200,13 +197,12 @@ private fun MoyiNavHost(
     onAlreadyVerified: () -> Unit,
     /** A password changed from Account is saved and this phone stayed signed in: say so. */
     onPasswordChanged: () -> Unit,
-    /** A reset link opened while signed in was another account's: saved for it; say so. */
-    onOtherAccountPasswordChanged: () -> Unit,
 ) {
     val navController = rememberNavController()
     val pushTaps = koinInject<PushTapInbox>()
     val pendingTap by pushTaps.target.collectAsStateWithLifecycle()
     val links = koinInject<LinkInbox>()
+    val accountNotes = koinInject<AccountNotes>()
     val pendingAccountLink by links.accountLink.collectAsStateWithLifecycle()
     val pendingInvite by links.inviteLink.collectAsStateWithLifecycle()
     val currentEntry by navController.currentBackStackEntryAsState()
@@ -247,7 +243,12 @@ private fun MoyiNavHost(
             navController = navController,
             onSignedIn = { navController.resetTo(SignedInStartRoute) },
             onPasswordChanged = onPasswordChanged,
-            onOtherAccountPasswordChanged = onOtherAccountPasswordChanged,
+            // A reset link opened while signed in was another account's; this phone is unchanged
+            // (§84). Too much to read in a snackbar, so a card on Account waits for OK (§87).
+            onOtherAccountPasswordChanged = {
+                accountNotes.post(AccountNote.OtherAccountPasswordSaved)
+                navController.showAccount()
+            },
         )
         todayGraph(
             navController = navController,
@@ -304,6 +305,8 @@ private fun MoyiNavHost(
     val drawn = firstScreenDrawn(currentEntry?.destination.startScreen(), dayState, signedInStartFailed)
     LaunchedEffect(drawn) { if (drawn) onFirstScreenDrawn() }
     LaunchedEffect(todayShowing) { viewModel.onTodayShowing(todayShowing) }
+    // A note for Account belongs to this session: whoever signs in next never sees it.
+    LaunchedEffect(session) { if (session == SessionState.SignedOut) accountNotes.dismiss() }
     LaunchedEffect(legalConsentDue, todayShowing) {
         if (legalConsentDue && todayShowing) {
             viewModel.onLegalConsentShown()

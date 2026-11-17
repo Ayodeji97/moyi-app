@@ -1,5 +1,6 @@
 package com.moyi.app.feature.bond.di
 
+import com.moyi.app.feature.bond.account.AccountNotes
 import com.moyi.app.feature.bond.account.AccountViewModel
 import com.moyi.app.feature.bond.account.ExportViewModel
 import com.moyi.app.feature.bond.notifications.NotificationSettingsViewModel
@@ -18,6 +19,8 @@ val bondFeatureModule = module {
     viewModel { (bondId: String) -> NotificationSettingsViewModel(bondId, notifications = get(), settings = get()) }
     // A report (FR-100), from the Archive day view or Bond settings, over ReportRepository.
     viewModel { (args: ReportArgs) -> ReportViewModel(args, reports = get()) }
-    viewModel { AccountViewModel(deletion = get(), auth = get(), outbox = get(), sender = get(), emptyBonds = get()) }
+    // The note waiting for Account (§87): one for the app, so the shell can post it before Account opens.
+    single { AccountNotes() }
+    viewModel { AccountViewModel(deletion = get(), auth = get(), outbox = get(), sender = get(), emptyBonds = get(), notes = get()) }
     viewModel { ExportViewModel(exports = get()) }
 }
