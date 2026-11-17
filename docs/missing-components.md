@@ -2163,3 +2163,15 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
   - The comment over the existing search notes now says they open the screen; their words are unchanged.
 - **Not here:** a push (#205), and the archive helper (PR 3).
 - **A fix found in the smoke test, older than this PR:** the server sends request and proposal expiry times in microseconds and the device's store keeps milliseconds, so a live request read again never equalled the one remembered. Every read took it for a new ask (here: the ask note came back after each read) or, before this PR, for a request that went: a live request to close the box or change the time zone could leave a false "withdrawn" note. `sharedSettingsNotices` now compares both readings to the millisecond (`SharedSettingsDiffTest.aRequestReadBackFromTheStoreIsTheSameRequest`, which fails without it).
+
+## Search by meaning in the archive (PR feat/search-by-meaning-archive)
+
+### 91. The search helper says when search also finds by meaning (owner rulings 2026-11-17, 8 to 10)
+
+- **Why:** ruling 8: while search by meaning is on, the archive's search helper says search also finds by meaning. The search call itself does not change: `GET /bonds/{id}/search` already ranks by meaning when the bond has it on and a provider is configured (ADR-0054), and the results look the same (ruling 9: no snippet, no highlight). Offline keeps the existing generic error (ruling 10).
+- **Where the setting comes from:** the bond as this device last read or wrote it (`SharedSettingsNotices.snapshot`, the store the Today notes already keep, updated on every read of the bond and every write this device makes). The archive does not read the bond itself. Until the bond is known, or for another bond, the helper is the words-only one, so it never promises more than the search does.
+- **It changes in place:** turning search by meaning off in Bond settings, or a read that finds the other member turned it off, switches the helper while the archive is open.
+- **Strings, PROPOSED** (feature/today `strings.xml`), no dash, no exclamation mark:
+  - `archive_search_helper_meaning` "Looks through everything you have both written. It also finds days by meaning."
+  - Unchanged while off: `archive_search_helper` "Looks through everything you have both written."
+- **Owner question (contract gaps row 49):** the client cannot tell whether the server has a provider configured. Production's is `none`, where search is words only even with the setting on, so there the helper over-promises until a provider is configured or the bond says which search it gets.

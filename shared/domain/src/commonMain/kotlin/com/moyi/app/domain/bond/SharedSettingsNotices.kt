@@ -3,6 +3,7 @@ package com.moyi.app.domain.bond
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
@@ -309,6 +310,13 @@ interface SharedSettingsNotices {
     /** The notes waiting for [bondId], oldest first, again whenever they change. */
     fun notices(bondId: String): Flow<List<PendingNotice>>
 
+    /**
+     * [bondId]'s shared settings as this device last read or wrote them, again whenever they
+     * change; null before the first read. For screens that follow a shared setting without
+     * reading the bond themselves (the archive's search helper follows search by meaning).
+     */
+    fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?>
+
     /** The person dismissed the note (or followed it to Bond settings): it is not shown again. */
     suspend fun dismiss(bondId: String, id: Long)
 }
@@ -359,6 +367,9 @@ class SharedSettingsNoticesImpl(
 
     override fun notices(bondId: String): Flow<List<PendingNotice>> =
         revision.map { quietly { store.notices(bondId) } ?: emptyList() }
+
+    override fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?> =
+        revision.map { quietly { store.snapshot(bondId) } }.distinctUntilChanged()
 
     override suspend fun dismiss(bondId: String, id: Long) = change { store.removeNotice(bondId, id) }
 

@@ -48,6 +48,11 @@ class FakeSettingsNotices(vararg waiting: Pair<String, SharedSettingNotice>) : S
     override fun notices(bondId: String): Flow<List<PendingNotice>> =
         pending.map { all -> all.filter { it.first == bondId }.map { it.second } }
 
+    /** What the device last read of each bond: the archive's helper follows it. */
+    val snapshots = MutableStateFlow<Map<String, SharedSettingsSnapshot>>(emptyMap())
+
+    override fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?> = snapshots.map { it[bondId] }
+
     override suspend fun dismiss(bondId: String, id: Long) {
         dismissed += id
         pending.value = pending.value.filterNot { it.first == bondId && it.second.id == id }

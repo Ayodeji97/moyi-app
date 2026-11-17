@@ -3,6 +3,8 @@ package com.moyi.app.feature.today.archive
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moyi.app.domain.archive.SEARCH_MAX_LENGTH
+import com.moyi.app.domain.bond.SharedSettingsNotices
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -14,6 +16,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -64,7 +68,21 @@ val SEARCH_DEBOUNCE: Duration = 300.milliseconds
  */
 class ArchiveViewModel(
     private val feed: ArchiveFeed,
+    private val sharedSettings: SharedSettingsNotices,
 ) : ViewModel() {
+
+    /**
+     * Search by meaning is on for the bond shown, as this device last read it: the search
+     * helper says so (owner ruling 2026-11-17, 8). False until the bond is known, so the
+     * helper never promises more than words.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val searchesByMeaning: StateFlow<Boolean> = feed.state
+        .map { it.bondId }
+        .distinctUntilChanged()
+        .flatMapLatest { bondId -> if (bondId == null) flowOf(null) else sharedSettings.snapshot(bondId) }
+        .map { it?.semanticSearchEnabled == true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** DEBUG ONLY: the layout the preview's long press has stepped to, over the real one. */
     private val debugLayout = MutableStateFlow<DebugLayout?>(null)
@@ -89,12 +107,13 @@ class ArchiveViewModel(
     }
 
     val state: StateFlow<ArchiveState> =
-        combine(feed.state, debugLayout, filterChosen, search, combine(archiveHasDays, monthJump, ::Pair)) { feed, debug, chosen, input, (hasDays, jump) ->
-            toState(feed, debug, chosen, input, hasDays, jump)
+        combine(feed.state, debugLayout, filterChosen, search, combine(archiveHasDays, monthJump, searchesByMeaning, ::Triple)) { feed, debug, chosen, input, (hasDays, jump, byMeaning) ->
+            toState(feed, debug, chosen, input, hasDays, jump).copy(searchByMeaning = byMeaning)
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, archiveHasDays.value, monthJump.value),
+            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, archiveHasDays.value, monthJump.value)
+                .copy(searchByMeaning = searchesByMeaning.value),
         )
 
     private val _events = Channel<ArchiveEvent>(Channel.BUFFERED)

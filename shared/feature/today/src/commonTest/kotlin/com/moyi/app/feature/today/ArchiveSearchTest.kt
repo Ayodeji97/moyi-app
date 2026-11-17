@@ -40,7 +40,7 @@ class ArchiveSearchTest : MainDispatcherTest() {
     private val cache = FakeArchiveCache()
     private val feed = ArchiveFeed(loop, repository, cache)
 
-    private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed).also { viewModel ->
+    private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed, FakeSettingsNotices()).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
     }
 

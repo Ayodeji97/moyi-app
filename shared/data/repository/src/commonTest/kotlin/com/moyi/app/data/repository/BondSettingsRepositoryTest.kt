@@ -576,5 +576,7 @@ internal class RecordingNotices : SharedSettingsNotices {
 
     override fun notices(bondId: String): Flow<List<PendingNotice>> = flowOf(emptyList())
 
+    override fun snapshot(bondId: String): Flow<SharedSettingsSnapshot?> = flowOf(null)
+
     override suspend fun dismiss(bondId: String, id: Long) = Unit
 }

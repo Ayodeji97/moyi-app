@@ -67,6 +67,17 @@ class SharedSettingsNoticesTest {
     }
 
     @Test
+    fun theSnapshotFollowsEveryReadAndWrite() = runTest {
+        assertEquals(null, notices.snapshot("b1").first(), "nothing read yet")
+
+        notices.observe(base)
+        assertEquals(true, notices.snapshot("b1").first()?.semanticSearchEnabled)
+
+        notices.recordOwn(searchOff, own = setOf(SharedSetting.SEMANTIC_SEARCH))
+        assertEquals(false, notices.snapshot("b1").first()?.semanticSearchEnabled, "this device's own write counts")
+    }
+
+    @Test
     fun theFirstReadOnlyRemembers() = runTest {
         notices.observe(base)
 
