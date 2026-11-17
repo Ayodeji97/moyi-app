@@ -50,14 +50,14 @@ class SignedInStartViewModelTest : MainDispatcherTest() {
     @Test
     fun aNewestBondThatHasEndedIsTheArchivedScreenNamingTheOtherMember() = runTest {
         bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED).copy(partnerName = "Amara"), bond(BondStatus.DELETED)))
-        assertEquals(SignedInStartEvent.NavigateToArchived("Amara"), firstEvent())
+        assertEquals(SignedInStartEvent.NavigateToArchived("Amara", "bond-1"), firstEvent())
     }
 
     @Test
     fun theArchivedScreenNeedsOnlyTheBondNotTheAccount() = runTest {
         bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED)))
         account.result = Result.Failure(DataError.Network.NoInternet)
-        assertEquals(SignedInStartEvent.NavigateToArchived(null), firstEvent())
+        assertEquals(SignedInStartEvent.NavigateToArchived(null, "bond-1"), firstEvent())
     }
 
     @Test
@@ -134,7 +134,7 @@ class SignedInStartViewModelTest : MainDispatcherTest() {
     @Test
     fun withNoCachedDayTheServerStillDecides() = runTest {
         bonds.bondsResult = Result.Success(listOf(bond(BondStatus.ARCHIVED)))
-        assertEquals(SignedInStartEvent.NavigateToArchived(null), firstEvent())
+        assertEquals(SignedInStartEvent.NavigateToArchived(null, "bond-1"), firstEvent())
         assertEquals(1, bonds.bondsCalls)
     }
 }

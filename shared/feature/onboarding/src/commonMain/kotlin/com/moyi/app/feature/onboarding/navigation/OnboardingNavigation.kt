@@ -185,7 +185,7 @@ fun NavGraphBuilder.onboardingGraph(
     onNavigateToRegister: () -> Unit,
     onNavigateToSignIn: () -> Unit,
     onOnboardingFinished: () -> Unit,
-    onBondArchived: (partnerName: String?) -> Unit,
+    onBondArchived: (partnerName: String?, bondId: String) -> Unit,
     onSignedInStartError: () -> Unit = {},
     onOpenSupport: () -> Unit,
     onOpenAccount: () -> Unit,

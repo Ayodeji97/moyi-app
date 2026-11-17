@@ -80,7 +80,7 @@ class SignedInStartViewModel(
             val event = when {
                 bondList is Result.Success && bondList.data.any { it.isOpen } -> SignedInStartEvent.NavigateToToday
                 bondList is Result.Success && bondList.data.firstOrNull()?.status == BondStatus.ARCHIVED ->
-                    SignedInStartEvent.NavigateToArchived(bondList.data.first().partnerName)
+                    bondList.data.first().let { SignedInStartEvent.NavigateToArchived(it.partnerName, it.id) }
                 bondList is Result.Failure || user is Result.Failure -> null
                 (user as Result.Success).data.emailVerified -> SignedInStartEvent.NavigateToOnboarding
                 else -> SignedInStartEvent.NavigateToGate

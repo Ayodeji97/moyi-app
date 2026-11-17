@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.GroupedCard
 import com.moyi.app.designsystem.component.MoyiScaffold
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
@@ -23,6 +24,8 @@ import com.moyi.app.feature.bond.resources.archived_heading
 import com.moyi.app.feature.bond.resources.archived_line
 import com.moyi.app.feature.bond.resources.archived_line_unnamed
 import com.moyi.app.feature.bond.resources.archived_new_bond
+import com.moyi.app.feature.bond.resources.settings_row_search
+import com.moyi.app.feature.bond.resources.settings_value_on
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -48,6 +51,13 @@ import org.jetbrains.compose.resources.stringResource
  * person glyph at the top right ([TrailingNavRow], announced "Your account"). A person here
  * has no Bond settings, and Account is where they delete their account or sign out. It pushes
  * Account; back returns here.
+ *
+ * PROPOSED (docs/missing-components.md §91, owner rulings 2026-11-17): **Search by meaning**, one
+ * chevron row in a [GroupedCard] under the line, shown only while [searchOn]. Turning it off is
+ * the one change an ended bond still takes (ADR-0054 decision 9), and a person here has no Bond
+ * settings to do it from. The row's label and value are Bond settings' own ("Search by meaning",
+ * "On"); [onOpenSearch] pushes the Search by meaning screen, whose On state offers Turn it off.
+ * Once it is off the row goes: there is nothing left to do with it here.
  */
 @Composable
 fun BondArchivedScreen(
@@ -55,6 +65,8 @@ fun BondArchivedScreen(
     onStartNewBond: () -> Unit,
     onExportArchive: () -> Unit,
     onOpenAccount: () -> Unit,
+    searchOn: Boolean = false,
+    onOpenSearch: () -> Unit = {},
 ) {
     MoyiScaffold(
         header = {
@@ -81,6 +93,16 @@ fun BondArchivedScreen(
             partnerName?.let { stringResource(Res.string.archived_line, it) } ?: stringResource(Res.string.archived_line_unnamed),
             tone = TextTone.Muted,
         )
+        if (searchOn) {
+            Spacer(Modifier.height(MoyiTheme.spacing.lg))
+            GroupedCard {
+                row(
+                    label = stringResource(Res.string.settings_row_search),
+                    value = stringResource(Res.string.settings_value_on),
+                    onClick = onOpenSearch,
+                )
+            }
+        }
     }
 }
 
@@ -94,4 +116,20 @@ private fun BondArchivedPreview() {
 @Composable
 private fun BondArchivedLightPreview() {
     MoyiTheme(darkTheme = false) { BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onExportArchive = {}, onOpenAccount = {}) }
+}
+
+@Preview
+@Composable
+private fun BondArchivedSearchOnPreview() {
+    MoyiTheme(darkTheme = true) {
+        BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onExportArchive = {}, onOpenAccount = {}, searchOn = true)
+    }
+}
+
+@Preview
+@Composable
+private fun BondArchivedSearchOnLightPreview() {
+    MoyiTheme(darkTheme = false) {
+        BondArchivedScreen(partnerName = "Tunde", onStartNewBond = {}, onExportArchive = {}, onOpenAccount = {}, searchOn = true)
+    }
 }
