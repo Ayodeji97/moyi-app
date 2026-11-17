@@ -188,6 +188,46 @@ class SharedSettingsDiffTest {
     }
 
     @Test
+    fun theirNewRequestForSearchAsksForAnAnswer() {
+        assertEquals(listOf(SharedSettingNotice.SemanticSearchAsked), notices(searchOff, searchOff.copy(semanticSearchRequest = request(byMe = false))))
+    }
+
+    @Test
+    fun aRequestReadBackFromTheStoreIsTheSameRequest() {
+        // The server sends microseconds; the store keeps milliseconds.
+        val sent = Instant.parse("2026-11-24T20:21:53.937533Z")
+        val stored = Instant.fromEpochMilliseconds(sent.toEpochMilliseconds())
+        val theirs = { at: Instant -> searchOff.copy(semanticSearchRequest = request(byMe = false, expiresAt = at)) }
+        val closing = { at: Instant -> base.copy(deletionRequest = request(byMe = false, expiresAt = at)) }
+
+        assertEquals(emptyList(), notices(theirs(stored), theirs(sent)), "not a new ask")
+        assertEquals(emptyList(), notices(closing(stored), closing(sent)), "not a withdrawn request to close")
+    }
+
+    @Test
+    fun theirRequestAlreadySeenIsNotAskedAgain() {
+        val asked = searchOff.copy(semanticSearchRequest = request(byMe = false))
+        assertEquals(emptyList(), notices(asked, asked))
+    }
+
+    @Test
+    fun theirRequestOnTheFirstLookStillAsks() {
+        // Nothing else tells the person (no push yet, moyi-backend#205).
+        assertEquals(listOf(SharedSettingNotice.SemanticSearchAsked), notices(null, searchOff.copy(semanticSearchRequest = request(byMe = false))))
+    }
+
+    @Test
+    fun myOwnRequestOrALapsedOneAsksNothing() {
+        assertEquals(emptyList(), notices(searchOff, searchOff.copy(semanticSearchRequest = request(byMe = true))))
+        assertEquals(emptyList(), notices(null, searchOff.copy(semanticSearchRequest = request(byMe = false, expiresAt = past))))
+    }
+
+    @Test
+    fun theirRequestOnAnEndedBondAsksNothing() {
+        assertEquals(emptyList(), notices(null, searchOff.copy(status = BondStatus.ARCHIVED, semanticSearchRequest = request(byMe = false))))
+    }
+
+    @Test
     fun searchTurnedOffNotesIt() {
         assertEquals(listOf(SharedSettingNotice.SemanticSearchTurnedOff), notices(base, searchOff))
     }

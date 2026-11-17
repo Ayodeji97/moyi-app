@@ -22,6 +22,7 @@ import com.moyi.app.feature.today.resources.today_settings_rest_days_on
 import com.moyi.app.feature.today.resources.today_settings_reveal
 import com.moyi.app.feature.today.resources.today_settings_reveal_none
 import com.moyi.app.feature.today.resources.today_settings_search_agreed
+import com.moyi.app.feature.today.resources.today_settings_search_asked
 import com.moyi.app.feature.today.resources.today_settings_search_kept_off
 import com.moyi.app.feature.today.resources.today_settings_search_turned_off
 import com.moyi.app.feature.today.resources.today_settings_search_withdrawn
@@ -41,7 +42,8 @@ import org.jetbrains.compose.resources.stringResource
  * what changed and never who changed it. "See Bond settings" (outlined, as "Allow
  * notifications") opens the screen where the change is; "OK" (a text link, as "Not now")
  * marks it read. Either one makes room for the next note, if another change is waiting.
- * Search by meaning has no screen in the app yet, so its notes offer "OK" alone.
+ * A note about search by meaning opens its own screen in Bond settings, where the answer is
+ * (owner rulings 2026-11-17, 6 and 13).
  */
 @Composable
 internal fun SettingsNote(state: TodayState, onAction: (TodayAction) -> Unit) {
@@ -50,21 +52,10 @@ internal fun SettingsNote(state: TodayState, onAction: (TodayAction) -> Unit) {
     DayNote(
         line = noticeLine(notice),
         actions = listOfNotNull(
-            NoteAction(stringResource(Res.string.today_settings_see), { onAction(TodayAction.OnSettingsNoticeOpenSettings) }, outlined = true)
-                .takeIf { notice.hasSettingsRow() },
+            NoteAction(stringResource(Res.string.today_settings_see), { onAction(TodayAction.OnSettingsNoticeOpenSettings) }, outlined = true),
             NoteAction(stringResource(Res.string.today_settings_ok), { onAction(TodayAction.OnSettingsNoticeDismiss) }),
         ),
     )
-}
-
-/** Bond settings shows every shared setting but search by meaning (no screen yet). */
-private fun SharedSettingNotice.hasSettingsRow(): Boolean = when (this) {
-    SharedSettingNotice.SemanticSearchAgreed,
-    SharedSettingNotice.SemanticSearchKeptOff,
-    SharedSettingNotice.SemanticSearchWithdrawn,
-    SharedSettingNotice.SemanticSearchTurnedOff,
-    -> false
-    else -> true
 }
 
 @Composable
@@ -80,6 +71,7 @@ private fun noticeLine(notice: SharedSettingNotice): String = when (notice) {
     SharedSettingNotice.SemanticSearchKeptOff -> stringResource(Res.string.today_settings_search_kept_off)
     SharedSettingNotice.SemanticSearchWithdrawn -> stringResource(Res.string.today_settings_search_withdrawn)
     SharedSettingNotice.SemanticSearchTurnedOff -> stringResource(Res.string.today_settings_search_turned_off)
+    SharedSettingNotice.SemanticSearchAsked -> stringResource(Res.string.today_settings_search_asked)
     is SharedSettingNotice.NameChanged -> stringResource(Res.string.today_settings_name, notice.name)
     is SharedSettingNotice.RevealTimeChanged -> notice.time
         ?.let { stringResource(Res.string.today_settings_reveal, timeOfDayText(it.hour, it.minute)) }

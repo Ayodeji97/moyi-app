@@ -113,6 +113,8 @@ fun TodayRoot(
     onNavigateToWrite: (editing: Boolean) -> Unit,
     onNavigateToReveal: () -> Unit,
     onNavigateToSettings: (bondId: String) -> Unit,
+    /** Bond settings · Search by meaning, from a note about it (owner rulings 2026-11-17, 6 and 13). */
+    onNavigateToSearchSettings: (bondId: String) -> Unit,
     onNavigateToArchive: () -> Unit,
     onNoOpenBond: () -> Unit,
     /** "I have an invite code": the join flow from this bond, which nobody has joined. */
@@ -142,6 +144,7 @@ fun TodayRoot(
             is TodayEvent.NavigateToWrite -> onNavigateToWrite(event.editing)
             TodayEvent.NavigateToReveal -> onNavigateToReveal()
             is TodayEvent.NavigateToSettings -> onNavigateToSettings(event.bondId)
+            is TodayEvent.NavigateToSearchSettings -> onNavigateToSearchSettings(event.bondId)
             TodayEvent.NavigateToArchive -> onNavigateToArchive()
             TodayEvent.NavigateToStart -> onNoOpenBond()
             is TodayEvent.NavigateToJoin -> onNavigateToJoin(event.bondId, event.bondName)
