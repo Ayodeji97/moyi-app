@@ -1061,7 +1061,8 @@ buttons. Nothing below is in Figma, `tokens.md` or `states.md`. All of it is PRO
     has 6 digits. Check the email for the rest."
   - `code_error_invalid` (422 `VERIFICATION_TOKEN_INVALID` / `PASSWORD_RESET_TOKEN_INVALID`
     for a code), **approved 2026-11-09**: "That code did not work. Check the digits, or send a
-    new email." The server gives one answer for wrong, expired, too many wrong tries and
+    new email." Reworded by owner ruling 2026-11-17 (§86): "That code did not work. Check the
+    digits, or tap Send it again." The server gives one answer for wrong, expired, too many wrong tries and
     spent, on purpose (a distinct answer would say which addresses hold a live code), so the
     sentence names the way out for all of them, without the numbers. **There is no separate
     "too many attempts" message because the server never says so.**
@@ -2049,7 +2050,7 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **What the backend does (read in `ResetPassword.kt`):** a reset revokes every refresh family and every session of the account, bumps `tokens_invalid_before` so outstanding access tokens die too, forgets every device's push token, and emails the old address. It answers `200` with no session. So the app signs this phone in again at once with the new password (`POST /auth/login`), under the session lock, and stores the new refresh token before using the new access token. The same member's drafts, outbox and cache stay; the push token is sent again.
 - **Saved but the sign-in after it failed:** the session here is ended (`SessionEndReason.PasswordChanged`) and sign in opens with "Your new password is saved. Sign in with it."
 - **Done:** both screens pop back to Account and the shell's snackbar says "Your new password is saved."
-- **Strings proposed:** `account_row_change_password` "Change password"; `change_password_heading` "Change your password"; `change_password_line` "We will email a 6-digit code to {email}. Type it on the next screen, then choose your new password."; `change_password_consequence` "Your other devices will be signed out. This phone stays signed in."; `change_password_action` "Save the new password"; `change_password_done` "Your new password is saved." Reused: `reset_request_action` / `_sending`, `verify_line`, `reset_action_sending`, the code and password fields. No dash, no exclamation mark.
+- **Strings approved by the owner 2026-11-17** (were proposed): `account_row_change_password` "Change password"; `change_password_heading` "Change your password"; `change_password_line` "We will email a 6-digit code to {email}. Type it on the next screen, then choose your new password."; `change_password_consequence` "Your other devices will be signed out. This phone stays signed in."; `change_password_action` "Save the new password"; `change_password_done` "Your new password is saved." Reused: `reset_request_action` / `_sending`, `verify_line`, `reset_action_sending`, the code and password fields. No dash, no exclamation mark.
 
 ## A reset link opened while signed in (PR fix/reset-link-signed-in)
 
@@ -2059,8 +2060,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **Change:** signed in, the link opens Choose a new password with `signedIn = true` and the session's address. Saving calls `AuthRepository.changePassword` with the link as the proof. The screens are §83's: the password step says "Your other devices will be signed out. This phone stays signed in." above "Save the new password". Saved: the screen closes and the snackbar says "Your new password is saved."
 - **A link for another account.** The token is an opaque random value, looked up by its hash on the server, and the reset answers `200` with no body. So nothing says whose account a link is for until after the reset. The reset applies to the link's account. The app then signs in with the session's address and the new password, under the lock. If that sign-in is refused (`401 INVALID_CREDENTIALS`), the link was another account's. That account's password is saved, its sessions are revoked, and this phone's session was never touched, so it is kept as it was: nothing is wiped and nobody is signed out. The screen closes and the snackbar says what happened. Any other failure after the reset (offline, `429`) still ends the session with "Your new password is saved. Sign in with it.", as in §83, because the reset may have revoked this session.
 - **No new component:** the shell's `MoyiSnackbar`, as for "Your new password is saved."
-- **String proposed:** `reset_link_other_account_done` "That link was for another account. Its new password is saved. You are still signed in here." No dash, no exclamation mark.
-- **Not covered:** before the save, the password step cannot know the link is someone else's, so it shows this account's consequence line. The note afterwards corrects it.
+- **String approved by the owner 2026-11-17** (was proposed): `reset_link_other_account_done` "That link was for another account. Its new password is saved. You are still signed in here." No dash, no exclamation mark.
+- **Not covered:** before the save, the password step cannot know the link is someone else's, so it shows this account's consequence line. The note afterwards corrects it. **This stays (owner ruling 2026-11-17):** the consequence line shown before the link's owner is known is kept as it is.
 
 ## Send it again on the reset's code step (PR feat/reset-send-again)
 
@@ -2070,5 +2071,17 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **No new component, no new string.** Verify's own resend, reused: the `TextLink` "Send it again" (`verify_resend`) 24 under the code field, replaced for a minute by the muted live-region line "Sent again. You can ask for another in a minute." (`verify_resent`, states.md §1 Resent). While it runs, the link reads "Sending the code" (`reset_request_action_sending`, the same request's label on Forgot password), so the control says what it is doing and no spinner is invented. It is disabled while a code is being checked.
 - **What it does:** `POST /auth/forgot-password` with the code step's address, signed out (Forgot password) and signed in (Change password) alike. The `202` reads the same for any address, so the acknowledgement discloses nothing. A new email voids the old code, so the field and its verdict are cleared.
 - **Failures** show above the action, as on verify: offline is `auth_error_offline`; `429` is `auth_error_rate_limited` "This is paused for a short while. Try again in a few minutes." The code typed so far stays.
+- **The server's limit** (corrected 2026-11-17; #124 said it was per IP): forgot-password is limited to **3 an hour per email address** (`AUTH_RESET_EMAIL`, read in the backend's `RequestPasswordReset.kt` and `RateLimitBucket.kt`), so Forgot password's send and two Send it agains use an address's hour. The per-IP bucket (`AUTH_RESET_IP`) is 20 an hour. The app's one-minute wait is its own, matching the "in a minute" copy.
 - **Not shown** when the step has no address (a refused emailed link on a phone that never asked): there is nowhere to send it.
-- **Error line unchanged:** "send a new email" now names the control right under it. A tighter "Check the digits, or send it again." is possible, but `code_error_invalid` is owner approved (§58) and is shared with verify, which has the same control, so it is left as is.
+- **Error line:** reworded by owner ruling 2026-11-17 to name this control (§86).
+
+## The wrong-code line names Send it again (PR fix/code-error-names-send-again)
+
+### 86. "Check the digits, or tap Send it again." (owner ruling 2026-11-17)
+
+- **Why:** since §85 the reset's code step has a "Send it again" link under the field, but the wrong-code line still said "send a new email", which names no control on the screen.
+- **Change:** `code_error_invalid` is now "That code did not work. Check the digits, or tap Send it again." It names the link by its label (`verify_resend`), as `legal_line_changed` names Accept. "tap" follows `register_legal_unavailable` and `legal_line_changed`.
+- **One string, not two.** It is shown on two screens, and both have the same control under the same field: verify's code step and the reset's code step (signed out and signed in). Each shows the link only when the step knows the address, and the line can only appear then: without an address a typed code is refused before any request, with `code_error_no_address`. So no screen shows this line without the link it names, and there was nothing to split.
+- **One minute after a send** the link is replaced by "Sent again. You can ask for another in a minute." (§85). A wrong code typed in that minute still says "tap Send it again"; the line in its place says when it comes back.
+- **Also recorded (owner, 2026-11-17):** the §83 and §84 strings are approved, and §84's consequence line before the link's owner is known stays.
+- No new component. No dash, no exclamation mark.
