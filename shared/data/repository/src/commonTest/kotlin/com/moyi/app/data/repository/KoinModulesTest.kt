@@ -17,6 +17,7 @@ import com.moyi.app.data.session.sessionModule
 import com.moyi.app.data.testing.InMemoryTokenStore
 import com.moyi.app.data.testing.inMemoryDriver
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.RememberRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.domain.auth.AuthRepository
@@ -62,6 +63,7 @@ class KoinModulesTest {
             koin.get<MediaRepository>()
             koin.get<StorageHttpClient>()
             koin.get<ArchiveRepository>()
+            koin.get<RememberRepository>()
             koin.get<StreakRepository>()
             koin.get<ReportRepository>()
             koin.get<SupportRepository>()

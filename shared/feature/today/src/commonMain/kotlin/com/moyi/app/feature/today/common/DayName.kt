@@ -14,6 +14,9 @@ internal expect fun weekdayName(date: LocalDate): String
 /** Day first, then the month, in the device's language, no year ("2 September"). */
 internal expect fun dayAndMonth(date: LocalDate): String
 
+/** Day first, then the month and the year, in the device's language ("26 September 2025"): a day outside this year. */
+internal expect fun dayMonthAndYear(date: LocalDate): String
+
 /** The weekday in three letters or so, in the device's language ("Wed"): an Archive row's date column. */
 internal expect fun weekdayShort(date: LocalDate): String
 
@@ -30,9 +33,13 @@ internal fun dayHeader(date: LocalDate): String {
     return stringResource(Res.string.today_date_header, weekday, dayMonth)
 }
 
-/** The same day in running text: "Tuesday, 2 September" (states.md §10, Offline). */
+/**
+ * The same day in running text: "Tuesday, 2 September" (states.md §10, Offline). [withYear]
+ * adds the year, "Friday, 26 September 2025", for a list with no month headings to say it
+ * (Remember when's answer, where a day can be from any year).
+ */
 @Composable
-internal fun dayInSentence(date: LocalDate): String {
-    val (weekday, dayMonth) = remember(date) { weekdayName(date) to dayAndMonth(date) }
+internal fun dayInSentence(date: LocalDate, withYear: Boolean = false): String {
+    val (weekday, dayMonth) = remember(date, withYear) { weekdayName(date) to if (withYear) dayMonthAndYear(date) else dayAndMonth(date) }
     return stringResource(Res.string.today_date_in_sentence, weekday, dayMonth)
 }
