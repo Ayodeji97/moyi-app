@@ -15,6 +15,9 @@ package com.moyi.app.core
  *   day the shared time zone can change again, `YYYY-MM-DD` in the bond's
  *   `anchorTimezone`. A string, not a date type, because core (and so domain)
  *   carries no date library; the parser has already checked it is a real date.
+ * @property retryAfterSeconds the response's `Retry-After` header, when it is a whole number
+ *   of seconds of at least 1 (a `429` carries it: "Remember when" holds Ask until it passes).
+ *   Null when there is none, or it is an HTTP date, or not a number.
  */
 data class ApiProblem(
     val status: Int,
@@ -22,6 +25,7 @@ data class ApiProblem(
     val fieldErrors: List<FieldError> = emptyList(),
     val traceId: String? = null,
     val allowedFrom: String? = null,
+    val retryAfterSeconds: Int? = null,
 )
 
 /** One rejected request field. The server never echoes the rejected value. */

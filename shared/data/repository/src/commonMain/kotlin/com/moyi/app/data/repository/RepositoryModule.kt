@@ -7,6 +7,7 @@ import com.moyi.app.domain.account.AccountDeletionRepository
 import com.moyi.app.domain.account.DataExportRepository
 import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.RememberRepository
 import com.moyi.app.domain.auth.AccountRepository
 import com.moyi.app.domain.auth.AuthRepository
 import com.moyi.app.domain.bond.BondRepository
@@ -64,6 +65,8 @@ val repositoryModule = module {
     // Photos (and voice notes, later): the media endpoints and the direct upload to storage.
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ArchiveRepository> { ArchiveRepositoryImpl(get(), get()) }
+    // "Remember when" (FR-204): one answer per question, online only, never stored.
+    single<RememberRepository> { RememberRepositoryImpl(get(), get()) }
     single<StreakRepository> { StreakRepositoryImpl(get(), get()) }
     // Reports to a person (FR-100, ADR-0053): an entry of the partner's, or the partner.
     single<ReportRepository> { ReportRepositoryImpl(get(), get()) }
