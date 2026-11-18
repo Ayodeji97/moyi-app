@@ -1,6 +1,7 @@
 package com.moyi.app.debug
 
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.RememberRepository
 import com.moyi.app.domain.streak.StreakRepository
 import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondSettingsRepository
@@ -128,6 +129,7 @@ internal val previewTodayModule: Module = module {
     // The Archive's days, and the delete its day view sends (PreviewArchive.kt).
     single { PreviewArchiveRepository() }
     single<ArchiveRepository> { get<PreviewArchiveRepository>() }
+    single<RememberRepository> { PreviewRememberRepository(get()) }
     single<TodayRepository> { PreviewTodayRepository(get()) }
     // The Streak screen's four drawn states, a time zone shift and a failure, in turn (PreviewStreak.kt).
     single<StreakRepository> { PreviewStreakRepository() }
