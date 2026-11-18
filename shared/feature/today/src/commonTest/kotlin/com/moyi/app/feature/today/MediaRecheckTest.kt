@@ -201,7 +201,7 @@ class MediaRecheckTest : MainDispatcherTest() {
     private val repository = FakeArchiveRepository()
     private val archiveLoop = FakeDailyLoop(DailyLoopState.Ready(dayView(TodayStatus.Revealed)))
     private val cache = FakeArchiveCache()
-    private val feed = ArchiveFeed(archiveLoop, repository, cache)
+    private val feed = ArchiveFeed(archiveLoop, repository, cache, FakeRememberRepository())
 
     private fun dayWithPhoto(status: EntryMediaStatus) = revealedDay("2026-09-02").copy(
         partnerEntry = PartnerEntry.Revealed(

@@ -23,7 +23,7 @@ class ArchiveReportTest : MainDispatcherTest() {
     private val repository = FakeArchiveRepository()
     private val entries = FakeEntries()
     private val cache = FakeArchiveCache()
-    private val feed = ArchiveFeed(loop, repository, cache)
+    private val feed = ArchiveFeed(loop, repository, cache, FakeRememberRepository())
 
     private fun view(date: String) = ArchiveDayViewModel(date, feed, repository, entries, loop)
 
