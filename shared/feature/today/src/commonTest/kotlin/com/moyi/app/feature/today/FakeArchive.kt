@@ -10,6 +10,8 @@ import com.moyi.app.domain.archive.ArchiveCache
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.RememberError
+import com.moyi.app.domain.archive.RememberRepository
 import com.moyi.app.domain.archive.joinPage
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
@@ -117,6 +119,34 @@ class FakeArchiveRepository : ArchiveRepository {
         dayAnswer?.let { return it }
         val listed = (pages.values + favouritePages.values + untilPages.values + searchPages.values).flatMap { it.days }
         return listed.firstOrNull { it.date == date }?.let { Result.Success(it) } ?: Result.Failure(NOT_FOUND)
+    }
+}
+
+/**
+ * A [RememberRepository] for the ViewModel tests: [answers] by question (an unknown question
+ * answers no days), [gates] hold an answer until completed so answers can arrive late or out
+ * of order, and [failNext] fails the next question. Records every question and every cancel.
+ */
+class FakeRememberRepository : RememberRepository {
+    val answers = mutableMapOf<String, List<ArchiveDay>>()
+    val gates = mutableMapOf<String, CompletableDeferred<Unit>>()
+    val questions = mutableListOf<String>()
+    val cancelled = mutableListOf<String>()
+    var failNext: RememberError? = null
+
+    override suspend fun remember(bondId: String, question: String): Result<List<ArchiveDay>, RememberError> {
+        questions += question
+        try {
+            gates[question]?.await()
+        } catch (cancel: CancellationException) {
+            cancelled += question
+            throw cancel
+        }
+        failNext?.let {
+            failNext = null
+            return Result.Failure(it)
+        }
+        return Result.Success(answers[question].orEmpty())
     }
 }
 

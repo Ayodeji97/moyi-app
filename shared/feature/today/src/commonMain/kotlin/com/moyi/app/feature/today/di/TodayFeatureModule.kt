@@ -35,7 +35,7 @@ val todayFeatureModule = module {
     }
     viewModel { RevealViewModel(get()) }
     // The Archive: one feed shared by the list and the day view, over the domain's ArchiveRepository and ArchiveCache.
-    single { ArchiveFeed(get(), get(), get()) }
+    single { ArchiveFeed(get(), get(), get(), get()) }
     viewModel { ArchiveViewModel(get()) }
     viewModel { (date: String) -> ArchiveDayViewModel(date, get(), get(), get(), get()) }
     // The Streak screen, from the Archive's "Your streak", over the domain's StreakRepository.

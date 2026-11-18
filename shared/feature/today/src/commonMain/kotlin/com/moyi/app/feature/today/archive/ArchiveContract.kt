@@ -14,10 +14,28 @@ enum class ArchiveLoad {
 }
 
 /**
- * The Archive's filters (states.md §6), in the order of the three routes: All days,
- * Favourites, and Search, the third, for word recall (FR-091).
+ * The Archive's filters (states.md §6), in the order of the routes: All days, Favourites,
+ * Search, the third, for word recall (FR-091), and Remember when, the fourth (FR-204): a
+ * question answered with the closest days, the one place the archive is not newest first.
  */
-enum class ArchiveFilter { AllDays, Favourites, Search }
+enum class ArchiveFilter { AllDays, Favourites, Search, Remember }
+
+/** Why the last question got no answer. Only these two are told apart (owner ruling 2026-11-18). */
+enum class RememberFailure {
+    /** Anything but a `429`: the generic failure line, with Try again. */
+    Failed,
+
+    /** `429`: "too many tries"; Ask is held until the server's `Retry-After` has passed. */
+    RateLimited,
+}
+
+/**
+ * One day of a "Remember when" answer, in the order the server ranked it. [withYear]: the
+ * row names the year, because the day is not in the current Bond-day's year (the list has no
+ * month headings to say so).
+ */
+@Immutable
+data class RememberResult(val day: ArchiveDayUi, val withYear: Boolean)
 
 /** One month of days, newest first (states.md §6: month-grouped). */
 @Immutable
@@ -79,6 +97,28 @@ data class ArchiveState(
     val jumped: Boolean = false,
     /** The list should scroll to its top (once, after a jump or the way back from one). */
     val scrollToTop: Boolean = false,
+    /**
+     * The Remember when chip is drawn: the archive is known to hold a day, and this build
+     * offers the feature (hidden in release builds for now, owner ruling 2026-11-18).
+     */
+    val showRemember: Boolean = false,
+    /** What is in the question field, as typed. Memory only: kept through the day view, never saved. */
+    val question: String = "",
+    /** The question field should take focus and raise the keyboard (once, on choosing the chip). */
+    val focusQuestion: Boolean = false,
+    /** A question is on its way: Ask reads Asking, and nothing else is sent until it answers. */
+    val asking: Boolean = false,
+    /** Ask can be tapped: a question that is not only spaces, none on its way, and no `429` wait. */
+    val canAsk: Boolean = false,
+    /** The last question failed, and how. Null when it did not, or a new one is on its way. */
+    val rememberFailure: RememberFailure? = null,
+    /**
+     * The answer, in relevance order: no month groups. Null before the first answer and while a
+     * question is on its way; empty when nothing came back.
+     */
+    val results: List<RememberResult>? = null,
+    /** Focus should move to the answer, once, when it arrives (states the count to a screen reader). */
+    val focusResults: Boolean = false,
 ) {
     val isEmpty: Boolean get() = load == ArchiveLoad.Ready && months.isEmpty()
 
@@ -91,7 +131,9 @@ data class ArchiveState(
             "filter=$filter, showFilters=$showFilters, showSearch=$showSearch, " +
             "query=${if (query.isEmpty()) "" else "(redacted)"}, focusSearch=$focusSearch, " +
             "showMonthRow=$showMonthRow, visibleMonth=$visibleMonth, showMonthPicker=$showMonthPicker, " +
-            "pickerMonths=$pickerMonths, jumped=$jumped, scrollToTop=$scrollToTop)"
+            "pickerMonths=$pickerMonths, jumped=$jumped, scrollToTop=$scrollToTop, " +
+            "showRemember=$showRemember, question=${if (question.isEmpty()) "" else "(redacted)"}, focusQuestion=$focusQuestion, " +
+            "asking=$asking, canAsk=$canAsk, rememberFailure=$rememberFailure, results=$results, focusResults=$focusResults)"
 }
 
 sealed interface ArchiveAction {
@@ -118,6 +160,20 @@ sealed interface ArchiveAction {
 
     /** The screen has focused the field and raised the keyboard. */
     data object OnSearchFocused : ArchiveAction
+
+    /** The Remember when question changed. Nothing is sent until Ask: each question may cost a provider call. */
+    data class OnQuestionChange(val question: String) : ArchiveAction {
+        override fun toString(): String = "OnQuestionChange(question=(redacted))"
+    }
+
+    /** Ask, the keyboard's Search key, or the Try again under a failed question: sends the question in the field. */
+    data object OnAskClick : ArchiveAction
+
+    /** The screen has focused the question field and raised the keyboard. */
+    data object OnQuestionFocused : ArchiveAction
+
+    /** The screen has moved focus to the answer. */
+    data object OnResultsFocused : ArchiveAction
 
     /** The month row's "Jump to": opens the month picker. */
     data object OnJumpClick : ArchiveAction
