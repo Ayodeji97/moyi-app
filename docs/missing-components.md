@@ -2175,3 +2175,14 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **The signed-in start** now carries the ended bond's id to the archived screen (`BondArchivedRoute.bondId`) so it can read the bond.
 - **Strings:** none new. Reused, all approved: `settings_row_search` "Search by meaning", `settings_value_on` "On", and on the screen everything §89 lists, with `search_ended_line` now also the dialog's line on an archived bond. The row's placement and the dialog line's reuse were approved by the owner 2026-11-17.
 
+
+## Remember when (PRs feat/remember-when-data, feat/remember-when-feed, feat/remember-when-ui)
+
+### 92. Remember when: ask the archive a question (FR-204, ADR-0054 decision 8; owner rulings 2026-11-18)
+
+- **Why:** FR-204's "Remember when": a question in plain words, answered with the bond's days closest to it, most relevant first (`GET /bonds/{bondId}/remember?q=&limit=`). The design preview of 2026-11-17 (`moyi-remember-when.html`) and the owner's rulings of 2026-11-18 decide what follows. Built in three PRs, hidden in release builds until the backend says when search by meaning really finds by meaning (contract gaps row 49).
+- **The data (PR feat/remember-when-data):** `RememberRepository` in domain/archive, over the generated `RememberControllerApi`, on the authed client. It asks `limit=10` (ruling: ten, not the contract's 20) and keeps the server's order: relevance, not newest first. The days are the archive's `DayResponse`, read by the archive's own mapper, so the partner's words are read exactly as Today reads them. It is **online only and never stored** (the contract): no cache, no database.
+  - **Errors:** a `429` is `RememberError.RateLimited` with the server's `Retry-After` (whole seconds, at least 1; the backend always sends it, and without a readable one the client holds for 60 s). Every other failure (`403`, `404`, a `422` the field should prevent, `5xx`, no connection, a body that does not parse) is `RememberError.Failed`, shown as the generic error. There is no cache to fall back to.
+  - **`Retry-After` is read for every refusal** (`ApiProblem.retryAfterSeconds`, `SafeApiCall`), so the next feature that needs it has it.
+  - **The question never reaches a log:** it travels only as `?q=`, which the HTTP log already cuts from every line (`redactQueries`; `RedactQueriesTest` now covers `/remember`).
+- **Contract gaps found:** rows 50 (no `429` in the state map; the backend is adding it), 51 (a blanket `403` in the contract where the state map says `404`), 52 (`CacheHeadersTest` has no `/remember` row).

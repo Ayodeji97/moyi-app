@@ -99,10 +99,17 @@ private suspend fun HttpResponse<*>.toFailure(): DataError.Network {
         status = status,
         body = response.bodyAsText(),
         contentType = response.headers[HttpHeaders.ContentType],
-    )
+    ).copy(retryAfterSeconds = retryAfterSeconds(response.headers[HttpHeaders.RetryAfter]))
     return if (problem.code == ApiErrorCode.Unknown && status >= 500) {
         DataError.Network.Server(status)
     } else {
         DataError.Network.Api(problem)
     }
 }
+
+/**
+ * A `Retry-After` header as whole seconds, or null. The backend sends seconds, at least 1
+ * (its rate limiter); the header's other form, an HTTP date, is not read, and neither is
+ * zero, a negative or anything that is not a number: the caller decides what to do without one.
+ */
+internal fun retryAfterSeconds(header: String?): Int? = header?.trim()?.toIntOrNull()?.takeIf { it >= 1 }

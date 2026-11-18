@@ -44,4 +44,14 @@ class SafeApiCallTest {
         val result = safeApiCall<String> { throw RefreshUnavailableException(DataError.Network.Timeout) }
         assertEquals(Result.Failure(DataError.Network.Timeout), result)
     }
+
+    @Test
+    fun retryAfterIsReadAsWholeSecondsOfAtLeastOne() {
+        assertEquals(37, retryAfterSeconds("37"))
+        assertEquals(1, retryAfterSeconds(" 1 "))
+        assertEquals(null, retryAfterSeconds(null))
+        assertEquals(null, retryAfterSeconds("0"))
+        assertEquals(null, retryAfterSeconds("-5"))
+        assertEquals(null, retryAfterSeconds("Wed, 18 Nov 2026 10:00:00 GMT"))
+    }
 }

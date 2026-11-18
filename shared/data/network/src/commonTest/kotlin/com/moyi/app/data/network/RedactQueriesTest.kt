@@ -17,4 +17,12 @@ class RedactQueriesTest {
         val line = "RESPONSE: 200 OK METHOD: POST FROM: http://localhost:8080/api/v1/auth/login"
         assertEquals(line, redactQueries(line))
     }
+
+    @Test
+    fun cutsTheQuestionOfRememberWhen() {
+        assertEquals(
+            "REQUEST: https://api.getmoyi.app/api/v1/bonds/b1/remember?… METHOD: GET",
+            redactQueries("REQUEST: https://api.getmoyi.app/api/v1/bonds/b1/remember?q=when%20I%20was%20unwell&limit=10 METHOD: GET"),
+        )
+    }
 }
