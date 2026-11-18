@@ -52,7 +52,7 @@ import org.jetbrains.compose.resources.stringResource
  * has no Bond settings, and Account is where they delete their account or sign out. It pushes
  * Account; back returns here.
  *
- * PROPOSED (docs/missing-components.md §91, owner rulings 2026-11-17): **Search by meaning**, one
+ * Approved by the owner 2026-11-17 (docs/missing-components.md §91): **Search by meaning**, one
  * chevron row in a [GroupedCard] under the line, shown only while [searchOn]. Turning it off is
  * the one change an ended bond still takes (ADR-0054 decision 9), and a person here has no Bond
  * settings to do it from. The row's label and value are Bond settings' own ("Search by meaning",
