@@ -277,7 +277,7 @@ private fun MoyiNavHost(
             onNavigateToSignIn = { navController.navigate(LoginRoute()) },
             onOnboardingFinished = { navController.resetTo(TodayRoute) },
             // The bond has ended: the archived screen, a root with no back (SKILL.md).
-            onBondArchived = { partnerName -> navController.resetTo(BondArchivedRoute(partnerName)) },
+            onBondArchived = { partnerName, bondId -> navController.resetTo(BondArchivedRoute(partnerName, bondId)) },
             onSignedInStartError = { signedInStartFailed = true },
             // The Generic error's Get help: Support over it, so its way back returns to Try again.
             onOpenSupport = { navController.navigate(SupportRoute(SupportOrigin.Error)) { launchSingleTop = true } },

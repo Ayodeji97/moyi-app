@@ -283,6 +283,60 @@ class SearchByMeaningViewModelTest : MainDispatcherTest() {
         assertEquals(SearchStep.Off, viewModel.state.value.searchStep)
     }
 
+    // ----- an archived bond, from the archived screen (§91, ADR-0054 decision 9) -----
+
+    private val archivedOn = off.copy(semanticSearchEnabled = true, status = BondStatus.ARCHIVED)
+
+    @Test
+    fun anArchivedBondIsReadNotTreatedAsGone() = runTest {
+        start(archivedOn).events.test {
+            expectNoEvents()
+        }
+        assertEquals(SearchStep.On, viewModel.state.value.searchStep)
+        assertTrue(viewModel.state.value.settings!!.ended)
+    }
+
+    @Test
+    fun theArchivedRowOpensTheScreen() = runTest {
+        start(archivedOn).events.test {
+            viewModel.onAction(BondSettingsAction.OnSearchClick)
+            assertEquals(BondSettingsEvent.OpenSearch, awaitItem())
+        }
+    }
+
+    @Test
+    fun anArchivedBondTurnsItOffAfterAskingAndStaysOnTheScreen() = runTest {
+        start(archivedOn).events.test {
+            viewModel.onAction(BondSettingsAction.OnSearchTurnOffClick)
+            assertTrue(viewModel.state.value.confirmingSearchOff)
+            viewModel.onAction(BondSettingsAction.OnSearchTurnOffConfirm)
+            expectNoEvents()
+        }
+        assertEquals(listOf("\"1\""), repo.searchOffs, "If-Match is the version read")
+        assertEquals(false, viewModel.state.value.settings?.semanticSearchEnabled, "the archived screen's row goes")
+        assertEquals(SearchStep.Off, viewModel.state.value.searchStep)
+        assertTrue(viewModel.state.value.settings!!.ended, "the screen shows the ended Off state")
+    }
+
+    @Test
+    fun anArchivedBondIsNeverAskedToTurnItBackOn() {
+        start(archivedOn.copy(semanticSearchEnabled = false)).onAction(BondSettingsAction.OnSearchAsk)
+        assertEquals(0, repo.searchAsks)
+        assertNull(viewModel.state.value.saving)
+    }
+
+    @Test
+    fun aMemberWhoIsGoneFromTheArchivedBondIsSentBack() = runTest {
+        start(archivedOn)
+        repo.searchOffAnswers += apiError(404, ApiErrorCode.NOT_FOUND)
+        viewModel.events.test {
+            viewModel.onAction(BondSettingsAction.OnSearchTurnOffClick)
+            viewModel.onAction(BondSettingsAction.OnSearchTurnOffConfirm)
+            assertEquals(BondSettingsEvent.Ended, awaitItem())
+        }
+        assertNull(viewModel.state.value.saving)
+    }
+
     @Test
     fun aConflictReadsTheBondAgainAndSaysItChanged() {
         start(off.copy(semanticSearchEnabled = true))

@@ -25,9 +25,10 @@ sealed interface SignedInStartEvent {
 
     /**
      * In no open bond, and the newest bond has ended: Bond · archived (states.md §9), whoever
-     * ended it and however. [partnerName] is the other member's, or null when unknown.
+     * ended it and however. [partnerName] is the other member's, or null when unknown. [bondId]
+     * is the ended bond's, so the screen can read it (its search by meaning, ADR-0054 decision 9).
      */
-    data class NavigateToArchived(val partnerName: String?) : SignedInStartEvent
+    data class NavigateToArchived(val partnerName: String?, val bondId: String) : SignedInStartEvent
 
     /** Verified, in no open bond: relationship type, the start of onboarding. */
     data object NavigateToOnboarding : SignedInStartEvent

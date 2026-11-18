@@ -29,7 +29,7 @@ fun SignedInStartRoot(
     onNavigateToToday: () -> Unit,
     onNavigateToOnboarding: () -> Unit,
     onNavigateToGate: () -> Unit,
-    onNavigateToArchived: (partnerName: String?) -> Unit,
+    onNavigateToArchived: (partnerName: String?, bondId: String) -> Unit,
     onShowingError: () -> Unit = {},
     onNavigateToSupport: () -> Unit,
     viewModel: SignedInStartViewModel = koinViewModel(),
@@ -43,7 +43,7 @@ fun SignedInStartRoot(
             SignedInStartEvent.NavigateToToday -> onNavigateToToday()
             SignedInStartEvent.NavigateToOnboarding -> onNavigateToOnboarding()
             SignedInStartEvent.NavigateToGate -> onNavigateToGate()
-            is SignedInStartEvent.NavigateToArchived -> onNavigateToArchived(event.partnerName)
+            is SignedInStartEvent.NavigateToArchived -> onNavigateToArchived(event.partnerName, event.bondId)
             SignedInStartEvent.NavigateToSupport -> onNavigateToSupport()
         }
     }

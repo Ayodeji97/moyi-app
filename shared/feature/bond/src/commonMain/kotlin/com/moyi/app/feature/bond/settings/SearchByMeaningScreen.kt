@@ -83,7 +83,8 @@ import kotlin.time.Instant
  *   back on needs both (owner ruling 2026-11-17, 11). The dialog is the house `ConfirmDialog`,
  *   not destructive: nothing anyone wrote is lost.
  * - **Ended** (the bond has ended or counts down to deletion): off says it cannot be turned on,
- *   with no action; on still offers Turn it off (ADR-0054 decision 9).
+ *   with no action; on still offers Turn it off (ADR-0054 decision 9). On an archived bond, reached
+ *   from the archived screen (§91), the dialog's line is the ended line: it can never come back on.
  *
  * An error (412 conflict, rate limit, the rest) sits 8 above the action that caused it, as on
  * every settings screen; a failure to read the Privacy Policy's address shows there too.
@@ -221,7 +222,14 @@ fun SearchByMeaningScreen(
     if (state.confirmingSearchOff) {
         ConfirmDialog(
             title = stringResource(Res.string.search_off_confirm_title),
-            message = stringResource(if (settings.waitingForPartner) Res.string.search_off_confirm_line_alone else Res.string.search_off_confirm_line),
+            message = stringResource(
+                when {
+                    settings.waitingForPartner -> Res.string.search_off_confirm_line_alone
+                    // Archived: nothing turns it back on, so "needs you both to agree" would not be true.
+                    settings.status == BondStatus.ARCHIVED -> Res.string.search_ended_line
+                    else -> Res.string.search_off_confirm_line
+                },
+            ),
             confirmLabel = stringResource(Res.string.search_turn_off),
             dismissLabel = stringResource(Res.string.settings_cancel),
             onConfirm = { onAction(BondSettingsAction.OnSearchTurnOffConfirm) },

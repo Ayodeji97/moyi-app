@@ -95,7 +95,15 @@ fun NavController.navigateToSearchByMeaning(bondId: String) {
  * are in no open one. [partnerName] is the other member's, for the line; null when unknown.
  */
 @Serializable
-data class BondArchivedRoute(val partnerName: String? = null)
+data class BondArchivedRoute(val partnerName: String? = null, val bondId: String? = null)
+
+/**
+ * Bond · archived › Search by meaning (docs/missing-components.md §91): the Search by meaning
+ * screen over the archived bond, sharing the archived screen's [BondSettingsViewModel], so turning
+ * it off here takes the row off the archived screen underneath.
+ */
+@Serializable
+internal data object ArchivedSearchByMeaningRoute
 
 /**
  * Bond settings. Back stack, from Today:
@@ -299,15 +307,71 @@ private fun NavController.closeEditor(viewModel: BondSettingsViewModel) {
  * the only screen. [onStartNewBond] pushes onboarding over it, Export your archive pushes the
  * export screen ([navigateToExport]), and [onOpenAccount] pushes Account ([AccountGraph]), so
  * back from any of them returns here.
+ *
+ * Search by meaning (§91, ADR-0054 decision 9): with the bond's id, the screen reads the bond
+ * through Bond settings' own [BondSettingsViewModel], kept by this entry, and shows the Search
+ * by meaning row while it is on. The row pushes [ArchivedSearchByMeaningRoute], the same screen
+ * Bond settings opens, on the same ViewModel: Turn it off asks first and stays on the screen,
+ * which shows the ended Off state; back (or the edge swipe) returns here, where the row has
+ * gone. Read the Privacy Policy opens the in-app browser. A `404` (no longer a member) returns
+ * here too: this screen is already where a person with no open bond lands, so it is not sent
+ * round the signed-in start again. A failed read shows no row and nothing else changes.
  */
 fun NavGraphBuilder.bondArchivedDestination(navController: NavController, onStartNewBond: () -> Unit, onOpenAccount: () -> Unit) {
     composable<BondArchivedRoute> { entry ->
         val route = entry.toRoute<BondArchivedRoute>()
+        val bondId = route.bondId
+        if (bondId == null) {
+            BondArchivedScreen(
+                partnerName = route.partnerName,
+                onStartNewBond = onStartNewBond,
+                onExportArchive = { navController.navigateToExport() },
+                onOpenAccount = onOpenAccount,
+            )
+            return@composable
+        }
+        val viewModel: BondSettingsViewModel = koinViewModel(viewModelStoreOwner = entry) { parametersOf(bondId) }
+        ArchivedSearchEvents(viewModel, navController)
+        val state by viewModel.state.collectAsStateWithLifecycle()
         BondArchivedScreen(
             partnerName = route.partnerName,
             onStartNewBond = onStartNewBond,
             onExportArchive = { navController.navigateToExport() },
             onOpenAccount = onOpenAccount,
+            searchOn = state.settings?.semanticSearchEnabled == true,
+            onOpenSearch = { viewModel.onAction(BondSettingsAction.OnSearchClick) },
         )
     }
+    composable<ArchivedSearchByMeaningRoute> { entry ->
+        val archivedEntry = remember(entry) { navController.getBackStackEntry<BondArchivedRoute>() }
+        val bondId = remember(archivedEntry) { archivedEntry.toRoute<BondArchivedRoute>().bondId } ?: return@composable
+        val viewModel: BondSettingsViewModel = koinViewModel(viewModelStoreOwner = archivedEntry) { parametersOf(bondId) }
+        ArchivedSearchEvents(viewModel, navController)
+        val state by viewModel.state.collectAsStateWithLifecycle()
+        SearchByMeaningScreen(state = state, onAction = viewModel::onAction, onBack = { navController.closeArchivedSearch(viewModel) })
+    }
+}
+
+/**
+ * The events the archived bond's search by meaning can raise, answered by whichever of its two
+ * screens is showing (a covered screen is stopped, so it does not collect). Nothing else in
+ * Bond settings is reachable from here, so nothing else is answered.
+ */
+@Composable
+private fun ArchivedSearchEvents(viewModel: BondSettingsViewModel, navController: NavController) {
+    val browser = rememberInAppBrowser()
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            BondSettingsEvent.OpenSearch -> navController.navigate(ArchivedSearchByMeaningRoute) { launchSingleTop = true }
+            is BondSettingsEvent.OpenPage -> browser.open(event.url)
+            BondSettingsEvent.Saved, BondSettingsEvent.Ended -> navController.closeArchivedSearch(viewModel)
+            else -> Unit
+        }
+    }
+}
+
+/** Back to the archived bond, if the search screen is over it; nothing when it is already showing. */
+private fun NavController.closeArchivedSearch(viewModel: BondSettingsViewModel) {
+    viewModel.onAction(BondSettingsAction.OnEditorClosed)
+    popBackStack(ArchivedSearchByMeaningRoute, inclusive = true)
 }

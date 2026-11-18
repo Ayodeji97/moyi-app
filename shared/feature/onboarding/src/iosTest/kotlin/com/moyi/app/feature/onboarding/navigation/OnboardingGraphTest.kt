@@ -22,7 +22,7 @@ class OnboardingGraphTest {
     private fun controller(): NavHostController = NavHostController().apply {
         navigatorProvider.addNavigator(ComposeNavigator())
         graph = createGraph(startDestination = PromiseRoute) {
-            onboardingGraph(this@apply, onNavigateToRegister = {}, onNavigateToSignIn = {}, onOnboardingFinished = {}, onBondArchived = {}, onOpenSupport = {}, onOpenAccount = {}, onOpenVerify = {})
+            onboardingGraph(this@apply, onNavigateToRegister = {}, onNavigateToSignIn = {}, onOnboardingFinished = {}, onBondArchived = { _, _ -> }, onOpenSupport = {}, onOpenAccount = {}, onOpenVerify = {})
         }
     }
 
