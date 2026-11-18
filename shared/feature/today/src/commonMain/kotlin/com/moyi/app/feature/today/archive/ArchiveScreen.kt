@@ -10,16 +10,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -36,11 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
@@ -51,13 +56,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.ArchiveDayRow
+import com.moyi.app.designsystem.component.ArchiveRowLine
 import com.moyi.app.designsystem.component.Chip
 import com.moyi.app.designsystem.component.ChipRow
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
-import com.moyi.app.designsystem.component.ArchiveDayRow
-import com.moyi.app.designsystem.component.ArchiveRowLine
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
 import com.moyi.app.designsystem.component.PrimaryActionState
@@ -70,21 +75,12 @@ import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.ScreenTitle
+import com.moyi.app.feature.today.common.dayInSentence
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.common.monthAndYear
 import com.moyi.app.feature.today.common.weekdayShort
-import com.moyi.app.feature.today.common.dayInSentence
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.archive_day_favourited
-import com.moyi.app.feature.today.resources.archive_row_author_partner_unknown
-import com.moyi.app.feature.today.resources.archive_row_author_you
-import com.moyi.app.feature.today.resources.archive_row_favourite
-import com.moyi.app.feature.today.resources.archive_row_photo
-import com.moyi.app.feature.today.resources.archive_row_photo_and_voice
-import com.moyi.app.feature.today.resources.archive_row_spoken_entry
-import com.moyi.app.feature.today.resources.archive_row_spoken_photo
-import com.moyi.app.feature.today.resources.archive_row_spoken_voice
-import com.moyi.app.feature.today.resources.archive_row_voice
 import com.moyi.app.feature.today.resources.archive_empty_heading
 import com.moyi.app.feature.today.resources.archive_empty_line
 import com.moyi.app.feature.today.resources.archive_favourites_empty_heading
@@ -94,6 +90,10 @@ import com.moyi.app.feature.today.resources.archive_filter_all
 import com.moyi.app.feature.today.resources.archive_filter_favourites
 import com.moyi.app.feature.today.resources.archive_filter_remember
 import com.moyi.app.feature.today.resources.archive_filter_search
+import com.moyi.app.feature.today.resources.archive_month_jump
+import com.moyi.app.feature.today.resources.archive_month_newest
+import com.moyi.app.feature.today.resources.archive_month_picker_title
+import com.moyi.app.feature.today.resources.archive_month_row_description
 import com.moyi.app.feature.today.resources.archive_remember_ask
 import com.moyi.app.feature.today.resources.archive_remember_asking
 import com.moyi.app.feature.today.resources.archive_remember_helper
@@ -103,10 +103,15 @@ import com.moyi.app.feature.today.resources.archive_remember_none_line
 import com.moyi.app.feature.today.resources.archive_remember_rate_limited
 import com.moyi.app.feature.today.resources.archive_remember_results_announce
 import com.moyi.app.feature.today.resources.archive_remember_results_label
-import com.moyi.app.feature.today.resources.archive_month_jump
-import com.moyi.app.feature.today.resources.archive_month_newest
-import com.moyi.app.feature.today.resources.archive_month_picker_title
-import com.moyi.app.feature.today.resources.archive_month_row_description
+import com.moyi.app.feature.today.resources.archive_row_author_partner_unknown
+import com.moyi.app.feature.today.resources.archive_row_author_you
+import com.moyi.app.feature.today.resources.archive_row_favourite
+import com.moyi.app.feature.today.resources.archive_row_photo
+import com.moyi.app.feature.today.resources.archive_row_photo_and_voice
+import com.moyi.app.feature.today.resources.archive_row_spoken_entry
+import com.moyi.app.feature.today.resources.archive_row_spoken_photo
+import com.moyi.app.feature.today.resources.archive_row_spoken_voice
+import com.moyi.app.feature.today.resources.archive_row_voice
 import com.moyi.app.feature.today.resources.archive_search_helper
 import com.moyi.app.feature.today.resources.archive_search_label
 import com.moyi.app.feature.today.resources.archive_search_none_heading
@@ -120,12 +125,14 @@ import com.moyi.app.feature.today.resources.today_error_heading
 import com.moyi.app.feature.today.resources.today_error_line
 import com.moyi.app.feature.today.resources.today_tombstone_line
 import com.moyi.app.feature.today.resources.today_write_action
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun ArchiveRoot(
@@ -267,12 +274,25 @@ private fun TitleRow(onAction: (ArchiveAction) -> Unit, debugTools: Boolean) {
 private fun RememberScreen(state: ArchiveState, onAction: (ArchiveAction) -> Unit, debugTools: Boolean) {
     val keyboard = LocalSoftwareKeyboardController.current
     val answerFocus = remember { FocusRequester() }
+    val askInView = remember { BringIntoViewRequester() }
     LaunchedEffect(state.focusResults) {
         if (state.focusResults) {
             keyboard?.hide()
             // Attached in this same composition (focusResults comes only with an answer).
             runCatching { answerFocus.requestFocus() }
             onAction(ArchiveAction.OnResultsFocused)
+        }
+    }
+    // With the keyboard up, Ask sits just under it on a phone: scroll it into view once the
+    // keyboard has settled, so the question and its action are both on screen (the keyboard's
+    // Search key asks as well).
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    val imeVisible by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) {
+            delay(KEYBOARD_SETTLE)
+            askInView.bringIntoView()
         }
     }
     MoyiScaffold(onBack = { onAction(ArchiveAction.OnBackClick) }) {
@@ -294,7 +314,7 @@ private fun RememberScreen(state: ArchiveState, onAction: (ArchiveAction) -> Uni
                 state.canAsk -> PrimaryActionState.Idle
                 else -> PrimaryActionState.Disabled
             },
-            modifier = Modifier.align(Alignment.CenterHorizontally),
+            modifier = Modifier.align(Alignment.CenterHorizontally).bringIntoViewRequester(askInView),
         )
         when (state.rememberFailure) {
             RememberFailure.RateLimited -> {
@@ -751,6 +771,9 @@ private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit, 
 
 /** states.md §6: "the 56 pt month-jump row" (Figma's frame 257:9 is 80; see archive-check.md). */
 private val MonthRowHeight = 56.dp
+
+/** How long the keyboard takes to rise before Ask is scrolled above it. Not a design value. */
+private val KEYBOARD_SETTLE = 300.milliseconds
 
 /** Ask for the next page this many items before the end. Not a design value. */
 private const val LOAD_AHEAD = 3
