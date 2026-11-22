@@ -170,30 +170,30 @@
     <string name="archive_search_none_heading">Nothing matched that.</string>
     <string name="archive_search_none_line">Try another word, or go back to all days.</string>
     <!-- ===== Archive, Remember when (FR-204; docs/missing-components.md §92; design preview 2026-11-17, owner rulings 2026-11-18).
-    All PROPOSED: the owner approved the preview's strings (without its example questions and its counter) on 2026-11-18,
-    pending this list. ===== -->
-    <!-- PROPOSED. The fourth filter chip, the feature's name. A phrase people say when recalling a moment they shared; translate the feeling ("do you remember when"), not word for word. Short: it sits in a row of chips. -->
+    All approved by the owner 2026-11-22 (the preview's strings, without its example questions and its counter,
+    were approved in principle on 2026-11-18). ===== -->
+    <!-- Approved 2026-11-22 (owner). The fourth filter chip, the feature's name. A phrase people say when recalling a moment they shared; translate the feeling ("do you remember when"), not word for word. Short: it sits in a row of chips. -->
     <string name="archive_filter_remember">Remember when</string>
-    <!-- PROPOSED. The question field's visible label. "a moment" is a day the two people shared; the person types a question or a few words about it. -->
+    <!-- Approved 2026-11-22 (owner). The question field's visible label. "a moment" is a day the two people shared; the person types a question or a few words about it. -->
     <string name="archive_remember_label">Ask about a moment</string>
-    <!-- PROPOSED. The question field's helper. Sets expectations: the days shown feel close to the question, they may not contain its words. -->
+    <!-- Approved 2026-11-22 (owner). The question field's helper. Sets expectations: the days shown feel close to the question, they may not contain its words. -->
     <string name="archive_remember_helper">Shows the moments that feel closest. They may not match exactly.</string>
-    <!-- PROPOSED. The button that sends the question (PrimaryAction, idle). A verb, one word if the language allows. -->
+    <!-- Approved 2026-11-22 (owner). The button that sends the question (PrimaryAction, idle). A verb, one word if the language allows. -->
     <string name="archive_remember_ask">Ask</string>
-    <!-- PROPOSED. The same button while the question is being answered (PrimaryAction Sending). Says what is happening; no "please wait". -->
+    <!-- Approved 2026-11-22 (owner). The same button while the question is being answered (PrimaryAction Sending). Says what is happening; no "please wait". -->
     <string name="archive_remember_asking">Asking</string>
-    <!-- PROPOSED. The label above the answer, a list ordered by how close each day is to the question, not by date. -->
+    <!-- Approved 2026-11-22 (owner). The label above the answer, a list ordered by how close each day is to the question, not by date. -->
     <string name="archive_remember_results_label">Closest moments</string>
-    <!-- PROPOSED. Read by a screen reader only, when the answer arrives (the visible label is archive_remember_results_label). %1$d = how many days came back, 1 to 10, as digits. -->
+    <!-- Approved 2026-11-22 (owner). Read by a screen reader only, when the answer arrives (the visible label is archive_remember_results_label). %1$d = how many days came back, 1 to 10, as digits. -->
     <plurals name="archive_remember_results_announce">
         <item quantity="one">%1$d moment, closest first</item>
         <item quantity="other">%1$d moments, closest first</item>
     </plurals>
-    <!-- PROPOSED. No day came back for the question. "yet": the archive grows every day, so a later question may find one. -->
+    <!-- Approved 2026-11-22 (owner). No day came back for the question. "yet": the archive grows every day, so a later question may find one. -->
     <string name="archive_remember_none_heading">Nothing close to that yet.</string>
-    <!-- PROPOSED. Under archive_remember_none_heading: what to try next. -->
+    <!-- Approved 2026-11-22 (owner). Under archive_remember_none_heading: what to try next. -->
     <string name="archive_remember_none_line">Try asking another way, or with fewer words.</string>
-    <!-- PROPOSED, auth_error_rate_limited's and settings_error_rate_limited's words (owner ruling 2026-11-18: its own copy, as other features keep theirs). A 429 (too many questions in an hour). Says when, never why, and promises no refill rate. -->
+    <!-- Approved 2026-11-22 (owner), auth_error_rate_limited's and settings_error_rate_limited's words (owner ruling 2026-11-18: its own copy, as other features keep theirs). A 429 (too many questions in an hour). Says when, never why, and promises no refill rate. -->
     <string name="archive_remember_rate_limited">This is paused for a short while. Try again in a few minutes.</string>
 
     <!-- archive.favourites.empty.heading (strings-proposed.md §6a; states.md §6 Favourites, empty). -->

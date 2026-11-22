@@ -256,7 +256,7 @@ private fun TitleRow(onAction: (ArchiveAction) -> Unit, debugTools: Boolean) {
 
 /**
  * Remember when (FR-204; design preview 2026-11-17, owner rulings 2026-11-18; states.md §6,
- * the fourth route as proposed in docs/missing-components.md §92). The question field takes
+ * the fourth route, approved 2026-11-22; docs/missing-components.md §92). The question field takes
  * the navigation block's top slot, as Search's does, with the chips under it as the way back;
  * then Ask, the one `PrimaryAction`, which reads Asking while the question is answered (no
  * spinner); then the answer.

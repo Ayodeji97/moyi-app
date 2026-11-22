@@ -2204,7 +2204,7 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
   - **Failures:** a `429` is `InlineError` "This is paused for a short while. Try again in a few minutes." (its own key, the same words as auth's and settings'; no refill rate promised). Anything else is `InlineError` "That didn't work. Nothing was lost. Try again in a moment." with Try again, as Search's failure. Both sit under Ask, with the last answer still below.
   - **The release gate:** `RememberWhenGate`, bound in `KoinInit` from the build type. On Android it is `BuildConfig.REMEMBER_WHEN` (true in `debug`, false in `release`; `RememberWhenGateTest` checks both build types in `check`). On iOS it is `Platform.isDebugBinary`, because Xcode's Debug configuration links the debug framework and Release the release one. Unbound, it is off. A later PR replaces it with the bond's `semanticSearchActive`.
   - **Not here:** the "search by meaning is off" line and the Bond settings link (PR 4, after #132), and example questions (ruled out of v1).
-  - **Strings, all PROPOSED** (feature/today `strings.xml`, each with a translator note), no dash, no exclamation mark:
+  - **Strings, all approved by the owner 2026-11-22** (feature/today `strings.xml`, each with a translator note), no dash, no exclamation mark:
     - `archive_filter_remember` "Remember when"
     - `archive_remember_label` "Ask about a moment"
     - `archive_remember_helper` "Shows the moments that feel closest. They may not match exactly."
@@ -2214,7 +2214,7 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
     - `archive_remember_none_heading` "Nothing close to that yet.", `archive_remember_none_line` "Try asking another way, or with fewer words."
     - `archive_remember_rate_limited` "This is paused for a short while. Try again in a few minutes."
     - Reused, approved: `today_action_failed`, `today_error_action`, `today_date_in_sentence`, the row's own strings.
-- **Proposed amendment to the design system's `states.md` §6** (the skill lives in the local `Gratitude` repository, which has no remote, so it is proposed here and not applied):
+- **Amendment to the design system's `states.md` §6, approved by the owner 2026-11-22 and applied** in the local `Gratitude` repository (no remote; commit `5747a58`), as written here:
   - The routes list gains a fourth: "4. **Remember when** (FR-204): a question in plain words, answered with the closest days. The one place the archive is not newest first: a flat list in relevance order, no month headings, each day with its full date (the year when it is not this year). An explicit Ask, never as-you-type: each question may go to the embedding provider, thirty an hour."
   - New table rows:
 
