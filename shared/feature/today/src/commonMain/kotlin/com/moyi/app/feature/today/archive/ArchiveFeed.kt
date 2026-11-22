@@ -1,5 +1,6 @@
 package com.moyi.app.feature.today.archive
 
+import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.designsystem.component.EntryPhoto
 import com.moyi.app.designsystem.component.VoiceNote
@@ -8,6 +9,8 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.RememberError
+import com.moyi.app.domain.archive.RememberRepository
 import com.moyi.app.domain.archive.joinPage
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.PartnerEntry
@@ -57,6 +60,10 @@ import kotlinx.datetime.LocalDate
  * are not to be stored). Before anything is written, the partner's words are stripped from
  * every day not allowed to show them ([cacheable], BR-1).
  *
+ * **Remember when** ([remember]): one answer to a question, held here so the day view finds
+ * its days as it finds a listed day's, and **never written to [cache]** (the contract: the
+ * answer is never to be stored), so nothing of it outlives [clear]. No cursor, so no paging.
+ *
  * Every load runs under one [Mutex]; [clear] moves [generation] on so an answer in
  * flight cannot publish into the next session, nor be written to the cache. The list
  * ViewModel clears it on its way in and out, so no one's words outlive the screen that
@@ -66,12 +73,20 @@ class ArchiveFeed(
     private val loop: DailyLoop,
     private val archive: ArchiveRepository,
     private val cache: ArchiveCache,
+    private val rememberer: RememberRepository,
 ) {
     private val _state = MutableStateFlow(FeedState())
     val state: StateFlow<FeedState> = _state.asStateFlow()
 
     private val mutex = Mutex()
     private var generation = 0
+
+    /**
+     * Moves on with every load asked for (a list, a search, a question), before it waits for
+     * anything. A question's answer is published only while this is still the one it started
+     * with: a chip chosen meanwhile, or another question, makes it stale and it is dropped.
+     */
+    private var asks = 0
 
     /**
      * The newest page, replacing whatever was loaded. A failure is [FeedLoad.Failed]
@@ -92,7 +107,45 @@ class ArchiveFeed(
      */
     suspend fun search(query: String) = loadFirst(FeedState(load = FeedLoad.Loading, query = query))
 
+    /**
+     * "Remember when": the days closest to [question] (trimmed, not blank), most relevant
+     * first, replacing whatever was loaded. Nothing is published until the answer arrives,
+     * so a failure leaves the last answer where it was (the screen keeps it under the error).
+     *
+     * Returns the outcome, or null when the answer is stale (the Archive was left, a chip was
+     * chosen, or another question was asked meanwhile) and was dropped. The answer is held in
+     * memory only: never cached, so the day view finds its days here and nowhere else.
+     */
+    suspend fun remember(question: String): Result<Unit, RememberError>? {
+        val startedIn = generation
+        val ask = ++asks
+        val bond = (loop.state.value as? DailyLoopState.Ready)?.day
+            ?: return Result.Failure(RememberError.Failed(DataError.Network.Unknown))
+        val answer = rememberer.remember(bond.bondId, question)
+        return mutex.withLock {
+            if (startedIn != generation || ask != asks) return@withLock null
+            when (answer) {
+                is Result.Failure -> answer
+                is Result.Success -> {
+                    _state.value = FeedState(
+                        load = FeedLoad.Ready,
+                        remember = question,
+                        bondId = bond.bondId,
+                        partnerName = bond.partnerName,
+                        bondStatus = bond.bondStatus,
+                        paused = bond.paused,
+                        // A day the server sent twice is drawn once, at its best rank.
+                        days = answer.data.distinctBy { it.date },
+                        pages = 1,
+                    )
+                    Result.Success(Unit)
+                }
+            }
+        }
+    }
+
     private suspend fun loadFirst(asked: FeedState) {
+        asks++
         _state.value = asked
         mutex.withLock {
             val startedIn = generation
@@ -213,7 +266,7 @@ class ArchiveFeed(
      * nothing is cached.
      */
     private suspend fun fromCache(bondId: String, asked: FeedState): ArchivePage? {
-        if (asked.query != null || asked.plain) return null
+        if (asked.query != null || asked.remember != null || asked.plain) return null
         val run = cache.read(bondId) ?: return null
         val until = asked.until?.toString()
         val days = run.days.filter { day ->
@@ -229,7 +282,7 @@ class ArchiveFeed(
     private suspend fun keep(bondId: String, asked: FeedState, page: ArchivePage, after: String?) {
         val safe = page.copy(days = page.days.map { it.cacheable() })
         when {
-            asked.query != null -> Unit
+            asked.query != null || asked.remember != null -> Unit
             asked.plain -> cache.putPage(bondId, safe, after)
             else -> cache.update(bondId, safe.days)
         }
@@ -307,6 +360,11 @@ data class FeedState(
     val query: String? = null,
     /** Loaded from a month jump: the list starts at this date or the nearest earlier day. Null for the newest. */
     val until: LocalDate? = null,
+    /**
+     * The answer to this "Remember when" question: [days] in relevance order, not newest first,
+     * with no cursor. Held in memory only, never cached. Null for every other list.
+     */
+    val remember: String? = null,
     val bondId: String? = null,
     val partnerName: String? = null,
     /**
@@ -330,13 +388,15 @@ data class FeedState(
 ) {
     /** The same list as [other] was asked for: same filter, same query, same month jump. */
     /** The plain list: no filter, no search, no month jump. The only one drawn from the cache, and kept in it page by page. */
-    val plain: Boolean get() = !favourites && query == null && until == null
+    val plain: Boolean get() = !favourites && query == null && until == null && remember == null
 
-    fun sameLoadAs(other: FeedState): Boolean = favourites == other.favourites && query == other.query && until == other.until
+    fun sameLoadAs(other: FeedState): Boolean =
+        favourites == other.favourites && query == other.query && until == other.until && remember == other.remember
 
-    // The query is a person's own words: never in a log, like the entries.
+    // The query and the question are a person's own words: never in a log, like the entries.
     override fun toString(): String =
-        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, bondId=$bondId, partnerName=$partnerName, bondStatus=$bondStatus, paused=$paused, " +
+        "FeedState(load=$load, favourites=$favourites, query=${query?.let { "(redacted)" }}, until=$until, " +
+            "remember=${remember?.let { "(redacted)" }}, bondId=$bondId, partnerName=$partnerName, bondStatus=$bondStatus, paused=$paused, " +
             "days=$days, nextCursor=$nextCursor, pageEnd=$pageEnd, loadingMore=$loadingMore, pageFailed=$pageFailed, pages=$pages)"
 }
 

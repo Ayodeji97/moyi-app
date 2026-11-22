@@ -243,7 +243,7 @@ class PausedBondTest : MainDispatcherTest() {
         repository.pages[null] = page
         archiveCache.putPage("bond-1", page, after = null)
         val archiveEntries = FakeEntries()
-        val view = ArchiveDayViewModel("2026-09-02", ArchiveFeed(archiveLoop, repository, archiveCache), repository, archiveEntries, archiveLoop)
+        val view = ArchiveDayViewModel("2026-09-02", ArchiveFeed(archiveLoop, repository, archiveCache, FakeRememberRepository()), repository, archiveEntries, archiveLoop)
 
         assertEquals(MINE, view.state.value.day?.myEntry, "the day is still there to read")
         assertEquals(false, view.state.value.day?.canReact)
@@ -255,7 +255,7 @@ class PausedBondTest : MainDispatcherTest() {
     fun anEmptyArchiveOffersNoWriteWhileTheBondIsPaused() = runTest {
         val archiveLoop = FakeDailyLoop(DailyLoopState.Ready(dayView(TodayStatus.NotWritten).copy(paused = true)))
         val repository = FakeArchiveRepository().apply { pages[null] = ArchivePage(emptyList(), null) }
-        val list = ArchiveViewModel(ArchiveFeed(archiveLoop, repository, FakeArchiveCache()))
+        val list = ArchiveViewModel(ArchiveFeed(archiveLoop, repository, FakeArchiveCache(), FakeRememberRepository()))
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect {} }
 
         assertTrue(list.state.value.isEmpty)

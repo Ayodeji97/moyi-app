@@ -41,7 +41,7 @@ class ArchiveFavouritesTest : MainDispatcherTest() {
     private val repository = FakeArchiveRepository()
     private val entries = FakeEntries()
     private val cache = FakeArchiveCache()
-    private val feed = ArchiveFeed(loop, repository, cache)
+    private val feed = ArchiveFeed(loop, repository, cache, FakeRememberRepository())
 
     private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }

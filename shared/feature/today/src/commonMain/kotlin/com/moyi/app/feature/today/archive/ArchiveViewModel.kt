@@ -2,10 +2,14 @@ package com.moyi.app.feature.today.archive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moyi.app.core.Result
+import com.moyi.app.domain.archive.REMEMBER_MAX_LENGTH
+import com.moyi.app.domain.archive.RememberError
 import com.moyi.app.domain.archive.SEARCH_MAX_LENGTH
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -24,6 +28,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * How long the field must rest before a query is sent. 300 ms is about the gap between
@@ -59,11 +64,21 @@ val SEARCH_DEBOUNCE: Duration = 300.milliseconds
  *   Choosing the Bond-day's own month, or "Back to the newest days", is the newest list.
  *   A chip, or Search, starts from the newest days again.
  *
+ * - **Remember when** (FR-204, the fourth chip; owner rulings 2026-11-18): a question field
+ *   and an explicit **Ask**, never as-you-type (each question may go to the provider, thirty
+ *   an hour). **One question in flight**: Ask does nothing while one is on its way. The answer
+ *   is a flat list in relevance order, held by the feed in memory only (never cached, never in
+ *   saved state). A chip chosen meanwhile cancels the question, and the feed drops an answer
+ *   that is no longer wanted. A `429` holds Ask until the server's `Retry-After` has passed;
+ *   any other failure is the generic line with Try again. Either keeps the last answer.
+ *   Offered only when [rememberWhen] is on (hidden in release builds for now).
+ *
  * It owns the feed's lifetime: cleared on the way in and on the way out (onCleared),
  * so no one's days outlive the Archive that showed them.
  */
 class ArchiveViewModel(
     private val feed: ArchiveFeed,
+    private val rememberWhen: Boolean = false,
 ) : ViewModel() {
 
     /** DEBUG ONLY: the layout the preview's long press has stepped to, over the real one. */
@@ -84,17 +99,27 @@ class ArchiveViewModel(
     /** Sends the field's query while Search is chosen; cancelled on leaving it. */
     private var searchJob: Job? = null
 
+    /** Remember when is the chosen chip, its question, and the question on its way. */
+    private val remember = MutableStateFlow(RememberInput())
+
+    /** A `429` said to wait: Ask is held until [holdJob] lets it go. Kept across chips, so a chip cannot skip it. */
+    private val held = MutableStateFlow(false)
+
+    /** The one question on its way; cancelled when a chip is chosen. */
+    private var askJob: Job? = null
+    private var holdJob: Job? = null
+
     init {
         feed.clear()
     }
 
     val state: StateFlow<ArchiveState> =
-        combine(feed.state, debugLayout, filterChosen, search, combine(archiveHasDays, monthJump, ::Pair)) { feed, debug, chosen, input, (hasDays, jump) ->
-            toState(feed, debug, chosen, input, hasDays, jump)
+        combine(feed.state, debugLayout, filterChosen, search, combine(archiveHasDays, monthJump, remember, held, ::Extras)) { feed, debug, chosen, input, extras ->
+            toState(feed, debug, chosen, input, extras)
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, archiveHasDays.value, monthJump.value),
+            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, Extras(archiveHasDays.value, monthJump.value, remember.value, held.value)),
         )
 
     private val _events = Channel<ArchiveEvent>(Channel.BUFFERED)
@@ -114,7 +139,7 @@ class ArchiveViewModel(
         // whether the archive is empty.
         viewModelScope.launch {
             feed.state.collect { feed ->
-                if (feed.load != FeedLoad.Ready || feed.favourites || feed.query != null || feed.until != null) return@collect
+                if (feed.load != FeedLoad.Ready || !feed.plain) return@collect
                 when {
                     feed.visibleDays().isNotEmpty() -> archiveHasDays.value = true
                     feed.nextCursor == null && !feed.pageFailed -> archiveHasDays.value = false
@@ -142,18 +167,27 @@ class ArchiveViewModel(
             is ArchiveAction.OnFilterClick -> {
                 filterChosen.value = true
                 if (action.filter == ArchiveFilter.Search) {
+                    stopRemember()
                     startSearch()
                     return
                 }
+                if (action.filter == ArchiveFilter.Remember) {
+                    if (rememberWhen) {
+                        stopSearch()
+                        startRemember()
+                    }
+                    return
+                }
                 stopSearch()
+                stopRemember()
                 val favourites = action.filter == ArchiveFilter.Favourites
                 val current = feed.state.value
-                if (current.favourites != favourites || current.query != null || current.load == FeedLoad.Failed) {
+                if (current.favourites != favourites || current.query != null || current.remember != null || current.load == FeedLoad.Failed) {
                     monthJump.update { it.copy(visible = null) }
                     viewModelScope.launch { loadFirst(favourites, until = null) }
                 }
             }
-            ArchiveAction.OnJumpClick -> if (!search.value.active) monthJump.update { it.copy(pickerOpen = true) }
+            ArchiveAction.OnJumpClick -> if (!search.value.active && !remember.value.active) monthJump.update { it.copy(pickerOpen = true) }
             ArchiveAction.OnMonthPickerDismiss -> monthJump.update { it.copy(pickerOpen = false) }
             is ArchiveAction.OnMonthChosen -> chooseMonth(action.month.firstOfMonth())
             ArchiveAction.OnNewestClick -> jumpTo(until = null)
@@ -163,6 +197,13 @@ class ArchiveViewModel(
                 search.update { it.copy(query = action.query.take(SEARCH_MAX_LENGTH)) }
             }
             ArchiveAction.OnSearchFocused -> search.update { it.copy(focus = false) }
+            // Typing never sends: only Ask does. The question stays as typed while one is on its way.
+            is ArchiveAction.OnQuestionChange -> if (remember.value.active) {
+                remember.update { it.copy(question = action.question.take(REMEMBER_MAX_LENGTH)) }
+            }
+            ArchiveAction.OnAskClick -> ask()
+            ArchiveAction.OnQuestionFocused -> remember.update { it.copy(focus = false) }
+            ArchiveAction.OnResultsFocused -> remember.update { it.copy(focusResults = false) }
             // Not drawn while the bond is paused; a tap that raced the pause in is ignored.
             ArchiveAction.OnWriteClick -> if (!feed.state.value.paused) send(ArchiveEvent.NavigateToWrite)
             ArchiveAction.OnStreakClick -> send(ArchiveEvent.NavigateToStreak)
@@ -219,6 +260,57 @@ class ArchiveViewModel(
         return generateSequence(newest) { it.minus(DatePeriod(months = 1)) }.takeWhile { it >= oldest }.toList()
     }
 
+    /** Remember when chosen: the question field, empty and focused, and nothing below it until an answer. */
+    private fun startRemember() {
+        if (remember.value.active) return
+        remember.value = RememberInput(active = true, focus = true)
+    }
+
+    /** Leaving Remember when: the question in flight is cancelled and the question forgotten. The `429` hold stays. */
+    private fun stopRemember() {
+        askJob?.cancel()
+        askJob = null
+        remember.value = RememberInput()
+    }
+
+    /**
+     * Sends the question in the field, trimmed, unless it is only spaces, one is already on its
+     * way, or a `429` still holds Ask. A stale answer (null from the feed) changes nothing.
+     */
+    private fun ask() {
+        val input = remember.value
+        val question = input.question.trim()
+        if (!input.active || input.asking || held.value || question.isEmpty()) return
+        remember.update { it.copy(asking = true, failure = null, focusResults = false) }
+        askJob = viewModelScope.launch {
+            val outcome = feed.remember(question)
+            remember.update { current ->
+                when (outcome) {
+                    null -> current.copy(asking = false)
+                    is Result.Success -> current.copy(asking = false, focusResults = true)
+                    is Result.Failure -> when (val error = outcome.error) {
+                        is RememberError.RateLimited -> {
+                            hold(error.retryAfterSeconds)
+                            current.copy(asking = false, failure = RememberFailure.RateLimited)
+                        }
+                        is RememberError.Failed -> current.copy(asking = false, failure = RememberFailure.Failed)
+                    }
+                }
+            }
+        }
+    }
+
+    /** Holds Ask for [seconds], then lets it go and takes the "too many tries" line away. */
+    private fun hold(seconds: Int) {
+        held.value = true
+        holdJob?.cancel()
+        holdJob = viewModelScope.launch {
+            delay(seconds.seconds)
+            held.value = false
+            remember.update { if (it.failure == RememberFailure.RateLimited) it.copy(failure = null) else it }
+        }
+    }
+
     private fun stopSearch() {
         searchJob?.cancel()
         searchJob = null
@@ -228,7 +320,7 @@ class ArchiveViewModel(
     /** Below the minimum: the unfiltered list, loaded again only if it is not what the feed holds. */
     private suspend fun showUnfiltered() {
         val current = feed.state.value
-        if (current.query != null || current.favourites || current.until != null || current.load == FeedLoad.Failed) {
+        if (current.query != null || current.remember != null || current.favourites || current.until != null || current.load == FeedLoad.Failed) {
             loadFirst(favourites = false, until = null)
         }
     }
@@ -254,10 +346,13 @@ class ArchiveViewModel(
         }
     }
 
+    // Never for an answer to Remember when: it has no cursor, and an answer that draws nothing is "nothing close".
     private fun FeedState.needsAnotherPage(): Boolean =
-        load == FeedLoad.Ready && nextCursor != null && !loadingMore && !pageFailed && visibleDays().isEmpty()
+        remember == null && load == FeedLoad.Ready && nextCursor != null && !loadingMore && !pageFailed && visibleDays().isEmpty()
 
-    private fun toState(feed: FeedState, debug: DebugLayout?, chosen: Boolean, input: SearchInput, hasDays: Boolean, jump: MonthJump): ArchiveState {
+    private fun toState(feed: FeedState, debug: DebugLayout?, chosen: Boolean, input: SearchInput, extras: Extras): ArchiveState {
+        val (hasDays, jump, question, isHeld) = extras
+        if (question.active) return rememberState(feed, hasDays, question, isHeld)
         val base = baseState(feed, debug, chosen || input.active)
         val months = base.months.map { it.month.firstOfMonth() }
         // The row says what is at the top of the list: what the screen reported, while it is
@@ -280,9 +375,39 @@ class ArchiveViewModel(
             // The chips stay throughout search: they are the way back (states.md §6).
             showFilters = base.showFilters || input.active,
             showSearch = hasDays,
+            showRemember = rememberWhen && hasDays,
             query = input.query,
             focusSearch = input.focus,
             canWrite = !feed.paused,
+        )
+    }
+
+    /**
+     * Remember when chosen: the field, Ask and the chips, then the answer as one flat list in the
+     * server's order. Whatever the feed held before (the list, a failed first load) is not drawn:
+     * only an answer is. The year is named on a day outside the current Bond-day's year.
+     */
+    private fun rememberState(feed: FeedState, hasDays: Boolean, input: RememberInput, isHeld: Boolean): ArchiveState {
+        val thisYear = this.feed.bondDay?.year
+        val results = feed.takeIf { it.remember != null && it.load == FeedLoad.Ready && !input.asking }
+            ?.days
+            ?.mapNotNull { it.toArchiveDayUi() }
+            ?.map { RememberResult(it, withYear = thisYear == null || it.date.year != thisYear) }
+        return ArchiveState(
+            load = ArchiveLoad.Ready,
+            partnerName = feed.partnerName,
+            filter = ArchiveFilter.Remember,
+            showFilters = true,
+            showSearch = hasDays,
+            showRemember = true,
+            canWrite = !feed.paused,
+            question = input.question,
+            focusQuestion = input.focus,
+            asking = input.asking,
+            canAsk = input.question.isNotBlank() && !input.asking && !isHeld,
+            rememberFailure = input.failure,
+            results = results,
+            focusResults = input.focusResults && results != null,
         )
     }
 
@@ -338,6 +463,21 @@ class ArchiveViewModel(
         val oldestSeen: LocalDate? = null,
         val scrollToTop: Boolean = false,
     )
+
+    private data class Extras(val hasDays: Boolean, val jump: MonthJump, val remember: RememberInput, val held: Boolean)
+
+    /** Remember when: chosen or not, the question as typed, and the one question on its way. */
+    private data class RememberInput(
+        val active: Boolean = false,
+        val question: String = "",
+        val focus: Boolean = false,
+        val asking: Boolean = false,
+        val failure: RememberFailure? = null,
+        val focusResults: Boolean = false,
+    ) {
+        override fun toString(): String =
+            "RememberInput(active=$active, focus=$focus, asking=$asking, failure=$failure, focusResults=$focusResults)"
+    }
 
     private data class SearchInput(val active: Boolean = false, val query: String = "", val focus: Boolean = false) {
         override fun toString(): String = "SearchInput(active=$active, focus=$focus)"
