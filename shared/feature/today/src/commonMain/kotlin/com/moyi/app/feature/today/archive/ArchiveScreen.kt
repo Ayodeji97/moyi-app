@@ -3,22 +3,27 @@ package com.moyi.app.feature.today.archive
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -35,11 +40,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -48,15 +56,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.moyi.app.designsystem.MoyiTheme
+import com.moyi.app.designsystem.component.ArchiveDayRow
+import com.moyi.app.designsystem.component.ArchiveRowLine
 import com.moyi.app.designsystem.component.Chip
 import com.moyi.app.designsystem.component.ChipRow
 import com.moyi.app.designsystem.component.Field
 import com.moyi.app.designsystem.component.InlineError
 import com.moyi.app.designsystem.component.MoyiScaffold
-import com.moyi.app.designsystem.component.ArchiveDayRow
-import com.moyi.app.designsystem.component.ArchiveRowLine
 import com.moyi.app.designsystem.component.MoyiText
 import com.moyi.app.designsystem.component.PrimaryAction
+import com.moyi.app.designsystem.component.PrimaryActionState
 import com.moyi.app.designsystem.component.StateBlock
 import com.moyi.app.designsystem.component.TextLink
 import com.moyi.app.designsystem.component.TextRole
@@ -66,12 +75,34 @@ import com.moyi.app.designsystem.presentation.ObserveAsEvents
 import com.moyi.app.designsystem.theme.MoyiDimens
 import com.moyi.app.feature.today.common.FakeCopy
 import com.moyi.app.feature.today.common.ScreenTitle
+import com.moyi.app.feature.today.common.dayInSentence
 import com.moyi.app.feature.today.common.debugLongPress
 import com.moyi.app.feature.today.common.monthAndYear
 import com.moyi.app.feature.today.common.weekdayShort
-import com.moyi.app.feature.today.common.dayInSentence
 import com.moyi.app.feature.today.resources.Res
 import com.moyi.app.feature.today.resources.archive_day_favourited
+import com.moyi.app.feature.today.resources.archive_empty_heading
+import com.moyi.app.feature.today.resources.archive_empty_line
+import com.moyi.app.feature.today.resources.archive_favourites_empty_heading
+import com.moyi.app.feature.today.resources.archive_favourites_empty_line
+import com.moyi.app.feature.today.resources.archive_favourites_empty_privacy
+import com.moyi.app.feature.today.resources.archive_filter_all
+import com.moyi.app.feature.today.resources.archive_filter_favourites
+import com.moyi.app.feature.today.resources.archive_filter_remember
+import com.moyi.app.feature.today.resources.archive_filter_search
+import com.moyi.app.feature.today.resources.archive_month_jump
+import com.moyi.app.feature.today.resources.archive_month_newest
+import com.moyi.app.feature.today.resources.archive_month_picker_title
+import com.moyi.app.feature.today.resources.archive_month_row_description
+import com.moyi.app.feature.today.resources.archive_remember_ask
+import com.moyi.app.feature.today.resources.archive_remember_asking
+import com.moyi.app.feature.today.resources.archive_remember_helper
+import com.moyi.app.feature.today.resources.archive_remember_label
+import com.moyi.app.feature.today.resources.archive_remember_none_heading
+import com.moyi.app.feature.today.resources.archive_remember_none_line
+import com.moyi.app.feature.today.resources.archive_remember_rate_limited
+import com.moyi.app.feature.today.resources.archive_remember_results_announce
+import com.moyi.app.feature.today.resources.archive_remember_results_label
 import com.moyi.app.feature.today.resources.archive_row_author_partner_unknown
 import com.moyi.app.feature.today.resources.archive_row_author_you
 import com.moyi.app.feature.today.resources.archive_row_favourite
@@ -81,18 +112,6 @@ import com.moyi.app.feature.today.resources.archive_row_spoken_entry
 import com.moyi.app.feature.today.resources.archive_row_spoken_photo
 import com.moyi.app.feature.today.resources.archive_row_spoken_voice
 import com.moyi.app.feature.today.resources.archive_row_voice
-import com.moyi.app.feature.today.resources.archive_empty_heading
-import com.moyi.app.feature.today.resources.archive_empty_line
-import com.moyi.app.feature.today.resources.archive_favourites_empty_heading
-import com.moyi.app.feature.today.resources.archive_favourites_empty_line
-import com.moyi.app.feature.today.resources.archive_favourites_empty_privacy
-import com.moyi.app.feature.today.resources.archive_filter_all
-import com.moyi.app.feature.today.resources.archive_filter_favourites
-import com.moyi.app.feature.today.resources.archive_filter_search
-import com.moyi.app.feature.today.resources.archive_month_jump
-import com.moyi.app.feature.today.resources.archive_month_newest
-import com.moyi.app.feature.today.resources.archive_month_picker_title
-import com.moyi.app.feature.today.resources.archive_month_row_description
 import com.moyi.app.feature.today.resources.archive_search_helper
 import com.moyi.app.feature.today.resources.archive_search_label
 import com.moyi.app.feature.today.resources.archive_search_none_heading
@@ -106,11 +125,14 @@ import com.moyi.app.feature.today.resources.today_error_heading
 import com.moyi.app.feature.today.resources.today_error_line
 import com.moyi.app.feature.today.resources.today_tombstone_line
 import com.moyi.app.feature.today.resources.today_write_action
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun ArchiveRoot(
@@ -157,6 +179,10 @@ fun ArchiveScreen(
     onAction: (ArchiveAction) -> Unit,
     debugTools: Boolean = false,
 ) {
+    if (state.filter == ArchiveFilter.Remember) {
+        RememberScreen(state, onAction, debugTools)
+        return
+    }
     // The bare surface on the way in; once a chip has been chosen, the chrome stays and
     // only the list area waits (still no spinner).
     if (state.load == ArchiveLoad.Loading && !state.showFilters) {
@@ -165,20 +191,7 @@ fun ArchiveScreen(
     }
     MoyiScaffold(onBack = { onAction(ArchiveAction.OnBackClick) }, scrollContent = false) {
         Spacer(Modifier.height(MoyiTheme.spacing.lg - MoyiDimens.Scaffold.ItemSpacing))
-        // The title row (Figma 430:1434): the title, and "Your streak" on the trailing side
-        // (430:1435, a 48 target), sentence case per D14 where Figma draws label metrics.
-        Row(Modifier.fillMaxWidth().height(MoyiDimens.TouchTarget), verticalAlignment = Alignment.CenterVertically) {
-            ScreenTitle(
-                text = stringResource(Res.string.archive_title),
-                modifier = Modifier
-                    .weight(1f)
-                    .debugLongPress(if (debugTools) ({ onAction(ArchiveAction.OnDebugCycle) }) else null),
-            )
-            TextLink(
-                text = stringResource(Res.string.archive_streak_link),
-                onClick = { onAction(ArchiveAction.OnStreakClick) },
-            )
-        }
+        TitleRow(onAction, debugTools)
         Spacer(Modifier.height(MoyiTheme.spacing.lg))
         // The field and the month row share the navigation block's top slot (states.md §6).
         if (state.showFilters && state.filter == ArchiveFilter.Search) {
@@ -189,7 +202,7 @@ fun ArchiveScreen(
             Spacer(Modifier.height(MoyiTheme.spacing.md))
         }
         if (state.showFilters) {
-            Filters(state.filter, state.showSearch, onSelect = { onAction(ArchiveAction.OnFilterClick(it)) })
+            Filters(state.filter, state.showSearch, state.showRemember, onSelect = { onAction(ArchiveAction.OnFilterClick(it)) })
             Spacer(Modifier.height(MoyiTheme.spacing.lg))
         }
         if (state.jumped) {
@@ -218,6 +231,183 @@ fun ArchiveScreen(
             state.isEmpty -> Empty(onWrite = if (state.canWrite) ({ onAction(ArchiveAction.OnWriteClick) }) else null)
             else -> DayList(state, onAction)
         }
+    }
+}
+
+/**
+ * The title row (Figma 430:1434): the title, and "Your streak" on the trailing side
+ * (430:1435, a 48 target), sentence case per D14 where Figma draws label metrics.
+ */
+@Composable
+private fun TitleRow(onAction: (ArchiveAction) -> Unit, debugTools: Boolean) {
+    Row(Modifier.fillMaxWidth().height(MoyiDimens.TouchTarget), verticalAlignment = Alignment.CenterVertically) {
+        ScreenTitle(
+            text = stringResource(Res.string.archive_title),
+            modifier = Modifier
+                .weight(1f)
+                .debugLongPress(if (debugTools) ({ onAction(ArchiveAction.OnDebugCycle) }) else null),
+        )
+        TextLink(
+            text = stringResource(Res.string.archive_streak_link),
+            onClick = { onAction(ArchiveAction.OnStreakClick) },
+        )
+    }
+}
+
+/**
+ * Remember when (FR-204; design preview 2026-11-17, owner rulings 2026-11-18; states.md §6,
+ * the fourth route, approved 2026-11-22; docs/missing-components.md §92). The question field takes
+ * the navigation block's top slot, as Search's does, with the chips under it as the way back;
+ * then Ask, the one `PrimaryAction`, which reads Asking while the question is answered (no
+ * spinner); then the answer.
+ *
+ * **One scrolling column, the whole screen** (the scaffold scrolls it): with ten rows at most
+ * there is nothing to page, and at 200 % text the field, the chips and the answer all scroll
+ * together instead of squeezing a list into what is left.
+ *
+ * The answer is a flat list in relevance order under "Closest moments": no month headings, so
+ * each day names its full date, with the year when it is not this year. When it arrives, focus
+ * moves to its label, which a screen reader hears as "4 moments, closest first". A row holding
+ * the partner's words is protected from capture, as in the list.
+ */
+@Composable
+private fun RememberScreen(state: ArchiveState, onAction: (ArchiveAction) -> Unit, debugTools: Boolean) {
+    val keyboard = LocalSoftwareKeyboardController.current
+    val answerFocus = remember { FocusRequester() }
+    val askInView = remember { BringIntoViewRequester() }
+    LaunchedEffect(state.focusResults) {
+        if (state.focusResults) {
+            keyboard?.hide()
+            // Attached in this same composition (focusResults comes only with an answer).
+            runCatching { answerFocus.requestFocus() }
+            onAction(ArchiveAction.OnResultsFocused)
+        }
+    }
+    // With the keyboard up, Ask sits just under it on a phone: scroll it into view once the
+    // keyboard has settled, so the question and its action are both on screen (the keyboard's
+    // Search key asks as well).
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    val imeVisible by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) {
+            delay(KEYBOARD_SETTLE)
+            askInView.bringIntoView()
+        }
+    }
+    MoyiScaffold(onBack = { onAction(ArchiveAction.OnBackClick) }) {
+        Spacer(Modifier.height(MoyiTheme.spacing.lg - MoyiDimens.Scaffold.ItemSpacing))
+        TitleRow(onAction, debugTools)
+        Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        QuestionField(state.question, state.focusQuestion, onAction)
+        Spacer(Modifier.height(MoyiTheme.spacing.md))
+        Filters(state.filter, state.showSearch, state.showRemember, onSelect = { onAction(ArchiveAction.OnFilterClick(it)) })
+        Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        PrimaryAction(
+            text = stringResource(Res.string.archive_remember_ask),
+            onClick = {
+                keyboard?.hide()
+                onAction(ArchiveAction.OnAskClick)
+            },
+            state = when {
+                state.asking -> PrimaryActionState.Sending(stringResource(Res.string.archive_remember_asking))
+                state.canAsk -> PrimaryActionState.Idle
+                else -> PrimaryActionState.Disabled
+            },
+            modifier = Modifier.align(Alignment.CenterHorizontally).bringIntoViewRequester(askInView),
+        )
+        when (state.rememberFailure) {
+            RememberFailure.RateLimited -> {
+                Spacer(Modifier.height(MoyiTheme.spacing.md))
+                InlineError(stringResource(Res.string.archive_remember_rate_limited))
+            }
+            RememberFailure.Failed -> {
+                Spacer(Modifier.height(MoyiTheme.spacing.md))
+                InlineError(stringResource(Res.string.today_action_failed))
+                TextLink(
+                    text = stringResource(Res.string.today_error_action),
+                    onClick = { onAction(ArchiveAction.OnAskClick) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            null -> Unit
+        }
+        val results = state.results ?: return@MoyiScaffold
+        Spacer(Modifier.height(MoyiTheme.spacing.lg))
+        if (results.isEmpty()) {
+            // Nothing came back: the question stays in the field to be changed; the chips are the way back.
+            StateBlock(
+                heading = stringResource(Res.string.archive_remember_none_heading),
+                line = stringResource(Res.string.archive_remember_none_line),
+                modifier = Modifier
+                    .focusRequester(answerFocus)
+                    .focusable()
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+            return@MoyiScaffold
+        }
+        val announce = pluralStringResource(Res.plurals.archive_remember_results_announce, results.size, results.size)
+        MoyiText(
+            text = stringResource(Res.string.archive_remember_results_label),
+            role = TextRole.Label,
+            modifier = Modifier
+                .focusRequester(answerFocus)
+                .focusable()
+                .clearAndSetSemantics {
+                    contentDescription = announce
+                    heading()
+                    liveRegion = LiveRegionMode.Polite
+                },
+        )
+        results.forEach { result ->
+            RememberRow(result, state.partnerName.orEmpty(), onClick = { onAction(ArchiveAction.OnDayClick(result.day.date)) })
+        }
+    }
+}
+
+/**
+ * The question field: `Field · Text` with its visible label and helper, as Search's. Choosing the
+ * chip focuses it once. Typing sends nothing; the keyboard's Search key asks, as Ask does. The
+ * ViewModel caps it at 100 characters with no counter, as Search.
+ */
+@Composable
+private fun QuestionField(question: String, focus: Boolean, onAction: (ArchiveAction) -> Unit) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(focus) {
+        if (focus) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+            onAction(ArchiveAction.OnQuestionFocused)
+        }
+    }
+    Field(
+        value = question,
+        onValueChange = { onAction(ArchiveAction.OnQuestionChange(it)) },
+        label = stringResource(Res.string.archive_remember_label),
+        helper = stringResource(Res.string.archive_remember_helper),
+        modifier = Modifier.focusRequester(focusRequester),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                keyboard?.hide()
+                onAction(ArchiveAction.OnAskClick)
+            },
+        ),
+    )
+}
+
+/**
+ * One day of the answer: its full date in `label` (with the year outside this year), then the
+ * Archive's own compact row. The row is spoken whole, with the same date, so the label is not
+ * read twice.
+ */
+@Composable
+private fun RememberRow(result: RememberResult, partnerName: String, onClick: () -> Unit) {
+    val date = dayInSentence(result.day.date, withYear = result.withYear)
+    Column(Modifier.fillMaxWidth().padding(top = MoyiTheme.spacing.md)) {
+        MoyiText(text = date, role = TextRole.Label, modifier = Modifier.clearAndSetSemantics { })
+        DayRow(result.day, partnerName, onClick = onClick, withYear = result.withYear)
     }
 }
 
@@ -348,12 +538,13 @@ private fun ColumnScope.SearchFailed(onRetry: () -> Unit) {
 }
 
 /**
- * Figma's filters row (440:1475, 508:1522): All days, Favourites and Search, 8 apart.
+ * Figma's filters row (440:1475, 508:1522): All days, Favourites, Search and Remember when, 8 apart
+ * (ChipRow wraps the fourth to a second line where the row is too narrow).
  * Search is left out while the archive is empty (states.md §6). 16 under the month row,
  * or under the search field when Search is chosen (they share the slot above).
  */
 @Composable
-private fun Filters(selected: ArchiveFilter, showSearch: Boolean, onSelect: (ArchiveFilter) -> Unit) {
+private fun Filters(selected: ArchiveFilter, showSearch: Boolean, showRemember: Boolean, onSelect: (ArchiveFilter) -> Unit) {
     ChipRow(Modifier.fillMaxWidth()) {
         Chip(
             text = stringResource(Res.string.archive_filter_all),
@@ -370,6 +561,14 @@ private fun Filters(selected: ArchiveFilter, showSearch: Boolean, onSelect: (Arc
                 text = stringResource(Res.string.archive_filter_search),
                 selected = selected == ArchiveFilter.Search,
                 onClick = { onSelect(ArchiveFilter.Search) },
+            )
+        }
+        // The fourth route (FR-204): hidden while the archive is empty, as Search is, and in release builds for now.
+        if (showRemember || selected == ArchiveFilter.Remember) {
+            Chip(
+                text = stringResource(Res.string.archive_filter_remember),
+                selected = selected == ArchiveFilter.Remember,
+                onClick = { onSelect(ArchiveFilter.Remember) },
             )
         }
     }
@@ -517,7 +716,7 @@ private fun MonthHeading(month: LocalDate) {
  * composed, as EntryCard Partner does ([ArchiveRowModel.showsPartnerWords]).
  */
 @Composable
-private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) {
+private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit, withYear: Boolean = false) {
     val row = remember(day) { day.toRowModel() }
     val dayNumber = remember(day.date) { day.date.day.toString() }
     val weekday = remember(day.date) { weekdayShort(day.date) }
@@ -558,7 +757,7 @@ private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) 
     val spoken = row.lines.zip(lines).map { (line, drawn) ->
         stringResource(Res.string.archive_row_spoken_entry, if (line.author == RowAuthor.You) you else partner, drawn.text)
     }
-    val description = rowDescription(dayInSentence(day.date), spoken, extras)
+    val description = rowDescription(dayInSentence(day.date, withYear), spoken, extras)
     ArchiveDayRow(
         dayNumber = dayNumber,
         weekday = weekday,
@@ -572,6 +771,9 @@ private fun DayRow(day: ArchiveDayUi, partnerName: String, onClick: () -> Unit) 
 
 /** states.md §6: "the 56 pt month-jump row" (Figma's frame 257:9 is 80; see archive-check.md). */
 private val MonthRowHeight = 56.dp
+
+/** How long the keyboard takes to rise before Ask is scrolled above it. Not a design value. */
+private val KEYBOARD_SETTLE = 300.milliseconds
 
 /** Ask for the next page this many items before the end. Not a design value. */
 private const val LOAD_AHEAD = 3
@@ -683,6 +885,39 @@ private fun ArchiveSearchNoResultsPreview() {
     MoyiTheme(darkTheme = false) {
         ArchiveScreen(
             ArchiveState(load = ArchiveLoad.Ready, filter = ArchiveFilter.Search, showFilters = true, showSearch = true, query = "umbrella"),
+            onAction = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ArchiveRememberAskPreview() {
+    MoyiTheme(darkTheme = true) {
+        ArchiveScreen(
+            ArchiveState(load = ArchiveLoad.Ready, filter = ArchiveFilter.Remember, showFilters = true, showSearch = true, showRemember = true),
+            onAction = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ArchiveRememberResultsPreview() {
+    MoyiTheme(darkTheme = false) {
+        ArchiveScreen(
+            ArchiveState(
+                load = ArchiveLoad.Ready,
+                filter = ArchiveFilter.Remember,
+                showFilters = true,
+                showSearch = true,
+                showRemember = true,
+                partnerName = FakeCopy.PARTNER_NAME,
+                question = "when I was unwell",
+                canAsk = true,
+                rememberFailure = RememberFailure.RateLimited,
+                results = previewDays().flatMap { it.days }.map { RememberResult(it, withYear = it.date.year != FakeCopy.DATE.year) },
+            ),
             onAction = {},
         )
     }

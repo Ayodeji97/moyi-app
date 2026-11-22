@@ -8,6 +8,9 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.ArchiveRepository
+import com.moyi.app.domain.archive.REMEMBER_LIMIT
+import com.moyi.app.domain.archive.RememberError
+import com.moyi.app.domain.archive.RememberRepository
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
@@ -107,6 +110,22 @@ internal class PreviewArchiveRepository : ArchiveRepository {
 
     private fun String.wordsOf(): Set<String> = lowercase().split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }.toSet()
 
+    /**
+     * Remember when, as the preview's stand-in for a provider: the days holding any word of the
+     * question, the most words first, then the oldest first, so the order is visibly not the
+     * list's. At most [REMEMBER_LIMIT]; a question with no word in any day answers nothing.
+     */
+    internal suspend fun remember(question: String): List<ArchiveDay> {
+        delay(PREVIEW_LATENCY)
+        val words = question.wordsOf()
+        fun score(day: ArchiveDay): Int = listOfNotNull(day.myEntry?.text, (day.partnerEntry as? PartnerEntry.Revealed)?.text)
+            .sumOf { text -> text.wordsOf().count { it in words } }
+        return days.map { it to score(it) }.filter { it.second > 0 }
+            .sortedWith(compareByDescending<Pair<ArchiveDay, Int>> { it.second }.thenBy { it.first.date })
+            .map { it.first }
+            .take(REMEMBER_LIMIT)
+    }
+
     override suspend fun setFavourite(entryId: String, favourite: Boolean): EmptyResult<DataError.Network> {
         delay(MARK_LATENCY)
         if (entryId == FAILING_MARK) return Result.Failure(DataError.Network.Unknown)
@@ -181,6 +200,12 @@ internal class PreviewArchiveRepository : ArchiveRepository {
  * Archive's delete; Today itself runs on PreviewDailyLoop). It always succeeds, after a
  * moment, so the disabled link while it is in flight can be seen.
  */
+/** "Remember when" in the today preview build, over [PreviewArchiveRepository]'s days. */
+internal class PreviewRememberRepository(private val archive: PreviewArchiveRepository) : RememberRepository {
+    override suspend fun remember(bondId: String, question: String): Result<List<ArchiveDay>, RememberError> =
+        Result.Success(archive.remember(question))
+}
+
 internal class PreviewTodayRepository(private val archive: PreviewArchiveRepository) : TodayRepository {
     override suspend fun today(bondId: String): Result<Today, DataError.Network> = Result.Failure(DataError.Network.Unknown)
 

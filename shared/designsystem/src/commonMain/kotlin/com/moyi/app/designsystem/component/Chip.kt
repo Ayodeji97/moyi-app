@@ -3,6 +3,8 @@ package com.moyi.app.designsystem.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -107,13 +109,19 @@ fun Chip(
     }
 }
 
-/** A row of [Chip]s, [MoyiDimens.Chip.Gap] apart, as Figma's filters row (440:1475). */
+/**
+ * A row of [Chip]s, [MoyiDimens.Chip.Gap] apart, as Figma's filters row (440:1475). It **wraps**:
+ * a chip that does not fit starts a second line, the same gap below, instead of being cut at the
+ * edge (the Archive's four chips at 390 wide, and any row at 200 % text; docs/missing-components.md §92).
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChipRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Row(
+    FlowRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MoyiDimens.Chip.Gap),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(MoyiDimens.Chip.Gap),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) { content() }
 }
 

@@ -2194,3 +2194,35 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
   - **`429`:** Ask is held until the server's `Retry-After` has passed, then the line goes. The hold survives a chip change, so a chip cannot skip it. **Any other failure:** the generic line with Try again (which asks the question in the field). Both keep the last answer on screen; neither falls back to a cache.
   - **Privacy:** `ArchiveState`, `FeedState`, the ViewModel's own input holder and `OnQuestionChange` print `(redacted)` for the question.
   - **Gate:** `ArchiveViewModel(feed, rememberWhen)`; the chip is offered only when `rememberWhen` is on and the archive holds a day. This PR leaves it off everywhere; PR 3 turns it on for debug builds.
+- **The screen (PR feat/remember-when-ui):**
+  - **The chip:** a fourth chip, **Remember when**, after Search, hidden while the archive is empty, as Search is. `ChipRow` wraps it to a second line where four do not fit.
+  - **One scrolling column:** choosing it draws the whole screen as one scrolling column (the scaffold scrolls). In order: the title row, the question field in the month row's slot (as Search's field), the chips, **Ask**, any failure line, then the answer. This keeps it usable at 200 % text, where a pinned field over a list would leave the list no room.
+  - **Ask** is the screen's one `PrimaryAction`: Disabled with no question, **Asking** (Sending) while one is answered, Disabled again during a `429` hold. The keyboard's Search key asks too.
+  - **The answer:** "Closest moments" in `label`, then each day as the Archive's own compact row under its full date in `label` ("Tuesday, 4 November"; "Friday, 26 September 2025" outside the Bond-day's year). The date label is hidden from a screen reader because the row already says the date. When the answer arrives, the keyboard goes down and focus moves to "Closest moments". Its spoken form is the plural "4 moments, closest first" (`pluralStringResource`), announced politely. With no days, the StateBlock "Nothing close to that yet." takes focus instead.
+  - **Today's entry before the reveal** shows only "You": the row is built by the list's own rules (`toArchiveDayUi`), which hold the partner's words only where the day may show them. Nothing says why their line is missing.
+  - **Capture protection:** a row showing the partner's words protects the screen from capture while it is composed, as in the list (`ArchiveDayRow.protectFromCapture`).
+  - **Failures:** a `429` is `InlineError` "This is paused for a short while. Try again in a few minutes." (its own key, the same words as auth's and settings'; no refill rate promised). Anything else is `InlineError` "That didn't work. Nothing was lost. Try again in a moment." with Try again, as Search's failure. Both sit under Ask, with the last answer still below.
+  - **The release gate:** `RememberWhenGate`, bound in `KoinInit` from the build type. On Android it is `BuildConfig.REMEMBER_WHEN` (true in `debug`, false in `release`; `RememberWhenGateTest` checks both build types in `check`). On iOS it is `Platform.isDebugBinary`, because Xcode's Debug configuration links the debug framework and Release the release one. Unbound, it is off. A later PR replaces it with the bond's `semanticSearchActive`.
+  - **Not here:** the "search by meaning is off" line and the Bond settings link (PR 4, after #132), and example questions (ruled out of v1).
+  - **Strings, all approved by the owner 2026-11-22** (feature/today `strings.xml`, each with a translator note), no dash, no exclamation mark:
+    - `archive_filter_remember` "Remember when"
+    - `archive_remember_label` "Ask about a moment"
+    - `archive_remember_helper` "Shows the moments that feel closest. They may not match exactly."
+    - `archive_remember_ask` "Ask", `archive_remember_asking` "Asking"
+    - `archive_remember_results_label` "Closest moments"
+    - `archive_remember_results_announce` (plural, screen reader only) "%1$d moment, closest first" / "%1$d moments, closest first"
+    - `archive_remember_none_heading` "Nothing close to that yet.", `archive_remember_none_line` "Try asking another way, or with fewer words."
+    - `archive_remember_rate_limited` "This is paused for a short while. Try again in a few minutes."
+    - Reused, approved: `today_action_failed`, `today_error_action`, `today_date_in_sentence`, the row's own strings.
+- **Amendment to the design system's `states.md` §6, approved by the owner 2026-11-22 and applied** in the local `Gratitude` repository (no remote; commit `5747a58`), as written here:
+  - The routes list gains a fourth: "4. **Remember when** (FR-204): a question in plain words, answered with the closest days. The one place the archive is not newest first: a flat list in relevance order, no month headings, each day with its full date (the year when it is not this year). An explicit Ask, never as-you-type: each question may go to the embedding provider, thirty an hour."
+  - New table rows:
+
+    | State | Layout | Copy |
+    |---|---|---|
+    | Remember when | Field replaces the month-jump row; chips stay, `Remember when` selected; `PrimaryAction` Ask under them; nothing below until an answer. Hidden when the archive is empty | Label: "Ask about a moment" / helper: "Shows the moments that feel closest. They may not match exactly." / action: "Ask" |
+    | Remember when, asking | Ask reads "Asking" (Sending); the list area is empty; one question in flight | "Asking" |
+    | Remember when, answer | "Closest moments", then compact rows in relevance order, each under its full date; focus moves to the label, which is heard as "N moments, closest first" | "Closest moments" |
+    | Remember when, nothing close | The question stays in the field; message block in place of the answer | "Nothing close to that yet." / "Try asking another way, or with fewer words." |
+    | Remember when, too many questions (`429`) | Inline error under Ask; Ask held until `Retry-After` passes; the last answer stays | "This is paused for a short while. Try again in a few minutes." |
+    | Remember when, failed | Inline error under Ask with Try again (Generic error, §10); no cache | "That didn't work. Nothing was lost. Try again in a moment." / "Try again" |
