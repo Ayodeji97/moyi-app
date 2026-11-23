@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.moyi.app.core.ApiErrorCode
 import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchivePage
+import com.moyi.app.domain.bond.InMemorySearchByMeaningStatus
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.DraftKind
 import com.moyi.app.domain.today.EntryStatus
@@ -255,7 +256,7 @@ class PausedBondTest : MainDispatcherTest() {
     fun anEmptyArchiveOffersNoWriteWhileTheBondIsPaused() = runTest {
         val archiveLoop = FakeDailyLoop(DailyLoopState.Ready(dayView(TodayStatus.NotWritten).copy(paused = true)))
         val repository = FakeArchiveRepository().apply { pages[null] = ArchivePage(emptyList(), null) }
-        val list = ArchiveViewModel(ArchiveFeed(archiveLoop, repository, FakeArchiveCache(), FakeRememberRepository()))
+        val list = ArchiveViewModel(ArchiveFeed(archiveLoop, repository, FakeArchiveCache(), FakeRememberRepository()), InMemorySearchByMeaningStatus())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect {} }
 
         assertTrue(list.state.value.isEmpty)

@@ -26,6 +26,8 @@ import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.bond.InMemorySearchByMeaningStatus
+import com.moyi.app.domain.bond.SearchByMeaning
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -40,6 +42,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
@@ -68,10 +71,23 @@ class BondRepositoryTest {
         val sessionManager = SessionManager(store, RefreshControllerApi(ApiConfig("http://localhost:8080/api/v1").origin, publicClient.client), NoPersonalData)
         val authed = AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager))
         val notices = RecordingNotices()
-        val bonds = BondRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"), notices)
+        val searchByMeaning = InMemorySearchByMeaningStatus()
+        val bonds = BondRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"), notices, searchByMeaning)
         val account = AccountRepositoryImpl(authed, ApiConfig("http://localhost:8080/api/v1"))
 
         fun body(path: String): String = assertIs<TextContent>(requests.single { it.url.encodedPath == path }.body).text
+    }
+
+    @Test
+    fun listSaysHowEachBondIsSearched() = runTest {
+        val fixture = Fixture {
+            respondJson("""{"bonds":[${bondJson(searchEnabled = true, searchActive = false)},${bondJson(id = "b2", status = "ARCHIVED", invite = null)}]}""")
+        }
+
+        fixture.bonds.bonds()
+
+        assertEquals(SearchByMeaning(enabled = true, active = false), fixture.searchByMeaning.of("b1").first())
+        assertEquals(SearchByMeaning(enabled = false, active = false), fixture.searchByMeaning.of("b2").first())
     }
 
     @Test
@@ -289,11 +305,13 @@ class BondRepositoryTest {
         status: String = "PENDING_MEMBER",
         invite: String? = INVITE_JSON,
         members: String = "[]",
+        searchEnabled: Boolean = false,
+        searchActive: Boolean = false,
     ): String =
         """{"id":"$id","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":null,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":null,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":null,"pendingDeletionRequest":null,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false,"semanticSearchActive":false,"paused":false,"closedProposals":[]}"""
+            """"pendingTimezoneChange":null,"pendingDeletionRequest":null,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":$searchEnabled,"semanticSearchActive":$searchActive,"paused":false,"closedProposals":[]}"""
 
     private companion object {
         const val INVITE_JSON =

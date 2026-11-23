@@ -16,6 +16,8 @@ import com.moyi.app.data.testing.respondJson
 import com.moyi.app.data.testing.respondProblem
 import com.moyi.app.domain.bond.BondSettings
 import com.moyi.app.domain.bond.BondSettingsChange
+import com.moyi.app.domain.bond.InMemorySearchByMeaningStatus
+import com.moyi.app.domain.bond.SearchByMeaning
 import com.moyi.app.domain.bond.BondStatus
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
@@ -40,6 +42,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -69,7 +72,8 @@ class BondSettingsRepositoryTest {
         private val publicClient = PublicHttpClient(HttpClientFactory.createPublicClient(engine))
         private val sessionManager = SessionManager(InMemoryTokenStore(), RefreshControllerApi(config.origin, publicClient.client), NoPersonalData)
         val notices = RecordingNotices()
-        val repo = BondSettingsRepositoryImpl(AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager)), config, notices)
+        val searchByMeaning = InMemorySearchByMeaningStatus()
+        val repo = BondSettingsRepositoryImpl(AuthedHttpClient(HttpClientFactory.createAuthedClient(engine, sessionManager)), config, notices, searchByMeaning)
 
         fun json(): JsonObject = Json.parseToJsonElement(assertIs<TextContent>(requests.single().body).text).jsonObject
     }
@@ -297,6 +301,19 @@ class BondSettingsRepositoryTest {
     }
 
     @Test
+    fun everyAnswerWithTheBondSaysHowItIsSearched() = runTest {
+        // On, but the server cannot search by meaning (production's provider is none): enabled, not active.
+        val read = Fixture { respondBond(bondJson(semanticSearch = true, searchActive = false), etag = "\"3\"") }
+        read.repo.settings("b1")
+        assertEquals(SearchByMeaning(enabled = true, active = false), read.searchByMeaning.of("b1").first())
+
+        val off = Fixture { respondBond(bondJson(semanticSearch = false), etag = "\"8\"") }
+        off.searchByMeaning.record("b1", SearchByMeaning(enabled = true, active = true))
+        off.repo.turnOffSemanticSearch("b1", version = "\"7\"")
+        assertEquals(SearchByMeaning(enabled = false, active = false), off.searchByMeaning.of("b1").first(), "this device's own write counts")
+    }
+
+    @Test
     fun turningSearchOffIsAPatchOfFalseAloneWithTheVersion() = runTest {
         val fixture = Fixture { respondBond(bondJson(semanticSearch = false), etag = "\"8\"") }
 
@@ -399,11 +416,12 @@ class BondSettingsRepositoryTest {
         allowedFrom: String = "null",
         semanticSearch: Boolean = true,
         pendingSearch: String = "null",
+        searchActive: Boolean = semanticSearch,
     ): String =
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":$deletionScheduledFor,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":$pendingSearch,"semanticSearchEnabled":$semanticSearch,"semanticSearchActive":$semanticSearch,"paused":false,"closedProposals":[],""" +
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":$pendingSearch,"semanticSearchEnabled":$semanticSearch,"semanticSearchActive":$searchActive,"paused":false,"closedProposals":[],""" +
             """"timezoneChangeAllowedFrom":$allowedFrom}"""
 
     private fun pendingJson(proposedBy: String): String =
