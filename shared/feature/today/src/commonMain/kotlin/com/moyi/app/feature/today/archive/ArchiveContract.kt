@@ -116,10 +116,7 @@ data class ArchiveState(
     val jumped: Boolean = false,
     /** The list should scroll to its top (once, after a jump or the way back from one). */
     val scrollToTop: Boolean = false,
-    /**
-     * The Remember when chip is drawn: the archive is known to hold a day, and this build
-     * offers the feature (hidden in release builds for now, owner ruling 2026-11-18).
-     */
+    /** The Remember when chip is drawn: the archive is known to hold a day (hidden when empty, as Search). */
     val showRemember: Boolean = false,
     /** What is in the question field, as typed. Memory only: kept through the day view, never saved. */
     val question: String = "",

@@ -49,7 +49,7 @@ class ArchiveRememberTest : MainDispatcherTest() {
     private val rememberer = FakeRememberRepository()
     private val feed = ArchiveFeed(loop, repository, cache, rememberer)
 
-    private fun TestScope.list(rememberWhen: Boolean = true): ArchiveViewModel = ArchiveViewModel(feed, InMemorySearchByMeaningStatus(), rememberWhen).also { viewModel ->
+    private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed, InMemorySearchByMeaningStatus()).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
     }
 
@@ -68,7 +68,7 @@ class ArchiveRememberTest : MainDispatcherTest() {
     // ---- The chip ----
 
     @Test
-    fun theChipIsOfferedOnlyOverAnArchiveWithDaysAndOnlyWhereTheBuildAllowsIt() = runTest {
+    fun theChipIsOfferedOnlyOverAnArchiveWithDays() = runTest {
         repository.pages[null] = ArchivePage(emptyList(), null)
         assertFalse(list().state.value.showRemember, "hidden while the archive is empty")
 
@@ -76,11 +76,6 @@ class ArchiveRememberTest : MainDispatcherTest() {
         repository.pages[null] = ArchivePage(listOf(revealedDay("2026-09-02")), null)
         assertTrue(list().state.value.showRemember)
 
-        feed.clear()
-        val release = list(rememberWhen = false)
-        assertFalse(release.state.value.showRemember, "hidden in release builds")
-        release.onAction(ArchiveAction.OnFilterClick(ArchiveFilter.Remember))
-        assertEquals(ArchiveFilter.AllDays, release.state.value.filter, "the chip cannot be chosen where it is hidden")
     }
 
     @Test

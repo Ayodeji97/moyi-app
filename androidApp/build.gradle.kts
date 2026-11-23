@@ -163,13 +163,9 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
-            // Remember when (FR-204) is offered in debug builds only until the backend can say
-            // whether search by meaning is live (owner ruling 2026-11-18; RememberWhenGateTest).
-            buildConfigField("boolean", "REMEMBER_WHEN", "true")
         }
         release {
             buildConfigField("String", "API_BASE_URL", "\"$PRODUCTION_API_BASE_URL\"")
-            buildConfigField("boolean", "REMEMBER_WHEN", "false")
             signingConfig = uploadSigning
             isMinifyEnabled = false
             proguardFiles(

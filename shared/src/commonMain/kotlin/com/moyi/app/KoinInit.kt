@@ -10,7 +10,6 @@ import com.moyi.app.data.session.sessionModules
 import com.moyi.app.feature.auth.di.authFeatureModule
 import com.moyi.app.feature.onboarding.di.onboardingFeatureModule
 import com.moyi.app.feature.bond.di.bondFeatureModule
-import com.moyi.app.feature.today.archive.RememberWhenGate
 import com.moyi.app.feature.today.di.todayFeatureModule
 import com.moyi.app.feature.support.di.supportFeatureModule
 import org.koin.core.KoinApplication
@@ -31,25 +30,19 @@ val appModule: Module = module {
 
 /**
  * Every module the app runs with, data layer first, talking to [apiBaseUrl]. The platform
- * ones need `androidContext` on Android. [rememberWhen]: this build offers the Archive's
- * Remember when (on in debug builds, off in release, for now: [RememberWhenGate]).
+ * ones need `androidContext` on Android.
  */
-fun appModules(apiBaseUrl: String, rememberWhen: Boolean = false): List<Module> =
-    listOf(networkModule(ApiConfig(apiBaseUrl))) + sessionModules + databaseModules + repositoryModules + authFeatureModule +
-        onboardingFeatureModule + todayFeatureModule + bondFeatureModule + supportFeatureModule + appModule +
-        module { single { RememberWhenGate(rememberWhen) } }
+fun appModules(apiBaseUrl: String): List<Module> = listOf(networkModule(ApiConfig(apiBaseUrl))) + sessionModules + databaseModules + repositoryModules + authFeatureModule + onboardingFeatureModule + todayFeatureModule + bondFeatureModule + supportFeatureModule + appModule
 
 /**
  * Starts Koin once per process, talking to [apiBaseUrl]. The app decides the URL per build
  * (CLAUDE.md, Configuration): Android's `MoyiApplication` passes `BuildConfig.API_BASE_URL`
  * with `androidContext`; iOS's entry points pass Info.plist's `MoyiApiBaseUrl`
  * (`startKoinOnce`). Debug builds point at a local backend, release builds at production.
- * [rememberWhen] is decided the same way, by the build type: Android's `BuildConfig.REMEMBER_WHEN`,
- * iOS's debug or release framework.
  */
-fun initKoin(apiBaseUrl: String, rememberWhen: Boolean = false, config: KoinAppDeclaration = {}): KoinApplication = startKoin {
+fun initKoin(apiBaseUrl: String, config: KoinAppDeclaration = {}): KoinApplication = startKoin {
     config()
-    modules(appModules(apiBaseUrl, rememberWhen))
+    modules(appModules(apiBaseUrl))
     // DEBUG ONLY: the onboarding preview runs on fake bonds (UiPreviewIndex), the
     // today preview on a fake day (PreviewDailyLoop). The real app binds neither.
     if (UiPreviewConfig.UI_PREVIEW == "onboarding") modules(previewDataModule)

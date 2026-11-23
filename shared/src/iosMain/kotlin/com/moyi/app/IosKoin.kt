@@ -1,7 +1,5 @@
 package com.moyi.app
 
-import kotlin.experimental.ExperimentalNativeApi
-import kotlin.native.Platform
 import org.koin.mp.KoinPlatform
 import platform.Foundation.NSBundle
 
@@ -17,11 +15,8 @@ private const val API_BASE_URL_KEY = "MoyiApiBaseUrl"
  * The URL is read from the app's Info.plist, where the build phase put the one for this
  * configuration: a local backend for Debug (refusing production), production for Release.
  */
-@OptIn(ExperimentalNativeApi::class)
 internal fun startKoinOnce() {
-    // Remember when follows the build type, as the base URL does: the Debug configuration links
-    // the debug framework (embedAndSignAppleFrameworkForXcode), Release the release one.
-    if (KoinPlatform.getKoinOrNull() == null) initKoin(apiBaseUrl = bundledApiBaseUrl(), rememberWhen = Platform.isDebugBinary)
+    if (KoinPlatform.getKoinOrNull() == null) initKoin(apiBaseUrl = bundledApiBaseUrl())
 }
 
 private fun bundledApiBaseUrl(): String =

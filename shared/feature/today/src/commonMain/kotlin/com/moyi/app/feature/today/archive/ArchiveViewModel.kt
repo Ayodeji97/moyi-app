@@ -76,9 +76,10 @@ val SEARCH_DEBOUNCE: Duration = 300.milliseconds
  *   saved state). A chip chosen meanwhile cancels the question, and the feed drops an answer
  *   that is no longer wanted. A `429` holds Ask until the server's `Retry-After` has passed;
  *   any other failure is the generic line with Try again. Either keeps the last answer.
- *   Offered only when [rememberWhen] is on (hidden in release builds for now). While the server
- *   does not search the bond by meaning, a line under Ask says so in every state of a question
- *   ([MeaningNote]); the off one opens Search by meaning in Bond settings.
+ *   Offered in every build wherever the archive holds a day: the release-build gate went once
+ *   the bond could say how it is searched (`semanticSearchActive`, owner ruling 2026-11-18).
+ *   While the server does not search the bond by meaning, a line under Ask says so in every
+ *   state of a question ([MeaningNote]); the off one opens Search by meaning in Bond settings.
  *
  * - **Search by meaning** (owner ruling 2026-11-17, 8): the search field's helper says search
  *   also finds by meaning only while the bond's `semanticSearchActive` says the server asks by
@@ -92,7 +93,6 @@ val SEARCH_DEBOUNCE: Duration = 300.milliseconds
 class ArchiveViewModel(
     private val feed: ArchiveFeed,
     searchByMeaning: SearchByMeaningStatus,
-    private val rememberWhen: Boolean = false,
 ) : ViewModel() {
 
     /** How the bond shown is searched, as this run last read it; null until the bond is known. */
@@ -194,10 +194,8 @@ class ArchiveViewModel(
                     return
                 }
                 if (action.filter == ArchiveFilter.Remember) {
-                    if (rememberWhen) {
-                        stopSearch()
-                        startRemember()
-                    }
+                    stopSearch()
+                    startRemember()
                     return
                 }
                 stopSearch()
@@ -398,7 +396,7 @@ class ArchiveViewModel(
             // The chips stay throughout search: they are the way back (states.md §6).
             showFilters = base.showFilters || input.active,
             showSearch = hasDays,
-            showRemember = rememberWhen && hasDays,
+            showRemember = hasDays,
             query = input.query,
             focusSearch = input.focus,
             searchByMeaning = howSearched?.active == true,

@@ -4,7 +4,6 @@ import com.moyi.app.domain.media.MediaUploader
 import com.moyi.app.feature.today.archive.ArchiveDayViewModel
 import com.moyi.app.feature.today.archive.ArchiveFeed
 import com.moyi.app.feature.today.archive.ArchiveViewModel
-import com.moyi.app.feature.today.archive.RememberWhenGate
 import com.moyi.app.feature.today.common.DailyLoop
 import com.moyi.app.feature.today.common.RepositoryDailyLoop
 import com.moyi.app.domain.auth.AuthRepository
@@ -37,8 +36,7 @@ val todayFeatureModule = module {
     viewModel { RevealViewModel(get()) }
     // The Archive: one feed shared by the list and the day view, over the domain's ArchiveRepository and ArchiveCache.
     single { ArchiveFeed(get(), get(), get(), get()) }
-    // Remember when only where the app bound the gate on (debug builds, for now: RememberWhenGate).
-    viewModel { ArchiveViewModel(get(), searchByMeaning = get(), rememberWhen = getOrNull<RememberWhenGate>()?.offered == true) }
+    viewModel { ArchiveViewModel(get(), searchByMeaning = get()) }
     viewModel { (date: String) -> ArchiveDayViewModel(date, get(), get(), get(), get()) }
     // The Streak screen, from the Archive's "Your streak", over the domain's StreakRepository.
     viewModel { StreakViewModel(get(), get()) }
