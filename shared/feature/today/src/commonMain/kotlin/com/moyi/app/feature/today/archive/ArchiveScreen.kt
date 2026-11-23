@@ -98,6 +98,8 @@ import com.moyi.app.feature.today.resources.archive_remember_ask
 import com.moyi.app.feature.today.resources.archive_remember_asking
 import com.moyi.app.feature.today.resources.archive_remember_helper
 import com.moyi.app.feature.today.resources.archive_remember_label
+import com.moyi.app.feature.today.resources.archive_remember_meaning_off
+import com.moyi.app.feature.today.resources.archive_remember_meaning_unavailable
 import com.moyi.app.feature.today.resources.archive_remember_none_heading
 import com.moyi.app.feature.today.resources.archive_remember_none_line
 import com.moyi.app.feature.today.resources.archive_remember_rate_limited
@@ -141,6 +143,7 @@ fun ArchiveRoot(
     onOpenDay: (date: LocalDate) -> Unit,
     onWrite: () -> Unit,
     onOpenStreak: () -> Unit,
+    onOpenSearchSettings: (bondId: String) -> Unit,
     debugTools: Boolean,
     viewModel: ArchiveViewModel = koinViewModel(),
 ) {
@@ -151,6 +154,7 @@ fun ArchiveRoot(
             is ArchiveEvent.NavigateToDay -> onOpenDay(event.date)
             ArchiveEvent.NavigateToWrite -> onWrite()
             ArchiveEvent.NavigateToStreak -> onOpenStreak()
+            is ArchiveEvent.NavigateToSearchSettings -> onOpenSearchSettings(event.bondId)
         }
     }
     ArchiveScreen(state = state, onAction = viewModel::onAction, debugTools = debugTools)
@@ -317,6 +321,11 @@ private fun RememberScreen(state: ArchiveState, onAction: (ArchiveAction) -> Uni
             },
             modifier = Modifier.align(Alignment.CenterHorizontally).bringIntoViewRequester(askInView),
         )
+        // In every state of a question, so the answer is never read as more than it is.
+        state.meaningNote?.let { note ->
+            Spacer(Modifier.height(MoyiTheme.spacing.md))
+            MeaningLine(note, onOpenSettings = { onAction(ArchiveAction.OnSearchSettingsClick) })
+        }
         when (state.rememberFailure) {
             RememberFailure.RateLimited -> {
                 Spacer(Modifier.height(MoyiTheme.spacing.md))
@@ -363,6 +372,27 @@ private fun RememberScreen(state: ArchiveState, onAction: (ArchiveAction) -> Uni
         results.forEach { result ->
             RememberRow(result, state.partnerName.orEmpty(), onClick = { onAction(ArchiveAction.OnDayClick(result.day.date)) })
         }
+    }
+}
+
+/**
+ * Why Remember when finds only exact words for this bond (owner ruling 2026-11-18). The off line
+ * names where the setting is and goes there, so the whole line is the link (`TextLink`: an
+ * underline means it goes somewhere), start-aligned, a 48 target. The unavailable line goes
+ * nowhere (Bond settings would show the setting On), so it is plain `body` in `inkMuted`.
+ */
+@Composable
+private fun MeaningLine(note: MeaningNote, onOpenSettings: () -> Unit) {
+    when (note) {
+        MeaningNote.Off -> TextLink(
+            text = stringResource(Res.string.archive_remember_meaning_off),
+            onClick = onOpenSettings,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        MeaningNote.Unavailable -> MoyiText(
+            text = stringResource(Res.string.archive_remember_meaning_unavailable),
+            tone = TextTone.Muted,
+        )
     }
 }
 
@@ -897,7 +927,14 @@ private fun ArchiveSearchNoResultsPreview() {
 private fun ArchiveRememberAskPreview() {
     MoyiTheme(darkTheme = true) {
         ArchiveScreen(
-            ArchiveState(load = ArchiveLoad.Ready, filter = ArchiveFilter.Remember, showFilters = true, showSearch = true, showRemember = true),
+            ArchiveState(
+                load = ArchiveLoad.Ready,
+                filter = ArchiveFilter.Remember,
+                showFilters = true,
+                showSearch = true,
+                showRemember = true,
+                meaningNote = MeaningNote.Off,
+            ),
             onAction = {},
         )
     }

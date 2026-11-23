@@ -76,7 +76,9 @@ val SEARCH_DEBOUNCE: Duration = 300.milliseconds
  *   saved state). A chip chosen meanwhile cancels the question, and the feed drops an answer
  *   that is no longer wanted. A `429` holds Ask until the server's `Retry-After` has passed;
  *   any other failure is the generic line with Try again. Either keeps the last answer.
- *   Offered only when [rememberWhen] is on (hidden in release builds for now).
+ *   Offered only when [rememberWhen] is on (hidden in release builds for now). While the server
+ *   does not search the bond by meaning, a line under Ask says so in every state of a question
+ *   ([MeaningNote]); the off one opens Search by meaning in Bond settings.
  *
  * - **Search by meaning** (owner ruling 2026-11-17, 8): the search field's helper says search
  *   also finds by meaning only while the bond's `semanticSearchActive` says the server asks by
@@ -224,6 +226,7 @@ class ArchiveViewModel(
             ArchiveAction.OnAskClick -> ask()
             ArchiveAction.OnQuestionFocused -> remember.update { it.copy(focus = false) }
             ArchiveAction.OnResultsFocused -> remember.update { it.copy(focusResults = false) }
+            ArchiveAction.OnSearchSettingsClick -> feed.state.value.bondId?.let { send(ArchiveEvent.NavigateToSearchSettings(it)) }
             // Not drawn while the bond is paused; a tap that raced the pause in is ignored.
             ArchiveAction.OnWriteClick -> if (!feed.state.value.paused) send(ArchiveEvent.NavigateToWrite)
             ArchiveAction.OnStreakClick -> send(ArchiveEvent.NavigateToStreak)
@@ -372,7 +375,7 @@ class ArchiveViewModel(
 
     private fun toState(feed: FeedState, debug: DebugLayout?, chosen: Boolean, input: SearchInput, extras: Extras): ArchiveState {
         val (hasDays, jump, question, isHeld, howSearched) = extras
-        if (question.active) return rememberState(feed, hasDays, question, isHeld)
+        if (question.active) return rememberState(feed, hasDays, question, isHeld, howSearched)
         val base = baseState(feed, debug, chosen || input.active)
         val months = base.months.map { it.month.firstOfMonth() }
         // The row says what is at the top of the list: what the screen reported, while it is
@@ -408,7 +411,7 @@ class ArchiveViewModel(
      * server's order. Whatever the feed held before (the list, a failed first load) is not drawn:
      * only an answer is. The year is named on a day outside the current Bond-day's year.
      */
-    private fun rememberState(feed: FeedState, hasDays: Boolean, input: RememberInput, isHeld: Boolean): ArchiveState {
+    private fun rememberState(feed: FeedState, hasDays: Boolean, input: RememberInput, isHeld: Boolean, howSearched: SearchByMeaning?): ArchiveState {
         val thisYear = this.feed.bondDay?.year
         val results = feed.takeIf { it.remember != null && it.load == FeedLoad.Ready && !input.asking }
             ?.days
@@ -429,6 +432,7 @@ class ArchiveViewModel(
             rememberFailure = input.failure,
             results = results,
             focusResults = input.focusResults && results != null,
+            meaningNote = howSearched?.meaningNote(),
         )
     }
 
@@ -516,3 +520,15 @@ class ArchiveViewModel(
 }
 
 private fun LocalDate.firstOfMonth(): LocalDate = LocalDate(year, month, 1)
+
+/**
+ * Remember when's line about how it finds (owner ruling 2026-11-18): none while the server searches
+ * by meaning; the off line while the bond's setting is off; its own line while the setting is on but
+ * the server cannot (no provider). Whatever the bond's state: an ended or closing bond is searched
+ * as it was (ADR-0070), so it gets the same line.
+ */
+internal fun SearchByMeaning.meaningNote(): MeaningNote? = when {
+    active -> null
+    !enabled -> MeaningNote.Off
+    else -> MeaningNote.Unavailable
+}

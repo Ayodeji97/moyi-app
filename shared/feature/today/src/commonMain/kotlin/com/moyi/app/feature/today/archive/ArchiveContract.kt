@@ -20,6 +20,23 @@ enum class ArchiveLoad {
  */
 enum class ArchiveFilter { AllDays, Favourites, Search, Remember }
 
+/**
+ * Why Remember when finds only exact words for this bond, said under Ask in every state of a
+ * question (owner ruling 2026-11-18). Null while the server searches the bond by meaning
+ * (`semanticSearchActive`), and while that is not known yet.
+ */
+enum class MeaningNote {
+    /** The bond's own setting is off: the approved off line, which opens Search by meaning in Bond settings. */
+    Off,
+
+    /**
+     * The setting is on, but the server cannot search by meaning now (no provider, as in
+     * production today, or the operator's switch). "Off for this bond" would be untrue, so it has
+     * its own line, and no link: Bond settings would only show the setting On.
+     */
+    Unavailable,
+}
+
 /** Why the last question got no answer. Only these two are told apart (owner ruling 2026-11-18). */
 enum class RememberFailure {
     /** Anything but a `429`: the generic failure line, with Try again. */
@@ -121,6 +138,8 @@ data class ArchiveState(
     val results: List<RememberResult>? = null,
     /** Focus should move to the answer, once, when it arrives (states the count to a screen reader). */
     val focusResults: Boolean = false,
+    /** Remember when finds only exact words, and why; null while it finds by meaning, or before that is known. */
+    val meaningNote: MeaningNote? = null,
 ) {
     val isEmpty: Boolean get() = load == ArchiveLoad.Ready && months.isEmpty()
 
@@ -135,7 +154,7 @@ data class ArchiveState(
             "showMonthRow=$showMonthRow, visibleMonth=$visibleMonth, showMonthPicker=$showMonthPicker, " +
             "pickerMonths=$pickerMonths, jumped=$jumped, scrollToTop=$scrollToTop, " +
             "showRemember=$showRemember, question=${if (question.isEmpty()) "" else "(redacted)"}, focusQuestion=$focusQuestion, " +
-            "asking=$asking, canAsk=$canAsk, rememberFailure=$rememberFailure, results=$results, focusResults=$focusResults)"
+            "asking=$asking, canAsk=$canAsk, rememberFailure=$rememberFailure, results=$results, focusResults=$focusResults, meaningNote=$meaningNote)"
 }
 
 sealed interface ArchiveAction {
@@ -177,6 +196,9 @@ sealed interface ArchiveAction {
     /** The screen has moved focus to the answer. */
     data object OnResultsFocused : ArchiveAction
 
+    /** The off line under Ask: opens Search by meaning in Bond settings. */
+    data object OnSearchSettingsClick : ArchiveAction
+
     /** The month row's "Jump to": opens the month picker. */
     data object OnJumpClick : ArchiveAction
 
@@ -213,4 +235,7 @@ sealed interface ArchiveEvent {
     data class NavigateToDay(val date: LocalDate) : ArchiveEvent
     data object NavigateToWrite : ArchiveEvent
     data object NavigateToStreak : ArchiveEvent
+
+    /** Search by meaning in Bond settings for [bondId], with Bond settings under it. */
+    data class NavigateToSearchSettings(val bondId: String) : ArchiveEvent
 }
