@@ -45,6 +45,13 @@ internal object NotificationChannels {
         Spec(PushKind.OnThisDay, R.string.channel_on_this_day_name, R.string.channel_on_this_day_description, NotificationManager.IMPORTANCE_LOW),
         // Waits on this person's answer, so it is heard like the others that matter.
         Spec(PushKind.ProposalOpened, R.string.channel_proposal_opened_name, R.string.channel_proposal_opened_description, NotificationManager.IMPORTANCE_DEFAULT),
+        // News about the bond, never urgent, and possibly several in a day: shown, never sounded.
+        Spec(
+            PushKind.SharedSettingChanged,
+            R.string.channel_shared_setting_changed_name,
+            R.string.channel_shared_setting_changed_description,
+            NotificationManager.IMPORTANCE_LOW,
+        ),
     )
 
     /**

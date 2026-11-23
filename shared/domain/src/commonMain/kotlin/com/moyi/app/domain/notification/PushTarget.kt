@@ -35,6 +35,12 @@ enum class PushKind(val wireName: String) {
 
     /** A change the other member proposed, waiting on this one (Q13). */
     ProposalOpened("PROPOSAL_OPENED"),
+
+    /**
+     * The other member changed a shared setting, or answered or withdrew a proposal (backend
+     * #214, ADR-0069). Its body depends on the push's `change` ([SharedSettingChange]).
+     */
+    SharedSettingChanged("SHARED_SETTING_CHANGED"),
     ;
 
     val channelId: String get() = wireName.lowercase()
@@ -48,6 +54,38 @@ enum class PushKind(val wireName: String) {
         fun fromWire(name: String?): PushKind? = entries.firstOrNull { it.wireName == name?.trim() }
     }
 }
+
+/**
+ * Which shared change a [PushKind.SharedSettingChanged] push is about: the push's `change`
+ * (backend `SharedChange`, ADR-0069). It decides only the body's words, never where a tap
+ * goes: every value opens Bond settings. The push never says which setting, its value, or
+ * who (spec ruling 15).
+ *
+ * [bodyLocKey] is the key the server sends as the body for this value
+ * (`FcmPushSender.locKeys`), so the app's foreground notification says the same words.
+ */
+enum class SharedSettingChange(val wireName: String, val bodyLocKey: String) {
+    /** The other member changed a shared setting. */
+    Setting("SETTING", GENERIC_BODY),
+
+    /** Several changes coalesced into one push (only the server writes it). */
+    Several("SEVERAL", GENERIC_BODY),
+
+    ProposalAccepted("PROPOSAL_ACCEPTED", "push_shared_setting_changed_accepted_body"),
+    ProposalDeclined("PROPOSAL_DECLINED", "push_shared_setting_changed_declined_body"),
+    ProposalWithdrawn("PROPOSAL_WITHDRAWN", "push_shared_setting_changed_withdrawn_body"),
+    ;
+
+    companion object {
+        /**
+         * The change a push names. Absent, or a value this build does not know (a newer
+         * server), reads as [Setting]: the generic words, which are true of every change.
+         */
+        fun fromWire(name: String?): SharedSettingChange = entries.firstOrNull { it.wireName == name?.trim() } ?: Setting
+    }
+}
+
+private const val GENERIC_BODY = "push_shared_setting_changed_body"
 
 /**
  * Where a tapped push opens the app. Decided from the push alone, but only a direction:
@@ -64,7 +102,7 @@ sealed interface PushTarget {
     /** The Streak screen, above the Archive (its only parent). */
     data object Streak : PushTarget
 
-    /** Bond settings for [bondId], where a proposal is answered. */
+    /** Bond settings for [bondId], where a proposal is answered and shared settings are seen. */
     data class BondSettings(val bondId: String) : PushTarget
 }
 
@@ -75,6 +113,9 @@ sealed interface PushTarget {
 object PushPayload {
     const val KEY_BOND_ID: String = "bondId"
     const val KEY_KIND: String = "kind"
+
+    /** A [PushKind.SharedSettingChanged] push's [SharedSettingChange]. Read for its words only. */
+    const val KEY_CHANGE: String = "change"
 
     /**
      * The screen a tap on a push carrying [data] opens, or null when [data] is not a push
@@ -95,7 +136,8 @@ object PushPayload {
             PushKind.Reminder, PushKind.PartnerJoined, PushKind.Reveal, PushKind.SoloUnlock, null -> PushTarget.Today
             PushKind.Milestone -> PushTarget.Streak
             PushKind.OnThisDay -> PushTarget.Archive
-            PushKind.ProposalOpened -> bondId?.let(PushTarget::BondSettings) ?: PushTarget.Today
+            // Every change opens the bond's settings, whatever `change` says (or if it is new).
+            PushKind.ProposalOpened, PushKind.SharedSettingChanged -> bondId?.let(PushTarget::BondSettings) ?: PushTarget.Today
         }
     }
 

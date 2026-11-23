@@ -2226,3 +2226,23 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
     | Remember when, nothing close | The question stays in the field; message block in place of the answer | "Nothing close to that yet." / "Try asking another way, or with fewer words." |
     | Remember when, too many questions (`429`) | Inline error under Ask; Ask held until `Retry-After` passes; the last answer stays | "This is paused for a short while. Try again in a few minutes." |
     | Remember when, failed | Inline error under Ask with Try again (Generic error, §10); no cache | "That didn't work. Nothing was lost. Try again in a moment." / "Try again" |
+
+## Shared-setting pushes (PR feat/shared-setting-push)
+
+### 94. The words and the channel for a shared-setting push (backend #214, ADR-0069; owner approval 2026-11-23)
+
+Numbered 94 because the held #132 renumbers its section to 93.
+
+- **Why:** backend #214 pushes the other member when a shared setting changes, or when a proposal is accepted, declined or withdrawn (`kind` `SHARED_SETTING_CHANGED`, `data: {bondId, kind, change}`). The system shows the push from loc keys, so the words must already be in the installed app: this release ships before the backend deploys #214 (spec §11).
+- **Where:** `androidApp/src/main/res/values/push_strings.xml` and `iosApp/iosApp/en.lproj/Localizable.strings`, beside the other push keys, each with a translator note. The server sends one title and picks the body by `change` (`FcmPushSender.locKeys`): `SETTING` and `SEVERAL` the generic body, the three proposal endings their own.
+- **The tap:** every `change` opens that bond's Bond settings (`PushTarget.BondSettings`), as a `PROPOSAL_OPENED` push does. An unknown or missing `change` still does; a missing or malformed bond id opens Today. The Android foreground notification picks the same body as the server (`SharedSettingChange`).
+- **The channel:** `shared_setting_changed`, `IMPORTANCE_LOW` (shown, never sounded): news about the bond, not urgent, and possibly more than one a day.
+- **Strings, all APPROVED by the owner 2026-11-23** (no dash, no exclamation mark, never the setting, its value, or the member):
+  - `push_shared_setting_changed_title` "A change to your bond"
+  - `push_shared_setting_changed_body` "Open Bond settings to see what changed."
+  - `push_shared_setting_changed_accepted_body` "The change you asked for was agreed."
+  - `push_shared_setting_changed_declined_body` "The change you asked for was declined."
+  - `push_shared_setting_changed_withdrawn_body` "A change you were asked to agree to was withdrawn. Your bond stays as it is."
+  - `channel_shared_setting_changed_name` "Changes to your bond"
+  - `channel_shared_setting_changed_description` "When a setting in your bond changes, or a proposed change ends."
+- **Not here:** reading `closedProposals` on Bond settings and the `sharedSettings` toggle (spec §13 "Owed"); both need the #214 contract sync (#137).

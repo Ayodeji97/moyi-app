@@ -13,6 +13,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.moyi.app.domain.notification.PushKind
 import com.moyi.app.domain.notification.PushPayload
+import com.moyi.app.domain.notification.SharedSettingChange
 
 /**
  * FCM's entry into the app (the manifest's `com.google.firebase.MESSAGING_EVENT` service).
@@ -46,7 +47,8 @@ class MoyiMessagingService : FirebaseMessagingService() {
         if (!permitted || !manager.areNotificationsEnabled()) return
 
         val kind = PushKind.fromWire(rawKind)
-        val texts = kind?.let(::textsOf)
+        val change = SharedSettingChange.fromWire(message.data[PushPayload.KEY_CHANGE])
+        val texts = kind?.let { textsOf(it, change) }
         val tap = Intent(this, MainActivity::class.java).apply {
             // singleTop in the manifest: a running activity gets onNewIntent and keeps its state.
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -79,8 +81,10 @@ class MoyiMessagingService : FirebaseMessagingService() {
          * The strings the tray shows for [kind] in the background: the resources named by the
          * server's loc keys ([PushKind.titleLocKey], [PushKind.bodyLocKey]), so the foreground
          * says the same words. A `when`, so a new kind does not compile until it has its text.
+         * [change] picks the body of a [PushKind.SharedSettingChanged] push, as the server does;
+         * every other kind ignores it.
          */
-        fun textsOf(kind: PushKind): Texts = when (kind) {
+        fun textsOf(kind: PushKind, change: SharedSettingChange = SharedSettingChange.Setting): Texts = when (kind) {
             PushKind.Reminder -> Texts(R.string.push_reminder_title, R.string.push_reminder_body)
             PushKind.PartnerJoined -> Texts(R.string.push_partner_joined_title, R.string.push_partner_joined_body)
             PushKind.Reveal -> Texts(R.string.push_reveal_title, R.string.push_reveal_body)
@@ -88,6 +92,15 @@ class MoyiMessagingService : FirebaseMessagingService() {
             PushKind.Milestone -> Texts(R.string.push_milestone_title, R.string.push_milestone_body)
             PushKind.OnThisDay -> Texts(R.string.push_on_this_day_title, R.string.push_on_this_day_body)
             PushKind.ProposalOpened -> Texts(R.string.push_proposal_opened_title, R.string.push_proposal_opened_body)
+            PushKind.SharedSettingChanged -> Texts(
+                R.string.push_shared_setting_changed_title,
+                when (change) {
+                    SharedSettingChange.Setting, SharedSettingChange.Several -> R.string.push_shared_setting_changed_body
+                    SharedSettingChange.ProposalAccepted -> R.string.push_shared_setting_changed_accepted_body
+                    SharedSettingChange.ProposalDeclined -> R.string.push_shared_setting_changed_declined_body
+                    SharedSettingChange.ProposalWithdrawn -> R.string.push_shared_setting_changed_withdrawn_body
+                },
+            )
         }
     }
 }
