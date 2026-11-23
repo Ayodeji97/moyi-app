@@ -23,6 +23,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Remember when's line about how it finds (owner ruling 2026-11-18, PR 4): the approved off line
@@ -41,7 +42,7 @@ class ArchiveRememberMeaningTest : MainDispatcherTest() {
 
     private fun TestScope.remembering(): ArchiveViewModel {
         repository.pages[null] = ArchivePage(listOf(revealedDay("2026-09-02")), null)
-        return ArchiveViewModel(feed, status, rememberWhen = true).also { viewModel ->
+        return ArchiveViewModel(feed, status).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
             viewModel.onAction(ArchiveAction.OnFilterClick(ArchiveFilter.Remember))
         }
@@ -94,6 +95,18 @@ class ArchiveRememberMeaningTest : MainDispatcherTest() {
 
         status.record(day.bondId, SearchByMeaning(enabled = true, active = true))
         assertNull(list.state.value.meaningNote)
+    }
+
+    @Test
+    fun theChipIsOfferedHoweverTheBondIsSearchedAndTheLineSaysHow() = runTest {
+        // The release-build gate is gone (PR 5): the chip does not wait for search by meaning to be active.
+        val list = remembering()
+        assertTrue(list.state.value.showRemember, "not known yet")
+        for (how in listOf(SearchByMeaning(false, false), SearchByMeaning(true, false), SearchByMeaning(true, true))) {
+            status.record(day.bondId, how)
+            assertTrue(list.state.value.showRemember, "$how")
+            assertEquals(ArchiveFilter.Remember, list.state.value.filter)
+        }
     }
 
     @Test

@@ -2255,3 +2255,16 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **Strings** (feature/today `strings.xml`), no dash, no exclamation mark:
   - `archive_remember_meaning_off` "Search by meaning is off for this bond, so only exact words are found. You can see it in Bond settings." **Approved by the owner 2026-11-18.**
   - `archive_remember_meaning_unavailable` "Search by meaning isn't available right now, so only exact words are found." **PROPOSED**, for the owner. It never names the search service (copy.md, approved 2026-11-17) and promises no date.
+
+## Remember when in every build (PR feat/remember-when-live)
+
+### 96. The release-build gate goes; the bond's search status decides what Remember when says (FR-204; owner ruling 2026-11-18, PR 5)
+
+- **Why:** the owner's ruling of 2026-11-18: Remember when is built now and hidden in release builds; it goes live once the backend adds the field (contract gaps row 49) and a contract sync lands. Both are done: `BondResponse.semanticSearchActive` (backend #216, ADR-0070) and the sync in #137.
+- **What this does:** removes `RememberWhenGate` (§92), Android's `BuildConfig.REMEMBER_WHEN` and `RememberWhenGateTest`, and iOS's `Platform.isDebugBinary` switch in `startKoinOnce`. The chip is offered in every build wherever the archive holds a day, as Search is. While the server does not search the bond by meaning, §95's line says so under Ask: the off line when the bond's setting is off, the unavailable line (PROPOSED) when it is on but there is no provider.
+- **What production shows once this ships:** production's provider is `none`, so `semanticSearchActive` is false for every bond. Every member sees the chip, and every question is answered by words alone under the unavailable line (or the off line, where the bond's setting is off).
+- **The reading chosen, and the question it leaves (owner):** the 2026-11-18 rulings say the feature goes live once the field exists, and that the off line shows in every request state and on closing bonds. That off line can only ever be seen if the chip is offered while search by meaning is not active, so this PR offers it. ADR-0070 (backend, "his to overrule") reads the ruling differently: "the client can hide Remember when while it would only be a keyword search". The alternatives, each a one-line change in `ArchiveViewModel.toState` (`showRemember`):
+  - **A. as built:** offered wherever the archive holds a day; the line explains.
+  - **B. offered only while active:** hidden everywhere in production until a provider is on; §95's two lines are never seen.
+  - **C. hidden only while the setting is on but not active** (no provider): production hides it for bonds with the setting on (the default) and shows the off line where a couple turned it off; the PROPOSED unavailable line is never seen.
+- **Strings:** none new.
