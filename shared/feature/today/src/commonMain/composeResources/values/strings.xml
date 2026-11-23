@@ -197,6 +197,10 @@
     <string name="archive_remember_none_line">Try asking another way, or with fewer words.</string>
     <!-- Approved 2026-11-22 (owner), auth_error_rate_limited's and settings_error_rate_limited's words (owner ruling 2026-11-18: its own copy, as other features keep theirs). A 429 (too many questions in an hour). Says when, never why, and promises no refill rate. -->
     <string name="archive_remember_rate_limited">This is paused for a short while. Try again in a few minutes.</string>
+    <!-- Approved by the owner 2026-11-18 (docs/missing-components.md §95). Under Ask in Remember when, in every state of a question, while the bond's own search by meaning setting is off (BondResponse.semanticSearchEnabled false). The whole line is a link to Search by meaning in Bond settings. Never says who turned it off. -->
+    <string name="archive_remember_meaning_off">Search by meaning is off for this bond, so only exact words are found. You can see it in Bond settings.</string>
+    <!-- PROPOSED (docs/missing-components.md §95), awaiting the owner. Under Ask in Remember when while the bond's setting is ON but the server cannot search by meaning now (semanticSearchActive false: no provider, as in production today). Not a link. Never names the search service. -->
+    <string name="archive_remember_meaning_unavailable">Search by meaning isn't available right now, so only exact words are found.</string>
 
     <!-- archive.favourites.empty.heading (strings-proposed.md §6a; states.md §6 Favourites, empty). -->
     <string name="archive_favourites_empty_heading">No favourites yet.</string>

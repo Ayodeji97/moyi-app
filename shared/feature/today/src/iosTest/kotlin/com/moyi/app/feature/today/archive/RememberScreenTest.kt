@@ -82,4 +82,36 @@ class RememberScreenTest {
         onNodeWithText("That didn't work. Nothing was lost. Try again in a moment.").assertExists()
         onNodeWithText("Try again").assertExists()
     }
+
+    @Test
+    fun theOffLineShowsInEveryStateAndOpensBondSettings() = runComposeUiTest {
+        val off = "Search by meaning is off for this bond, so only exact words are found. You can see it in Bond settings."
+        val actions = mutableListOf<ArchiveAction>()
+        var state by mutableStateOf(asking.copy(meaningNote = MeaningNote.Off))
+        setContent { MoyiTheme(darkTheme = true) { ArchiveScreen(state, onAction = { actions += it }) } }
+
+        onNodeWithText(off).assertExists()
+        state = state.copy(question = "soup", asking = true)
+        onNodeWithText(off).assertExists()
+        state = state.copy(asking = false, canAsk = true, results = emptyList())
+        onNodeWithText(off).assertExists()
+        state = state.copy(results = null, rememberFailure = RememberFailure.RateLimited)
+        onNodeWithText(off).assertExists()
+        state = state.copy(rememberFailure = RememberFailure.Failed)
+        onNodeWithText(off).assertExists().performClick()
+        assertEquals(true, ArchiveAction.OnSearchSettingsClick in actions)
+    }
+
+    @Test
+    fun onButUnavailableHasItsOwnLineAndNoLink() = runComposeUiTest {
+        setContent { MoyiTheme(darkTheme = false) { ArchiveScreen(asking.copy(meaningNote = MeaningNote.Unavailable), onAction = {}) } }
+        onNodeWithText("Search by meaning isn't available right now, so only exact words are found.").assertExists()
+        onNodeWithText("Search by meaning is off for this bond, so only exact words are found. You can see it in Bond settings.").assertDoesNotExist()
+    }
+
+    @Test
+    fun searchedByMeaningThereIsNoLine() = runComposeUiTest {
+        setContent { MoyiTheme(darkTheme = true) { ArchiveScreen(asking, onAction = {}) } }
+        onNodeWithText("only exact words", substring = true).assertDoesNotExist()
+    }
 }

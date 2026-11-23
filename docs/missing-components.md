@@ -2238,3 +2238,20 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **Strings, approved by the owner 2026-11-17** (feature/today `strings.xml`), no dash, no exclamation mark:
   - `archive_search_helper_meaning` "Looks through everything you have both written. It also finds days by meaning."
   - Unchanged otherwise: `archive_search_helper` "Looks through everything you have both written."
+
+## Remember when says when it finds only exact words (PR feat/remember-when-off-line)
+
+### 95. The off line under Ask, and its link to Bond settings (FR-204; owner rulings 2026-11-18, PR 4; ADR-0070)
+
+- **Why:** the owner's ruling of 2026-11-18: while search by meaning is off, Remember when says so in one line, in every state of a question, linking to Bond settings; it never says who turned it off, and it shows on ended and deletion-countdown bonds too. Without it a words-only answer would read as "the closest moments".
+- **When, from `semanticSearchActive` and `semanticSearchEnabled`** (`SearchByMeaningStatus`, §93), as `ArchiveState.meaningNote`:
+  - active: no line;
+  - the setting off: the **off line** (approved);
+  - the setting on but not active (no provider, as in production today and the local profile; or the operator's switch): **its own line** (PROPOSED). The off line would be untrue there: the bond's setting is on. It is not a link, because Bond settings would only show the setting On;
+  - not known yet (the bond not read in this run): no line, no claim either way.
+- **Where:** under Ask, above any failure line and the answer, so it holds through ready, asking, an answer, nothing close, a `429` and a failure.
+- **The link:** the whole off line is a `TextLink` (an underline means it goes somewhere), start-aligned, full width, a 48 target. It opens Search by meaning with Bond settings under it (`navigateToSearchByMeaning`), as Today's notes about search by meaning do (owner rulings 2026-11-17, 6 and 13), so Back returns to Bond settings and then to the archive.
+- **Ended and closing bonds:** the line does not look at the bond's status, and ADR-0070 says an ended or closing bond is searched as it was, so a deletion-countdown bond gets the same line. An **ended** (archived) bond has no archive in the app today (Today is only for an open bond; an ended one shows the archived screen, §32), so nothing there reaches Remember when. If an ended bond's archive is added, note that its Bond settings is the archived screen, which shows the Search by meaning row only while it is on (§91), so the off line's "You can see it in Bond settings" would need another look.
+- **Strings** (feature/today `strings.xml`), no dash, no exclamation mark:
+  - `archive_remember_meaning_off` "Search by meaning is off for this bond, so only exact words are found. You can see it in Bond settings." **Approved by the owner 2026-11-18.**
+  - `archive_remember_meaning_unavailable` "Search by meaning isn't available right now, so only exact words are found." **PROPOSED**, for the owner. It never names the search service (copy.md, approved 2026-11-17) and promises no date.

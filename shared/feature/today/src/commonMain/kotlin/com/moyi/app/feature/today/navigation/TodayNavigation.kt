@@ -147,6 +147,8 @@ fun NavGraphBuilder.todayGraph(
             onOpenDay = { date -> navController.navigate(ArchiveDayRoute(date.toString())) { launchSingleTop = true } },
             onWrite = { navController.navigate(WriteRoute()) },
             onOpenStreak = { navController.navigate(StreakRoute) { launchSingleTop = true } },
+            // Remember when's off line: Search by meaning, with Bond settings under it (as Today's notes).
+            onOpenSearchSettings = onOpenSearchSettings,
             debugTools = debugTools,
         )
     }
