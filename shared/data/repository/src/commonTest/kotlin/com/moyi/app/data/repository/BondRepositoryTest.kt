@@ -293,7 +293,7 @@ class BondRepositoryTest {
         """{"id":"$id","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":null,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":null,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":null,"pendingDeletionRequest":null,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false,"paused":false}"""
+            """"pendingTimezoneChange":null,"pendingDeletionRequest":null,"pendingSemanticSearchRequest":null,"semanticSearchEnabled":false,"paused":false,"closedProposals":[]}"""
 
     private companion object {
         const val INVITE_JSON =

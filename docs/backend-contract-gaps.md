@@ -103,3 +103,10 @@ not repeated.
   to `30f5873` in #52, and the app now decodes the `required` fields and new shapes that commit
   declares. Meanwhile: development builds talk only to a local backend; check the deployed commit
   at api.getmoyi.app before a store build goes out.
+- **Production on backend `7247ebe4` (#214) or later before an app release that carries the
+  #214 contract sync.** That sync makes `BondResponse.closedProposals`, the `id` of both pending
+  requests and `NotificationCategoriesResponse.sharedSettings` required, so the app cannot read a
+  bond or its notification settings from an older server. Backend #214's deploy waits for the app
+  release with the shared-setting push strings (its spec §11), so that release must **not** carry
+  the sync: ship the strings, deploy #214, then release the sync. Meanwhile: development builds
+  talk only to a local backend on `7247ebe4` or later.
