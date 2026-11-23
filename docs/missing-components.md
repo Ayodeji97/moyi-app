@@ -2226,3 +2226,15 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
     | Remember when, nothing close | The question stays in the field; message block in place of the answer | "Nothing close to that yet." / "Try asking another way, or with fewer words." |
     | Remember when, too many questions (`429`) | Inline error under Ask; Ask held until `Retry-After` passes; the last answer stays | "This is paused for a short while. Try again in a few minutes." |
     | Remember when, failed | Inline error under Ask with Try again (Generic error, §10); no cache | "That didn't work. Nothing was lost. Try again in a moment." / "Try again" |
+
+## Search by meaning in the archive (PR feat/search-by-meaning-archive)
+
+### 93. The search helper says when search also finds by meaning (owner rulings 2026-11-17, 8 to 10; ADR-0070)
+
+- **Why:** ruling 8: while search by meaning is on, the archive's search helper says search also finds by meaning. The search call itself does not change: `GET /bonds/{id}/search` already ranks by meaning when the server can (ADR-0054), and the results look the same (ruling 9: no snippet, no highlight). Offline keeps the existing generic error (ruling 10). First built 2026-11-17 as §91, held, and renumbered here (§91 went to the archived bond's row).
+- **When it says so: `BondResponse.semanticSearchActive`, not the setting alone** (backend #216, ADR-0070; contract gaps row 49, resolved). The field is true only when the bond's setting is on and the server can run the meaning half now (a provider configured, a threshold for its model, the operator's switch on). With the setting on and no provider, which is production today and the local profile, search is words only, so the helper keeps its words-only line. The field does not promise every entry is embedded yet; the helper says "also finds", which stays true while some are not.
+- **Where it comes from:** `SearchByMeaningStatus` (domain/bond), **in memory**, recorded by `BondRepositoryImpl` on every `GET /bonds` and by `BondSettingsRepositoryImpl` on every answer that carries the bond (reads and this device's own writes). Today reads the bonds on every load, so the archive knows it once Today has loaded. The archive does not read the bond itself. Unknown (not read in this run), or for another bond, is words only, so the helper never promises more than the search does. Not stored: the snapshot table would need a migration for a value only an online search uses.
+- **It changes in place:** a later read (turning search off in Bond settings, Today loading again after a deploy) switches the helper while the archive is open.
+- **Strings, approved by the owner 2026-11-17** (feature/today `strings.xml`), no dash, no exclamation mark:
+  - `archive_search_helper_meaning` "Looks through everything you have both written. It also finds days by meaning."
+  - Unchanged otherwise: `archive_search_helper` "Looks through everything you have both written."

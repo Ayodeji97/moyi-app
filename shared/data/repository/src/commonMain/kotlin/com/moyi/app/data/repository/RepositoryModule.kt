@@ -18,6 +18,8 @@ import com.moyi.app.domain.bond.PendingLeaveStore
 import com.moyi.app.domain.bond.SharedSettingsNotices
 import com.moyi.app.domain.bond.SharedSettingsNoticesImpl
 import com.moyi.app.domain.bond.SharedSettingsStore
+import com.moyi.app.domain.bond.SearchByMeaningStatus
+import com.moyi.app.domain.bond.InMemorySearchByMeaningStatus
 import com.moyi.app.domain.legal.LegalRepository
 import com.moyi.app.domain.media.MediaRepository
 import com.moyi.app.domain.notification.NotificationSettingsRepository
@@ -52,8 +54,8 @@ val repositoryModule = module {
     single<LegalRepository> { LegalRepositoryImpl(get(), get(), get()) }
     single<AccountDeletionRepository> { AccountDeletionRepositoryImpl(get(), get()) }
     single<DataExportRepository> { DataExportRepositoryImpl(get(), get()) }
-    single<BondRepository> { BondRepositoryImpl(get(), get(), settingsNotices = get()) }
-    single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get(), settingsNotices = get()) }
+    single<BondRepository> { BondRepositoryImpl(get(), get(), settingsNotices = get(), searchByMeaning = get()) }
+    single<BondSettingsRepository> { BondSettingsRepositoryImpl(get(), get(), settingsNotices = get(), searchByMeaning = get()) }
     single<TodayRepository> { TodayRepositoryImpl(get(), get()) }
     // Joining with a code from a bond nobody joined ends that bond, after the join; a leave
     // that did not go through is kept on the device and tried again (owner ruling 2026-11-13).
@@ -62,6 +64,8 @@ val repositoryModule = module {
     // What changed in a bond's shared settings since this device last saw it: one note on Today per change.
     single<SharedSettingsStore> { SqlSharedSettingsStore(get(), get<SessionManager>().sessionState) }
     single<SharedSettingsNotices> { SharedSettingsNoticesImpl(get()) }
+    // In memory: how each bond read in this run is searched (semanticSearchActive, ADR-0070).
+    single<SearchByMeaningStatus> { InMemorySearchByMeaningStatus() }
     // Photos (and voice notes, later): the media endpoints and the direct upload to storage.
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ArchiveRepository> { ArchiveRepositoryImpl(get(), get()) }

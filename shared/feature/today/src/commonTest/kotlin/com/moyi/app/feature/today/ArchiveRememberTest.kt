@@ -5,6 +5,7 @@ import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
 import com.moyi.app.domain.archive.REMEMBER_MAX_LENGTH
 import com.moyi.app.domain.archive.RememberError
+import com.moyi.app.domain.bond.InMemorySearchByMeaningStatus
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
@@ -48,7 +49,7 @@ class ArchiveRememberTest : MainDispatcherTest() {
     private val rememberer = FakeRememberRepository()
     private val feed = ArchiveFeed(loop, repository, cache, rememberer)
 
-    private fun TestScope.list(rememberWhen: Boolean = true): ArchiveViewModel = ArchiveViewModel(feed, rememberWhen).also { viewModel ->
+    private fun TestScope.list(rememberWhen: Boolean = true): ArchiveViewModel = ArchiveViewModel(feed, InMemorySearchByMeaningStatus(), rememberWhen).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
     }
 

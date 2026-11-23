@@ -38,7 +38,7 @@ val todayFeatureModule = module {
     // The Archive: one feed shared by the list and the day view, over the domain's ArchiveRepository and ArchiveCache.
     single { ArchiveFeed(get(), get(), get(), get()) }
     // Remember when only where the app bound the gate on (debug builds, for now: RememberWhenGate).
-    viewModel { ArchiveViewModel(get(), rememberWhen = getOrNull<RememberWhenGate>()?.offered == true) }
+    viewModel { ArchiveViewModel(get(), searchByMeaning = get(), rememberWhen = getOrNull<RememberWhenGate>()?.offered == true) }
     viewModel { (date: String) -> ArchiveDayViewModel(date, get(), get(), get(), get()) }
     // The Streak screen, from the Archive's "Your streak", over the domain's StreakRepository.
     viewModel { StreakViewModel(get(), get()) }

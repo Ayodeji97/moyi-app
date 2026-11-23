@@ -166,6 +166,8 @@
     <string name="archive_search_label">Search your days</string>
     <!-- states.md §6 Search row: the field's helper. -->
     <string name="archive_search_helper">Looks through everything you have both written.</string>
+    <!-- Approved by the owner 2026-11-17 (docs/missing-components.md §93). The helper while the server searches this bond by meaning (BondResponse.semanticSearchActive; owner ruling 2026-11-17, 8). No snippet or highlight follows in the results (ruling 9). -->
+    <string name="archive_search_helper_meaning">Looks through everything you have both written. It also finds days by meaning.</string>
     <!-- states.md §6 No results row: the message block that replaces the list. -->
     <string name="archive_search_none_heading">Nothing matched that.</string>
     <string name="archive_search_none_line">Try another word, or go back to all days.</string>

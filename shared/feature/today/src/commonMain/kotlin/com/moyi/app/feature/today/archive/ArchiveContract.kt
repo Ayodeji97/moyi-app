@@ -79,6 +79,8 @@ data class ArchiveState(
     val query: String = "",
     /** The field should take focus and raise the keyboard (once, on choosing Search). */
     val focusSearch: Boolean = false,
+    /** The server searches this bond by meaning now (`semanticSearchActive`): the field's helper says so. */
+    val searchByMeaning: Boolean = false,
     /**
      * The month row (states.md §6, route 1) is drawn: on All days and Favourites over an
      * archive that holds a day. **Absent in Search**: the field takes its slot (they swap).
@@ -129,7 +131,7 @@ data class ArchiveState(
     override fun toString(): String =
         "ArchiveState(load=$load, months=$months, partnerName=$partnerName, canLoadMore=$canLoadMore, pageFailed=$pageFailed, pages=$pages, " +
             "filter=$filter, showFilters=$showFilters, showSearch=$showSearch, " +
-            "query=${if (query.isEmpty()) "" else "(redacted)"}, focusSearch=$focusSearch, " +
+            "query=${if (query.isEmpty()) "" else "(redacted)"}, focusSearch=$focusSearch, searchByMeaning=$searchByMeaning, " +
             "showMonthRow=$showMonthRow, visibleMonth=$visibleMonth, showMonthPicker=$showMonthPicker, " +
             "pickerMonths=$pickerMonths, jumped=$jumped, scrollToTop=$scrollToTop, " +
             "showRemember=$showRemember, question=${if (question.isEmpty()) "" else "(redacted)"}, focusQuestion=$focusQuestion, " +

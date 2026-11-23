@@ -6,6 +6,9 @@ import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.REMEMBER_MAX_LENGTH
 import com.moyi.app.domain.archive.RememberError
 import com.moyi.app.domain.archive.SEARCH_MAX_LENGTH
+import com.moyi.app.domain.bond.SearchByMeaning
+import com.moyi.app.domain.bond.SearchByMeaningStatus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -18,6 +21,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -73,13 +78,28 @@ val SEARCH_DEBOUNCE: Duration = 300.milliseconds
  *   any other failure is the generic line with Try again. Either keeps the last answer.
  *   Offered only when [rememberWhen] is on (hidden in release builds for now).
  *
+ * - **Search by meaning** (owner ruling 2026-11-17, 8): the search field's helper says search
+ *   also finds by meaning only while the bond's `semanticSearchActive` says the server asks by
+ *   meaning now ([SearchByMeaningStatus], from the last read of the bond in this run). The
+ *   setting alone is not enough: with no provider (production today) search is words only.
+ *   Unknown is words only, so the helper never promises more than the search does.
+ *
  * It owns the feed's lifetime: cleared on the way in and on the way out (onCleared),
  * so no one's days outlive the Archive that showed them.
  */
 class ArchiveViewModel(
     private val feed: ArchiveFeed,
+    searchByMeaning: SearchByMeaningStatus,
     private val rememberWhen: Boolean = false,
 ) : ViewModel() {
+
+    /** How the bond shown is searched, as this run last read it; null until the bond is known. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val meaning: StateFlow<SearchByMeaning?> = feed.state
+        .map { it.bondId }
+        .distinctUntilChanged()
+        .flatMapLatest { bondId -> if (bondId == null) flowOf(null) else searchByMeaning.of(bondId) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** DEBUG ONLY: the layout the preview's long press has stepped to, over the real one. */
     private val debugLayout = MutableStateFlow<DebugLayout?>(null)
@@ -114,12 +134,12 @@ class ArchiveViewModel(
     }
 
     val state: StateFlow<ArchiveState> =
-        combine(feed.state, debugLayout, filterChosen, search, combine(archiveHasDays, monthJump, remember, held, ::Extras)) { feed, debug, chosen, input, extras ->
+        combine(feed.state, debugLayout, filterChosen, search, combine(archiveHasDays, monthJump, remember, held, meaning, ::Extras)) { feed, debug, chosen, input, extras ->
             toState(feed, debug, chosen, input, extras)
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, Extras(archiveHasDays.value, monthJump.value, remember.value, held.value)),
+            toState(feed.state.value, debugLayout.value, filterChosen.value, search.value, Extras(archiveHasDays.value, monthJump.value, remember.value, held.value, meaning.value)),
         )
 
     private val _events = Channel<ArchiveEvent>(Channel.BUFFERED)
@@ -351,7 +371,7 @@ class ArchiveViewModel(
         remember == null && load == FeedLoad.Ready && nextCursor != null && !loadingMore && !pageFailed && visibleDays().isEmpty()
 
     private fun toState(feed: FeedState, debug: DebugLayout?, chosen: Boolean, input: SearchInput, extras: Extras): ArchiveState {
-        val (hasDays, jump, question, isHeld) = extras
+        val (hasDays, jump, question, isHeld, howSearched) = extras
         if (question.active) return rememberState(feed, hasDays, question, isHeld)
         val base = baseState(feed, debug, chosen || input.active)
         val months = base.months.map { it.month.firstOfMonth() }
@@ -378,6 +398,7 @@ class ArchiveViewModel(
             showRemember = rememberWhen && hasDays,
             query = input.query,
             focusSearch = input.focus,
+            searchByMeaning = howSearched?.active == true,
             canWrite = !feed.paused,
         )
     }
@@ -464,7 +485,13 @@ class ArchiveViewModel(
         val scrollToTop: Boolean = false,
     )
 
-    private data class Extras(val hasDays: Boolean, val jump: MonthJump, val remember: RememberInput, val held: Boolean)
+    private data class Extras(
+        val hasDays: Boolean,
+        val jump: MonthJump,
+        val remember: RememberInput,
+        val held: Boolean,
+        val meaning: SearchByMeaning?,
+    )
 
     /** Remember when: chosen or not, the question as typed, and the one question on its way. */
     private data class RememberInput(

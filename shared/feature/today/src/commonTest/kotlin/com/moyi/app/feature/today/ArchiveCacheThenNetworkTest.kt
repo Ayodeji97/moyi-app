@@ -4,6 +4,7 @@ import com.moyi.app.core.DataError
 import com.moyi.app.core.Result
 import com.moyi.app.domain.archive.ArchiveDay
 import com.moyi.app.domain.archive.ArchivePage
+import com.moyi.app.domain.bond.InMemorySearchByMeaningStatus
 import com.moyi.app.domain.today.BondDayStatus
 import com.moyi.app.domain.today.EntryStatus
 import com.moyi.app.domain.today.MyEntry
@@ -44,7 +45,7 @@ class ArchiveCacheThenNetworkTest : MainDispatcherTest() {
     private val cache = FakeArchiveCache()
     private val feed = ArchiveFeed(loop, repository, cache, FakeRememberRepository())
 
-    private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed).also { viewModel ->
+    private fun TestScope.list(): ArchiveViewModel = ArchiveViewModel(feed, InMemorySearchByMeaningStatus()).also { viewModel ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
     }
 

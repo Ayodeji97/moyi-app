@@ -31,6 +31,7 @@ import com.moyi.app.domain.bond.MemberSettings
 import com.moyi.app.domain.bond.PendingDeletionRequest
 import com.moyi.app.domain.bond.PendingSemanticSearchRequest
 import com.moyi.app.domain.bond.PendingTimezoneChange
+import com.moyi.app.domain.bond.SearchByMeaningStatus
 import com.moyi.app.domain.bond.SharedSetting
 import com.moyi.app.domain.bond.SharedSettingsNotices
 import com.moyi.app.domain.bond.TimeOfDay
@@ -54,6 +55,8 @@ class BondSettingsRepositoryImpl(
      * 2026-11-16).
      */
     private val settingsNotices: SharedSettingsNotices,
+    /** Every answer that carries the bond says how it is searched (`semanticSearchActive`, ADR-0070). */
+    private val searchByMeaning: SearchByMeaningStatus,
 ) : BondSettingsRepository {
     private val bondsApi = BondsControllerApi(config.origin, authedClient.client)
     private val memberSettingsApi = BondMemberSettingsControllerApi(config.origin, authedClient.client)
@@ -63,7 +66,10 @@ class BondSettingsRepositoryImpl(
 
     override suspend fun settings(bondId: String): Result<BondSettings, DataError.Network> =
         safeApiCallWithETag { bondsApi.getBond(bondId) }
-            .onSuccess { (body, _) -> body.toSharedSettings()?.let { settingsNotices.observe(it) } }
+            .onSuccess { (body, _) ->
+                searchByMeaning.record(body.id, body.searchByMeaning())
+                body.toSharedSettings()?.let { settingsNotices.observe(it) }
+            }
             .mapOrSerialization { (body, etag) -> body.toSettings(etag) }
 
     override suspend fun update(bondId: String, version: String, change: BondSettingsChange): Result<BondSettings, DataError.Network> {
@@ -135,7 +141,10 @@ class BondSettingsRepositoryImpl(
 
     /** This device's own write answered with the bond: remembered, and what it changed is not noted. */
     private suspend fun <E : DataError> Result<Pair<BondResponse, String?>, E>.recordOwn(own: Set<SharedSetting>) =
-        onSuccess { (body, _) -> body.toSharedSettings()?.let { settingsNotices.recordOwn(it, own) } }
+        onSuccess { (body, _) ->
+            searchByMeaning.record(body.id, body.searchByMeaning())
+            body.toSharedSettings()?.let { settingsNotices.recordOwn(it, own) }
+        }
 
     override suspend fun memberSettings(bondId: String): Result<MemberSettings, DataError.Network> =
         safeApiCall { memberSettingsApi.getMemberSettings(bondId) }.mapOrSerialization { it.toDomain() }

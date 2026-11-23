@@ -113,6 +113,7 @@ import com.moyi.app.feature.today.resources.archive_row_spoken_photo
 import com.moyi.app.feature.today.resources.archive_row_spoken_voice
 import com.moyi.app.feature.today.resources.archive_row_voice
 import com.moyi.app.feature.today.resources.archive_search_helper
+import com.moyi.app.feature.today.resources.archive_search_helper_meaning
 import com.moyi.app.feature.today.resources.archive_search_label
 import com.moyi.app.feature.today.resources.archive_search_none_heading
 import com.moyi.app.feature.today.resources.archive_search_none_line
@@ -195,7 +196,7 @@ fun ArchiveScreen(
         Spacer(Modifier.height(MoyiTheme.spacing.lg))
         // The field and the month row share the navigation block's top slot (states.md §6).
         if (state.showFilters && state.filter == ArchiveFilter.Search) {
-            SearchField(state.query, state.focusSearch, onAction)
+            SearchField(state.query, state.focusSearch, state.searchByMeaning, onAction)
             Spacer(Modifier.height(MoyiTheme.spacing.md))
         } else if (state.showMonthRow && state.visibleMonth != null) {
             MonthRow(state.visibleMonth, onJump = { onAction(ArchiveAction.OnJumpClick) })
@@ -488,7 +489,7 @@ private fun MonthPicker(months: List<LocalDate>, onPick: (LocalDate) -> Unit, on
  * back from a day view keeps the query and does not raise the keyboard again.
  */
 @Composable
-private fun SearchField(query: String, focus: Boolean, onAction: (ArchiveAction) -> Unit) {
+private fun SearchField(query: String, focus: Boolean, byMeaning: Boolean, onAction: (ArchiveAction) -> Unit) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(focus) {
@@ -502,7 +503,8 @@ private fun SearchField(query: String, focus: Boolean, onAction: (ArchiveAction)
         value = query,
         onValueChange = { onAction(ArchiveAction.OnQueryChange(it)) },
         label = stringResource(Res.string.archive_search_label),
-        helper = stringResource(Res.string.archive_search_helper),
+        // Only while the server searches this bond by meaning now (owner ruling 2026-11-17, 8; semanticSearchActive).
+        helper = stringResource(if (byMeaning) Res.string.archive_search_helper_meaning else Res.string.archive_search_helper),
         modifier = Modifier.focusRequester(focusRequester),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         // The query is already being searched as it rests; the key only puts the keyboard away.

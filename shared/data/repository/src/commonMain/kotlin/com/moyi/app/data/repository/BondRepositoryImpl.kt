@@ -18,6 +18,7 @@ import com.moyi.app.domain.bond.BondRepository
 import com.moyi.app.domain.bond.BondType
 import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
+import com.moyi.app.domain.bond.SearchByMeaningStatus
 import com.moyi.app.domain.bond.SharedSettingsNotices
 
 /**
@@ -31,6 +32,8 @@ class BondRepositoryImpl(
     config: ApiConfig,
     /** Every read of the bonds is compared with what this device last saw (owner ask 2026-11-16). */
     private val settingsNotices: SharedSettingsNotices,
+    /** Every read of the bonds says how each is searched (`semanticSearchActive`, ADR-0070). */
+    private val searchByMeaning: SearchByMeaningStatus,
 ) : BondRepository {
     private val bondsApi = BondsControllerApi(config.origin, authedClient.client)
     private val bondInvitesApi = BondInvitesControllerApi(config.origin, authedClient.client)
@@ -38,7 +41,12 @@ class BondRepositoryImpl(
 
     override suspend fun bonds(): Result<List<Bond>, DataError.Network> =
         safeApiCall { bondsApi.listBonds() }
-            .onSuccess { response -> response.bonds.forEach { bond -> bond.toSharedSettings()?.let { settingsNotices.observe(it) } } }
+            .onSuccess { response ->
+                response.bonds.forEach { bond ->
+                    searchByMeaning.record(bond.id, bond.searchByMeaning())
+                    bond.toSharedSettings()?.let { settingsNotices.observe(it) }
+                }
+            }
             .map { response -> response.bonds.map { it.toBond() } }
 
     override suspend fun createBond(name: String, type: BondType, anchorTimezone: String): Result<Bond, DataError.Network> {

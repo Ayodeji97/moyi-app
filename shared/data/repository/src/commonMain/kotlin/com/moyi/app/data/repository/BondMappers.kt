@@ -16,6 +16,7 @@ import com.moyi.app.domain.bond.Invite
 import com.moyi.app.domain.bond.InvitePreview
 import com.moyi.app.domain.bond.PendingProposal
 import com.moyi.app.domain.bond.PendingRequest
+import com.moyi.app.domain.bond.SearchByMeaning
 import com.moyi.app.domain.bond.SharedSettingsSnapshot
 import com.moyi.app.domain.bond.TimeOfDay
 
@@ -110,6 +111,9 @@ internal inline fun <T, R> Result<T, DataError.Network>.mapOrSerialization(trans
         is Result.Failure -> this
         is Result.Success -> transform(data)?.let { Result.Success(it) } ?: Result.Failure(DataError.Network.Serialization)
     }
+
+/** How this bond is searched: the couple's setting, and whether the meaning half runs now (ADR-0070). */
+internal fun BondResponse.searchByMeaning(): SearchByMeaning = SearchByMeaning(enabled = semanticSearchEnabled, active = semanticSearchActive)
 
 /**
  * The shared settings this response carries, for [com.moyi.app.domain.bond.SharedSettingsNotices]:
