@@ -69,7 +69,15 @@ Ordered by how early they bite (upload, then review, then the production step).
 
 ### App Store
 
-- [ ] **B4. A privacy manifest (`PrivacyInfo.xcprivacy`) in the app target.** Who: Claude
+- [x] **B4. A privacy manifest (`PrivacyInfo.xcprivacy`) in the app target.** **Done in PR
+  chore/ios-privacy-manifest:** `iosApp/iosApp/PrivacyInfo.xcprivacy`, in the built `Moyi.app`.
+  It declares tracking false; UserDefaults `CA92.1`; and, from `nm -u` on the linked Kotlin
+  framework, file timestamps `C617.1`, system boot time `35F9.1` and disk space `E174.1`. It
+  also lists eight collected data types, all linked, none tracking, App Functionality.
+  SQLCipher.framework (4.20.0) ships its own manifest (disk space `E174.1`, file timestamps
+  `C617.1`, `3B52.1`), as do FirebaseMessaging and its Google dependencies. Still owed:
+  Xcode's Privacy Report from an archive (needs a Release archive), and the owner's answer
+  on `ITMS-91053` below. Original note: Who: Claude
   PR. Status: **Code**, missing: there is no `PrivacyInfo.xcprivacy` anywhere in the repo,
   and the app calls a required-reason API itself: `NSUserDefaults` in
   `KeychainTokenStore.kt` (the reinstall check) and `UserDefaultsNotificationAskMemory.kt`
@@ -164,7 +172,7 @@ In App Store Connect, in the order the submission page asks.
 | ✓ | Item | Who | Status | Link |
 |---|---|---|---|---|
 | [ ] | **App Privacy (nutrition label).** Proposed answers, all "linked to the user", none "used for tracking", purpose App Functionality: Contact Info (Name: the display name; Email Address); User Content (Photos; Audio Data: voice notes; Other User Content: entries, reactions, reports; Customer Support: support messages); Identifiers (User ID; Device ID if the FCM registration token is counted as one, see Firebase's own disclosure). No crash or analytics SDK in the app (**Code**: none in `libs.versions.toml` or the Xcode packages); the backend uses Sentry for its own errors (**Docs**). The device row sends app and OS version (**Code**, `IosDeviceInfoProvider`): owner decides if that is "Other Diagnostic Data" | Owner (submits), Claude PR (can verify each row against the API) | **Code** for what the app sends; answers not filled | [App privacy details](https://developer.apple.com/app-store/app-privacy-details/), [Firebase data disclosure](https://firebase.google.com/docs/ios/app-store-data-collection) |
-| [ ] | **Privacy manifest** | Claude PR | Blocker B4 | |
+| [x] | **Privacy manifest** | Claude PR | Done, B4 (`iosApp/iosApp/PrivacyInfo.xcprivacy`) | |
 | [ ] | **Age rating questionnaire** (the 2025 system: 4+, 9+, 13+, 16+, 18+). Answers to expect: user-generated content yes, messaging between users yes (the bond), no unrestricted web, no gambling. Pick **18+** to match the Terms and the sign-up gate | Owner | **Unknown** | [Age ratings values and definitions](https://developer.apple.com/help/app-store-connect/reference/age-ratings-values-and-definitions) |
 | [ ] | **App Review information**: both demo credentials (B3), the review notes (5.4), a contact name, phone and email | Owner | **Unknown** | [Submit for review](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-for-review) |
 | [ ] | **Permission strings are specific** (Apple rejects vague ones, 5.1.1(ii)). Camera and microphone strings present and say when they are used (**Code**). No photo-library string needed: `PHPickerViewController` (**Code**, `PhotoPicker.ios.kt`) | Claude PR if reworded | **Code** | [5.1.1](https://developer.apple.com/app-store/review/guidelines/#data-collection-and-storage) |
