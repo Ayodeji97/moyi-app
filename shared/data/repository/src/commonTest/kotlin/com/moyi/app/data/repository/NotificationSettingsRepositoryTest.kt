@@ -73,6 +73,6 @@ class NotificationSettingsRepositoryTest {
 
     private companion object {
         const val ALL_BUT_ON_THIS_DAY =
-            """{"categories":{"reminder":true,"partnerJoined":true,"reveal":true,"milestone":true,"onThisDay":false,"proposal":true}}"""
+            """{"categories":{"reminder":true,"partnerJoined":true,"reveal":true,"milestone":true,"onThisDay":false,"proposal":true,"sharedSettings":true}}"""
     }
 }

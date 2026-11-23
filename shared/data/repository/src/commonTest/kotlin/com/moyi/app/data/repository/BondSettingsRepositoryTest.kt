@@ -235,7 +235,7 @@ class BondSettingsRepositoryTest {
 
     @Test
     fun theFirstAskToCloseTheBoxIsAPendingRequestByTheCaller() = runTest {
-        val pending = """{"requestedByMemberId":"m1","requestedAt":"2026-11-06T10:00:00Z","expiresAt":"2026-11-13T10:00:00Z"}"""
+        val pending = """{"id":"r1","requestedByMemberId":"m1","requestedAt":"2026-11-06T10:00:00Z","expiresAt":"2026-11-13T10:00:00Z"}"""
         val fixture = Fixture { respondBond(bondJson(pendingDeletion = pending), etag = "\"9\"", status = HttpStatusCode.Accepted) }
 
         val result = assertIs<Result.Success<BondSettings>>(fixture.repo.requestDeletion("b1")).data
@@ -250,7 +250,7 @@ class BondSettingsRepositoryTest {
 
     @Test
     fun theOtherMembersAskIsTheirsAndBothAskingCarriesTheDate() = runTest {
-        val theirs = """{"requestedByMemberId":"m2","requestedAt":"2026-11-06T10:00:00Z","expiresAt":"2026-11-13T10:00:00Z"}"""
+        val theirs = """{"id":"r1","requestedByMemberId":"m2","requestedAt":"2026-11-06T10:00:00Z","expiresAt":"2026-11-13T10:00:00Z"}"""
         val asked = Fixture { respondBond(bondJson(pendingDeletion = theirs), etag = "\"9\"") }
         assertEquals(false, assertIs<Result.Success<BondSettings>>(asked.repo.settings("b1")).data.pendingDeletion?.requestedByMe)
 
@@ -282,7 +282,7 @@ class BondSettingsRepositoryTest {
 
     @Test
     fun searchByMeaningAndWhoAskedAreReadWithTheSettings() = runTest {
-        val mine = """{"requestedByMemberId":"m1","requestedAt":"2026-11-16T10:00:00Z","expiresAt":"2026-11-23T10:00:00Z"}"""
+        val mine = """{"id":"r1","requestedByMemberId":"m1","requestedAt":"2026-11-16T10:00:00Z","expiresAt":"2026-11-23T10:00:00Z"}"""
         val asked = assertIs<Result.Success<BondSettings>>(Fixture { respondBond(bondJson(semanticSearch = false, pendingSearch = mine), etag = "\"3\"") }.repo.settings("b1")).data
         assertFalse(asked.semanticSearchEnabled)
         assertEquals(PendingSemanticSearchRequest(requestedByMe = true, expiresAt = Instant.parse("2026-11-23T10:00:00Z")), asked.pendingSemanticSearch)
@@ -324,7 +324,7 @@ class BondSettingsRepositoryTest {
 
     @Test
     fun askingForSearchIsAPostAnsweredWithTheBond() = runTest {
-        val mine = """{"requestedByMemberId":"m1","requestedAt":"2026-11-16T10:00:00Z","expiresAt":"2026-11-23T10:00:00Z"}"""
+        val mine = """{"id":"r1","requestedByMemberId":"m1","requestedAt":"2026-11-16T10:00:00Z","expiresAt":"2026-11-23T10:00:00Z"}"""
         val fixture = Fixture { respondBond(bondJson(semanticSearch = false, pendingSearch = mine), etag = "\"4\"", status = HttpStatusCode.Accepted) }
 
         val result = assertIs<Result.Success<BondSettings>>(fixture.repo.requestSemanticSearch("b1")).data
@@ -403,7 +403,7 @@ class BondSettingsRepositoryTest {
         """{"id":"b1","type":"COUPLE","name":"Amara and Tunde","anchorTimezone":"Africa/Lagos","revealTimeLocal":$revealTime,""" +
             """"strictMode":false,"status":"$status","maxMembers":2,"createdAt":"2026-10-29T10:00:00Z","archivedAt":null,""" +
             """"deletionScheduledFor":$deletionScheduledFor,"members":$members,"me":{"memberId":"m1","role":"OWNER"},"invite":$invite,""" +
-            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":$pendingSearch,"semanticSearchEnabled":$semanticSearch,"paused":false,""" +
+            """"pendingTimezoneChange":$pending,"pendingDeletionRequest":$pendingDeletion,"pendingSemanticSearchRequest":$pendingSearch,"semanticSearchEnabled":$semanticSearch,"semanticSearchActive":$semanticSearch,"paused":false,"closedProposals":[],""" +
             """"timezoneChangeAllowedFrom":$allowedFrom}"""
 
     private fun pendingJson(proposedBy: String): String =
