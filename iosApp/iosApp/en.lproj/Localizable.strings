@@ -5,7 +5,8 @@
   so nothing anybody wrote, and nobody's name, can reach a lock screen (FR-084, T-14).
 
   The same words are androidApp/src/main/res/values/push_strings.xml: change both together.
-  PROPOSED copy (copy.md "Notification copy"), awaiting the owner's ruling.
+  PROPOSED copy (copy.md "Notification copy"), awaiting the owner's ruling, except the
+  push_shared_setting_changed_* strings: APPROVED by the owner 2026-11-23.
 */
 
 /* The daily reminder: an invitation, never pressure (copy.md). */
@@ -35,3 +36,25 @@
 /* A change the other member proposed, waiting on this one. */
 "push_proposal_opened_title" = "A change to agree to";
 "push_proposal_opened_body" = "Open Bond settings to see it and answer.";
+
+/* The other member changed something the two share in the bond, or a proposed change ended
+   (backend #214, ADR-0069). Moyi is speaking. The server sends one title and picks the body by
+   what changed. Never names the setting, its value, or the member (spec ruling 15).
+   APPROVED by the owner 2026-11-23, all five. */
+"push_shared_setting_changed_title" = "A change to your bond";
+
+/* The body for a changed setting, or several changes at once. Moyi is speaking. Never names the
+   setting or the member; Bond settings is the screen's name in the app. */
+"push_shared_setting_changed_body" = "Open Bond settings to see what changed.";
+
+/* To the person who proposed a change: the other member agreed. Moyi is speaking. Never names
+   the change or the member. */
+"push_shared_setting_changed_accepted_body" = "The change you asked for was agreed.";
+
+/* To the person who proposed a change: the other member said no. Moyi is speaking. Never names
+   the change or who declined it. */
+"push_shared_setting_changed_declined_body" = "The change you asked for was declined.";
+
+/* To the person who was asked to agree: the proposer called the change off. Moyi is speaking.
+   Never names the change or the member. */
+"push_shared_setting_changed_withdrawn_body" = "A change you were asked to agree to was withdrawn. Your bond stays as it is.";

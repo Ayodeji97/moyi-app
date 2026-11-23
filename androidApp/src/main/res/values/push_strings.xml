@@ -12,7 +12,9 @@
   channel_*: the name and description Android shows in the app's notification settings,
   one channel per push category (NotificationChannels.kt).
 
-  All PROPOSED copy (copy.md "Notification copy"), awaiting the owner's ruling.
+  PROPOSED copy (copy.md "Notification copy"), awaiting the owner's ruling, except the
+  push_shared_setting_changed_* and channel_shared_setting_changed_* strings: APPROVED by the
+  owner 2026-11-23.
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
     <!-- The daily reminder: an invitation, never pressure (copy.md). -->
@@ -43,6 +45,24 @@
     <string name="push_proposal_opened_title">A change to agree to</string>
     <string name="push_proposal_opened_body">Open Bond settings to see it and answer.</string>
 
+    <!-- The other member changed something the two share in the bond, or a proposed change
+         ended (backend #214, ADR-0069). Moyi is speaking. The server sends one title and picks the
+         body by what changed. Never names the setting, its value, or the member (spec ruling 15).
+         APPROVED by the owner 2026-11-23, all five and the channel. -->
+    <string name="push_shared_setting_changed_title">A change to your bond</string>
+    <!-- The body for a changed setting, or several changes at once. Moyi is speaking. Never names
+         the setting or the member; Bond settings is the screen's name in the app. -->
+    <string name="push_shared_setting_changed_body">Open Bond settings to see what changed.</string>
+    <!-- To the person who proposed a change: the other member agreed. Moyi is speaking. Never
+         names the change or the member. -->
+    <string name="push_shared_setting_changed_accepted_body">The change you asked for was agreed.</string>
+    <!-- To the person who proposed a change: the other member said no. Moyi is speaking. Never names
+         the change or who declined it. -->
+    <string name="push_shared_setting_changed_declined_body">The change you asked for was declined.</string>
+    <!-- To the person who was asked to agree: the proposer called the change off. Moyi is
+         speaking. Never names the change or the member. -->
+    <string name="push_shared_setting_changed_withdrawn_body">A change you were asked to agree to was withdrawn. Your bond stays as it is.</string>
+
     <!-- Channels: the names follow the toggles in Bond settings > Notifications. -->
     <string name="channel_reminder_name">Daily reminder</string>
     <string name="channel_reminder_description">The reminder to write, at the time you chose.</string>
@@ -58,4 +78,7 @@
     <string name="channel_on_this_day_description">A day from an earlier year, at most once a week.</string>
     <string name="channel_proposal_opened_name">Changes to agree to</string>
     <string name="channel_proposal_opened_description">A change proposed to your bond, waiting for your answer.</string>
+    <!-- The channel for the shared-setting pushes above. Moyi is speaking. Names no setting or member. -->
+    <string name="channel_shared_setting_changed_name">Changes to your bond</string>
+    <string name="channel_shared_setting_changed_description">When a setting in your bond changes, or a proposed change ends.</string>
 </resources>

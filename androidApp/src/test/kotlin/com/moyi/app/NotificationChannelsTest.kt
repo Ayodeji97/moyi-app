@@ -1,6 +1,7 @@
 package com.moyi.app
 
 import com.moyi.app.domain.notification.PushKind
+import com.moyi.app.domain.notification.SharedSettingChange
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,7 +12,7 @@ class NotificationChannelsTest {
     fun `one channel per kind of push, with the ids the server is asked to send`() {
         // backend issue #134: android.notification.channel_id = the category in lower case.
         assertEquals(
-            listOf("reminder", "partner_joined", "reveal", "solo_unlock", "milestone", "on_this_day", "proposal_opened"),
+            listOf("reminder", "partner_joined", "reveal", "solo_unlock", "milestone", "on_this_day", "proposal_opened", "shared_setting_changed"),
             NotificationChannels.specs.map { it.id },
         )
         assertEquals(PushKind.entries, NotificationChannels.specs.map { it.kind })
@@ -37,7 +38,8 @@ class NotificationChannelsTest {
     fun `every key the server sends has its string on both platforms`() {
         val android = File("src/main/res/values/push_strings.xml").readText()
         val ios = File("../iosApp/iosApp/en.lproj/Localizable.strings").readText()
-        PushKind.entries.flatMap { listOf(it.titleLocKey, it.bodyLocKey) }.forEach { key ->
+        val keys = PushKind.entries.flatMap { listOf(it.titleLocKey, it.bodyLocKey) } + SharedSettingChange.entries.map { it.bodyLocKey }
+        keys.forEach { key ->
             assertTrue("<string name=\"$key\">" in android, "Android lacks $key")
             assertTrue("\"$key\" =" in ios, "iOS lacks $key")
         }

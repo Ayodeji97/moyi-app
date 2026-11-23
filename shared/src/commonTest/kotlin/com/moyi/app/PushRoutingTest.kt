@@ -60,4 +60,15 @@ class PushRoutingTest {
         inbox.consume(PushTarget.Streak)
         assertNull(inbox.target.value)
     }
+
+    @Test
+    fun `a shared setting change tap opens Bond settings above Today`() {
+        val inbox = PushTapInbox()
+        inbox.tapped(
+            mapOf(PushPayload.KEY_KIND to "SHARED_SETTING_CHANGED", PushPayload.KEY_BOND_ID to bondId, PushPayload.KEY_CHANGE to "NEW_VALUE"),
+        )
+        val target = inbox.target.value!!
+        assertEquals(PushTarget.BondSettings(bondId), target)
+        assertEquals(PushRouting.Open(listOf(BondSettingsGraph(bondId))), pushRouting(target, ShellPlace.SignedInApp))
+    }
 }

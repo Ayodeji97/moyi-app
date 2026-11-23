@@ -1,6 +1,7 @@
 package com.moyi.app
 
 import com.moyi.app.domain.notification.PushKind
+import com.moyi.app.domain.notification.SharedSettingChange
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -16,6 +17,15 @@ class MoyiMessagingServiceTest {
             val texts = MoyiMessagingService.textsOf(kind)
             assertEquals(kind.titleLocKey, nameOf(texts.title), kind.name)
             assertEquals(kind.bodyLocKey, nameOf(texts.body), kind.name)
+        }
+    }
+
+    @Test
+    fun `a shared setting change says the words the server picks for its change`() {
+        SharedSettingChange.entries.forEach { change ->
+            val texts = MoyiMessagingService.textsOf(PushKind.SharedSettingChanged, change)
+            assertEquals(PushKind.SharedSettingChanged.titleLocKey, nameOf(texts.title), change.name)
+            assertEquals(change.bodyLocKey, nameOf(texts.body), change.name)
         }
     }
 }
