@@ -1805,6 +1805,8 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 
 ### 71. Edit can remove the entry's own photo or voice note
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §4 amendment.
+
 - **Today:** §60 let Edit replace the entry's photo or voice note but not take one off, because
   `PATCH /entries/{id}` had no way to say so (backend-contract-gaps row 41, moyi-backend #164).
   The contract (backend ca77fe45, #174) now has `removeImage` and `removeVoice` booleans: `true`
@@ -1841,6 +1843,8 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 ## Two-step reset and the "could not be reached" line (PR feat/reset-check-register-error)
 
 ### 72. Choose a new password in two steps, and one line for "the server could not be reached" (owner ruling 2026-11-11)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §1b, copy.md, strings-proposed.md §16.
 
 - **Today:** §58 put the code and the new password on one screen because the server could only
   check a reset code together with the password (backend-contract-gaps row 39). A wrong code
@@ -1892,6 +1896,8 @@ Every string below is **PROPOSED** unless it names its source in `strings.xml`.
 
 ### 73. Time zone: the date said before the person tries (backend #177)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): nothing to write (no new string or component).
+
 `BondResponse.timezoneChangeAllowedFrom` (`YYYY-MM-DD` in the bond's zone, null when a change
 is allowed now) lets the Propose screen say what the `409 TIMEZONE_CHANGE_TOO_SOON` used to say
 only after a refusal.
@@ -1912,6 +1918,8 @@ only after a refusal.
 ## Bond settings, grouped (PR feat/bond-settings-grouped)
 
 ### 74. Grouped card, row marks, and the Bond settings root (owner choice 2026-11-10, rulings 2026-11-11)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): tokens.md §4 (GroupedCard, InitialsPair), states.md §8, strings-proposed.md §16.
 
 Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
@@ -1963,6 +1971,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 75. A menu component, Edit and Delete moved into it, and a new revealed title (owner rulings 2026-11-10/11)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): tokens.md §4 (MoreMenu), states.md §3, copy.md, SKILL.md.
+
 - **Why:** after the reveal "Delete what you wrote" was a full-width outlined button at the foot of the happiest screen, and states.md says the reveal has no next action. Before the reveal, Edit and Delete sat side by side under the card. Both states now have one quiet control on your own card.
 - **New component, designsystem: `MoreMenu`** (+ `MoreMenuItem`, `MoyiIcons.MoreHorizontal`, `MoyiDimens.MoreMenu`). The design system has no menu; the owner approved adding one. A 48 x 48 target holding the lucide `ellipsis` glyph (three dots, 24, 2 px stroke) in `inkMuted`, spoken as a button by the caller's description. It opens Material's `DropdownMenu`, restyled with Rosewood: `surfaceRaised` panel, 1 `outline` hairline, the `radius` corners, no shadow or tonal tint (tokens.md section 3); rows are at least 48 tall in the `body` style, `ink`, or `danger` for a destructive row (the label still says "Delete", so colour is never the only cue). Each row has the Button role. Choosing a row closes the menu, then calls its handler; outside tap and Android Back close it and do nothing. No items, nothing drawn. The open state survives rotation (`rememberSaveable`).
 - **On the card:** `OwnCard` overlays it at the top end of the label row, outside the card's merged reading, so it is its own screen-reader stop. Which rows show is `TodayState.ownEntryMenu()`: Waiting (before the reveal) = Edit, Delete; Revealed = Delete (entries are immutable, states.md section 5); no other state has an own entry to change, so no menu.
@@ -1976,6 +1986,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## Compact Archive rows (PR feat/archive-compact-rows)
 
 ### 76. `ArchiveDayRow` replaces the day card in the Archive list (owner ruling 2026-11-11)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): tokens.md §4 (ArchiveDayRow), states.md §6, SKILL.md.
 
 - **Why:** the list showed each day as a full card holding both entries, a photo and a player. The owner ruled for a compact list of days; the day view (already there, with reactions and "Delete what you wrote") is where a day is read in full.
 - **New component, designsystem: `ArchiveDayRow`** (+ `ArchiveRowLine`, `MoyiDimens.ArchiveRow`). No card: no fill, no border, an `outline` hairline under the row. A **36 wide date column** (grows with the font scale, never clips): the day number in `title` (Newsreader 26) over the short weekday in `label` ("WED", a date, so tracked capitals are allowed, #80). Then one line per entry: the author in `label`, the first line of the words in `action` (Newsreader 16), **one line with an ellipsis**. Then small static pills in sentence case (`tag`, `outlineStrong` border, 24 tall): Photo, Voice note, Favourite. The row is the target (at least 48 tall); the pills are never targets. The row is **one screen-reader element**, spoken as the caller's description.
@@ -1991,6 +2003,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 77. "Sign out?" confirmation on Account (owner request 2026-11-11)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §8, copy.md, strings-proposed.md §16.
+
 - **Why:** the Sign out row ended the session at once. A stray tap on a row sitting under Get help and Terms and Privacy signed the person out of a private journal and wiped the phone's cache.
 - **No new component:** the existing `ConfirmDialog` (Material `AlertDialog` on Android, `UIAlertController` on iOS), not destructive: signing out is reversible (sign in again), and SKILL.md section 3 says to confirm the irreversible only. It is justified here because the sign-out wipes the local database (cache, outbox, drafts), so the dialog says what stays and what goes. states.md and copy.md have no sign-out row (grep for "sign out" only finds the reset-password and unsent-entry rows), so nothing there is overridden.
 - **What signing out really does (read in code):** `AuthRepository.logout()` tells the server (best effort), then `SessionManager` ends the session and runs `PersonalData.wipe()`, which wipes the whole local database: the Today and Archive caches, the draft table and the entry outbox. Entries already sent live on the server and come back on the next sign-in. Only an unsent queued entry or an unsaved draft is lost.
@@ -2000,11 +2014,15 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 78. Reset link sent: the button says "Enter the code" (owner-approved 2026-11-11)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): strings-proposed.md §16 (superseded by §82).
+
 - **Why:** the button on "Reset link sent" read "Choose a new password" but opened "Type your code" (#87's two-step reset). The label named the step after the one it opened.
 - **Change:** new `reset_sent_action` "Enter the code". `reset_new_heading` ("Choose a new password") stays as the heading of the second step.
 - **Copy rule check:** no dash, no exclamation mark, names the next action (memory: copy names the next action).
 
 ### 79. Notification small icon (Android)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): tokens.md §6 (the notification colour is still an owner question).
 
 - **What was wrong:** the push icon (manifest `default_notification_icon` and `MoyiMessagingService.setSmallIcon`) was `ic_launcher_foreground`, which is already a flat, transparent mark (not a full-colour launcher PNG, so no white square). But it is drawn in a 108 dp canvas at 44 percent of its height (the adaptive-icon safe zone), so in the 24 dp status-bar slot the mark came out about 10 dp, tiny.
 - **Change:** new `ic_stat_moyi.xml`, the same two paths in a 24 dp vector, scaled 0.39 and centred so the mark fills about 20 dp. Flat white on transparent, as the status bar needs (it keeps only the alpha).
@@ -2012,6 +2030,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 - **Not traced:** the mark is already vector (`tools/icon/make_icon.py`), so nothing was traced; the glyph is the real logo, not a placeholder.
 
 ### 80. Insets, the Archive row's author column and the More menu's anchor (polish)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): tokens.md §4 (MoreMenu, ArchiveDayRow numbers).
 
 - **Scaffold bottom inset:** a scrolling screen with no pinned action now runs its scroll viewport to the physical bottom and pads the END of the content (24 plus the safe-area bottom) instead of padding the viewport. Before, the content was clipped 24 plus the home-indicator inset above the edge, with empty surface below. Pinned-action screens and the keyboard-up case are unchanged.
 - **`ArchiveDayRow`:** the author labels of one row now share one column, as wide as the widest label (measured, so it grows with the font), capped at 40 percent of the line and ellipsised beyond that; the words of every line start at the same x. `MoyiDimens.ArchiveRow.AuthorMaxWidth` (96 dp) is replaced by `AuthorMaxShare` (0.4).
@@ -2021,6 +2041,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## Signed in as, on Account (PR feat/settings-signed-in-email)
 
 ### 81. "Signed in as {email}" row (owner request 2026-11-16)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §8 describes the row; its string `account_signed_in_as` is still PROPOSED.
 
 - **Why:** the signed-in address was shown nowhere, so the owner could not tell which account this phone uses with his partner.
 - **No new component:** a read-only `GroupedRow` (no `onClick`, so no chevron and no Button role: the GroupedCard rule for a row that only shows something), first in Account's first card. The whole sentence is the row's label, not label plus value: the label takes the row's width and wraps, while a value is measured first and would squeeze the label to nothing for a long address or at 200 % font. To assistive technology the row is one element that reads the sentence.
@@ -2034,6 +2056,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 82. No "Check your email" screen in the password reset (owner ruling 2026-11-16)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): already in states.md §1b (4029cff); `reset_code_line` is still PROPOSED.
+
 - **Why:** after Forgot password sent the email, "Reset link sent" (Figma 345:23, §78) was a full screen with one line and an "Enter the code" button. The owner found the stop unnecessary: the next thing to do is always to type the code.
 - **Change:** Forgot password's `202` now opens Choose a new password on its code step directly. Back from the code step returns to Forgot password, which kept the address. `ResetLinkSentScreen`, `ResetLinkSentRoute`, its preview, its UI-preview entry, and the strings `reset_sent_line` and `reset_sent_action` are removed. A reset link that opens the app while the code step is on screen takes its place with the same address, as before (`accountLinkRouting`).
 - **No new component:** the code step gains one muted `MoyiText` line 16 under the heading, 24 above the code field, exactly as verify's "We sent a 6-digit code to {email}" line sits.
@@ -2044,6 +2068,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## Change password while signed in (PR feat/change-password)
 
 ### 83. "Change password" on Account (owner ruling 2026-11-16)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): strings-proposed.md §15, now marked approved.
 
 - **Why:** a signed-in person could change their password only by signing out and using "I forgot my password".
 - **No new component.** A navigation `GroupedRow` "Change password" (chevron) under "Signed in as {email}" on Account, left out with it while the address is unknown. It opens **Change password**, laid out as Forgot password without its field: eyebrow "Account", heading "Change your password", a muted line saying where the code goes, the consequence, and `PrimaryAction` "Send the code" ("Sending the code"). The address is never typed: it is the session's, so the code can only reach the account's own inbox (`POST /auth/forgot-password` with that address).
@@ -2057,6 +2083,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 84. The link's reset goes the Change password way
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): strings-proposed.md §16.
+
 - **Why:** a `/reset-password?token=` link opened while signed in took the signed-out path (reset, then a fresh sign in). That missed what §83 gave Change password: the session lock, keeping this phone's drafts, outbox and cache, sending the push token again, and `SessionEndReason.PasswordChanged`.
 - **Change:** signed in, the link opens Choose a new password with `signedIn = true` and the session's address. Saving calls `AuthRepository.changePassword` with the link as the proof. The screens are §83's: the password step says "Your other devices will be signed out. This phone stays signed in." above "Save the new password". Saved: the screen closes and the snackbar says "Your new password is saved."
 - **A link for another account.** The token is an opaque random value, looked up by its hash on the server, and the reset answers `200` with no body. So nothing says whose account a link is for until after the reset. The reset applies to the link's account. The app then signs in with the session's address and the new password, under the lock. If that sign-in is refused (`401 INVALID_CREDENTIALS`), the link was another account's. That account's password is saved, its sessions are revoked, and this phone's session was never touched, so it is kept as it was: nothing is wiped and nobody is signed out. The screen closes and the snackbar says what happened (since 2026-11-17: Account opens with a card that waits for OK, §87). Any other failure after the reset (offline, `429`) still ends the session with "Your new password is saved. Sign in with it.", as in §83, because the reset may have revoked this session.
@@ -2067,6 +2095,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## Send it again on the reset's code step (PR feat/reset-send-again)
 
 ### 85. "Send it again" under the reset code field
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §1b.
 
 - **Why:** the wrong-code error says "That code did not work. Check the digits, or send a new email.", but the only way to send one was Back to Forgot password (signed out) or Change password (signed in). Smoke test of #118/#119.
 - **No new component, no new string.** Verify's own resend, reused: the `TextLink` "Send it again" (`verify_resend`) 24 under the code field, replaced for a minute by the muted live-region line "Sent again. You can ask for another in a minute." (`verify_resent`, states.md §1 Resent). While it runs, the link reads "Sending the code" (`reset_request_action_sending`, the same request's label on Forgot password), so the control says what it is doing and no spinner is invented. It is disabled while a code is being checked.
@@ -2080,6 +2110,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 86. "Check the digits, or tap Send it again." (owner ruling 2026-11-17)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §1b, copy.md, strings-proposed.md §16.
+
 - **Why:** since §85 the reset's code step has a "Send it again" link under the field, but the wrong-code line still said "send a new email", which names no control on the screen.
 - **Change:** `code_error_invalid` is now "That code did not work. Check the digits, or tap Send it again." It names the link by its label (`verify_resend`), as `legal_line_changed` names Accept. "tap" follows `register_legal_unavailable` and `legal_line_changed`.
 - **One string, not two.** It is shown on two screens, and both have the same control under the same field: verify's code step and the reset's code step (signed out and signed in). Each shows the link only when the step knows the address, and the line can only appear then: without an address a typed code is refused before any request, with `code_error_no_address`. So no screen shows this line without the link it names, and there was nothing to split.
@@ -2090,6 +2122,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## Notes stay long enough to read (PR feat/notes-longer-and-account-card)
 
 ### 87. The snackbar's time follows its length, a tap closes it, and §84's note becomes a card (owner ruling 2026-11-17)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): tokens.md §4 (snackbar timing), states.md §8; `account_note_ok` is still PROPOSED.
 
 - **Why:** the owner found the notes went before they could be read. Every note stayed a fixed 4 s (§62), whatever its length.
 - **Time on screen** (`snackbarShowMillis(text)` in `MoyiSnackbar.kt`): 2 s to notice it at the foot of the screen, then 100 ms a character, kept between 6 s and 10 s. The rule: a slow, careful reader reads about 200 words a minute. At about 6 characters a word (with its space), that is 50 ms a character, so 100 ms is enough to read the note twice. That keeps §62's "read twice" and makes it depend on the length. It counts characters, not words, so a language written without spaces is timed the same way. "Your new password is saved." and "Your email is already confirmed." stay 6 s; 80 characters or more stay 10 s. The result still goes through `LocalAccessibilityManager.calculateRecommendedTimeoutMillis` (text, no controls), so a person who set a longer accessibility timeout on Android gets more time. The tap is a shortcut, not a control the note needs, so it is not counted as one.
@@ -2102,6 +2136,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## The paused bond (PR feat/paused-bond)
 
 ### 88. Today, Write and the outbox while a bond is paused (ADR-0066)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §3 and §4, copy.md, strings-proposed.md §16.
 
 - **Why:** the backend can now pause a bond (moyi-backend #195, ADR-0066): an `ADMIN` suspends one member's account, and every bond that member is in becomes read-only for entries. `paused: true` on `GET …/today` (and on the bond), Today's prompt `null`, and `409 BOND_PAUSED` on a new entry, an edit and a reaction. Doc 04 §8.1: the other member "is told that the Bond is paused, and nothing about why".
 - **What the person is told:** that the bond is paused, that nothing new can be written for now, and that the days can still be read. **Never why, never who, never when it ends.** The suspended member is told nothing by the app (ADR-0066 decision 12: they cannot sign in at all), so every line here is read only by the partner, and none of it may point at them. The lines say "your bond", never the partner's name.
@@ -2125,6 +2161,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## Search by meaning in Bond settings (PR feat/search-by-meaning-settings)
 
 ### 89. Bond settings › Search by meaning, and the facts card (owner rulings 2026-11-17)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): tokens.md §4 (FactsCard), states.md §8, copy.md, strings-proposed.md §16.
 
 - **Why:** FR-204 and ADR-0054. Every bond starts with search by meaning on (`BondResponse.semanticSearchEnabled`). Either member turns it off alone (`PATCH /bonds/{id}` with `{"semanticSearchEnabled": false}` and `If-Match`, which also deletes the bond's vectors and calls off a live request). Turning it on needs both: `POST /bonds/{id}/semantic-search` asks, or agrees to the other member's ask; `DELETE` withdraws or declines; a request lapses after seven days (`pendingSemanticSearchRequest {requestedByMemberId, requestedAt, expiresAt}`). While nobody has joined, the `POST` turns it on at once. The app had no screen for it. The design preview (claude.ai artifact `9gVyobcTaDq9fMA16fkvTG`, 2026-11-16) and the owner's 13 rulings of 2026-11-17 decide what follows.
 - **Bond settings root:** a new group **Finding your days · both of you** (ruling 1), after The day, holding one chevron row **Search by meaning** (ruling 2) whose value is On, Off, or Asked while a request waits (either member's, as Close the box shows Asked). The row stays enabled during the cooling-off, when every other setting row is frozen: off is allowed on a bond that has ended (ruling 12, ADR-0054 decision 9).
@@ -2154,6 +2192,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 90. The other member's ask as a Today note, and every search note opens the screen (owner rulings 2026-11-17, 6 and 13)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §3, strings-proposed.md §16.
+
 - **Why:** nothing tells a member that the other asked to turn search by meaning on: the backend has no push for it yet (moyi-backend#205; contract gaps row 46). Ruling 6: until it exists, the shared-settings notes on Today (§ of 2026-11-16) carry it, with "See Bond settings". Ruling 13: the existing "now off" note gains "See Bond settings" too.
 - **A new note, `SharedSettingNotice.SemanticSearchAsked`** (domain `sharedSettingsNotices`): the other member's request is live (`expiresAt` not passed), search is off, the bond has two people and has not ended, and this device has not seen this request before. Unlike every other note it is also made on the first look (no snapshot yet), because the request waits for an answer and nothing else says so. The person's own request (on any phone) never makes one: the request carries the asker's member id.
 - **It is a question, not news, so it goes by itself** once nothing waits for an answer: agreed or declined on this phone or another, withdrawn, turned on, or lapsed. `SharedSettingsNoticesImpl` removes it on the next read of the bond that shows no live ask. A withdrawal still leaves its own note ("The request to turn search by meaning back on was withdrawn. It stays off.").
@@ -2168,6 +2208,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 
 ### 91. Bond · archived › Search by meaning, shown only while it is on (owner rulings 2026-11-17)
 
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §8.
+
 - **Why:** ruling 12 lets a member turn search by meaning off on a bond that has ended (ADR-0054 decision 9: `PATCH /bonds/{id}` with `{"semanticSearchEnabled": false}` alone is accepted on an ended bond, from a member who left it too; the contract's `PatchBondRequest.semanticSearchEnabled` says so, and moyi-backend's `UpdateBond` and `SemanticSearchSettingTest` were read to confirm it). But an archived bond shows the archived screen (§32), not Bond settings, so its members had no way to the switch, and the sweep keeps sending an archived bond's words to the search service while it is on. The owner's ruling of 2026-11-17: a small follow-up adds a way to turn it off on the archived screen, shown only while it is on.
 - **The row:** under the archived screen's line, 24 below it, one `GroupedCard` holding one chevron row, Bond settings' own: **Search by meaning**, value **On**. No group heading: Bond settings' "Finding your days · both of you" describes an open bond. Shown only while `semanticSearchEnabled` is true. While the bond is being read (the archived screen now reads it, `GET /bonds/{id}`), and if that read fails, there is no row and nothing else changes: the screen still renders from the bond list alone (§32).
 - **The screen:** the row opens #130's Search by meaning screen (§89) on #130's `BondSettingsViewModel`, kept by the archived screen's entry, so both show one state. Its On state offers **Turn it off**; the house `ConfirmDialog` asks first ("Turn off search by meaning?"). On an archived bond nothing can turn it back on, so the dialog's line is the approved ended line, "This bond has ended, so search by meaning cannot be turned on.", not "Turning it back on needs you both to agree." Turning off stays on the screen, which then shows the ended Off state (§89, ruling 5). Back, the edge swipe and Android Back return to the archived screen, where the row has gone.
@@ -2179,6 +2221,8 @@ Mockups: `/tmp/claude-501/bond-design/chosen-light.png` and `chosen-dark.png`.
 ## Remember when (PRs feat/remember-when-data, feat/remember-when-feed, feat/remember-when-ui)
 
 ### 92. Remember when: ask the archive a question (FR-204, ADR-0054 decision 8; owner rulings 2026-11-18)
+
+**Design system: done 2026-11-23** (Gratitude `6269fb0`): states.md §6 (5747a58); `archive_filter_remember` in strings-proposed.md §16.
 
 - **Why:** FR-204's "Remember when": a question in plain words, answered with the bond's days closest to it, most relevant first (`GET /bonds/{bondId}/remember?q=&limit=`). The design preview of 2026-11-17 (`moyi-remember-when.html`) and the owner's rulings of 2026-11-18 decide what follows. Built in three PRs, hidden in release builds until the backend says when search by meaning really finds by meaning (contract gaps row 49).
 - **The data (PR feat/remember-when-data):** `RememberRepository` in domain/archive, over the generated `RememberControllerApi`, on the authed client. It asks `limit=10` (ruling: ten, not the contract's 20) and keeps the server's order: relevance, not newest first. The days are the archive's `DayResponse`, read by the archive's own mapper, so the partner's words are read exactly as Today reads them. It is **online only and never stored** (the contract): no cache, no database.

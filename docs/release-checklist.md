@@ -1,7 +1,8 @@
 # Release checklist
 
 What stands between `main` and the first build in people's hands, in the order to do it.
-Written 2026-11-11, after the daily loop and its polish were merged (#85 to #92). Tick items
+Written 2026-11-11, after the daily loop and its polish were merged (#85 to #92); brought up to
+date 2026-11-23. Tick items
 in the PR that does them; add items here rather than in a side list.
 
 Owner = only Daniel can do it (accounts, keys, money, signatures). Claude = code or docs, done
@@ -9,7 +10,9 @@ through a PR as usual.
 
 ## 1. Blockers: no store build is possible yet
 
-- [ ] **Claude: a release build that talks to production.** Every build today is forced onto the
+- [x] **Claude: a release build that talks to production.** **Done in #94** (`310d53d`): release
+  builds use `https://api.getmoyi.app/api/v1`, debug builds keep the guard, and CLAUDE.md says so.
+  The original item: Every build today is forced onto the
   local backend: `shared/data/network/build.gradle.kts` defaults to `localhost` / `10.0.2.2`
   and fails the build for any `getmoyi.app` host ("There is no release flavor yet, so the
   guard holds for every build; store builds will opt out explicitly"). Add that explicit
@@ -20,7 +23,11 @@ through a PR as usual.
     carry the production host;
   - cleartext stays debug-only.
   - CLAUDE.md "Configuration" changes in the same PR.
-- [ ] **Owner: a production Firebase project (`moyi-prod`).** Both platforms already refuse
+- [x] **Owner: a production Firebase project (`moyi-prod`).** **Done (checked 2026-11-23):** both
+  files exist, are git-ignored (`.gitignore` lines 36 and 37) and name project `moyi-prod` with app
+  `app.getmoyi.moyi`, not `moyi-65b68`. Still to confirm on the push side: the APNs key uploaded to
+  `moyi-prod`, the backend using its service account, and a push reaching a TestFlight build
+  (`docs/submission-checklist.md`). The original item: Both platforms already refuse
   the development project (`moyi-65b68`) in a release build:
   - Android: `androidApp/build.gradle.kts`, which reads `src/release/google-services.json`;
   - iOS: the build phase reading `iosApp/Firebase/Release/GoogleService-Info.plist`.
@@ -29,7 +36,7 @@ through a PR as usual.
   and put both files in those git-ignored paths. The backend needs the same project's
   service account for push.
 - [ ] **Owner: finish issue #49** (Android upload key and fingerprints). Check what is still
-  unticked there.
+  unticked there. Still open on 2026-11-23.
 
 ## 2. Store accounts and signing (owner)
 
@@ -42,12 +49,12 @@ through a PR as usual.
   - create the app `app.getmoyi.moyi`;
   - set `TEAM_ID` for release signing (git-ignored `Local.xcconfig`, #13);
   - create the APNs key for `moyi-prod`.
-- [ ] **TestFlight:** first archive and upload. Claude can script the archive. The upload
-  needs your Apple ID.
+- [x] **TestFlight:** first archive and upload. **Done:** `fastlane ios beta` (#99) uploads, and App
+  Store Connect accepted build 1.0 (4) (`docs/submission-checklist.md`).
 - [ ] **Play internal testing track:** first upload, by hand in Play Console (fastlane's
   docs ask for the first one to be manual): `fastlane android build_aab version_code:1`,
   then upload `build/android-release/Moyi-1.0-1.aab` to Internal testing.
-- [ ] **Owner: a Play service account** for `fastlane android beta` (README, "Releasing to
+- [ ] **Owner: a Play service account** (the lane is in, #109) for `fastlane android beta` (README, "Releasing to
   Google Play"): a JSON key at `~/.moyi/play-service-account.json`, invited in Play
   Console with Release apps to testing tracks and View app information. After that every
   Android upload is `fastlane android beta` (`release_status:draft` until Google has
@@ -55,7 +62,8 @@ through a PR as usual.
 
 ## 3. Links that open the app
 
-- [ ] **Site:** the live AASA lists no paths (`docs/backend-contract-gaps.md` row 34). Add
+- [ ] **Site:** the app now routes `/verify`, `/reset-password` and `/i/<code>` on both platforms,
+  for `getmoyi.app` and `open.getmoyi.app` (#120, #122). Still owed on the site: the live AASA lists no paths (`docs/backend-contract-gaps.md` row 34). Add
   `/verify`, `/reset-password` and `/i/*` once the app routes them on both platforms.
 - [ ] **Claude:** verify on a phone that tapping a verify, reset and invite link opens the app
   on the right screen, cold and warm.
@@ -78,7 +86,7 @@ The simulator and emulator cannot cover these. Several have never been run on An
   (Bond settings cards, Archive rows, More menu) read as one element.
 - [ ] **Large text (200%):** Today, Write, Archive rows, Bond settings.
 - [ ] **Screen capture:** the partner's words are protected on Today, in the Archive day
-  view and in the Archive list (PR feat/archive-capture-protection). Check each on a real
+  view and in the Archive list (#98). Check each on a real
   device: Android screenshots come out black; the iPhone app switcher shows no words.
 
 ## 5. Store listing (owner, with Claude drafting)
@@ -97,8 +105,11 @@ The simulator and emulator cannot cover these. Several have never been run on An
 
 ## 6. Paperwork in this repo and the parent repo (Claude)
 
-- [ ] **Design-system amendments.** `docs/missing-components.md` §71 to §80 hold PROPOSED
-  strings and components that the owner has approved:
+- [x] **Design-system amendments.** **Done 2026-11-23** in the parent `Gratitude` repository
+  (local, no remote), commit `6269fb0`, together with the later approved sections (§81 to §92);
+  each section in `docs/missing-components.md` now says where it went. Still PROPOSED there:
+  `account_signed_in_as`, `reset_code_line`, `account_note_ok`. `docs/missing-components.md` §71
+  to §80 held PROPOSED strings and components that the owner has approved:
   - the grouped card and chevron rows;
   - the More menu;
   - "You both wrote today.";
@@ -112,12 +123,17 @@ The simulator and emulator cannot cover these. Several have never been run on An
   store (Android `-Pmoyi.versionCode`, chore/play-lane; iOS `CURRENT_PROJECT_VERSION`), so
   no file changes per upload. `versionName` / `MARKETING_VERSION` stay `1.0`, changed by a
   PR for a release people should see as new (README, "Version numbers").
-- [ ] **Stale branches:** delete `feat/push-registration` and `spike/first-impression` with
-  their worktrees.
+- [x] **Stale branches:** delete `feat/push-registration` and `spike/first-impression` with
+  their worktrees. **Done 2026-11-23:** both were local only and already in `main`'s history; the
+  spike's worktree held only uncommitted, never-ship variants of the promise screen.
 
 ## 7. Backend-side items the app is waiting on
 
 None of these blocks a first release. The app already handles each one's absence.
+
+- **Deploy order for backend #214 (shared-setting pushes):** release the app with the push
+  strings and channel (#138) **without** the #214 contract sync (#137); deploy #214; then
+  release #137. #137 records this in `docs/backend-contract-gaps.md`.
 
 - Row 27 / backend #146: a push names no day.
 - Rows 16, 17, 32: account deletion and export doc lag. Both are built in the app (#63).
